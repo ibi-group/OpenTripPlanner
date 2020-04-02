@@ -5,18 +5,19 @@ import org.opentripplanner.routing.util.ElevationUtils;
 
 public class MicromobilityTest extends TestCase {
 
-    public void testDragResistiveComponent () {
+    public void testAirDensityComponent() {
         double allowableDelta = 0.0001;
 
         // elevation at sea level
-        assertEquals(0.4553, ElevationUtils.getDragResistiveForceComponent(0), allowableDelta);
+        assertEquals(1.2047, ElevationUtils.getAirDensity(0), allowableDelta);
 
         // elevation at 2,000 meters
-        assertEquals(0.3801, ElevationUtils.getDragResistiveForceComponent(2000), allowableDelta);
+        assertEquals(1.0055, ElevationUtils.getAirDensity(2000), allowableDelta);
     }
 
     public static final double powerReductionFactor = 0.8; // used to make it easier to reason about specific power inputs
     public static final double allowableSpeedDelta = 0.1;
+    public static final double aerodynamicDrag = 0.63 * 0.6;
 
     public void testMicromobilityTravelTimeAtZeroSlope () {
         assertEquals(
@@ -26,7 +27,8 @@ public class MicromobilityTest extends TestCase {
                 105,
                 Math.atan(0),
                 0.005,
-                ElevationUtils.ZERO_ELEVATION_DRAG_RESISTIVE_FORCE_COMPONENT,
+                aerodynamicDrag,
+                ElevationUtils.ZERO_ELEVATION_AIR_DENSITY,
                 Double.NEGATIVE_INFINITY, // an obscene number to make sure min speed bounding is turned off
                 Double.POSITIVE_INFINITY // an obscene number to make sure max speed bounding is turned off
             ),
@@ -42,7 +44,8 @@ public class MicromobilityTest extends TestCase {
                 105,
                 Math.atan(0.07),
                 0.005,
-                ElevationUtils.ZERO_ELEVATION_DRAG_RESISTIVE_FORCE_COMPONENT,
+                aerodynamicDrag,
+                ElevationUtils.ZERO_ELEVATION_AIR_DENSITY,
                 Double.NEGATIVE_INFINITY, // an obscene number to make sure min speed bounding is turned off
                 Double.POSITIVE_INFINITY // an obscene number to make sure max speed bounding is turned off
             ),
@@ -58,7 +61,8 @@ public class MicromobilityTest extends TestCase {
                 105,
                 Math.atan(-0.05),
                 0.005,
-                ElevationUtils.ZERO_ELEVATION_DRAG_RESISTIVE_FORCE_COMPONENT,
+                aerodynamicDrag,
+                ElevationUtils.ZERO_ELEVATION_AIR_DENSITY,
                 Double.NEGATIVE_INFINITY, // an obscene number to make sure min speed bounding is turned off
                 Double.POSITIVE_INFINITY // an obscene number to make sure max speed bounding is turned off
             ),
@@ -74,7 +78,8 @@ public class MicromobilityTest extends TestCase {
                 105,
                 Math.atan(0.2),
                 0.005,
-                ElevationUtils.ZERO_ELEVATION_DRAG_RESISTIVE_FORCE_COMPONENT,
+                aerodynamicDrag,
+                ElevationUtils.ZERO_ELEVATION_AIR_DENSITY,
                 0.8, // minimum speed in m/s
                 Double.POSITIVE_INFINITY // an obscene number to make sure max speed bounding is turned off
             ),
@@ -90,7 +95,8 @@ public class MicromobilityTest extends TestCase {
                 105,
                 Math.atan(-0.2),
                 0.005,
-                ElevationUtils.ZERO_ELEVATION_DRAG_RESISTIVE_FORCE_COMPONENT,
+                aerodynamicDrag,
+                ElevationUtils.ZERO_ELEVATION_AIR_DENSITY,
                 Double.NEGATIVE_INFINITY, // an obscene number to make sure min speed bounding is turned off
                 12.5 // maximum speed in m/s
             ),

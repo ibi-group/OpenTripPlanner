@@ -1031,6 +1031,7 @@ otp.widgets.tripoptions.Micromobility =
 
         var html = '<div class="notDraggable">Watts: <input id="'+this.id+'-watts-value" type="text" style="width:30px;" value="250" />';
         html += '<div class="notDraggable">Weight (kg): <input id="'+this.id+'-weight-value" type="text" style="width:30px;" value="105" />';
+        html += '<div class="notDraggable">Aerodynamic Drag (Cd * A): <input id="'+this.id+'-drag-value" type="text" style="width:35px;" value="0.408" />';
         html += '<div class="notDraggable">Min Speed (m/s): <input id="'+this.id+'-minspeed-value" type="text" style="width:30px;" value="0.8" />';
         html += '<div class="notDraggable">Max Speed (m/s): <input id="'+this.id+'-maxspeed-value" type="text" style="width:30px;" value="12.5" />';
         html += "</div>"
@@ -1044,6 +1045,11 @@ otp.widgets.tripoptions.Micromobility =
         $('#'+this.id+'-watts-value').change(function() {
             this_.tripWidget.inputChanged({
                 watts : parseFloat($('#'+this_.id+'-watts-value').val()),
+            });
+        });
+        $('#'+this.id+'-drag-value').change(function() {
+            this_.tripWidget.inputChanged({
+                aerodynamicDrag : parseFloat($('#'+this_.id+'-drag-value').val()),
             });
         });
         $('#'+this.id+'-weight-value').change(function() {
@@ -1071,6 +1077,10 @@ otp.widgets.tripoptions.Micromobility =
         var weightVal = parseFloat(planData.queryParams.weight)
         if(!isNaN(weightVal)) {
             $('#'+this.id+'-weight-value').val(weightVal);
+        }
+        var dragVal = parseFloat(planData.queryParams.aerodynamicDrag)
+        if(!isNaN(dragVal)) {
+         $('#'+this.id+'-drag-value').val(dragVal);
         }
         var minSpeedVal = parseFloat(planData.queryParams.minimumMicromobilitySpeed)
         if(!isNaN(minSpeedVal)) {

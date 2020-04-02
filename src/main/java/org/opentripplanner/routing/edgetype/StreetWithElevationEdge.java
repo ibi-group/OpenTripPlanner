@@ -37,12 +37,12 @@ public class StreetWithElevationEdge extends StreetEdge {
     // an array of the length in meters of the corresponding gradient at the same index
     private short[] gradientLengths;
 
-    // The maximum resistive drag force component along this StreetWithElevationEdge. The difference of this resistive
-    // drag force component is likely extremely small along the vast majority of edges in the graph. Therefore, don't
-    // store all values in an array like the gradients and gradient lengths. Instead, use the maximum resistive drag
-    // component which would correspond to drag resistive force at the minimum altitude seen on this edge. This is an
-    // overestimate of aerodynamic drag.
-    private double maximumDragResistiveForceComponent;
+    // The maximum air density seen along this StreetWithElevationEdge. The difference of this resistive drag force
+    // component is likely extremely small along the vast majority of edges in the graph. Therefore, don't store all
+    // values in an array like the gradients and gradient lengths. Instead, use the maximum air density which would
+    // correspond to the air density observed at the minimum altitude seen on this edge. This is an overestimate of air
+    // density.
+    private double maximumAirDensity;
 
     public StreetWithElevationEdge(StreetVertex v1, StreetVertex v2, LineString geometry,
             I18NString name, double length, StreetTraversalPermission permission, boolean back) {
@@ -80,7 +80,7 @@ public class StreetWithElevationEdge extends StreetEdge {
 
         gradients = costs.gradients;
         gradientLengths = costs.gradientLengths;
-        maximumDragResistiveForceComponent = costs.maximumDragResistiveForceComponent;
+        maximumAirDensity = costs.maximumAirDensity;
 
         return costs.flattened;
     }
@@ -145,7 +145,8 @@ public class StreetWithElevationEdge extends StreetEdge {
                     options.weight,
                     Math.atan(gradients[i] / 100.0),
                     this.getRollingResistanceCoefficient(),
-                    maximumDragResistiveForceComponent,
+                    options.aerodynamicDrag,
+                    maximumAirDensity,
                     options.minimumMicromobilitySpeed,
                     options.maximumMicromobilitySpeed
                 ),

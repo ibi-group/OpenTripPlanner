@@ -894,7 +894,8 @@ public class StreetEdge extends Edge implements Cloneable {
                     options.weight,
                     Math.atan(0), // 0 slope beta
                     getRollingResistanceCoefficient(),
-                    ElevationUtils.ZERO_ELEVATION_DRAG_RESISTIVE_FORCE_COMPONENT,
+                    options.aerodynamicDrag,
+                    ElevationUtils.ZERO_ELEVATION_AIR_DENSITY,
                     options.minimumMicromobilitySpeed,
                     options.maximumMicromobilitySpeed
                 ),
@@ -980,8 +981,7 @@ public class StreetEdge extends Edge implements Cloneable {
      *              difficulty of traveling over bumpy roadways. This value is used to calculate the value of `Frg` as
      *              noted in the above equations.See this wikipedia page for a list of coefficients by various surface
      *              types: https://en.wikipedia.org/wiki/Rolling_resistance#Rolling_resistance_coefficient_examples
-     * @param aerodynamicDragComponent The product of the coefficient of aerodynamic drag, frontal area and air density.
-     *              This value is product of (Cd * A * ρ) as noted in the above mathematical equations.
+     * @param airDensity The air density .
      * @param minSpeed The minimum speed that the micromobility should travel at in cases where the slope is so steep
      *              that it would be faster to walk with the vehicle.
      * @param maxSpeed The maximum speed the vehicle can travel at.
@@ -992,7 +992,8 @@ public class StreetEdge extends Edge implements Cloneable {
         double weight,
         double beta,
         double coefficientOfRollingResistance,
-        double aerodynamicDragComponent,
+        double aerodynamicDrag,
+        double airDensity,
         double minSpeed,
         double maxSpeed
     ) {
@@ -1022,26 +1023,28 @@ public class StreetEdge extends Edge implements Cloneable {
             weight *
             // These cosine and sine calculations could be precalculated during graph build
             (coefficientOfRollingResistance * Math.cos(beta) + Math.sin(beta));
+        // The interaction of aerodynamics and air density (Cd * A * p)
+        double dragResistance = aerodynamicDrag * airDensity;
 
         double a = (
             -Math.pow(dynamicRollingResistance, 3) / 27.0
         ) + (
             (2.0 * normalizedRollingFriction * dynamicRollingResistance) /
-                (3.0 * Math.pow(aerodynamicDragComponent, 2))
+                (3.0 * Math.pow(dragResistance, 2))
         ) + (
-            watts / aerodynamicDragComponent
+            watts / (dragResistance)
         );
         double b = (
-            2.0 / (9.0 * aerodynamicDragComponent)
+            2.0 / (9.0 * dragResistance)
         ) * (
             3.0 * normalizedRollingFriction -
                 (
-                    (2.0 * dynamicRollingResistance) / aerodynamicDragComponent
+                    (2.0 * dynamicRollingResistance) / (dragResistance)
                 )
         );
 
         double cardanicCheck = Math.pow(a, 2) + Math.pow(b, 3);
-        double rollingDragComponent = 2.0 / 3.0 * dynamicRollingResistance / aerodynamicDragComponent;
+        double rollingDragComponent = 2.0 / 3.0 * dynamicRollingResistance / (dragResistance);
         double speed;
         if (cardanicCheck >= 0) {
             double cardanicCheckSqrt = Math.sqrt(cardanicCheck);

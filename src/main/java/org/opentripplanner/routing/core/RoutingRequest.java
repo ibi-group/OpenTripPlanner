@@ -590,6 +590,26 @@ public class RoutingRequest implements Cloneable, Serializable {
      */
     public double weight = 105;
 
+    /**
+     * This is coefficient of drag and frontal area multiplied together. The equation for drag resistance and the
+     * extracted value is as follows:
+     *
+     * Fdrag = 0.5 * Cd * A * Rho * V^2
+     *               ⎣CdA_⎦
+     *
+     * See https://www.gribble.org/cycling/power_v_speed.html
+     *
+     * where
+     * Cd = coefficient of drag
+     * A = frontal area in m^2
+     * Rho = air density in kg / m^3
+     *
+     * You need a wind tunnel to properly measure the overall interaction of the coefficient of drag and frontal area,
+     * but a study showed that a comfortable bicycling position had a Cd * A value of 0.408.
+     * See https://www.cyclingpowerlab.com/CyclingAerodynamics.aspx
+     */
+    public double aerodynamicDrag = 0.408;
+
     /** Saves split edge which can be split on origin/destination search
      *
      * This is used so that TrivialPathException is thrown if origin and destination search would split the same edge

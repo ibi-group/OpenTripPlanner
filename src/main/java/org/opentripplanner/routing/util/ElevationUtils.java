@@ -43,28 +43,8 @@ public class ElevationUtils {
      */
     public static final double GRAVITATIONAL_ACCELERATION_CONSTANT = 9.80665;
 
-    // the Cd * A * p value at 0 elevation
-    public static final double ZERO_ELEVATION_DRAG_RESISTIVE_FORCE_COMPONENT = getDragResistiveForceComponent(0);
-
-    /**
-     * This is  coefficient of drag and frontal area multiplied together. The equation for drag resistance and the
-     * extracted value is as follows:
-     *
-     * Fdrag = 0.5 * Cd * A * Rho * V^2
-     *               ⎣CdA_⎦
-     *
-     * See https://www.gribble.org/cycling/power_v_speed.html
-     *
-     * where
-     * Cd = coefficient of drag
-     * A = frontal area in m^2
-     * Rho = air density in kg / m^3
-     *
-     * Apparently you need a wind tunnel to properly measure the coefficient of drag, so for now, assume the following:
-     * Cd = 0.63
-     * A = 0.6
-     */
-    private static final double FRONTAL_AREA_DRAG_COMPONENT = 0.63 * 0.6;
+    // the Rho value at 0 elevation
+    public static final double ZERO_ELEVATION_AIR_DENSITY = getAirDensity(0);
 
     // the air pressure at sea level in Pascals
     // see https://www.omnicalculator.com/physics/air-pressure-at-altitude
@@ -91,13 +71,10 @@ public class ElevationUtils {
     private static final double TEMPERATURE_DECLINE_PER_METER_OF_ELEVATION_GAIN = -9.8 / 1000;
 
     /**
-     * Calculates the components of drag resistance except for the velocity assuming travel through dry earthy air. The
-     * equation for drag resistance and the extracted value is as follows:
+     * Calculates the approximate air density for dry earthy air at a certain elevation. The value Rho is a part of
+     * the equation for drag resistance which is as follows:
      *
      * Fdrag = 0.5 * Cd * A * Rho * V^2
-     *             ⎣dragComponent⎦
-     *
-     * Note that the 0.5 is accounted for as a part of the final micromobility speed calcuations.
      *
      * See https://www.gribble.org/cycling/power_v_speed.html
      *
@@ -151,20 +128,18 @@ public class ElevationUtils {
      *
      * @param altitude The altitude in meters
      */
-    public static double getDragResistiveForceComponent(double altitude) {
+    public static double getAirDensity(double altitude) {
         double randomlyGuessedTemperature = A_RANDOM_OUTDOOR_TEMPERATURE_IN_KELVIN + (
             altitude * TEMPERATURE_DECLINE_PER_METER_OF_ELEVATION_GAIN
         );
-        return FRONTAL_AREA_DRAG_COMPONENT * (
-            AIR_PRESSURE_AT_SEA_LEVEL *
+        return AIR_PRESSURE_AT_SEA_LEVEL *
             Math.exp(
                 -GRAVITATIONAL_ACCELERATION_CONSTANT *
                     EARTHY_AIR_MOLAR_MASS *
                     altitude /
                     (UNIVERSAL_GAS_CONSTANT * randomlyGuessedTemperature)
             ) /
-            (SPECIFIC_GAS_CONSTANT_FOR_DRY_AIR * randomlyGuessedTemperature)
-        );
+            (SPECIFIC_GAS_CONSTANT_FOR_DRY_AIR * randomlyGuessedTemperature);
     }
 
     private static double[] getLengthsFromElevation(CoordinateSequence elev) {
@@ -213,7 +188,7 @@ public class ElevationUtils {
                 false,
                 new byte[]{0},
                 new short[]{(short) trueLength},
-                getDragResistiveForceComponent(0)
+                getAirDensity(0)
             );
         }
         double lengthMultiplier = trueLength / flatLength;
@@ -236,7 +211,7 @@ public class ElevationUtils {
 
             // add to existing gradient bin
             boolean gradientAdded = false;
-            double minCoordinatesAltitude = Math.min(coordinates[i + 1].x, coordinates[i].x);
+            double minCoordinatesAltitude = Math.min(coordinates[i + 1].y, coordinates[i].y);
             for (GradientBin bin : gradients) {
                 if (bin.gradient == iGradient) {
                     bin.distance += run;
@@ -288,14 +263,14 @@ public class ElevationUtils {
         // convert gradient info into arrays of primitives
         byte[] gradientsArr = new byte[gradients.size()];
         short[] gradientLengthsArr = new short[gradients.size()];
-        double maximumDragResistiveForceComponent = Double.MIN_VALUE;
+        double maximumAirDensity = Double.MIN_VALUE;
         for (int i = 0; i < gradients.size(); i++) {
             GradientBin bin = gradients.get(i);
             gradientsArr[i] = (byte) bin.gradient;
             gradientLengthsArr[i] = (short) bin.distance;
-            double dragReistiveForceComponent = getDragResistiveForceComponent(bin.minAltitude);
-            if (dragReistiveForceComponent > maximumDragResistiveForceComponent) {
-                maximumDragResistiveForceComponent = dragReistiveForceComponent;
+            double airDensity = getAirDensity(bin.minAltitude);
+            if (airDensity > maximumAirDensity) {
+                maximumAirDensity = airDensity;
             }
         }
 
@@ -312,7 +287,7 @@ public class ElevationUtils {
             flattened,
             gradientsArr,
             gradientLengthsArr,
-            maximumDragResistiveForceComponent
+            maximumAirDensity
         );
     }
 

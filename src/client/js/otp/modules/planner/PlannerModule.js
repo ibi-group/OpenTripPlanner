@@ -364,6 +364,7 @@ otp.modules.planner.PlannerModule =
             if(this.showIntermediateStops) queryParams.showIntermediateStops = this.showIntermediateStops;
             if(this.watts) queryParams.watts = this.watts;
             if(this.weight) queryParams.weight = this.weight;
+            if(this.aerodynamicDrag) queryParams.aerodynamicDrag = this.aerodynamicDrag;
             if(this.minimumMicromobilitySpeed) queryParams.minimumMicromobilitySpeed = this.minimumMicromobilitySpeed;
             if(this.maximumMicromobilitySpeed) queryParams.maximumMicromobilitySpeed = this.maximumMicromobilitySpeed;
 
