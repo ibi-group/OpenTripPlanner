@@ -5,8 +5,10 @@ import com.google.common.collect.Lists;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.document.Document;
-import org.apache.lucene.document.DoubleField;
+import org.apache.lucene.document.DoublePoint;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.document.LatLonPoint;
+import org.apache.lucene.document.StoredField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.DirectoryReader;
@@ -18,7 +20,6 @@ import org.apache.lucene.queryparser.classic.QueryParser;
 import org.apache.lucene.search.*;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
-import org.apache.lucene.util.Version;
 import org.opentripplanner.model.Stop;
 import org.opentripplanner.profile.StopCluster;
 import org.opentripplanner.routing.edgetype.StreetEdge;
@@ -29,6 +30,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -43,8 +45,8 @@ public class LuceneIndex {
 
     private static final Logger LOG = LoggerFactory.getLogger(LuceneIndex.class);
 
-    private Analyzer analyzer = new StandardAnalyzer(Version.LUCENE_47);
-    private QueryParser parser = new QueryParser(Version.LUCENE_47, "name", analyzer);
+    private Analyzer analyzer = new StandardAnalyzer();
+    private QueryParser parser = new QueryParser("name", analyzer);
     private GraphIndex graphIndex;
     private File basePath;
     private Directory directory; // the Lucene Directory, not to be confused with a filesystem directory
@@ -71,10 +73,10 @@ public class LuceneIndex {
         try {
             long startTime = System.currentTimeMillis();
             /* Create or re-open a disk-backed Lucene Directory under the OTP server base filesystem directory. */
-            directory = FSDirectory.open(new File(basePath, "lucene"));
+            directory = FSDirectory.open(Paths.get( "lucene"));
             // TODO reuse the index if it exists?
             //directory = new RAMDirectory(); // only a little faster
-            IndexWriterConfig config = new IndexWriterConfig(Version.LUCENE_47, analyzer).setOpenMode(OpenMode.CREATE);
+            IndexWriterConfig config = new IndexWriterConfig(analyzer).setOpenMode(OpenMode.CREATE);
             final IndexWriter writer = new IndexWriter(directory, config);
             for (Stop stop : graphIndex.stopForId.values()) {
                 addStop(writer, stop);
@@ -102,8 +104,8 @@ public class LuceneIndex {
         if (stop.getCode() != null) {
             doc.add(new StringField("code", stop.getCode(), Field.Store.YES));
         }
-        doc.add(new DoubleField("lat", stop.getLat(), Field.Store.YES));
-        doc.add(new DoubleField("lon", stop.getLon(), Field.Store.YES));
+        doc.add(new StoredField("lat", stop.getLat()));
+        doc.add(new StoredField("lon", stop.getLon()));
         doc.add(new StringField("id", stop.getId().toString(), Field.Store.YES));
         doc.add(new StringField("category", Category.STOP.name(), Field.Store.YES));
         iwriter.addDocument(doc);
@@ -112,8 +114,8 @@ public class LuceneIndex {
     private void addCluster(IndexWriter iwriter, StopCluster stopCluster) throws IOException {
         Document doc = new Document();
         doc.add(new TextField("name", stopCluster.name, Field.Store.YES));
-        doc.add(new DoubleField("lat", stopCluster.lat, Field.Store.YES));
-        doc.add(new DoubleField("lon", stopCluster.lon, Field.Store.YES));
+        doc.add(new StoredField("lat", stopCluster.lat));
+        doc.add(new StoredField("lon", stopCluster.lon));
         doc.add(new StringField("id", stopCluster.id, Field.Store.YES));
         doc.add(new StringField("category", Category.CLUSTER.name(), Field.Store.YES));
         iwriter.addDocument(doc);
@@ -131,8 +133,8 @@ public class LuceneIndex {
         if (mainStreet.equals(crossStreet)) return;
         Document doc = new Document();
         doc.add(new TextField("name", mainStreet + " & " + crossStreet, Field.Store.YES));
-        doc.add(new DoubleField("lat", sv.getLat(), Field.Store.YES));
-        doc.add(new DoubleField("lon", sv.getLon(), Field.Store.YES));
+        doc.add(new StoredField("lat", sv.getLat()));
+        doc.add(new StoredField("lon", sv.getLon()));
         doc.add(new StringField("category", Category.CORNER.name(), Field.Store.YES));
         iwriter.addDocument(doc);
     }
@@ -157,37 +159,36 @@ public class LuceneIndex {
     public List<LuceneResult> query (String queryString, boolean autocomplete,
                                      boolean stops, boolean clusters, boolean corners) {
         /* Turn the query string into a Lucene query.*/
-        BooleanQuery query = new BooleanQuery();
-        BooleanQuery termQuery = new BooleanQuery();
+        BooleanQuery.Builder query = new BooleanQuery.Builder();
+        BooleanQuery.Builder termQuery = new BooleanQuery.Builder();
 
         if (autocomplete) {
             termQuery.add(new PrefixQuery(new Term("name", queryString)), BooleanClause.Occur.SHOULD);
         } else {
-            List<String> list = new ArrayList<String>();
             Matcher m = Pattern.compile("([^\"]\\S*|\".+?\")\\s*").matcher(queryString);
             while (m.find()) {
                 String token = m.group(1);
 
                 // if token is a quoted search phrase
                 if (token.startsWith("\"") && token.endsWith("\"")) {
-                    PhraseQuery phraseQuery = new PhraseQuery();
+                    PhraseQuery.Builder phraseQuery = new PhraseQuery.Builder();
                     for (String phraseToken : token.substring(1, token.length() - 1).split(" ")) {
                         phraseQuery.add(new Term("name", phraseToken.toLowerCase()));
                     }
-                    termQuery.add(phraseQuery, BooleanClause.Occur.SHOULD);
+                    termQuery.add(phraseQuery.build(), BooleanClause.Occur.SHOULD);
                 } else { // a regular unquoted search term
-                    termQuery.add(new FuzzyQuery(new Term("name", token)), BooleanClause.Occur.SHOULD);
+//                    termQuery.add(new FuzzyQuery(new Term("name", token)), BooleanClause.Occur.SHOULD);
 
                     // This makes it possible to search for a stop code
-                    termQuery.add(new TermQuery(new Term("code", token)), BooleanClause.Occur.SHOULD);
+                    termQuery.add(new PrefixQuery(new Term("code", token)), BooleanClause.Occur.SHOULD);
                 }
             }
         }
 
-        query.add(termQuery, BooleanClause.Occur.MUST);
+        query.add(termQuery.build(), BooleanClause.Occur.MUST);
 
         if (stops || clusters || corners) {
-            BooleanQuery typeQuery = new BooleanQuery();
+            BooleanQuery.Builder typeQuery = new BooleanQuery.Builder();
             if (stops) {
                 typeQuery.add(new TermQuery(new Term("category", Category.STOP.name())), BooleanClause.Occur.SHOULD);
             }
@@ -197,12 +198,12 @@ public class LuceneIndex {
             if (corners) {
                 typeQuery.add(new TermQuery(new Term("category", Category.CORNER.name())), BooleanClause.Occur.SHOULD);
             }
-            query.add(typeQuery, BooleanClause.Occur.MUST);
+            query.add(typeQuery.build(), BooleanClause.Occur.MUST);
         }
         List<LuceneResult> result = Lists.newArrayList();
         try {
-            TopScoreDocCollector collector = TopScoreDocCollector.create(10, true);
-            searcher.search(query, collector);
+            TopScoreDocCollector collector = TopScoreDocCollector.create(10, 30);
+            searcher.search(query.build(), collector);
             ScoreDoc[] docs = collector.topDocs().scoreDocs;
             for (int i = 0; i < docs.length; i++) {
                 LuceneResult lr = new LuceneResult();
