@@ -55,7 +55,7 @@ jobs:
           aws s3 cp ./deploy s3://otp-repo --recursive --acl public-read
       # Install mkdocs using pip for use by subsequent steps.
       - name: Debug head ref
-        run: echo ${{ env.GITHUB_HEAD_REF_SLUG }}
+        run: echo "${{ env.GITHUB_HEAD_REF_SLUG }}"
       - name: Install mkdocs
         if: github.event_name == 'push' && env.GITHUB_HEAD_REF_SLUG == 'ibi-dev-2.x'
         run: |
