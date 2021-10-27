@@ -209,6 +209,7 @@ public class TransitRouter {
             if (OTPFeature.FlexRouting.isOn() && mode == StreetMode.FLEXIBLE) {
                 var flexAccessList = FlexAccessEgressRouter.routeAccessEgress(
                         accessRequest,
+                        router.routerConfig.flexConfig(),
                         isEgress
                 );
 
