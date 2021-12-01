@@ -56,12 +56,12 @@ public class Itinerary {
      * a trip that went from the top of Mount Everest straight down to sea level, then back up K2,
      * then back down again would have an elevationLost of Everest + K2.
      */
-    public Double elevationLost = 0.0;
+    public Integer elevationLost = 0;
     /**
      * How much elevation is gained, in total, over the course of the trip, in meters. See
      * elevationLost.
      */
-    public Double elevationGained = 0.0;
+    public Integer elevationGained = 0;
 
     /**
      * The number of transfers this trip has.

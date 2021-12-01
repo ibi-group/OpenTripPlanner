@@ -795,9 +795,9 @@ public abstract class GraphPathToTripPlanConverter {
                 double change = coordinates.getOrdinate(i + 1, 1) - coordinates.getOrdinate(i, 1);
 
                 if (change > 0) {
-                    itinerary.elevationGained += change;
+                    itinerary.elevationGained += (int) change;
                 } else if (change < 0) {
-                    itinerary.elevationLost -= change;
+                    itinerary.elevationLost -= (int) change;
                 }
             }
         }

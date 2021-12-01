@@ -1009,11 +1009,11 @@ public class GraphPathToTripPlanConverterTest {
 
         assertFalse(itinerary.walkLimitExceeded);
 
-        assertEquals(10.0, itinerary.elevationLost, 0.0);
+        assertEquals(9, itinerary.elevationLost, 0.0);
         if (type == Type.FORWARD || type == Type.BACKWARD) {
-            assertEquals(16.0, itinerary.elevationGained, 0.0);
+            assertEquals(14.0, itinerary.elevationGained, 0.0);
         } else if (type == Type.ONBOARD) {
-            assertEquals(6.1, itinerary.elevationGained, 0.0);
+            assertEquals(5, itinerary.elevationGained, 0.0);
         }
 
         assertEquals(1, itinerary.transfers.intValue());
