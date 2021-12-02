@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.TimeZone;
 import org.locationtech.jts.geom.Coordinate;
 import org.opentripplanner.common.geometry.SphericalDistanceLibrary;
-import org.opentripplanner.model.Stop;
+import org.opentripplanner.model.StopLocation;
 import org.opentripplanner.model.TripPattern;
 import org.opentripplanner.model.calendar.ServiceDate;
 import org.opentripplanner.model.plan.Itinerary;
@@ -26,6 +26,7 @@ import org.opentripplanner.routing.algorithm.raptor.transit.TripSchedule;
 import org.opentripplanner.routing.algorithm.raptor.transit.request.TransferWithDuration;
 import org.opentripplanner.routing.algorithm.transferoptimization.api.OptimizedPath;
 import org.opentripplanner.routing.api.request.RoutingRequest;
+import org.opentripplanner.routing.api.request.StreetMode;
 import org.opentripplanner.routing.core.State;
 import org.opentripplanner.routing.core.StateEditor;
 import org.opentripplanner.routing.core.TraverseMode;
@@ -103,7 +104,10 @@ public class RaptorPathToItineraryMapper {
             }
             // Map transfer leg
             else if (pathLeg.isTransferLeg()) {
-                legs.addAll(mapTransferLeg(pathLeg.asTransferLeg()));
+                legs.addAll(mapTransferLeg(
+                        pathLeg.asTransferLeg(),
+                        request.modes.transferMode == StreetMode.BIKE ? TraverseMode.BICYCLE : TraverseMode.WALK
+                ));
             }
 
             pathLeg = pathLeg.nextLeg();
@@ -153,8 +157,8 @@ public class RaptorPathToItineraryMapper {
             boolean firstLeg
     ) {
 
-        Stop boardStop = transitLayer.getStopByIndex(pathLeg.fromStop());
-        Stop alightStop = transitLayer.getStopByIndex(pathLeg.toStop());
+        var boardStop = transitLayer.getStopByIndex(pathLeg.fromStop());
+        var alightStop = transitLayer.getStopByIndex(pathLeg.toStop());
         TripSchedule tripSchedule = pathLeg.trip();
         TripTimes tripTimes = tripSchedule.getOriginalTripTimes();
 
@@ -223,14 +227,14 @@ public class RaptorPathToItineraryMapper {
         return leg;
     }
 
-    private List<Leg> mapTransferLeg(TransferPathLeg<TripSchedule> pathLeg) {
-        Stop transferFromStop = transitLayer.getStopByIndex(pathLeg.fromStop());
-        Stop transferToStop = transitLayer.getStopByIndex(pathLeg.toStop());
+    private List<Leg> mapTransferLeg(TransferPathLeg<TripSchedule> pathLeg, TraverseMode transferMode) {
+        var transferFromStop = transitLayer.getStopByIndex(pathLeg.fromStop());
+        var transferToStop = transitLayer.getStopByIndex(pathLeg.toStop());
         Transfer transfer = ((TransferWithDuration) pathLeg.transfer()).transfer();
 
         Place from = Place.forStop(transferFromStop, null, null);
         Place to = Place.forStop(transferToStop, null, null);
-        return mapNonTransitLeg(pathLeg, transfer, from, to, false);
+        return mapNonTransitLeg(pathLeg, transfer, transferMode, from, to);
     }
 
     private Itinerary mapEgressLeg(EgressPathLeg<TripSchedule> egressPathLeg) {
@@ -250,10 +254,16 @@ public class RaptorPathToItineraryMapper {
         return subItinerary;
     }
 
-    private List<Leg> mapNonTransitLeg(PathLeg<TripSchedule> pathLeg, Transfer transfer, Place from, Place to, boolean onlyIfNonZeroDistance) {
+    private List<Leg> mapNonTransitLeg(
+            PathLeg<TripSchedule> pathLeg,
+            Transfer transfer,
+            TraverseMode transferMode,
+            Place from,
+            Place to
+    ) {
         List<Edge> edges = transfer.getEdges();
         if (edges == null || edges.isEmpty()) {
-            Leg leg = new Leg(TraverseMode.WALK);
+            Leg leg = new Leg(transferMode);
             leg.from = from;
             leg.to = to;
             leg.startTime = createCalendar(pathLeg.fromTime());
@@ -263,9 +273,7 @@ public class RaptorPathToItineraryMapper {
             leg.walkSteps = Collections.emptyList();
             leg.generalizedCost = toOtpDomainCost(pathLeg.generalizedCost());
 
-            if (!onlyIfNonZeroDistance || leg.distanceMeters > 0) {
-                return List.of(leg);
-            }
+            return List.of(leg);
         } else {
             // A RoutingRequest with a RoutingContext must be constructed so that the edges
             // may be re-traversed to create the leg(s) from the list of edges.
@@ -294,12 +302,9 @@ public class RaptorPathToItineraryMapper {
                     return List.of();
                 }
 
-                if (!onlyIfNonZeroDistance || subItinerary.nonTransitDistanceMeters > 0) {
-                    return subItinerary.legs;
-                }
+                return subItinerary.legs;
             }
         }
-        return List.of();
     }
 
     /**
@@ -325,7 +330,7 @@ public class RaptorPathToItineraryMapper {
     /**
      * Maps stops for transit legs.
      */
-    private Place mapStopToPlace(Stop stop, Integer stopIndex, TripTimes tripTimes) {
+    private Place mapStopToPlace(StopLocation stop, Integer stopIndex, TripTimes tripTimes) {
         return Place.forStop(stop, stopIndex, tripTimes.getOriginalGtfsStopSequence(stopIndex));
     }
 
@@ -342,7 +347,7 @@ public class RaptorPathToItineraryMapper {
         TripSchedule tripSchedule = pathLeg.trip();
 
         for (int i = boardStopIndexInPattern + 1; i < alightStopIndexInPattern; i++) {
-            Stop stop = tripPattern.getStopPattern().getStops()[i];
+            var stop = tripPattern.getStopPattern().getStops()[i];
 
             Place place = mapStopToPlace(stop, i, tripSchedule.getOriginalTripTimes());
             StopArrival visit = new StopArrival(

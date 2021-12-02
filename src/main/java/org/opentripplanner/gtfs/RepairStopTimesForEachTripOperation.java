@@ -3,6 +3,7 @@ package org.opentripplanner.gtfs;
 import gnu.trove.list.TIntList;
 import gnu.trove.list.array.TIntArrayList;
 import org.opentripplanner.common.geometry.SphericalDistanceLibrary;
+import org.opentripplanner.ext.flex.trip.FlexTrip;
 import org.opentripplanner.graph_builder.DataImportIssue;
 import org.opentripplanner.graph_builder.DataImportIssueStore;
 import org.opentripplanner.graph_builder.issues.HopSpeedFast;
@@ -11,7 +12,7 @@ import org.opentripplanner.graph_builder.issues.HopZeroTime;
 import org.opentripplanner.graph_builder.issues.NegativeDwellTime;
 import org.opentripplanner.graph_builder.issues.NegativeHopTime;
 import org.opentripplanner.graph_builder.issues.RepeatedStops;
-import org.opentripplanner.model.Stop;
+import org.opentripplanner.model.StopLocation;
 import org.opentripplanner.model.StopTime;
 import org.opentripplanner.model.Trip;
 import org.opentripplanner.model.TripStopTimes;
@@ -53,7 +54,7 @@ public class RepairStopTimesForEachTripOperation {
             List<StopTime> stopTimes = new ArrayList<>(stopTimesByTrip.get(trip));
 
             /* Remove stoptimes without stops */
-            stopTimes.removeIf(st -> !(st.getStop() instanceof Stop));
+            stopTimes.removeIf(st -> !(st.getStop() instanceof StopLocation));
 
             /* Stop times frequently contain duplicate, missing, or incorrect entries. Repair them. */
             TIntList removedStopSequences = removeRepeatedStops(stopTimes);
@@ -61,6 +62,7 @@ public class RepairStopTimesForEachTripOperation {
                 issueStore.add(new RepeatedStops(trip, removedStopSequences));
             }
             filterStopTimes(stopTimes);
+
             interpolateStopTimes(stopTimes);
 
             stopTimesByTrip.replace(trip, stopTimes);
@@ -258,7 +260,7 @@ public class RepairStopTimesForEachTripOperation {
 
             /* Interpolate, if necessary, the times of non-timepoint stops */
             /* genuine interpolation needed */
-            if (!(st0.isDepartureTimeSet() && st0.isArrivalTimeSet())) {
+            if (!(st0.isDepartureTimeSet() && st0.isArrivalTimeSet()) && !FlexTrip.isFlexStop(st0.getStop())) {
                 // figure out how many such stops there are in a row.
                 int j;
                 StopTime st = null;
