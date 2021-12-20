@@ -6,6 +6,7 @@ import org.opentripplanner.graph_builder.DataImportIssueStore;
 import org.opentripplanner.graph_builder.issues.ParkAndRideEntranceRemoved;
 import org.opentripplanner.graph_builder.linking.LinkingDirection;
 import org.opentripplanner.graph_builder.services.GraphBuilderModule;
+import org.opentripplanner.graph_builder.services.TemporaryGraphBuildData;
 import org.opentripplanner.routing.core.TraverseMode;
 import org.opentripplanner.routing.core.TraverseModeSet;
 import org.opentripplanner.routing.edgetype.StreetTransitEntranceLink;
@@ -42,7 +43,7 @@ public class StreetLinkerModule implements GraphBuilderModule {
 
   @Override
   public void buildGraph(
-      Graph graph, HashMap<Class<?>, Object> extra, DataImportIssueStore issueStore
+      Graph graph, TemporaryGraphBuildData extra, DataImportIssueStore issueStore
   ) {
     graph.getLinker().setAddExtraEdgesToAreas(this.addExtraEdgesToAreas);
 

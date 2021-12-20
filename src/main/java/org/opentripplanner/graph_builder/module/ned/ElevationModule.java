@@ -1,33 +1,9 @@
 package org.opentripplanner.graph_builder.module.ned;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import org.locationtech.jts.geom.Coordinate;
-import org.locationtech.jts.geom.Geometry;
-import org.geotools.geometry.DirectPosition2D;
-import org.opengis.coverage.Coverage;
-import org.opengis.coverage.PointOutsideCoverageException;
-import org.opengis.referencing.operation.TransformException;
-import org.opentripplanner.common.geometry.GeometryUtils;
-import org.opentripplanner.common.geometry.PackedCoordinateSequence;
-import org.opentripplanner.common.geometry.SphericalDistanceLibrary;
-import org.opentripplanner.common.pqueue.BinHeap;
-import org.opentripplanner.graph_builder.DataImportIssueStore;
-import org.opentripplanner.graph_builder.issues.ElevationFlattened;
-import org.opentripplanner.graph_builder.issues.ElevationPropagationLimit;
-import org.opentripplanner.graph_builder.issues.Graphwide;
-import org.opentripplanner.graph_builder.module.extra_elevation_data.ElevationPoint;
-import org.opentripplanner.graph_builder.services.GraphBuilderModule;
-import org.opentripplanner.graph_builder.services.ned.ElevationGridCoverageFactory;
-import org.opentripplanner.routing.edgetype.StreetEdge;
-import org.opentripplanner.routing.edgetype.StreetWithElevationEdge;
-import org.opentripplanner.routing.graph.Edge;
-import org.opentripplanner.routing.graph.Graph;
-import org.opentripplanner.routing.graph.Vertex;
-import org.opentripplanner.util.PolylineEncoder;
-import org.opentripplanner.util.ProgressTracker;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import static org.opentripplanner.util.ElevationUtils.computeEllipsoidToGeoidDifference;
+import static org.opentripplanner.util.logging.ThrottleLogger.throttle;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -40,11 +16,35 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
-
-import static org.opentripplanner.util.ElevationUtils.computeEllipsoidToGeoidDifference;
-import static org.opentripplanner.util.logging.ThrottleLogger.*;
+import org.geotools.geometry.DirectPosition2D;
+import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.Geometry;
+import org.opengis.coverage.Coverage;
+import org.opengis.coverage.PointOutsideCoverageException;
+import org.opengis.referencing.operation.TransformException;
+import org.opentripplanner.common.geometry.GeometryUtils;
+import org.opentripplanner.common.geometry.PackedCoordinateSequence;
+import org.opentripplanner.common.geometry.SphericalDistanceLibrary;
+import org.opentripplanner.common.pqueue.BinHeap;
+import org.opentripplanner.graph_builder.DataImportIssueStore;
+import org.opentripplanner.graph_builder.issues.ElevationFlattened;
+import org.opentripplanner.graph_builder.issues.ElevationPropagationLimit;
+import org.opentripplanner.graph_builder.issues.Graphwide;
+import org.opentripplanner.graph_builder.services.GraphBuilderModule;
+import org.opentripplanner.graph_builder.services.TemporaryGraphBuildData;
+import org.opentripplanner.graph_builder.services.ned.ElevationGridCoverageFactory;
+import org.opentripplanner.routing.edgetype.StreetEdge;
+import org.opentripplanner.routing.edgetype.StreetWithElevationEdge;
+import org.opentripplanner.routing.graph.Edge;
+import org.opentripplanner.routing.graph.Graph;
+import org.opentripplanner.routing.graph.Vertex;
+import org.opentripplanner.util.PolylineEncoder;
+import org.opentripplanner.util.ProgressTracker;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * THIS CLASS IS MULTI-THREADED
@@ -170,7 +170,7 @@ public class ElevationModule implements GraphBuilderModule {
     @Override
     public void buildGraph(
             Graph graph,
-            HashMap<Class<?>, Object> extra,
+            TemporaryGraphBuildData extra,
             DataImportIssueStore issueStore
     ) {
         this.issueStore = issueStore;
@@ -272,7 +272,7 @@ public class ElevationModule implements GraphBuilderModule {
             }
         }
         @SuppressWarnings("unchecked")
-        HashMap<Vertex, Double> extraElevation = (HashMap<Vertex, Double>) extra.get(ElevationPoint.class);
+        Map<Vertex, Double> extraElevation = extra.getElevationData();
         assignMissingElevations(graph, edgesWithCalculatedElevations, extraElevation);
     }
 
@@ -302,7 +302,7 @@ public class ElevationModule implements GraphBuilderModule {
      * Assign missing elevations by interpolating from nearby points with known
      * elevation; also handle osm ele tags
      */
-    private void assignMissingElevations(Graph graph, List<StreetEdge> edgesWithElevation, HashMap<Vertex, Double> knownElevations) {
+    private void assignMissingElevations(Graph graph, List<StreetEdge> edgesWithElevation, Map<Vertex, Double> knownElevations) {
 
         LOG.debug("Assigning missing elevations");
 
@@ -311,9 +311,9 @@ public class ElevationModule implements GraphBuilderModule {
         // elevation for each vertex (known or interpolated)
         // knownElevations will be null if there are no ElevationPoints in the data
         // for instance, with the Shapefile loader.)
-        HashMap<Vertex, Double> elevations; 
+        Map<Vertex, Double> elevations;
         if (knownElevations != null)
-            elevations = (HashMap<Vertex, Double>) knownElevations.clone();
+            elevations = Map.copyOf(knownElevations);
         else
             elevations = new HashMap<Vertex, Double>();
 

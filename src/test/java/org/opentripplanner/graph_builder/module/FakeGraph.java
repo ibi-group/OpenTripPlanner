@@ -5,6 +5,7 @@ import org.opentripplanner.graph_builder.linking.VertexLinker;
 import org.opentripplanner.graph_builder.model.GtfsBundle;
 import org.opentripplanner.graph_builder.module.osm.DefaultWayPropertySetSource;
 import org.opentripplanner.graph_builder.module.osm.OpenStreetMapModule;
+import org.opentripplanner.graph_builder.services.TemporaryGraphBuildData;
 import org.opentripplanner.model.Stop;
 import org.opentripplanner.model.calendar.ServiceDateInterval;
 import org.opentripplanner.openstreetmap.BinaryOpenStreetMapProvider;
@@ -39,7 +40,7 @@ public class FakeGraph {
         BinaryOpenStreetMapProvider provider = new BinaryOpenStreetMapProvider(file, false);
         loader.setProvider(provider);
 
-        loader.buildGraph(gg, new HashMap<>());
+        loader.buildGraph(gg, new TemporaryGraphBuildData());
         return gg;
     }
 
@@ -56,7 +57,7 @@ public class FakeGraph {
                 new GtfsBundle(getFileForResource("addPerpendicularRoutes.gtfs.zip"))),
                 ServiceDateInterval.unbounded()
         );
-        gtfs.buildGraph(graph, new HashMap<>());
+        gtfs.buildGraph(graph, new TemporaryGraphBuildData());
     }
 
     /** Add a regular grid of stops to the graph */

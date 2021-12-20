@@ -4,6 +4,7 @@ import org.locationtech.jts.geom.Point;
 import org.opentripplanner.common.geometry.GeometryUtils;
 import org.opentripplanner.graph_builder.DataImportIssueStore;
 import org.opentripplanner.graph_builder.services.GraphBuilderModule;
+import org.opentripplanner.graph_builder.services.TemporaryGraphBuildData;
 import org.opentripplanner.model.FlexStopLocation;
 import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.routing.graph.Vertex;
@@ -22,7 +23,7 @@ public class FlexLocationsToStreetEdgesMapper implements GraphBuilderModule {
 
   @Override
   public void buildGraph(
-      Graph graph, HashMap<Class<?>, Object> extra, DataImportIssueStore issueStore
+      Graph graph, TemporaryGraphBuildData extra, DataImportIssueStore issueStore
   ) {
     if (graph.locationsById.isEmpty()) {
       return;

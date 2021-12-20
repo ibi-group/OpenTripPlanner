@@ -3,9 +3,9 @@ package org.opentripplanner.graph_builder.module;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashMap;
 import org.opentripplanner.graph_builder.DataImportIssueStore;
 import org.opentripplanner.graph_builder.services.GraphBuilderModule;
+import org.opentripplanner.graph_builder.services.TemporaryGraphBuildData;
 import org.opentripplanner.model.PathTransfer;
 import org.opentripplanner.model.transfer.MinTimeTransfer;
 import org.opentripplanner.routing.graph.Graph;
@@ -27,14 +27,11 @@ public class ApplyMinTimeTransfers implements GraphBuilderModule {
     @Override
     public void buildGraph(
             Graph graph,
-            HashMap<Class<?>, Object> extra,
+            TemporaryGraphBuildData extra,
             DataImportIssueStore issueStore
     ) {
-        Collection<MinTimeTransfer> minTimeTransfers =
-                (Collection<MinTimeTransfer>) extra.getOrDefault(
-                        MinTimeTransfer.class,
-                        Collections.EMPTY_LIST
-                );
+
+        var minTimeTransfers = extra.getMinTimeTransfers();
 
         minTimeTransfers.forEach(minTimeTransfer -> {
             var transfers = graph.transfersByStop.get(minTimeTransfer.from);

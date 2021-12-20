@@ -4,6 +4,7 @@ import junit.framework.TestCase;
 import org.junit.Before;
 import org.junit.Test;
 import org.opentripplanner.common.model.P2;
+import org.opentripplanner.graph_builder.services.TemporaryGraphBuildData;
 import org.opentripplanner.openstreetmap.BinaryOpenStreetMapProvider;
 import org.opentripplanner.openstreetmap.model.OSMWay;
 import org.opentripplanner.openstreetmap.model.OSMWithTags;
@@ -34,11 +35,11 @@ import java.util.Set;
 
 public class TestOpenStreetMapGraphBuilder extends TestCase {
 
-    private HashMap<Class<?>, Object> extra;
+    private TemporaryGraphBuildData extra;
     
     @Before
     public void setUp() {
-        extra = new HashMap<>();
+        extra = new TemporaryGraphBuildData();
     }
 
     @Test

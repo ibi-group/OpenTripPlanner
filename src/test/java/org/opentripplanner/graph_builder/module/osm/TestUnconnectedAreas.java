@@ -6,13 +6,13 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.net.URISyntaxException;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.junit.Test;
 import org.opentripplanner.graph_builder.DataImportIssueStore;
 import org.opentripplanner.graph_builder.module.StreetLinkerModule;
+import org.opentripplanner.graph_builder.services.TemporaryGraphBuildData;
 import org.opentripplanner.openstreetmap.BinaryOpenStreetMapProvider;
 import org.opentripplanner.routing.edgetype.StreetVehicleParkingLink;
 import org.opentripplanner.routing.edgetype.VehicleParkingEdge;
@@ -141,10 +141,11 @@ public class TestUnconnectedAreas {
 
         BinaryOpenStreetMapProvider provider = new BinaryOpenStreetMapProvider(file, false);
         loader.setProvider(provider);
-        loader.buildGraph(graph, new HashMap<>(), issueStore);
+        var temp = new TemporaryGraphBuildData();
+        loader.buildGraph(graph, temp, issueStore);
 
         StreetLinkerModule streetLinkerModule = new StreetLinkerModule();
-        streetLinkerModule.buildGraph(graph, new HashMap<>(), issueStore);
+        streetLinkerModule.buildGraph(graph, temp, issueStore);
 
         return graph;
       }

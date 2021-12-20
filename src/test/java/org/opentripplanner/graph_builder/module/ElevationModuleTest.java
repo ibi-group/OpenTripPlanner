@@ -9,6 +9,7 @@ import org.opentripplanner.common.geometry.SphericalDistanceLibrary;
 import org.opentripplanner.graph_builder.module.ned.DegreeGridNEDTileSource;
 import org.opentripplanner.graph_builder.module.ned.ElevationModule;
 import org.opentripplanner.graph_builder.module.ned.NEDGridCoverageFactoryImpl;
+import org.opentripplanner.graph_builder.services.TemporaryGraphBuildData;
 import org.opentripplanner.routing.edgetype.StreetTraversalPermission;
 import org.opentripplanner.routing.edgetype.StreetWithElevationEdge;
 import org.opentripplanner.routing.graph.Graph;
@@ -97,7 +98,7 @@ public class ElevationModuleTest {
 
         // build to graph to execute the elevation module
         elevationModule.checkInputs();
-        elevationModule.buildGraph(graph, new HashMap<>());
+        elevationModule.buildGraph(graph, new TemporaryGraphBuildData());
 
         // verify that elevation data has been set on the StreetWithElevationEdge
         assertNotNull(edge.getElevationProfile());

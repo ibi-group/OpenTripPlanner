@@ -10,6 +10,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.opentripplanner.graph_builder.DataImportIssueStore;
 import org.opentripplanner.graph_builder.issues.StopNotLinkedForTransfers;
 import org.opentripplanner.graph_builder.services.GraphBuilderModule;
+import org.opentripplanner.graph_builder.services.TemporaryGraphBuildData;
 import org.opentripplanner.model.PathTransfer;
 import org.opentripplanner.model.Stop;
 import org.opentripplanner.model.StopLocation;
@@ -48,7 +49,7 @@ public class DirectTransferGenerator implements GraphBuilderModule {
     @Override
     public void buildGraph(
             Graph graph,
-            HashMap<Class<?>, Object> extra,
+            TemporaryGraphBuildData extra,
             DataImportIssueStore issueStore
     ) {
         /* Initialize graph index which is needed by the nearby stop finder. */

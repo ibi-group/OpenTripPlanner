@@ -11,6 +11,7 @@ import org.opentripplanner.graph_builder.DataImportIssueStore;
 import org.opentripplanner.graph_builder.issues.NegativeHopTime;
 import org.opentripplanner.graph_builder.module.StreetLinkerModule;
 import org.opentripplanner.graph_builder.module.geometry.GeometryAndBlockProcessor;
+import org.opentripplanner.graph_builder.services.TemporaryGraphBuildData;
 import org.opentripplanner.gtfs.GtfsContext;
 import org.opentripplanner.model.calendar.CalendarServiceData;
 import org.opentripplanner.routing.algorithm.astar.AStar;
@@ -90,7 +91,7 @@ public class TestGeometryAndBlockProcessor extends TestCase {
         //Linkers aren't run otherwise
         graph.hasStreets = true;
         graph.hasTransit = true;
-        ttsnm.buildGraph(graph, new HashMap<Class<?>, Object>());
+        ttsnm.buildGraph(graph, new TemporaryGraphBuildData());
     }
 
     public void testIssue() {

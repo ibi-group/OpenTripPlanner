@@ -24,6 +24,7 @@ import org.opentripplanner.graph_builder.model.GtfsBundle;
 import org.opentripplanner.graph_builder.module.DirectTransferGenerator;
 import org.opentripplanner.graph_builder.module.GtfsModule;
 import org.opentripplanner.graph_builder.module.StreetLinkerModule;
+import org.opentripplanner.graph_builder.services.TemporaryGraphBuildData;
 import org.opentripplanner.model.GenericLocation;
 import org.opentripplanner.model.calendar.ServiceDateInterval;
 import org.opentripplanner.model.plan.Itinerary;
@@ -148,7 +149,7 @@ public class FlexIntegrationTest {
             Graph graph,
             List<String> gtfsFiles
     ) {
-        var extra = new HashMap<Class<?>, Object>();
+        var extra = new TemporaryGraphBuildData();
 
         // GTFS
         var gtfsBundles = gtfsFiles.stream()
@@ -163,7 +164,7 @@ public class FlexIntegrationTest {
 
         // link flex locations to streets
         var flexMapper = new FlexLocationsToStreetEdgesMapper();
-        flexMapper.buildGraph(graph, new HashMap<>());
+        flexMapper.buildGraph(graph, extra);
 
         // generate direct transfers
         var req = new RoutingRequest();

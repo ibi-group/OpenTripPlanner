@@ -30,6 +30,7 @@ import org.opentripplanner.graph_builder.DataImportIssueStore;
 import org.opentripplanner.graph_builder.model.GtfsBundle;
 import org.opentripplanner.graph_builder.module.geometry.GeometryAndBlockProcessor;
 import org.opentripplanner.graph_builder.services.GraphBuilderModule;
+import org.opentripplanner.graph_builder.services.TemporaryGraphBuildData;
 import org.opentripplanner.gtfs.GenerateTripPatternsOperation;
 import org.opentripplanner.gtfs.RepairStopTimesForEachTripOperation;
 import org.opentripplanner.gtfs.mapping.GTFSToOtpTransitServiceMapper;
@@ -81,7 +82,7 @@ public class GtfsModule implements GraphBuilderModule {
     @Override
     public void buildGraph(
             Graph graph,
-            HashMap<Class<?>, Object> extra,
+            TemporaryGraphBuildData extra,
             DataImportIssueStore issueStore
     ) {
         this.issueStore = issueStore;
@@ -142,7 +143,7 @@ public class GtfsModule implements GraphBuilderModule {
             gtfsBundles.forEach(GtfsBundle::close);
         }
 
-        extra.put(MinTimeTransfer.class, minTimeTransfers);
+        extra.addMinTimeTransfers(minTimeTransfers);
 
         graph.clearCachedCalenderService();
         // We need to save the calendar service data so we can use it later

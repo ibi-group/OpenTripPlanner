@@ -9,7 +9,6 @@ import static org.opentripplanner.netex.configure.NetexConfig.netexModule;
 import com.google.common.collect.Lists;
 import java.io.File;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import org.opentripplanner.datastore.CompositeDataSource;
 import org.opentripplanner.datastore.DataSource;
@@ -30,6 +29,7 @@ import org.opentripplanner.graph_builder.module.ned.NEDGridCoverageFactoryImpl;
 import org.opentripplanner.graph_builder.module.osm.OpenStreetMapModule;
 import org.opentripplanner.graph_builder.services.DefaultStreetEdgeFactory;
 import org.opentripplanner.graph_builder.services.GraphBuilderModule;
+import org.opentripplanner.graph_builder.services.TemporaryGraphBuildData;
 import org.opentripplanner.graph_builder.services.ned.ElevationGridCoverageFactory;
 import org.opentripplanner.openstreetmap.BinaryOpenStreetMapProvider;
 import org.opentripplanner.routing.api.request.RoutingRequest;
@@ -75,10 +75,10 @@ public class GraphBuilder implements Runnable {
         }
 
         DataImportIssueStore issueStore = new DataImportIssueStore(true);
-        HashMap<Class<?>, Object> extra = new HashMap<>();
+        var tempData = new TemporaryGraphBuildData();
 
         for (GraphBuilderModule load : graphBuilderModules) {
-            load.buildGraph(graph, extra, issueStore);
+            load.buildGraph(graph, tempData, issueStore);
         }
         issueStore.summarize();
 

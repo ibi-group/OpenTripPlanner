@@ -6,6 +6,7 @@ import org.junit.Test;
 import org.opentripplanner.datastore.DataSource;
 import org.opentripplanner.datastore.FileType;
 import org.opentripplanner.datastore.file.FileDataSource;
+import org.opentripplanner.graph_builder.services.TemporaryGraphBuildData;
 import org.opentripplanner.openstreetmap.BinaryOpenStreetMapProvider;
 import org.opentripplanner.routing.algorithm.astar.AStar;
 import org.opentripplanner.routing.core.intersection_model.ConstantIntersectionTraversalCostModel;
@@ -31,7 +32,7 @@ import static org.junit.Assert.assertTrue;
 
 public class TriangleInequalityTest {
     
-    private static HashMap<Class<?>, Object> extra;
+    private static TemporaryGraphBuildData extra = new TemporaryGraphBuildData();
     private static Graph graph;
 
     private Vertex start;
@@ -40,7 +41,6 @@ public class TriangleInequalityTest {
     @BeforeClass
     public static void onlyOnce() {
 
-        extra = new HashMap<>();
         graph = new Graph();
 
         OpenStreetMapModule loader = new OpenStreetMapModule();

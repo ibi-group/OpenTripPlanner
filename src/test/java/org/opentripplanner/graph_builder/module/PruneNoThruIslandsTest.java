@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.opentripplanner.ConstantsForTests;
 import org.opentripplanner.graph_builder.module.osm.DefaultWayPropertySetSource;
 import org.opentripplanner.graph_builder.module.osm.OpenStreetMapModule;
+import org.opentripplanner.graph_builder.services.TemporaryGraphBuildData;
 import org.opentripplanner.openstreetmap.BinaryOpenStreetMapProvider;
 import org.opentripplanner.routing.edgetype.StreetEdge;
 import org.opentripplanner.routing.graph.Graph;
@@ -71,12 +72,12 @@ public class PruneNoThruIslandsTest {
                     new OpenStreetMapModule(com.google.common.collect.Lists.newArrayList(osmProvider));
             osmModule.setDefaultWayPropertySetSource(new DefaultWayPropertySetSource());
             osmModule.skipVisibility = true;
-            osmModule.buildGraph(graph, new HashMap<>());
+            osmModule.buildGraph(graph, new TemporaryGraphBuildData());
             // Prune floating islands and set noThru where necessary
             PruneNoThruIslands pruneNoThruIslands = new PruneNoThruIslands(null);
             pruneNoThruIslands.setPruningThresholdIslandWithoutStops(40);
             pruneNoThruIslands.setPruningThresholdIslandWithStops(5);
-            pruneNoThruIslands.buildGraph(graph, new HashMap<>());
+            pruneNoThruIslands.buildGraph(graph, new TemporaryGraphBuildData());
 
             return graph;
         } catch (Exception e) {

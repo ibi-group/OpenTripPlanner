@@ -13,6 +13,7 @@ import org.opentripplanner.ext.flex.flexpathcalculator.DirectFlexPathCalculator;
 import org.opentripplanner.graph_builder.model.GtfsBundle;
 import org.opentripplanner.graph_builder.module.FakeGraph;
 import org.opentripplanner.graph_builder.module.GtfsModule;
+import org.opentripplanner.graph_builder.services.TemporaryGraphBuildData;
 import org.opentripplanner.model.calendar.ServiceDate;
 import org.opentripplanner.model.calendar.ServiceDateInterval;
 import org.opentripplanner.routing.graph.Graph;
@@ -54,7 +55,7 @@ abstract public class FlexTest {
                 )
         );
         OTPFeature.enableFeatures(Map.of(OTPFeature.FlexRouting, true));
-        module.buildGraph(graph, new HashMap<>());
+        module.buildGraph(graph, new TemporaryGraphBuildData());
         graph.index();
         OTPFeature.enableFeatures(Map.of(OTPFeature.FlexRouting, false));
         assertFalse(graph.flexTripsById.isEmpty());

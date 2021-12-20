@@ -5,6 +5,7 @@ import org.opentripplanner.ext.transferanalyzer.annotations.TransferCouldNotBeRo
 import org.opentripplanner.ext.transferanalyzer.annotations.TransferRoutingDistanceTooLong;
 import org.opentripplanner.graph_builder.DataImportIssueStore;
 import org.opentripplanner.graph_builder.services.GraphBuilderModule;
+import org.opentripplanner.graph_builder.services.TemporaryGraphBuildData;
 import org.opentripplanner.model.Stop;
 import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.routing.graph.GraphIndex;
@@ -50,7 +51,7 @@ public class DirectTransferAnalyzer implements GraphBuilderModule {
     @Override
     public void buildGraph(
             Graph graph,
-            HashMap<Class<?>, Object> extra,
+            TemporaryGraphBuildData extra,
             DataImportIssueStore issueStore
     ) {
         /* Initialize graph index which is needed by the nearby stop finder. */

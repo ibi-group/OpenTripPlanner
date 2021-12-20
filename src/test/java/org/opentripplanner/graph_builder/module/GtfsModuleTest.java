@@ -4,12 +4,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.net.URISyntaxException;
 import java.time.Duration;
-import java.util.HashMap;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.opentripplanner.graph_builder.model.GtfsBundle;
+import org.opentripplanner.graph_builder.services.TemporaryGraphBuildData;
 import org.opentripplanner.model.calendar.ServiceDateInterval;
-import org.opentripplanner.model.transfer.MinTimeTransfer;
 import org.opentripplanner.routing.graph.Graph;
 
 class GtfsModuleTest {
@@ -20,11 +19,11 @@ class GtfsModuleTest {
         var module = new GtfsModule(List.of(bundle), ServiceDateInterval.unbounded());
         var graph = new Graph();
 
-        var extra = new HashMap<Class<?>, Object>();
+        var extra = new TemporaryGraphBuildData();
 
         module.buildGraph(graph, extra);
 
-        var minTimeTransfers = (List<MinTimeTransfer>) extra.get(MinTimeTransfer.class);
+        var minTimeTransfers = extra.getMinTimeTransfers();
 
         assertEquals(2, minTimeTransfers.size());
 

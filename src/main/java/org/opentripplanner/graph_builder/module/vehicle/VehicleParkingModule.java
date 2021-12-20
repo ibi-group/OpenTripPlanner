@@ -1,7 +1,9 @@
 package org.opentripplanner.graph_builder.module.vehicle;
 
+import java.util.Collection;
 import org.opentripplanner.graph_builder.DataImportIssueStore;
 import org.opentripplanner.graph_builder.services.GraphBuilderModule;
+import org.opentripplanner.graph_builder.services.TemporaryGraphBuildData;
 import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.routing.vehicle_parking.VehicleParking;
 import org.opentripplanner.routing.vehicle_parking.VehicleParkingHelper;
@@ -9,9 +11,6 @@ import org.opentripplanner.routing.vehicle_parking.VehicleParkingService;
 import org.opentripplanner.updater.vehicle_parking.VehicleParkingDataSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.Collection;
-import java.util.HashMap;
 
 /**
  * This graph builder allow one to statically build bike or car park using the same source as the dynamic
@@ -30,7 +29,7 @@ public class VehicleParkingModule implements GraphBuilderModule {
     @Override
     public void buildGraph(
             Graph graph,
-            HashMap<Class<?>, Object> extra,
+            TemporaryGraphBuildData extra,
             DataImportIssueStore issueStore
     ) {
 

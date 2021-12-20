@@ -1,21 +1,20 @@
 package org.opentripplanner.graph_builder.module;
 
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.opentripplanner.graph_builder.DataImportIssueStore;
 import org.opentripplanner.graph_builder.issues.BogusEdgeGeometry;
 import org.opentripplanner.graph_builder.issues.BogusVertexGeometry;
 import org.opentripplanner.graph_builder.services.GraphBuilderModule;
+import org.opentripplanner.graph_builder.services.TemporaryGraphBuildData;
 import org.opentripplanner.routing.graph.Edge;
 import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.routing.graph.Vertex;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
 
 // TODO OTP2 This test might be obsolete now that there is no HopEdge anymore
 /**
@@ -35,14 +34,14 @@ public class CheckGeometryModule implements GraphBuilderModule {
     public List<String> getPrerequisites() {
         return Arrays.asList("streets");
     }
-    
+
     private static final Logger LOG = LoggerFactory.getLogger(CheckGeometryModule.class);
     private static final double MAX_VERTEX_SHAPE_ERROR = 150;
 
     @Override
     public void buildGraph(
             Graph graph,
-            HashMap<Class<?>, Object> extra,
+            TemporaryGraphBuildData extra,
             DataImportIssueStore issueStore
     ) {
         for (Vertex gv : graph.getVertices()) {
@@ -50,7 +49,7 @@ public class CheckGeometryModule implements GraphBuilderModule {
                 LOG.warn("Vertex " + gv + " has NaN location; this will cause doom.");
                 issueStore.add(new BogusVertexGeometry(gv));
             }
-            
+
             // TODO: This was filtered to EdgeNarratives before EdgeNarrative removal
             for (Edge e : gv.getOutgoing()) {
                 Geometry g = e.getGeometry();

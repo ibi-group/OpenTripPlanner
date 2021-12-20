@@ -25,6 +25,7 @@ import org.opentripplanner.graph_builder.module.geometry.GeometryAndBlockProcess
 import org.opentripplanner.graph_builder.module.osm.DefaultWayPropertySetSource;
 import org.opentripplanner.graph_builder.module.osm.OpenStreetMapModule;
 import org.opentripplanner.graph_builder.services.GraphBuilderModule;
+import org.opentripplanner.graph_builder.services.TemporaryGraphBuildData;
 import org.opentripplanner.model.FeedScopedId;
 import org.opentripplanner.model.calendar.CalendarServiceData;
 import org.opentripplanner.netex.NetexBundle;
@@ -142,7 +143,7 @@ public class ConstantsForTests {
                 osmModule.staticBikeParkAndRide = true;
                 osmModule.staticParkAndRide = true;
                 osmModule.skipVisibility = true;
-                osmModule.buildGraph(graph, new HashMap<>());
+                osmModule.buildGraph(graph, new TemporaryGraphBuildData());
             }
             // Add transit data from GTFS
             {
@@ -151,7 +152,7 @@ public class ConstantsForTests {
             // Link transit stops to streets
             {
                 GraphBuilderModule streetTransitLinker = new StreetLinkerModule();
-                streetTransitLinker.buildGraph(graph, new HashMap<>());
+                streetTransitLinker.buildGraph(graph, new TemporaryGraphBuildData());
             }
 
             graph.hasStreets = true;
@@ -209,7 +210,7 @@ public class ConstantsForTests {
                     new OpenStreetMapModule(Lists.newArrayList(osmProvider));
             osmModule.setDefaultWayPropertySetSource(new DefaultWayPropertySetSource());
             osmModule.skipVisibility = true;
-            osmModule.buildGraph(graph, new HashMap<>());
+            osmModule.buildGraph(graph, new TemporaryGraphBuildData());
             return graph;
         }
         catch (Exception e) {
@@ -224,7 +225,7 @@ public class ConstantsForTests {
 
         // Link transit stops to streets
         GraphBuilderModule streetTransitLinker = new StreetLinkerModule();
-        streetTransitLinker.buildGraph(graph, new HashMap<>());
+        streetTransitLinker.buildGraph(graph, new TemporaryGraphBuildData());
         return graph;
     }
 
@@ -248,7 +249,7 @@ public class ConstantsForTests {
                 BinaryOpenStreetMapProvider osmProvider = new BinaryOpenStreetMapProvider(osmFile, false);
                 OpenStreetMapModule osmModule = new OpenStreetMapModule(Lists.newArrayList(osmProvider));
                 osmModule.skipVisibility = true;
-                osmModule.buildGraph(graph, new HashMap<>());
+                osmModule.buildGraph(graph, new TemporaryGraphBuildData());
             }
             // Add transit data from Netex
             {
@@ -260,7 +261,7 @@ public class ConstantsForTests {
             // Link transit stops to streets
             {
                 GraphBuilderModule streetTransitLinker = new StreetLinkerModule();
-                streetTransitLinker.buildGraph(graph, new HashMap<>());
+                streetTransitLinker.buildGraph(graph, new TemporaryGraphBuildData());
             }
             return graph;
         } catch (Exception e) {

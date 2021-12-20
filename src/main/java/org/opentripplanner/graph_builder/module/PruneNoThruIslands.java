@@ -15,6 +15,7 @@ import org.opentripplanner.graph_builder.issues.GraphIsland;
 import org.opentripplanner.graph_builder.issues.IsolatedStop;
 import org.opentripplanner.graph_builder.issues.PrunedIslandStop;
 import org.opentripplanner.graph_builder.services.GraphBuilderModule;
+import org.opentripplanner.graph_builder.services.TemporaryGraphBuildData;
 import org.opentripplanner.routing.api.request.RoutingRequest;
 import org.opentripplanner.routing.core.State;
 import org.opentripplanner.routing.core.TraverseMode;
@@ -66,7 +67,7 @@ public class PruneNoThruIslands implements GraphBuilderModule {
     @Override
     public void buildGraph(
             Graph graph,
-            HashMap<Class<?>, Object> extra,
+            TemporaryGraphBuildData extra,
             DataImportIssueStore issueStore
     ) {
         LOG.info("Pruning islands and areas isolated by nothru edges in street network");

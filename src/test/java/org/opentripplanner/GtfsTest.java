@@ -9,6 +9,7 @@ import org.opentripplanner.api.common.LocationStringParser;
 import org.opentripplanner.graph_builder.model.GtfsBundle;
 import org.opentripplanner.graph_builder.module.GtfsFeedId;
 import org.opentripplanner.graph_builder.module.GtfsModule;
+import org.opentripplanner.graph_builder.services.TemporaryGraphBuildData;
 import org.opentripplanner.model.FeedScopedId;
 import org.opentripplanner.model.calendar.ServiceDateInterval;
 import org.opentripplanner.model.plan.Itinerary;
@@ -65,7 +66,7 @@ public abstract class GtfsTest extends TestCase {
         graph = new Graph();
         router = new Router(graph, RouterConfig.DEFAULT);
 
-        gtfsGraphBuilderImpl.buildGraph(graph, new HashMap<>());
+        gtfsGraphBuilderImpl.buildGraph(graph, new TemporaryGraphBuildData());
         // Set the agency ID to be used for tests to the first one in the feed.
         agencyId = graph.getAgencies().iterator().next().getId().getId();
         System.out.printf("Set the agency ID for this test to %s\n", agencyId);

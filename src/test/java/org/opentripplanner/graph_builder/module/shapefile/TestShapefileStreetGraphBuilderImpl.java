@@ -3,6 +3,7 @@ package org.opentripplanner.graph_builder.module.shapefile;
 import junit.framework.TestCase;
 import org.junit.Test;
 import org.locationtech.jts.geom.Coordinate;
+import org.opentripplanner.graph_builder.services.TemporaryGraphBuildData;
 import org.opentripplanner.routing.algorithm.astar.AStar;
 import org.opentripplanner.routing.api.request.RoutingRequest;
 import org.opentripplanner.routing.core.TraverseMode;
@@ -87,7 +88,7 @@ public class TestShapefileStreetGraphBuilderImpl extends TestCase {
         loader.setFeatureSourceFactory(factory);
         loader.setSchema(schema);
 
-        loader.buildGraph(gg, new HashMap<Class<?>, Object>());
+        loader.buildGraph(gg, new TemporaryGraphBuildData());
 
         //find start and end vertices
         Vertex start = null;

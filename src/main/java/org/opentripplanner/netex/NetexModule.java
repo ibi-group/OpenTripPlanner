@@ -6,6 +6,7 @@ import org.opentripplanner.graph_builder.module.AddTransitModelEntitiesToGraph;
 import org.opentripplanner.graph_builder.module.GtfsFeedId;
 import org.opentripplanner.graph_builder.module.geometry.GeometryAndBlockProcessor;
 import org.opentripplanner.graph_builder.services.GraphBuilderModule;
+import org.opentripplanner.graph_builder.services.TemporaryGraphBuildData;
 import org.opentripplanner.model.OtpTransitService;
 import org.opentripplanner.model.calendar.CalendarServiceData;
 import org.opentripplanner.model.calendar.ServiceDateInterval;
@@ -62,7 +63,7 @@ public class NetexModule implements GraphBuilderModule {
     @Override
     public void buildGraph(
             Graph graph,
-            HashMap<Class<?>, Object> extra,
+            TemporaryGraphBuildData temp,
             DataImportIssueStore issueStore
     ) {
 

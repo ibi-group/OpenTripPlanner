@@ -34,6 +34,7 @@ import org.opentripplanner.graph_builder.module.extra_elevation_data.ElevationPo
 import org.opentripplanner.graph_builder.services.DefaultStreetEdgeFactory;
 import org.opentripplanner.graph_builder.services.GraphBuilderModule;
 import org.opentripplanner.graph_builder.services.StreetEdgeFactory;
+import org.opentripplanner.graph_builder.services.TemporaryGraphBuildData;
 import org.opentripplanner.graph_builder.services.osm.CustomNamer;
 import org.opentripplanner.model.FeedScopedId;
 import org.opentripplanner.model.StreetNote;
@@ -196,7 +197,7 @@ public class OpenStreetMapModule implements GraphBuilderModule {
     @Override
     public void buildGraph(
             Graph graph,
-            HashMap<Class<?>, Object> extra,
+            TemporaryGraphBuildData extra,
             DataImportIssueStore issueStore
     ) {
         this.issueStore = issueStore;
@@ -263,7 +264,7 @@ public class OpenStreetMapModule implements GraphBuilderModule {
             this.osmdb = osmdb;
         }
 
-        public void buildGraph(HashMap<Class<?>, Object> extra) {
+        public void buildGraph(TemporaryGraphBuildData extra) {
             if (staticParkAndRide) {
                 processParkAndRideNodes(osmdb.getCarParkingNodes(), true);
             }
@@ -297,7 +298,7 @@ public class OpenStreetMapModule implements GraphBuilderModule {
             }
 
             // generate elevation profiles
-            extra.put(ElevationPoint.class, elevationData);
+            extra.addElevationData(elevationData);
 
             applyBikeSafetyFactor(graph);
         } // END buildGraph()

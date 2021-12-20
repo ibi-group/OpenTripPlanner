@@ -8,6 +8,7 @@ import java.util.HashMap;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.opentripplanner.graph_builder.DataImportIssueStore;
+import org.opentripplanner.graph_builder.services.TemporaryGraphBuildData;
 import org.opentripplanner.model.PathTransfer;
 import org.opentripplanner.model.Stop;
 import org.opentripplanner.model.plan.PlaceTest;
@@ -33,13 +34,13 @@ class ApplyMinTimeTransfersTest {
         graph.transfersByStop.put(stop2, transfer2);
         graph.transfersByStop.put(stop3, transfer3);
 
-        HashMap<Class<?>, Object> extra = new HashMap<>();
+        var extra = new TemporaryGraphBuildData();
         var transfers = List.of(
                 new MinTimeTransfer(stop1, stop2, Duration.ofSeconds(140)),
                 new MinTimeTransfer(stop2, stop1, Duration.ofSeconds(280)),
                 new MinTimeTransfer(stop3, stop1, Duration.ofSeconds(500))
         );
-        extra.put(MinTimeTransfer.class, transfers);
+        extra.addMinTimeTransfers(transfers);
 
         module.buildGraph(graph, extra, issueStore);
 
@@ -59,9 +60,9 @@ class ApplyMinTimeTransfersTest {
         var issueStore = new DataImportIssueStore(true);
         var graph = new Graph();
 
-        HashMap<Class<?>, Object> extra = new HashMap<>();
+        var extra = new TemporaryGraphBuildData();
         var transfers = List.of(new MinTimeTransfer(stop1, stop2, Duration.ofMinutes(10)));
-        extra.put(MinTimeTransfer.class, transfers);
+        extra.addMinTimeTransfers(transfers);
 
         module.buildGraph(graph, extra, issueStore);
 

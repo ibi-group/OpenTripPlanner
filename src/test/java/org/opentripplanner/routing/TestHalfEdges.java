@@ -10,6 +10,7 @@ import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.linearref.LinearLocation;
 import org.opentripplanner.common.geometry.GeometryUtils;
 import org.opentripplanner.graph_builder.module.StreetLinkerModule;
+import org.opentripplanner.graph_builder.services.TemporaryGraphBuildData;
 import org.opentripplanner.model.GenericLocation;
 import org.opentripplanner.model.Stop;
 import org.opentripplanner.model.StreetNote;
@@ -468,7 +469,7 @@ public class TestHalfEdges {
     public void testNetworkLinker() {
         int numVerticesBefore = graph.getVertices().size();
         StreetLinkerModule ttsnm = new StreetLinkerModule();
-        ttsnm.buildGraph(graph, new HashMap<Class<?>, Object>());
+        ttsnm.buildGraph(graph, new TemporaryGraphBuildData());
         int numVerticesAfter = graph.getVertices().size();
         assertEquals(4, numVerticesAfter - numVerticesBefore);
         Collection<Edge> outgoing = station1.getOutgoing();

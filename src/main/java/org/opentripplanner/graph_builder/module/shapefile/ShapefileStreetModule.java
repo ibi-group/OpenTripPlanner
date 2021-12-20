@@ -21,6 +21,7 @@ import org.opentripplanner.graph_builder.DataImportIssueStore;
 import org.opentripplanner.graph_builder.services.DefaultStreetEdgeFactory;
 import org.opentripplanner.graph_builder.services.GraphBuilderModule;
 import org.opentripplanner.graph_builder.services.StreetEdgeFactory;
+import org.opentripplanner.graph_builder.services.TemporaryGraphBuildData;
 import org.opentripplanner.graph_builder.services.shapefile.FeatureSourceFactory;
 import org.opentripplanner.graph_builder.services.shapefile.SimpleFeatureConverter;
 import org.opentripplanner.model.StreetNote;
@@ -75,7 +76,7 @@ public class ShapefileStreetModule implements GraphBuilderModule {
     @Override
     public void buildGraph(
             Graph graph,
-            HashMap<Class<?>, Object> extra,
+            TemporaryGraphBuildData extra,
             DataImportIssueStore issueStore
     ) {
 

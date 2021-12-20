@@ -4,6 +4,7 @@ import org.locationtech.jts.geom.Envelope;
 import org.opentripplanner.common.geometry.SphericalDistanceLibrary;
 import org.opentripplanner.graph_builder.DataImportIssueStore;
 import org.opentripplanner.graph_builder.services.GraphBuilderModule;
+import org.opentripplanner.graph_builder.services.TemporaryGraphBuildData;
 import org.opentripplanner.routing.edgetype.StreetTransitStopLink;
 import org.opentripplanner.routing.graph.Edge;
 import org.opentripplanner.routing.graph.Graph;
@@ -40,18 +41,10 @@ public class TransitToTaggedStopsModule implements GraphBuilderModule {
     private double searchRadiusM = 250;
     private double searchRadiusLat = SphericalDistanceLibrary.metersToDegrees(searchRadiusM);
 
-    public List<String> provides() {
-        return Arrays.asList("street to transit", "linking");
-    }
-
-    public List<String> getPrerequisites() {
-        return Arrays.asList("streets"); // why not "transit" ?
-    }
-
     @Override
     public void buildGraph(
             Graph graph,
-            HashMap<Class<?>, Object> extra,
+            TemporaryGraphBuildData extra,
             DataImportIssueStore issueStore
     ) {
         LOG.info("Linking transit stops to tagged bus stops...");

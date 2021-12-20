@@ -1,8 +1,8 @@
 package org.opentripplanner.graph_builder.module.osm;
 
 
-import com.google.common.collect.Maps;
 import junit.framework.TestCase;
+import org.opentripplanner.graph_builder.services.TemporaryGraphBuildData;
 import org.opentripplanner.openstreetmap.BinaryOpenStreetMapProvider;
 import org.opentripplanner.routing.algorithm.astar.AStar;
 import org.opentripplanner.routing.api.request.RoutingRequest;
@@ -16,7 +16,6 @@ import org.opentripplanner.routing.spt.ShortestPathTree;
 import java.io.File;
 import java.net.URL;
 import java.net.URLDecoder;
-import java.util.HashMap;
 
 /**
  * Verify that OSM ways that represent proposed or as yet unbuilt roads are not used for routing.
@@ -37,8 +36,8 @@ public class TestUnroutable extends TestCase {
         File osmDataFile = new File(URLDecoder.decode(osmDataUrl.getFile(), "UTF-8"));
         BinaryOpenStreetMapProvider provider = new BinaryOpenStreetMapProvider(osmDataFile, true);
         osmBuilder.setProvider(provider);
-        HashMap<Class<?>, Object> extra = Maps.newHashMap();
-        osmBuilder.buildGraph(graph, extra); // TODO get rid of this "extra" thing
+        var extra = new TemporaryGraphBuildData();
+        osmBuilder.buildGraph(graph, extra);
      }
 
     /**
