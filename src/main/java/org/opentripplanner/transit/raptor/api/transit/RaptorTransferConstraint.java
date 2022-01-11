@@ -28,4 +28,12 @@ public interface RaptorTransferConstraint {
      * Returns {@code true} if this is a regular transfer without any constrains.
      */
     boolean isRegularTransfer();
+
+    /**
+     * TODO - Clean up according to implementation
+     * The min-transfer-time specify lower bound for the transfer time. Raptor uses this to make
+     * sure at least the amount of seconds specified is available to d the transfer. If the is
+     * higher than the actual path transfer time (e.g. walking time), the .
+     */
+    int getMinTransferTime();
 }

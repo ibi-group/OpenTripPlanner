@@ -59,7 +59,8 @@ public final class ConstrainedBoardingSearch
             RaptorTimeTable<TripSchedule> timetable,
             TripSchedule sourceTripSchedule,
             int sourceStopIndex,
-            int sourceArrivalTime
+            int sourceArrivalTime,
+            int pathTransferTime
     ) {
         var transfers = findMatchingTransfers(sourceTripSchedule, sourceStopIndex);
 
@@ -110,6 +111,9 @@ public final class ConstrainedBoardingSearch
         var index = translator.scheduleIndexIterator(timetable);
         outer:
         while (index.hasNext()) {
+
+            // We need to do something here as well
+
             final int i = index.next();
             var it = timetable.getTripSchedule(i);
 

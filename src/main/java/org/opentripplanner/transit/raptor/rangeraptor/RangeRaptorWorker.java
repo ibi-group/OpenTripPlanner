@@ -14,6 +14,7 @@ import org.opentripplanner.transit.raptor.api.transit.RaptorConstrainedTripSched
 import org.opentripplanner.transit.raptor.api.transit.RaptorRoute;
 import org.opentripplanner.transit.raptor.api.transit.RaptorTimeTable;
 import org.opentripplanner.transit.raptor.api.transit.RaptorTransfer;
+import org.opentripplanner.transit.raptor.api.transit.RaptorTransferConstraint;
 import org.opentripplanner.transit.raptor.api.transit.RaptorTransitDataProvider;
 import org.opentripplanner.transit.raptor.api.transit.RaptorTripSchedule;
 import org.opentripplanner.transit.raptor.api.transit.RaptorTripScheduleBoardOrAlightEvent;
@@ -302,16 +303,27 @@ public final class RangeRaptorWorker<T extends RaptorTripSchedule> implements Wo
                 slackProvider.alightSlack(sourceStopArrival.trip().pattern())
         );
 
+        // Find the path transfer time from the state
+        int pathTransferTime = 0;
+
         var result = txSearch.find(
                 targetTimetable,
                 sourceStopArrival.trip(),
                 sourceStopArrival.stop(),
-                earliestBoardTime
+                earliestBoardTime,
+                pathTransferTime
         );
 
         if (result == null) { return false; }
 
-        if (result.getTransferConstraint().isNotAllowed()) {
+        RaptorTransferConstraint constraint = result.getTransferConstraint();
+
+        if(constraint.getMinTransferTime() > 0) {
+            earliestBoardTime += Math.max(constraint.getMinTransferTime(), pathTransferTime);
+        }
+
+
+        if (constraint.isNotAllowed()) {
             // We are blocking a normal trip search here by returning
             // true without boarding the trip
             return true;
