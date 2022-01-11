@@ -119,20 +119,6 @@ class TransferMapper {
 
     TransferConstraint constraint = mapConstraint(rhs, fromTrip, toTrip);
 
-    // TODO TGR - Create a transfer for this se issue #3369
-    int transferTime = rhs.getMinTransferTime();
-
-    // If this transfer do not give any advantages in the routing, then drop it
-    if(constraint.isRegularTransfer()) {
-      if(transferTime > 0) {
-        LOG.info("Transfer skipped, issue #3369: " + rhs);
-      }
-      else {
-        LOG.warn("Transfer skipped - no effect on routing: " + rhs);
-      }
-      return null;
-    }
-
     TransferPoint fromPoint = mapTransferPoint(rhs.getFromStop(), rhs.getFromRoute(), fromTrip, false);
     TransferPoint toPoint = mapTransferPoint(rhs.getToStop(), rhs.getToRoute(), toTrip, true);
 
@@ -153,6 +139,10 @@ class TransferMapper {
     builder.guaranteed(rhs.getTransferType() == GUARANTEED);
     builder.staySeated(sameBlockId(fromTrip, toTrip));
     builder.priority(mapTypeToPriority(rhs.getTransferType()));
+
+    if(rhs.getTransferType() == MIN_TIME && rhs.isMinTransferTimeSet()) {
+      builder.minTransferTime(rhs.getMinTransferTime());
+    }
 
     return builder.build();
   }

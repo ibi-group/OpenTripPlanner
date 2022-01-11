@@ -13,6 +13,11 @@ public interface RaptorTransferConstraint {
     RaptorTransferConstraint REGULAR_TRANSFER = new RaptorTransferConstraint() {
         @Override public boolean isNotAllowed() { return false; }
         @Override public boolean isRegularTransfer() { return true; }
+
+        @Override
+        public int getMinTransferTime() {
+            return 0;
+        }
     };
 
 
@@ -31,8 +36,8 @@ public interface RaptorTransferConstraint {
 
     /**
      * TODO - Clean up according to implementation
-     * The min-transfer-time specify lower bound for the transfer time. Raptor uses this to make
-     * sure at least the amount of seconds specified is available to d the transfer. If the is
+     * The min-transfer-time specifies a lower bound for the transfer time. Raptor uses this to make
+     * sure at least the amount of seconds specified is available to transfer. If the is
      * higher than the actual path transfer time (e.g. walking time), the .
      */
     int getMinTransferTime();
