@@ -64,7 +64,15 @@ public class OrcaFareServiceImpl extends DefaultFareServiceImpl {
     public boolean IS_TEST;
     public static final float DEFAULT_TEST_RIDE_PRICE = 3.49f;
 
-    static {
+    public OrcaFareServiceImpl(Collection<FareRuleSet> regularFareRules) {
+        addFareRules(Fare.FareType.regular, regularFareRules);
+        addFareRules(Fare.FareType.senior, regularFareRules);
+        addFareRules(Fare.FareType.youth, regularFareRules);
+        addFareRules(Fare.FareType.electronicRegular, regularFareRules);
+        addFareRules(Fare.FareType.electronicYouth, regularFareRules);
+        addFareRules(Fare.FareType.electronicSpecial, regularFareRules);
+        addFareRules(Fare.FareType.electronicSenior, regularFareRules);
+
         classificationStrategy.put(
             COMM_TRANS_AGENCY_ID,
             routeData -> {
@@ -163,16 +171,6 @@ public class OrcaFareServiceImpl extends DefaultFareServiceImpl {
             "int'l dist/chinatown-roosevelt",
             ImmutableMap.of(Fare.FareType.electronicRegular, 2.50f)
         );
-    }
-
-    public OrcaFareServiceImpl(Collection<FareRuleSet> regularFareRules) {
-        addFareRules(Fare.FareType.regular, regularFareRules);
-        addFareRules(Fare.FareType.senior, regularFareRules);
-        addFareRules(Fare.FareType.youth, regularFareRules);
-        addFareRules(Fare.FareType.electronicRegular, regularFareRules);
-        addFareRules(Fare.FareType.electronicYouth, regularFareRules);
-        addFareRules(Fare.FareType.electronicSpecial, regularFareRules);
-        addFareRules(Fare.FareType.electronicSenior, regularFareRules);
     }
 
     /**
@@ -404,11 +402,7 @@ public class OrcaFareServiceImpl extends DefaultFareServiceImpl {
             if (hasFreeTransfers(fareType, rideType) && inFreeTransferWindow) {
                 // If using Orca (free transfers), the total fare should be equivalent to the
                 // most expensive leg of the journey.
-                // If the new fare is more than the current ORCA amount, the transfer is extended.
-                if (legFare > orcaFareDiscount) {
-                    freeTransferStartTime = ride.startTime;
-                    orcaFareDiscount = legFare;
-                }
+                orcaFareDiscount = Float.max(orcaFareDiscount, legFare);
            } else if (usesOrca(fareType) && !inFreeTransferWindow) {
                 // If using Orca and outside of the free transfer window, add the cumulative Orca fare (the maximum leg 
                 // fare encountered within the free transfer window).
