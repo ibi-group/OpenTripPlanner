@@ -155,7 +155,8 @@ public class DefaultFareServiceImpl implements FareService, Serializable {
             if (fareRules.size() > 0) {
                 currency = Currency.getInstance(fareRules.iterator().next().getFareAttribute().getCurrencyType());
             }
-            hasFare = populateFare(fare, currency, fareType, rides, fareRules);
+            // set hasFare to true if any fares are present.
+            hasFare = populateFare(fare, currency, fareType, rides, fareRules) || hasFare;
         }
         return hasFare ? fare : null;
     }
