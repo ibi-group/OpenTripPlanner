@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      MAVEN_OPTS: -Xmx6g
+      MAVEN_OPTS: -Xmx7g
     steps:
       # Starting in v2.2 checkout action fetches all tags when fetch-depth=0, for auto-versioning.
       - uses: actions/checkout@v2.3.2
