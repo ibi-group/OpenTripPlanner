@@ -86,7 +86,7 @@ public abstract class GraphUpdaterConfigurator {
             try {
                 updater.setup(graph);
             } catch (Exception e) {
-                LOG.warn("Failed to setup updater {}", updater.getConfigRef());
+                LOG.warn("Failed to setup updater {}: {}", updater.getConfigRef(), e.getMessage());
             }
         }
     }

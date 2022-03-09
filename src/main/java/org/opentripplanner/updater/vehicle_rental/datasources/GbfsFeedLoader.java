@@ -65,15 +65,18 @@ public class GbfsFeedLoader {
         // Create updater for each file
         for (GBFSFeed feed : feeds.getFeeds()) {
             GBFSFeedName feedName = feed.getName();
-            if (feedUpdaters.containsKey(feedName)) {
+            if (feedUpdaters.containsKey(feedName)
+                    // there are some feeds that contain the same URL name and URL twice
+                    // we can accept that
+                    && !feedUpdaters.get(feedName).url.equals(feed.getUrl())) {
                 throw new RuntimeException(
                         "Feed contains duplicate url for feed " + feedName + ". " +
-                        "Urls: " + feed.getUrl() + ", " + feedUpdaters.get(feedName).url
+                                "Urls: " + feed.getUrl() + ", " + feedUpdaters.get(feedName).url
                 );
             }
 
             // name is null, if the file is of unknown type, skip those
-            if (feed.getName() != null) {
+            if (feed.getName() != null && !feedName.equals(GBFSFeedName.GeofencingZones)) {
                 feedUpdaters.put(feedName, new GBFSFeedUpdater<>(feed));
             }
 
