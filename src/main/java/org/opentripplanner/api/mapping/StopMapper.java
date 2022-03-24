@@ -54,7 +54,9 @@ public class StopMapper {
         api.name = domain.getName().toString();
         api.lat = domain.getLat();
         api.lon = domain.getLon();
-        api.url = domain.getUrl().toString();
+        if (domain.getUrl() != null) {
+            api.url = domain.getUrl().toString();
+        }
         api.stationId = FeedScopedIdMapper.mapIdToApi(domain.getParentStation());
         // parentStation may be missing on the stop returning null.
         // TODO harmonize these names, maybe use "station" everywhere
