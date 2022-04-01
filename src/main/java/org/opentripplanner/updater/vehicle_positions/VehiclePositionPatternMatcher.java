@@ -5,6 +5,7 @@ import com.google.common.collect.Sets;
 import com.google.transit.realtime.GtfsRealtime.VehiclePosition;
 import com.google.transit.realtime.GtfsRealtime.VehiclePosition.VehicleStopStatus;
 import java.time.Instant;
+import java.util.Date;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.Objects;
@@ -119,11 +120,7 @@ public class VehiclePositionPatternMatcher {
                         .flatMap(ServiceDate::parseStringToOptional);
 
         if (localDate.isEmpty()) {
-            LOG.warn(
-                    "Trip with id {} doesn't contain a valid start_data which is required. Ignoring.",
-                    vehiclePosition.getTrip().getTripId()
-            );
-            return null;
+            localDate = Optional.of(new ServiceDate());
         }
 
         TripPattern pattern = getPatternForTrip.apply(trip, localDate.get());
