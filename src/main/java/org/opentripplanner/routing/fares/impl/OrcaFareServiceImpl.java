@@ -2,8 +2,10 @@ package org.opentripplanner.routing.fares.impl;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
+import org.opentripplanner.model.FeedScopedId;
 import org.opentripplanner.model.Route;
 import org.opentripplanner.routing.core.Fare;
+import org.opentripplanner.routing.core.FareComponent;
 import org.opentripplanner.routing.core.FareRuleSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -224,7 +226,7 @@ public class OrcaFareServiceImpl extends DefaultFareServiceImpl {
      * route data is enough to define the agency, but addition trip id checks are needed to define the fast ferry direction.
      */
     private static RideType classify(Route routeData, String tripId) {
-        Function<Route, RideType> classifier = classificationStrategy.get(routeData.getAgency().getId());
+        Function<Route, RideType> classifier = classificationStrategy.get(routeData.getAgency().getId().toString());
         if (classifier == null) {
             return null;
         }
@@ -244,9 +246,9 @@ public class OrcaFareServiceImpl extends DefaultFareServiceImpl {
         ) {
             rideType = RideType.SOUND_TRANSIT_LINK;
         } else if (rideType == RideType.SOUND_TRANSIT && (
-                checkShortName(routeData, "S Line") ||
+            checkShortName(routeData, "S Line") ||
                 checkShortName(routeData, "N Line")
-            )
+        )
         ) {
             rideType = RideType.SOUND_TRANSIT_SOUNDER;
         } else if (rideType == RideType.SOUND_TRANSIT) { //if it isn't Link or Sounder, then...
@@ -459,10 +461,10 @@ public class OrcaFareServiceImpl extends DefaultFareServiceImpl {
      */
     @Override
     public boolean populateFare(Fare fare,
-                                   Currency currency,
-                                   Fare.FareType fareType,
-                                   List<Ride> rides,
-                                   Collection<FareRuleSet> fareRules
+                                Currency currency,
+                                Fare.FareType fareType,
+                                List<Ride> rides,
+                                Collection<FareRuleSet> fareRules
     ) {
         Long freeTransferStartTime = null;
         float cost = 0;
@@ -483,34 +485,56 @@ public class OrcaFareServiceImpl extends DefaultFareServiceImpl {
                 // If the new fare is more than the current ORCA amount, the transfer is extended.
                 if (legFare > orcaFareDiscount) {
                     freeTransferStartTime = ride.startTime.toEpochSecond();
+                    ride.fareComponents.put(
+                        fareType,
+                        new FareComponent(new FeedScopedId(ride.trip.getFeedId(), "customOrcaFare"), getMoney(currency, legFare - orcaFareDiscount))
+                    );
                     orcaFareDiscount = legFare;
+                } else {
+                    // Ride is free
+                    ride.fareComponents.put(
+                        fareType,
+                        new FareComponent(new FeedScopedId(ride.trip.getFeedId(), "customOrcaFare"), getMoney(currency, 0))
+                    );
                 }
-           } else if (usesOrca(fareType) && !inFreeTransferWindow) {
-                // If using Orca and outside of the free transfer window, add the cumulative Orca fare (the maximum leg 
+            } else if (usesOrca(fareType) && !inFreeTransferWindow) {
+                // If using Orca and outside of the free transfer window, add the cumulative Orca fare (the maximum leg
                 // fare encountered within the free transfer window).
                 cost += orcaFareDiscount;
-                
+
                 // Reset the free transfer start time and next Orca fare as needed.
                 if (ridePermitsFreeTransfers) {
-                    // The leg is using a ride type that permits free transfers. 
+                    // The leg is using a ride type that permits free transfers.
                     // The next free transfer window begins at the start time of this leg.
                     freeTransferStartTime = ride.startTime.toEpochSecond();
                     // Reset the Orca fare to be the fare of this leg.
                     orcaFareDiscount = legFare;
+                    ride.fareComponents.put(
+                        fareType,
+                        new FareComponent(new FeedScopedId(ride.trip.getFeedId(), "customOrcaFare"), getMoney(currency, legFare))
+                    );
                 } else {
                     // The leg is not using a ride type that permits free transfers.
                     // Since there are no free transfers for this leg, increase the total cost by the fare for this leg.
                     cost += legFare;
-                    // The current free transfer window has expired and won't start again until another leg is 
+                    // The current free transfer window has expired and won't start again until another leg is
                     // encountered that does have free transfers.
                     freeTransferStartTime = null;
                     // The previous Orca fare has been applied to the total cost. Also, the non-free transfer cost has
-                    // also been applied to the total cost. Therefore, the next Orca cost for the next free-transfer 
+                    // also been applied to the total cost. Therefore, the next Orca cost for the next free-transfer
                     // window needs to be reset to 0 so that it is not applied after looping through all rides.
                     orcaFareDiscount = 0;
+                    ride.fareComponents.put(
+                        fareType,
+                        new FareComponent(new FeedScopedId(ride.trip.getFeedId(), "customOrcaFare"), getMoney(currency, legFare))
+                    );
                 }
             } else {
                 // If not using Orca, add the agencies default price for this leg.
+                ride.fareComponents.put(
+                    fareType,
+                    new FareComponent(new FeedScopedId(ride.trip.getFeedId(), "customOrcaFare"), getMoney(currency, legFare))
+                );
                 cost += legFare;
             }
         }

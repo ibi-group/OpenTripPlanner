@@ -6,14 +6,21 @@ import org.opentripplanner.model.FeedScopedId;
 import org.opentripplanner.model.Route;
 import org.opentripplanner.model.Stop;
 
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
 import org.opentripplanner.model.StopLocation;
+import org.opentripplanner.model.TripStopTimes;
+import org.opentripplanner.routing.core.Fare;
+import org.opentripplanner.routing.core.FareComponent;
 
 /**
  * A set of edges on a single route, with associated information. Used only in calculating fares.
  */
 public class Ride {
+
+    public HashMap<Fare.FareType, FareComponent> fareComponents;
 
     FeedScopedId agency; // route agency
 
