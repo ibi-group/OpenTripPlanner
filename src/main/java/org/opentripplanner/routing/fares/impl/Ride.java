@@ -3,6 +3,7 @@ package org.opentripplanner.routing.fares.impl;
 import java.time.LocalTime;
 import java.time.ZonedDateTime;
 import org.opentripplanner.model.FeedScopedId;
+import org.opentripplanner.model.Route;
 import org.opentripplanner.model.Stop;
 
 import java.util.HashSet;
@@ -17,6 +18,8 @@ public class Ride {
     FeedScopedId agency; // route agency
 
     FeedScopedId route;
+
+    public Route routeData;
 
     FeedScopedId trip;
 

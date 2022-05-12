@@ -170,6 +170,8 @@ public class DefaultFareServiceFactory implements FareServiceFactory {
             return new NycFareServiceFactory();
         case "seattle":
             return new SeattleFareServiceFactory();
+        case "orca":
+            return new OrcaFareServiceFactory();
         default:
             throw new IllegalArgumentException(String.format("Unknown fare type: '%s'", type));
         }

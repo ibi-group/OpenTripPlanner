@@ -49,6 +49,7 @@ public class RideMapper {
         ride.zones = zones;
         ride.agency = leg.getRoute().getAgency().getId();
         ride.route = leg.getRoute().getId();
+        ride.routeData = leg.getRoute();
         ride.trip = leg.getTrip().getId();
 
         ride.startTime = toZonedDateTime(leg.getStartTime());
