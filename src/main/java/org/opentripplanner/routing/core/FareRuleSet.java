@@ -80,6 +80,15 @@ public class FareRuleSet implements Serializable {
                 return false;
         }
 
+        //check whether this FareRuleSet has any rules at all
+        //otherwise empty sets will always match
+        if (originDestinations.isEmpty() &&
+            contains.isEmpty() &&
+            routes.isEmpty() &&
+            trips.isEmpty()) {
+            return false;
+        }
+
         //check for matching origin/destination, if this ruleset has any origin/destination restrictions
         if (originDestinations.size() > 0) {
             P2<String> od = new P2<String>(startZone, endZone);
