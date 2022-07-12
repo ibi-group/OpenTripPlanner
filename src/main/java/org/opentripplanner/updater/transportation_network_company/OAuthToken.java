@@ -15,8 +15,12 @@ public class OAuthToken {
     public final String value;
     private Date tokenExpirationTime;
 
-    public OAuthToken() {
+    private OAuthToken() {
         value = null;
+    }
+
+    public static OAuthToken blank() {
+        return new OAuthToken();
     }
 
     public OAuthToken(HttpURLConnection connection) throws IOException {
@@ -35,7 +39,7 @@ public class OAuthToken {
     /**
      * Checks if a new token needs to be obtained.
      */
-    public boolean shouldRenew() {
+    public boolean isInvalid() {
         return tokenExpirationTime == null || new Date().after(tokenExpirationTime);
     }
 
