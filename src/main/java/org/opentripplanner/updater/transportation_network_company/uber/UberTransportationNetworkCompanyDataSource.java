@@ -45,7 +45,7 @@ public class UberTransportationNetworkCompanyDataSource extends TransportationNe
     private final String authenticationUrl;
     private final String clientId;
     private final String clientSecret;
-    private OAuthToken token = OAuthToken.blank();
+    private OAuthToken token = new OAuthToken();
 
     public UberTransportationNetworkCompanyDataSource(JsonNode config) {
         this.baseUrl = UBER_API_URL;
@@ -70,10 +70,10 @@ public class UberTransportationNetworkCompanyDataSource extends TransportationNe
 
     /**
      * Obtains and caches an Uber API access token.
-     * @return A token holder with the token value, which can be null if the call was unsuccessful.
+     * @return The token value, which can be null if the call was unsuccessful.
      */
     public OAuthToken getToken() throws IOException {
-        if (token.isExpired()) {
+        if (token.shouldRenew()) {
             // token needs to be obtained
             LOG.info("Requesting new Uber access token");
 

@@ -112,7 +112,7 @@ public class UberTransportationNetworkCompanyDataSourceTest {
     public void testGetAccessTokenSuccess() throws IOException {
         OAuthToken initialToken = source.getToken();
         initialToken.makeTokenExpire();
-        assertTrue(initialToken.isExpired());
+        assertTrue(initialToken.shouldRenew());
         // Get access token for the first time.
         String token1 = source.getToken().value;
 
@@ -127,7 +127,7 @@ public class UberTransportationNetworkCompanyDataSourceTest {
 
         // Second call to getAccessToken should return the same original token, as it has not expired yet.
         OAuthToken newToken = source.getToken();
-        assertFalse(newToken.isExpired());
+        assertFalse(newToken.shouldRenew());
         assertEquals(token1, newToken.value);
     }
 
@@ -143,7 +143,7 @@ public class UberTransportationNetworkCompanyDataSourceTest {
         // Token is null, so we should still attempt to get one.
         OAuthToken token = src.getToken();
         assertNull(token.value);
-        assertTrue(token.isExpired());
+        assertTrue(token.shouldRenew());
     }
 
     @Test

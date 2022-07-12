@@ -19,7 +19,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.opentripplanner.routing.transportation_network_company.ArrivalTime;
 import org.opentripplanner.routing.transportation_network_company.RideEstimate;
 import org.opentripplanner.routing.transportation_network_company.TransportationNetworkCompany;
-import org.opentripplanner.updater.transportation_network_company.OAuthToken;
+import org.opentripplanner.updater.transportation_network_company.OAuthAuthenticationResponse;
 import org.opentripplanner.updater.transportation_network_company.Position;
 import org.opentripplanner.updater.transportation_network_company.RideEstimateRequest;
 import org.opentripplanner.updater.transportation_network_company.TransportationNetworkCompanyDataSource;
@@ -33,6 +33,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 
 public class LyftTransportationNetworkCompanyDataSource extends TransportationNetworkCompanyDataSource {
@@ -41,10 +42,11 @@ public class LyftTransportationNetworkCompanyDataSource extends TransportationNe
 
     private static final String LYFT_API_URL = "https://api.lyft.com/";
 
-    private final String baseUrl;  // for testing purposes
-    private final String clientId;
-    private final String clientSecret;
-    private OAuthToken token = OAuthToken.blank();
+    private String accessToken;
+    private String baseUrl;  // for testing purposes
+    private String clientId;
+    private String clientSecret;
+    private Date tokenExpirationTime;
 
     public LyftTransportationNetworkCompanyDataSource(JsonNode config) {
         this.baseUrl = LYFT_API_URL;
@@ -60,8 +62,10 @@ public class LyftTransportationNetworkCompanyDataSource extends TransportationNe
         this.clientSecret = clientSecret;
     }
 
-    private OAuthToken getToken() throws IOException {
-        if (token.isExpired()) {
+    private String getAccessToken() throws IOException {
+        // check if token needs to be obtained
+        Date now = new Date();
+        if (tokenExpirationTime == null || now.after(tokenExpirationTime)) {
             // token needs to be obtained
             LOG.info("Requesting new lyft access token");
 
@@ -86,12 +90,16 @@ public class LyftTransportationNetworkCompanyDataSource extends TransportationNe
             mapper.writeValue(connection.getOutputStream(), authRequest);
 
             // send request and parse response
-            token = new OAuthToken(connection);
-            connection.disconnect();
+            InputStream responseStream = connection.getInputStream();
+            OAuthAuthenticationResponse response = mapper.readValue(responseStream, OAuthAuthenticationResponse.class);
+            accessToken = response.access_token;
+            tokenExpirationTime = new Date();
+            tokenExpirationTime.setTime(tokenExpirationTime.getTime() + (response.expires_in - 60) * 1000);
+
             LOG.info("Received new lyft access token");
         }
 
-        return token;
+        return accessToken;
     }
 
     @Override
@@ -108,7 +116,7 @@ public class LyftTransportationNetworkCompanyDataSource extends TransportationNe
         String requestUrl = uriBuilder.toString();
         URL url = new URL(requestUrl);
         HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-        connection.setRequestProperty("Authorization", "Bearer " + getToken().value);
+        connection.setRequestProperty("Authorization", "Bearer " + getAccessToken());
         connection.setRequestProperty("Content-Type", "application/json;charset=UTF-8");
 
         LOG.info("Made request to lyft API at following URL: " + requestUrl);
@@ -176,7 +184,7 @@ public class LyftTransportationNetworkCompanyDataSource extends TransportationNe
         String requestUrl = uriBuilder.toString();
         URL url = new URL(requestUrl);
         HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-        connection.setRequestProperty("Authorization", "Bearer " + getToken().value);
+        connection.setRequestProperty("Authorization", "Bearer " + getAccessToken());
         connection.setRequestProperty("Content-Type", "application/json;charset=UTF-8");
 
         LOG.info("Made request to lyft API at following URL: " + requestUrl);
