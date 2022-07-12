@@ -9,7 +9,7 @@ import java.time.Instant;
 import java.util.Date;
 
 /**
- * Holds an OAuth access token for querying ride-hail APIs.
+ * Holds an OAuth access token and its expiration time for querying ride-hail APIs.
  */
 public class OAuthToken {
     public final String value;

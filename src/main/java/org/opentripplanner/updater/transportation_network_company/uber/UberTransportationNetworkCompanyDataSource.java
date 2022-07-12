@@ -70,7 +70,7 @@ public class UberTransportationNetworkCompanyDataSource extends TransportationNe
 
     /**
      * Obtains and caches an Uber API access token.
-     * @return The token value, which can be null if the call was unsuccessful.
+     * @return A token holder with the token value, which can be null if the call was unsuccessful.
      */
     public OAuthToken getToken() throws IOException {
         if (token.isInvalid()) {
