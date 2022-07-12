@@ -26,13 +26,17 @@ public class OAuthToken {
     public OAuthToken(HttpURLConnection connection) throws IOException {
         // send request and parse response
         ObjectMapper mapper = new ObjectMapper();
-        InputStream responseStream = connection.getInputStream();
-        OAuthAuthenticationResponse response = mapper.readValue(responseStream, OAuthAuthenticationResponse.class);
-        responseStream.close();
+        String value1 = null;
+        try (InputStream responseStream = connection.getInputStream()) {
+            OAuthAuthenticationResponse response = mapper.readValue(responseStream, OAuthAuthenticationResponse.class);
 
-        value = response.access_token;
-        tokenExpirationTime = new Date();
-        tokenExpirationTime.setTime(tokenExpirationTime.getTime() + (response.expires_in - 60) * 1000L);
+            value1 = response.access_token;
+            tokenExpirationTime = new Date();
+            tokenExpirationTime.setTime(tokenExpirationTime.getTime() + (response.expires_in - 60) * 1000L);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        value = value1;
     }
 
 
