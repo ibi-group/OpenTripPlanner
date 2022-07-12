@@ -19,6 +19,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.opentripplanner.routing.transportation_network_company.ArrivalTime;
 import org.opentripplanner.routing.transportation_network_company.RideEstimate;
 import org.opentripplanner.routing.transportation_network_company.TransportationNetworkCompany;
+import org.opentripplanner.updater.transportation_network_company.OAuthToken;
 import org.opentripplanner.updater.transportation_network_company.Position;
 import org.opentripplanner.updater.transportation_network_company.RideEstimateRequest;
 import org.opentripplanner.updater.transportation_network_company.TransportationNetworkCompanyDataSource;
@@ -44,6 +45,7 @@ public class UberTransportationNetworkCompanyDataSource extends TransportationNe
     private final String authenticationUrl;
     private final String clientId;
     private final String clientSecret;
+    private OAuthToken token = OAuthToken.blank();
 
     public UberTransportationNetworkCompanyDataSource(JsonNode config) {
         this.baseUrl = UBER_API_URL;
@@ -66,28 +68,43 @@ public class UberTransportationNetworkCompanyDataSource extends TransportationNe
         this.clientSecret = clientSecret;
     }
 
-    @Override
-    public TransportationNetworkCompany getTransportationNetworkCompanyType() {
-        return TransportationNetworkCompany.UBER;
+    /**
+     * Obtains and caches an Uber API access token.
+     * @return A token holder with the token value, which can be null if the call was unsuccessful.
+     */
+    public OAuthToken getToken() throws IOException {
+        if (token.isExpired()) {
+            // token needs to be obtained
+            LOG.info("Requesting new Uber access token");
+
+            // prepare request to get token
+            UriBuilder uriBuilder = UriBuilder.fromUri(authenticationUrl + "oauth/v2/token");
+            URL url = new URL(uriBuilder.toString());
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            connection.setRequestMethod("POST");
+            connection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
+
+            // set request body
+            UberAuthenticationRequestBody authRequest = new UberAuthenticationRequestBody(
+                clientId,
+                clientSecret
+            );
+            connection.setDoOutput(true);
+            connection.getOutputStream().write(authRequest.toRequestParamString().getBytes());
+            connection.getOutputStream().close();
+
+            // send request and parse response
+            token = new OAuthToken(connection);
+            connection.disconnect();
+            LOG.info("Received new Uber access token");
+        }
+
+        return token;
     }
 
     @Override
-    protected HttpURLConnection buildOAuthConnection() throws IOException {
-        UriBuilder uriBuilder = UriBuilder.fromUri(authenticationUrl + "oauth/v2/token");
-        URL url = new URL(uriBuilder.toString());
-        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-        connection.setRequestMethod("POST");
-        connection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
-
-        // set request body
-        UberAuthenticationRequestBody authRequest = new UberAuthenticationRequestBody(
-            clientId,
-            clientSecret
-        );
-        connection.setDoOutput(true);
-        connection.getOutputStream().write(authRequest.toRequestParamString().getBytes());
-        connection.getOutputStream().close();
-        return connection;
+    public TransportationNetworkCompany getTransportationNetworkCompanyType() {
+        return TransportationNetworkCompany.UBER;
     }
 
     @Override

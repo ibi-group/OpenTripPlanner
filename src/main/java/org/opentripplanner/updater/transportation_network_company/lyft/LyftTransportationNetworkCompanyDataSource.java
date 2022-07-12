@@ -19,6 +19,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.opentripplanner.routing.transportation_network_company.ArrivalTime;
 import org.opentripplanner.routing.transportation_network_company.RideEstimate;
 import org.opentripplanner.routing.transportation_network_company.TransportationNetworkCompany;
+import org.opentripplanner.updater.transportation_network_company.OAuthToken;
 import org.opentripplanner.updater.transportation_network_company.Position;
 import org.opentripplanner.updater.transportation_network_company.RideEstimateRequest;
 import org.opentripplanner.updater.transportation_network_company.TransportationNetworkCompanyDataSource;
@@ -43,6 +44,7 @@ public class LyftTransportationNetworkCompanyDataSource extends TransportationNe
     private final String baseUrl;  // for testing purposes
     private final String clientId;
     private final String clientSecret;
+    private OAuthToken token = OAuthToken.blank();
 
     public LyftTransportationNetworkCompanyDataSource(JsonNode config) {
         this.baseUrl = LYFT_API_URL;
@@ -58,33 +60,43 @@ public class LyftTransportationNetworkCompanyDataSource extends TransportationNe
         this.clientSecret = clientSecret;
     }
 
-    @Override
-    public TransportationNetworkCompany getTransportationNetworkCompanyType() {
-        return TransportationNetworkCompany.LYFT;
+    private OAuthToken getToken() throws IOException {
+        if (token.isExpired()) {
+            // token needs to be obtained
+            LOG.info("Requesting new lyft access token");
+
+            ObjectMapper mapper = new ObjectMapper();
+            mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+
+            // prepare request to get token
+            UriBuilder uriBuilder = UriBuilder.fromUri(baseUrl + "oauth/token");
+            URL url = new URL(uriBuilder.toString());
+            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            String userpass = clientId + ":" + clientSecret;
+            String basicAuth = "Basic " + javax.xml.bind.DatatypeConverter.printBase64Binary(userpass.getBytes());
+            connection.setRequestProperty("Authorization", basicAuth);
+            connection.setRequestProperty("Content-Type", "application/json;charset=UTF-8");
+
+            // set request body
+            LyftAuthenticationRequestBody authRequest = new LyftAuthenticationRequestBody(
+                "client_credentials",
+                "public"
+            );
+            connection.setDoOutput(true);
+            mapper.writeValue(connection.getOutputStream(), authRequest);
+
+            // send request and parse response
+            token = new OAuthToken(connection);
+            connection.disconnect();
+            LOG.info("Received new lyft access token");
+        }
+
+        return token;
     }
 
     @Override
-    protected HttpURLConnection buildOAuthConnection() throws IOException {
-        ObjectMapper mapper = new ObjectMapper();
-        mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-
-        // prepare request to get token
-        UriBuilder uriBuilder = UriBuilder.fromUri(baseUrl + "oauth/token");
-        URL url = new URL(uriBuilder.toString());
-        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-        String userpass = clientId + ":" + clientSecret;
-        String basicAuth = "Basic " + javax.xml.bind.DatatypeConverter.printBase64Binary(userpass.getBytes());
-        connection.setRequestProperty("Authorization", basicAuth);
-        connection.setRequestProperty("Content-Type", "application/json;charset=UTF-8");
-
-        // set request body
-        LyftAuthenticationRequestBody authRequest = new LyftAuthenticationRequestBody(
-            "client_credentials",
-            "public"
-        );
-        connection.setDoOutput(true);
-        mapper.writeValue(connection.getOutputStream(), authRequest);
-        return connection;
+    public TransportationNetworkCompany getTransportationNetworkCompanyType() {
+        return TransportationNetworkCompany.LYFT;
     }
 
     @Override

@@ -18,18 +18,13 @@ import com.google.common.cache.CacheBuilder;
 import org.opentripplanner.routing.transportation_network_company.ArrivalTime;
 import org.opentripplanner.routing.transportation_network_company.RideEstimate;
 import org.opentripplanner.routing.transportation_network_company.TransportationNetworkCompany;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.net.HttpURLConnection;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
 public abstract class TransportationNetworkCompanyDataSource {
-    private static final Logger LOG = LoggerFactory.getLogger(TransportationNetworkCompanyDataSource.class);
-
     // This value should be no longer than 30 minutes (according to Uber API docs) TODO check Lyft time limit
     private static final int cacheTimeSeconds = 120;
 
@@ -39,8 +34,6 @@ public abstract class TransportationNetworkCompanyDataSource {
         CacheBuilder.newBuilder().expireAfterWrite(cacheTimeSeconds, TimeUnit.SECONDS).build();
 
     protected String wheelChairAccessibleRideType;
-
-    private OAuthToken token = OAuthToken.blank();
 
     // Abstract method to return the TransportationNetworkCompany enum type
     public abstract TransportationNetworkCompany getTransportationNetworkCompanyType();
@@ -75,36 +68,4 @@ public abstract class TransportationNetworkCompanyDataSource {
     protected boolean productIsWheelChairAccessible(String productId) {
         return productId.equals(wheelChairAccessibleRideType);
     }
-
-    /**
-     * Obtains and caches an OAuth API access token.
-     * @return A token holder with the token value (including null token values if the call was unsuccessful).
-     */
-    public OAuthToken getToken() throws IOException {
-        if (token.isExpired()) {
-            // prepare request to get token
-            HttpURLConnection connection = buildOAuthConnection();
-
-            // send request and parse response (if a connection object was provided)
-            if (connection != null) {
-                String companyType = getTransportationNetworkCompanyType().name();
-                LOG.info("Requesting new {} access token", companyType);
-
-                token = new OAuthToken(connection);
-
-                connection.disconnect();
-                LOG.info("Received new {} access token", companyType);
-            }
-        }
-
-        return token;
-    }
-
-    /**
-     * Prepares a connection object to obtain an OAuth token.
-     * @return An {@link HttpURLConnection} object for obtaining the token.
-     * @throws IOException Thrown if setting up the connection fails.
-     */
-    protected abstract HttpURLConnection buildOAuthConnection() throws IOException;
-
 }
