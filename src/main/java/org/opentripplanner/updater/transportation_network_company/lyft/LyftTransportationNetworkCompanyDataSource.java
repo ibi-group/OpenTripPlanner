@@ -87,7 +87,7 @@ public class LyftTransportationNetworkCompanyDataSource extends TransportationNe
 
             // send request and parse response
             token = new OAuthToken(connection);
-            // connection.disconnect();
+            connection.disconnect();
             LOG.info("Received new lyft access token");
         }
 
