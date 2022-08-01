@@ -236,16 +236,20 @@ public class StopModel implements Serializable {
    */
   public void calculateTransitCenter() {
     var vertices = getAllStopVertices();
-    var medianCalculator = new MedianCalcForDoubles(vertices.size());
 
-    vertices.forEach(v -> medianCalculator.add(v.getLon()));
-    double lon = medianCalculator.median();
+    if (!vertices.isEmpty()) {
+      this.center = vertices.iterator().next().getCoordinate();
+      var medianCalculator = new MedianCalcForDoubles(vertices.size());
 
-    medianCalculator.reset();
-    vertices.forEach(v -> medianCalculator.add(v.getLat()));
-    double lat = medianCalculator.median();
+      vertices.forEach(v -> medianCalculator.add(v.getLon()));
+      double lon = medianCalculator.median();
 
-    this.center = new Coordinate(lon, lat);
+      medianCalculator.reset();
+      vertices.forEach(v -> medianCalculator.add(v.getLat()));
+      double lat = medianCalculator.median();
+
+      this.center = new Coordinate(lon, lat);
+    }
   }
 
   public Optional<Coordinate> getCenter() {
