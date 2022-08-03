@@ -20,6 +20,10 @@ public class DataImportIssueStore {
     this.storeIssues = storeIssues;
   }
 
+  public static DataImportIssueStore noop() {
+    return new DataImportIssueStore(false);
+  }
+
   public void add(DataImportIssue issue) {
     ISSUE_LOG.debug("{} - {}", issue.getType(), issue.getMessage());
     if (storeIssues) {
@@ -31,27 +35,31 @@ public class DataImportIssueStore {
     add(Issue.issue(type, message));
   }
 
-  public void add(String type, String message, Object ... arguments) {
+  public void add(String type, String message, Object... arguments) {
     add(Issue.issue(type, message, arguments));
+  }
+
+  public List<DataImportIssue> getIssues() {
+    return this.issues;
   }
 
   void summarize() {
     Map<String, Long> issueCounts = issues
-        .stream()
-        .map(DataImportIssue::getType)
-        .collect(Collectors.groupingBy(Function.identity(), Collectors.counting()));
+      .stream()
+      .map(DataImportIssue::getType)
+      .collect(Collectors.groupingBy(Function.identity(), Collectors.counting()));
 
     int maxLength = issueCounts.keySet().stream().mapToInt(String::length).max().orElse(10);
     final String FMT = "  - %-" + maxLength + "s  %,7d";
 
     ISSUE_LOG.info("Issue summary (number of each type):");
 
-    issueCounts.keySet().stream().sorted().forEach(issueType ->
+    issueCounts
+      .keySet()
+      .stream()
+      .sorted()
+      .forEach(issueType ->
         ISSUE_LOG.info(String.format(FMT, issueType, issueCounts.get(issueType)))
-    );
-  }
-
-  public List<DataImportIssue> getIssues() {
-    return this.issues;
+      );
   }
 }

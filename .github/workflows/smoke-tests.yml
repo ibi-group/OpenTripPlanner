@@ -18,10 +18,10 @@ jobs:
 
       - uses: actions/checkout@v2.3.2
 
-      - name: Set up JDK 11
+      - name: Set up Java
         uses: actions/setup-java@v1
         with:
-          java-version: 11
+          java-version: 17
 
       - name: Cache local Maven repository
         uses: actions/cache@v2
@@ -38,7 +38,7 @@ jobs:
           key: osm
 
       - name: Build jar file
-        run: mvn clean package -Dmaven.test.skip
+        run: mvn --batch-mode clean package -Dmaven.test.skip -P prettierSkip
 
       - name: Build Atlanta graph and start OTP in background
         run: |
@@ -49,4 +49,4 @@ jobs:
           sleep 10
 
       - name: Run smoke tests
-        run: mvn test -P smoke-tests
+        run: mvn test -P smoke-tests -P prettierSkip

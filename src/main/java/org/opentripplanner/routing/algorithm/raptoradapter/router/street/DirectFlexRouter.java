@@ -9,44 +9,55 @@ import org.opentripplanner.model.plan.Itinerary;
 import org.opentripplanner.routing.algorithm.raptoradapter.router.AdditionalSearchDays;
 import org.opentripplanner.routing.api.request.RoutingRequest;
 import org.opentripplanner.routing.api.request.StreetMode;
+import org.opentripplanner.routing.core.RoutingContext;
+import org.opentripplanner.routing.core.TemporaryVerticesContainer;
 import org.opentripplanner.routing.graphfinder.NearbyStop;
-import org.opentripplanner.standalone.server.Router;
+import org.opentripplanner.standalone.api.OtpServerContext;
 
 public class DirectFlexRouter {
 
   public static List<Itinerary> route(
-      Router router,
-      RoutingRequest request,
-      AdditionalSearchDays additionalSearchDays
+    OtpServerContext serverContext,
+    RoutingRequest request,
+    AdditionalSearchDays additionalSearchDays
   ) {
     if (!StreetMode.FLEXIBLE.equals(request.modes.directMode)) {
       return Collections.emptyList();
     }
-
-    try (RoutingRequest directRequest = request.getStreetSearchRequest(request.modes.directMode)) {
-      directRequest.setRoutingContext(router.graph);
+    RoutingRequest directRequest = request.getStreetSearchRequest(request.modes.directMode);
+    try (
+      var temporaryVertices = new TemporaryVerticesContainer(serverContext.graph(), directRequest)
+    ) {
+      RoutingContext routingContext = new RoutingContext(
+        directRequest,
+        serverContext.graph(),
+        temporaryVertices
+      );
 
       // Prepare access/egress transfers
       Collection<NearbyStop> accessStops = AccessEgressRouter.streetSearch(
-              directRequest,
-              StreetMode.WALK,
-              false
+        routingContext,
+        serverContext.transitService(),
+        StreetMode.WALK,
+        false
       );
       Collection<NearbyStop> egressStops = AccessEgressRouter.streetSearch(
-              directRequest,
-              StreetMode.WALK,
-              true
+        routingContext,
+        serverContext.transitService(),
+        StreetMode.WALK,
+        true
       );
 
       FlexRouter flexRouter = new FlexRouter(
-              router.graph,
-              router.routerConfig.flexParameters(request),
-              directRequest.getDateTime(),
-              directRequest.arriveBy,
-              additionalSearchDays.additionalSearchDaysInPast(),
-              additionalSearchDays.additionalSearchDaysInFuture(),
-              accessStops,
-              egressStops
+        serverContext.graph(),
+        serverContext.transitService(),
+        serverContext.routerConfig().flexParameters(request),
+        directRequest.getDateTime(),
+        directRequest.arriveBy,
+        additionalSearchDays.additionalSearchDaysInPast(),
+        additionalSearchDays.additionalSearchDaysInFuture(),
+        accessStops,
+        egressStops
       );
 
       return new ArrayList<>(flexRouter.createFlexOnlyItineraries());

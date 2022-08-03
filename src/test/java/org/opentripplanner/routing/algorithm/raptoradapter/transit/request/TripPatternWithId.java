@@ -1,15 +1,16 @@
 package org.opentripplanner.routing.algorithm.raptoradapter.transit.request;
 
-import org.opentripplanner.model.FeedScopedId;
 import org.opentripplanner.routing.algorithm.raptoradapter.transit.TripPatternWithRaptorStopIndexes;
+import org.opentripplanner.transit.model.framework.FeedScopedId;
 
 public class TripPatternWithId extends TripPatternWithRaptorStopIndexes {
+
   private final FeedScopedId id;
 
   public TripPatternWithId(
-      FeedScopedId id,
-      int[] stopIndexes,
-      org.opentripplanner.model.TripPattern originalTripPattern
+    FeedScopedId id,
+    int[] stopIndexes,
+    org.opentripplanner.model.TripPattern originalTripPattern
   ) {
     super(originalTripPattern, stopIndexes);
     this.id = id;

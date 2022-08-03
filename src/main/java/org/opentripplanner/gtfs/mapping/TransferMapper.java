@@ -6,17 +6,11 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
 import org.onebusaway.gtfs.model.Transfer;
 import org.opentripplanner.graph_builder.DataImportIssueStore;
 import org.opentripplanner.graph_builder.issues.IgnoredGtfsTransfer;
 import org.opentripplanner.graph_builder.issues.InvalidGtfsTransfer;
-import org.opentripplanner.model.Route;
-import org.opentripplanner.model.Station;
-import org.opentripplanner.model.Stop;
-import org.opentripplanner.model.StopLocation;
 import org.opentripplanner.model.StopTime;
-import org.opentripplanner.model.Trip;
 import org.opentripplanner.model.TripStopTimes;
 import org.opentripplanner.model.transfer.ConstrainedTransfer;
 import org.opentripplanner.model.transfer.RouteStationTransferPoint;
@@ -27,9 +21,11 @@ import org.opentripplanner.model.transfer.TransferConstraint;
 import org.opentripplanner.model.transfer.TransferPoint;
 import org.opentripplanner.model.transfer.TransferPriority;
 import org.opentripplanner.model.transfer.TripTransferPoint;
-import org.opentripplanner.util.logging.ThrottleLogger;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.opentripplanner.transit.model.network.Route;
+import org.opentripplanner.transit.model.site.Station;
+import org.opentripplanner.transit.model.site.Stop;
+import org.opentripplanner.transit.model.site.StopLocation;
+import org.opentripplanner.transit.model.timetable.Trip;
 
 /**
  * Responsible for mapping GTFS Transfer into the OTP model.
@@ -38,9 +34,6 @@ import org.slf4j.LoggerFactory;
  * of transfers you want to map.
  */
 class TransferMapper {
-
-  private static final Logger LOG = LoggerFactory.getLogger(TransferMapper.class);
-  private static final Logger FIXED_ROUTE_ERROR = ThrottleLogger.throttle(LOG);
 
   /**
    * This transfer is recommended over other transfers. The routing algorithm should prefer this
@@ -82,7 +75,6 @@ class TransferMapper {
    */
   private static final int STAY_SEATED_NOT_ALLOWED = 5;
 
-
   private final RouteMapper routeMapper;
 
   private final StationMapper stationMapper;
@@ -95,21 +87,23 @@ class TransferMapper {
   private final DataImportIssueStore issueStore;
 
   private final Multimap<Route, Trip> tripsByRoute = ArrayListMultimap.create();
-
+  private final boolean discardMinTransferTimes;
 
   TransferMapper(
-          RouteMapper routeMapper,
-          StationMapper stationMapper,
-          StopMapper stopMapper,
-          TripMapper tripMapper,
-          TripStopTimes stopTimesByTrip,
-          DataImportIssueStore issueStore
+    RouteMapper routeMapper,
+    StationMapper stationMapper,
+    StopMapper stopMapper,
+    TripMapper tripMapper,
+    TripStopTimes stopTimesByTrip,
+    boolean discardMinTransferTimes,
+    DataImportIssueStore issueStore
   ) {
     this.routeMapper = routeMapper;
     this.stationMapper = stationMapper;
     this.stopMapper = stopMapper;
     this.tripMapper = tripMapper;
     this.stopTimesByTrip = stopTimesByTrip;
+    this.discardMinTransferTimes = discardMinTransferTimes;
     this.issueStore = issueStore;
   }
 
@@ -128,32 +122,57 @@ class TransferMapper {
     throw new IllegalArgumentException("Mapping missing for type: " + type);
   }
 
-  Collection<ConstrainedTransfer> map(Collection<org.onebusaway.gtfs.model.Transfer> allTransfers) {
+  TransferMappingResult map(Collection<org.onebusaway.gtfs.model.Transfer> allTransfers) {
     setup(!allTransfers.isEmpty());
 
-    return allTransfers.stream().map(this::map)
-            .filter(Objects::nonNull)
-            .collect(Collectors.toList());
+    List<ConstrainedTransfer> constrainedTransfers = allTransfers
+      .stream()
+      .map(this::map)
+      .filter(Objects::nonNull)
+      .toList();
+
+    List<StaySeatedNotAllowed> staySeatedNotAllowed = allTransfers
+      .stream()
+      .map(this::toStaySeatedNotAllowed)
+      .filter(Objects::nonNull)
+      .toList();
+
+    return new TransferMappingResult(constrainedTransfers, staySeatedNotAllowed);
+  }
+
+  private StaySeatedNotAllowed toStaySeatedNotAllowed(Transfer t) {
+    Trip fromTrip = tripMapper.map(t.getFromTrip());
+    Trip toTrip = tripMapper.map(t.getToTrip());
+    if (t.getTransferType() == STAY_SEATED_NOT_ALLOWED) {
+      return new StaySeatedNotAllowed(fromTrip, toTrip);
+    } else return null;
   }
 
   ConstrainedTransfer map(org.onebusaway.gtfs.model.Transfer rhs) {
     Trip fromTrip = tripMapper.map(rhs.getFromTrip());
     Trip toTrip = tripMapper.map(rhs.getToTrip());
 
-    TransferConstraint constraint = mapConstraint(rhs, fromTrip, toTrip);
+    TransferConstraint constraint = mapConstraint(rhs);
 
     // If this transfer do not give any advantages in the routing, then drop it
-    if(constraint.isRegularTransfer()) {
+    if (constraint.isRegularTransfer()) {
       issueStore.add(new IgnoredGtfsTransfer(rhs));
       return null;
     }
 
     if (constraint.isStaySeated() && (fromTrip == null || toTrip == null)) {
-      issueStore.add(new InvalidGtfsTransfer("from_trip_id and to_trip_id must exist for in-seat transfer", rhs));
+      issueStore.add(
+        new InvalidGtfsTransfer("from_trip_id and to_trip_id must exist for in-seat transfer", rhs)
+      );
       return null;
     }
 
-    TransferPoint fromPoint = mapTransferPoint(rhs.getFromStop(), rhs.getFromRoute(), fromTrip, false);
+    TransferPoint fromPoint = mapTransferPoint(
+      rhs.getFromStop(),
+      rhs.getFromRoute(),
+      fromTrip,
+      false
+    );
     TransferPoint toPoint = mapTransferPoint(rhs.getToStop(), rhs.getToRoute(), toTrip, true);
 
     if (fromPoint == null || toPoint == null) {
@@ -165,29 +184,27 @@ class TransferMapper {
   }
 
   private void setup(boolean run) {
-    if(!run) { return; }
+    if (!run) {
+      return;
+    }
 
     for (Trip trip : tripMapper.getMappedTrips()) {
       tripsByRoute.put(trip.getRoute(), trip);
     }
   }
 
-  private TransferConstraint mapConstraint(Transfer rhs, Trip fromTrip, Trip toTrip) {
+  private TransferConstraint mapConstraint(Transfer rhs) {
     var builder = TransferConstraint.create();
 
     builder.guaranteed(rhs.getTransferType() == GUARANTEED);
 
     // A transfer is stay seated, if it is either explicitly mapped as such, or in the same block
     // and not explicitly disallowed.
-    builder.staySeated(
-            rhs.getTransferType() == STAY_SEATED ||
-            (rhs.getTransferType() != STAY_SEATED_NOT_ALLOWED && sameBlockId(fromTrip, toTrip))
-
-    );
+    builder.staySeated(rhs.getTransferType() == STAY_SEATED);
 
     builder.priority(mapTypeToPriority(rhs.getTransferType()));
 
-    if(rhs.isMinTransferTimeSet()) {
+    if (!discardMinTransferTimes && rhs.isMinTransferTimeSet()) {
       builder.minTransferTime(rhs.getMinTransferTime());
     }
 
@@ -195,10 +212,10 @@ class TransferMapper {
   }
 
   private TransferPoint mapTransferPoint(
-          org.onebusaway.gtfs.model.Stop rhsStopOrStation,
-          org.onebusaway.gtfs.model.Route rhsRoute,
-          Trip trip,
-          boolean boardTrip
+    org.onebusaway.gtfs.model.Stop rhsStopOrStation,
+    org.onebusaway.gtfs.model.Route rhsRoute,
+    Trip trip,
+    boolean boardTrip
   ) {
     Route route = routeMapper.map(rhsRoute);
     Station station = null;
@@ -212,25 +229,24 @@ class TransferMapper {
     // Source: https://developers.google.com/transit/gtfs/reference/transfers-file
 
     if (rhsStopOrStation.getLocationType() == 0) {
-      stop  = stopMapper.map(rhsStopOrStation);
-    }
-    else {
+      stop = stopMapper.map(rhsStopOrStation);
+    } else {
       station = stationMapper.map(rhsStopOrStation);
     }
-    if(trip != null) {
+    if (trip != null) {
       // A trip may visit the same stop twice, but we ignore that and only add the first stop
       // we find. Pattern that start and end at the same stop is supported.
       int stopPositionInPattern = stopPosition(trip, stop, station, boardTrip);
       return stopPositionInPattern < 0 ? null : new TripTransferPoint(trip, stopPositionInPattern);
-    }
-    else if(route != null) {
-      if(stop != null) { return new RouteStopTransferPoint(route, stop); }
-      else if(station != null) { return new RouteStationTransferPoint(route, station); }
-    }
-    else if(stop != null) {
+    } else if (route != null) {
+      if (stop != null) {
+        return new RouteStopTransferPoint(route, stop);
+      } else if (station != null) {
+        return new RouteStationTransferPoint(route, station);
+      }
+    } else if (stop != null) {
       return new StopTransferPoint(stop);
-    }
-    else if(station != null) {
+    } else if (station != null) {
       return new StationTransferPoint(station);
     }
 
@@ -243,18 +259,22 @@ class TransferMapper {
     // We can board at the first stop, but not alight.
     final int firstStopPos = boardTrip ? 0 : 1;
     // We can alight at the last stop, but not board, the lastStopPos is exclusive
-    final int lastStopPos =  stopTimes.size() - (boardTrip ? 1 : 0);
+    final int lastStopPos = stopTimes.size() - (boardTrip ? 1 : 0);
 
     Predicate<StopLocation> stopMatches = station != null
-            ? (s) -> (s instanceof Stop && ((Stop)s).getParentStation() == station)
-            : (s) -> s == stop;
+      ? s -> (s instanceof Stop && ((Stop) s).getParentStation() == station)
+      : s -> s == stop;
 
     for (int i = firstStopPos; i < lastStopPos; i++) {
       StopTime stopTime = stopTimes.get(i);
-      if(boardTrip && stopTime.getPickupType().isNotRoutable()) { continue; }
-      if(!boardTrip && stopTime.getDropOffType().isNotRoutable()) { continue; }
+      if (boardTrip && stopTime.getPickupType().isNotRoutable()) {
+        continue;
+      }
+      if (!boardTrip && stopTime.getDropOffType().isNotRoutable()) {
+        continue;
+      }
 
-      if(stopMatches.test(stopTime.getStop())) {
+      if (stopMatches.test(stopTime.getStop())) {
         return i;
       }
     }
@@ -265,6 +285,6 @@ class TransferMapper {
     if (a == null || b == null) {
       return false;
     }
-    return a.getBlockId() != null && a.getBlockId().equals(b.getBlockId());
+    return a.getGtfsBlockId() != null && a.getGtfsBlockId().equals(b.getGtfsBlockId());
   }
 }

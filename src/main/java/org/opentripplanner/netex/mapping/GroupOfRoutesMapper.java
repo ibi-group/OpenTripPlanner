@@ -1,9 +1,7 @@
 package org.opentripplanner.netex.mapping;
 
-
-import org.opentripplanner.model.FeedScopedId;
-import org.opentripplanner.model.GroupOfRoutes;
 import org.opentripplanner.netex.mapping.support.FeedScopedIdFactory;
+import org.opentripplanner.transit.model.network.GroupOfRoutes;
 import org.rutebanken.netex.model.GroupOfLines;
 
 /**
@@ -11,37 +9,25 @@ import org.rutebanken.netex.model.GroupOfLines;
  */
 public class GroupOfRoutesMapper {
 
-    private final FeedScopedIdFactory idFactory;
+  private final FeedScopedIdFactory idFactory;
 
-    public GroupOfRoutesMapper(FeedScopedIdFactory idFactory) {
-        this.idFactory = idFactory;
-    }
+  public GroupOfRoutesMapper(FeedScopedIdFactory idFactory) {
+    this.idFactory = idFactory;
+  }
 
-    /**
-     * Convert NeTEx GroupOfLines Entity into OTP model.
-     *
-     * @param groupOfLines NeTEx GroupOfLines entity.
-     * @return OTP GroupOfRoutes model
-     */
-    public GroupOfRoutes mapGroupOfRoutes(GroupOfLines groupOfLines) {
-        final FeedScopedId id = idFactory.createId(groupOfLines.getId());
-
-        final String privateCode = groupOfLines.getPrivateCode() != null ?
-                groupOfLines.getPrivateCode().getValue()
-                : null;
-
-        final String shortName = groupOfLines.getShortName() != null ?
-                groupOfLines.getShortName().getValue()
-                : null;
-
-        final String name = groupOfLines.getName() != null ?
-                groupOfLines.getName().getValue()
-                : null;
-
-        final String description = groupOfLines.getDescription() != null ?
-                groupOfLines.getDescription().getValue()
-                : null;
-
-        return new GroupOfRoutes(id, privateCode, shortName, name, description);
-    }
+  /**
+   * Convert NeTEx GroupOfLines Entity into OTP model.
+   *
+   * @param gol NeTEx GroupOfLines entity.
+   * @return OTP GroupOfRoutes model
+   */
+  public GroupOfRoutes mapGroupOfRoutes(GroupOfLines gol) {
+    return GroupOfRoutes
+      .of(idFactory.createId(gol.getId()))
+      .withPrivateCode(gol.getPrivateCode() != null ? gol.getPrivateCode().getValue() : null)
+      .withShortName(MultilingualStringMapper.nullableValueOf(gol.getShortName()))
+      .withName(MultilingualStringMapper.nullableValueOf(gol.getName()))
+      .withDescription(MultilingualStringMapper.nullableValueOf(gol.getDescription()))
+      .build();
+  }
 }

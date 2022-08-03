@@ -1,12 +1,12 @@
 package org.opentripplanner.ext.dataoverlay;
 
-
 import java.util.HashMap;
 import org.opentripplanner.ext.dataoverlay.configuration.DataOverlayParameterBindings;
 import org.opentripplanner.ext.dataoverlay.configuration.TimeUnit;
 import org.opentripplanner.graph_builder.DataImportIssueStore;
 import org.opentripplanner.graph_builder.services.GraphBuilderModule;
 import org.opentripplanner.routing.graph.Graph;
+import org.opentripplanner.transit.service.TransitModel;
 
 /**
  * This class allows updating the graph with the grid data from generic .nc file in accordance with
@@ -16,39 +16,42 @@ import org.opentripplanner.routing.graph.Graph;
  */
 public class EdgeUpdaterModule implements GraphBuilderModule {
 
-    private final GenericDataFile dataFile;
-    private final TimeUnit timeFormat;
-    private final DataOverlayParameterBindings parameterBindings;
+  private final GenericDataFile dataFile;
+  private final TimeUnit timeFormat;
+  private final DataOverlayParameterBindings parameterBindings;
 
-    /**
-     * Sets the generic grid data file
-     */
-    public EdgeUpdaterModule(
-            GenericDataFile dataFile,
-            TimeUnit timeFormat,
-            DataOverlayParameterBindings parameterBindings
-    ) {
-        this.dataFile = dataFile;
-        this.timeFormat = timeFormat;
-        this.parameterBindings = parameterBindings;
-    }
+  /**
+   * Sets the generic grid data file
+   */
+  public EdgeUpdaterModule(
+    GenericDataFile dataFile,
+    TimeUnit timeFormat,
+    DataOverlayParameterBindings parameterBindings
+  ) {
+    this.dataFile = dataFile;
+    this.timeFormat = timeFormat;
+    this.parameterBindings = parameterBindings;
+  }
 
-    @Override
-    public void buildGraph(
-            Graph graph,
-            HashMap<Class<?>, Object> extra,
-            DataImportIssueStore issueStore
-    ) {
-        GenericEdgeUpdater genericEdgeUpdater = new GenericEdgeUpdater(
-                dataFile, timeFormat, graph.getStreetEdges()
-        );
-        genericEdgeUpdater.updateEdges();
-        // The bindings are needed to build the request context when routing
-        graph.dataOverlayParameterBindings = this.parameterBindings;
-    }
+  @Override
+  public void buildGraph(
+    Graph graph,
+    TransitModel transitModel,
+    HashMap<Class<?>, Object> extra,
+    DataImportIssueStore issueStore
+  ) {
+    GenericEdgeUpdater genericEdgeUpdater = new GenericEdgeUpdater(
+      dataFile,
+      timeFormat,
+      graph.getStreetEdges()
+    );
+    genericEdgeUpdater.updateEdges();
+    // The bindings are needed to build the request context when routing
+    graph.dataOverlayParameterBindings = this.parameterBindings;
+  }
 
-    @Override
-    public void checkInputs() {
-        //nothing
-    }
+  @Override
+  public void checkInputs() {
+    //nothing
+  }
 }

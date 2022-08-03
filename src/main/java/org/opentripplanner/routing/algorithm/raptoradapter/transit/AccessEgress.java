@@ -1,16 +1,16 @@
 package org.opentripplanner.routing.algorithm.raptoradapter.transit;
 
-import org.opentripplanner.model.base.ToStringBuilder;
 import org.opentripplanner.routing.algorithm.raptoradapter.transit.cost.RaptorCostConverter;
 import org.opentripplanner.routing.core.State;
 import org.opentripplanner.transit.raptor.api.transit.RaptorTransfer;
+import org.opentripplanner.util.lang.ToStringBuilder;
 
 public class AccessEgress implements RaptorTransfer {
 
   /**
    * "To stop" in the case of access, "from stop" in the case of egress.
    */
-  private int toFromStop;
+  private final int toFromStop;
 
   private final int durationInSeconds;
 
@@ -43,6 +43,11 @@ public class AccessEgress implements RaptorTransfer {
     return durationInSeconds;
   }
 
+  @Override
+  public boolean hasOpeningHours() {
+    return false;
+  }
+
   public State getLastState() {
     return lastState;
   }
@@ -50,9 +55,9 @@ public class AccessEgress implements RaptorTransfer {
   @Override
   public String toString() {
     return ToStringBuilder
-        .of(AccessEgress.class)
-        .addStr("transfer", asString())
-        .addObj("state", lastState)
-        .toString();
+      .of(AccessEgress.class)
+      .addStr("transfer", asString())
+      .addObj("state", lastState)
+      .toString();
   }
 }

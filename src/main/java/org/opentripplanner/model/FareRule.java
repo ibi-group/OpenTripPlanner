@@ -2,76 +2,71 @@
 package org.opentripplanner.model;
 
 import java.io.Serializable;
+import org.opentripplanner.transit.model.framework.TransitEntity;
+import org.opentripplanner.transit.model.network.Route;
+import org.opentripplanner.util.lang.ToStringBuilder;
 
 public final class FareRule implements Serializable {
 
-    private static final long serialVersionUID = 1L;
+  private static final long serialVersionUID = 1L;
 
-    private FareAttribute fare;
+  private FareAttribute fare;
 
-    private Route route;
+  private Route route;
 
-    private String originId;
+  private String originId;
 
-    private String destinationId;
+  private String destinationId;
 
-    private String containsId;
+  private String containsId;
 
-    public FareAttribute getFare() {
-        return fare;
-    }
+  public FareAttribute getFare() {
+    return fare;
+  }
 
-    public void setFare(FareAttribute fare) {
-        this.fare = fare;
-    }
+  public void setFare(FareAttribute fare) {
+    this.fare = fare;
+  }
 
-    public Route getRoute() {
-        return route;
-    }
+  public Route getRoute() {
+    return route;
+  }
 
-    public void setRoute(Route route) {
-        this.route = route;
-    }
+  public void setRoute(Route route) {
+    this.route = route;
+  }
 
-    public String getOriginId() {
-        return originId;
-    }
+  public String getOriginId() {
+    return originId;
+  }
 
-    public void setOriginId(String originId) {
-        this.originId = originId;
-    }
+  public void setOriginId(String originId) {
+    this.originId = originId;
+  }
 
-    public String getDestinationId() {
-        return destinationId;
-    }
+  public String getDestinationId() {
+    return destinationId;
+  }
 
-    public void setDestinationId(String destinationId) {
-        this.destinationId = destinationId;
-    }
+  public void setDestinationId(String destinationId) {
+    this.destinationId = destinationId;
+  }
 
-    public String getContainsId() {
-        return containsId;
-    }
+  public String getContainsId() {
+    return containsId;
+  }
 
-    public void setContainsId(String containsId) {
-        this.containsId = containsId;
-    }
+  public void setContainsId(String containsId) {
+    this.containsId = containsId;
+  }
 
-    public String toString() {
-        return "<FareRule "
-                + toStrOpt(" route=", route)
-                + toStrOpt(" origin=", originId)
-                + toStrOpt(" contains=", containsId)
-                + toStrOpt(" destination=", destinationId)
-                + ">";
-    }
-
-
-    private static String toStrOpt(String lbl, TransitEntity arg) {
-        return (arg == null ? "" : lbl + arg.getId());
-    }
-
-    private static String toStrOpt(String lbl, String arg) {
-        return (arg == null ? "" : lbl + '\'' + arg + '\'');
-    }
+  public String toString() {
+    return ToStringBuilder
+      .of(FareRule.class)
+      .addObjOp("route", route, TransitEntity::getId)
+      .addObj("originId", originId)
+      .addObj("containsId", containsId)
+      .addObj("destinationId", destinationId)
+      .toString();
+  }
 }
