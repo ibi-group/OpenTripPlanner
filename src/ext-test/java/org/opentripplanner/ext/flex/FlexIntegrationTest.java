@@ -12,7 +12,6 @@ import static org.opentripplanner.routing.core.TraverseMode.WALK;
 import java.io.File;
 import java.net.URISyntaxException;
 import java.time.Duration;
-import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Map;
@@ -41,9 +40,9 @@ import org.opentripplanner.util.OTPFeature;
  */
 public class FlexIntegrationTest {
 
-  static Instant dateTime = ZonedDateTime
-    .parse("2021-12-02T12:00:00-05:00[America/New_York]")
-    .toInstant();
+  static ZonedDateTime dateTime = ZonedDateTime.parse(
+    "2021-12-02T12:00:00-05:00[America/New_York]"
+  );
 
   static Graph graph;
 
@@ -103,6 +102,40 @@ public class FlexIntegrationTest {
   }
 
   @Test
+  void shouldReturnARouteTransferringFromBusToFlexNorth() {
+    var from = new GenericLocation(33.89050998115993, -84.57704544067383);
+    var nearPublix = new GenericLocation(33.86569409857577, -84.67388391494752);
+
+    var tenAm = ZonedDateTime.parse("2021-12-02T12:00:00-05:00[America/New_York]");
+
+    var itin = getItinerary(tenAm, from, nearPublix, 1, false);
+
+    assertTrue(itin.getGeneralizedCost() > 0, "Generalized cost must be greater than zero");
+
+    //assertEquals(4, itin.getLegs().size());
+
+    var walkToBus = itin.getLegs().get(0);
+    assertEquals(TraverseMode.WALK, walkToBus.getMode());
+
+    var bus = itin.getLegs().get(1);
+    assertEquals(BUS, bus.getMode());
+    assertEquals("30", bus.getRoute().getShortName());
+
+    var transfer = itin.getLegs().get(2);
+    assertEquals(TraverseMode.WALK, transfer.getMode());
+
+    var flex = itin.getLegs().get(3);
+    assertEquals(BUS, flex.getMode());
+    assertEquals("Zone 1", flex.getRoute().getShortName());
+    assertTrue(flex.isFlexibleTrip());
+    assertEquals(
+      "corner of Hospital South Drive Southwest and service road (part of Flex Zone 1)",
+      flex.getFrom().name.toString()
+    );
+    assertEquals("Destination (part of Flex Zone 1)", flex.getTo().name.toString());
+  }
+
+  @Test
   void shouldReturnARouteWithTwoTransfers() {
     var from = GenericLocation.fromStopId("ALEX DR@ALEX WAY", "MARTA", "97266");
     var to = new GenericLocation(33.86701256815635, -84.61787939071655);
@@ -159,11 +192,6 @@ public class FlexIntegrationTest {
     assertEquals("2021-12-02T13:00-05:00[America/New_York]", flex.getStartTime().toString());
   }
 
-  @AfterAll
-  static void teardown() {
-    OTPFeature.enableFeatures(Map.of(OTPFeature.FlexRouting, false));
-  }
-
   private static String getAbsolutePath(String cobbOsm) {
     try {
       return getFileForResource(cobbOsm).getAbsolutePath();
@@ -211,7 +239,7 @@ public class FlexIntegrationTest {
   }
 
   private Itinerary getItinerary(GenericLocation from, GenericLocation to, int index) {
-    return getItinerary(from, to, index, false);
+    return getItinerary(dateTime, from, to, index, false);
   }
 
   private Itinerary getItinerary(
@@ -220,8 +248,18 @@ public class FlexIntegrationTest {
     int index,
     boolean onlyDirect
   ) {
+    return getItinerary(dateTime, from, to, index, onlyDirect);
+  }
+
+  private Itinerary getItinerary(
+    ZonedDateTime time,
+    GenericLocation from,
+    GenericLocation to,
+    int index,
+    boolean onlyDirect
+  ) {
     RoutingRequest request = new RoutingRequest();
-    request.setDateTime(dateTime);
+    request.setDateTime(time.toInstant());
     request.from = from;
     request.to = to;
     request.numItineraries = 10;
