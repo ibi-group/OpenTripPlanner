@@ -8,6 +8,7 @@ import org.opentripplanner.routing.edgetype.StreetTraversalPermission;
 
 /**
  * OSM way properties for the Houston, Texas, USA area.
+ * <p>
  * The differences compared to the default property set are:
  * 1. In Houston we want to disallow usage of downtown pedestrian tunnel system.
  *
@@ -25,7 +26,10 @@ public class HoustonWayPropertySetSource implements WayPropertySetSource {
     // Replace existing matching properties as the logic is that the first statement registered takes precedence over later statements
 
     // Disallow any use of underground indoor pedestrian tunnels
-    props.setProperties("highway=footway;layer=-1;tunnel=yes;indoor=yes", StreetTraversalPermission.NONE);
+    props.setProperties(
+      "highway=footway;layer=-1;tunnel=yes;indoor=yes",
+      StreetTraversalPermission.NONE
+    );
 
     // Read the rest from the default set
     new DefaultWayPropertySetSource().populateProperties(props);
