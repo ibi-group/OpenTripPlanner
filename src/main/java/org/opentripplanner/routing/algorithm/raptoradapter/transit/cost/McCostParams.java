@@ -1,13 +1,12 @@
 package org.opentripplanner.routing.algorithm.raptoradapter.transit.cost;
 
+import java.util.BitSet;
 import java.util.Objects;
-import java.util.Set;
 import java.util.function.DoubleFunction;
 import javax.annotation.Nullable;
 import org.opentripplanner.routing.api.request.RequestFunctions;
-import org.opentripplanner.routing.api.request.RoutingRequest;
-import org.opentripplanner.routing.api.request.WheelchairAccessibilityRequest;
-import org.opentripplanner.transit.model.framework.FeedScopedId;
+import org.opentripplanner.routing.api.request.RouteRequest;
+import org.opentripplanner.routing.api.request.preference.WheelchairAccessibilityPreferences;
 import org.opentripplanner.transit.raptor.api.transit.RaptorTripSchedule;
 import org.opentripplanner.util.lang.ToStringBuilder;
 
@@ -25,21 +24,23 @@ public class McCostParams {
   private final int transferCost;
   private final double[] transitReluctanceFactors;
   private final double waitReluctanceFactor;
-  private final WheelchairAccessibilityRequest accessibilityRequest;
-  private final Set<FeedScopedId> unpreferredRoutes;
+  private final boolean wheelchairEnabled;
+  private final WheelchairAccessibilityPreferences accessibilityRequest;
+  private final BitSet unpreferredPatterns;
   private final DoubleFunction<Double> unpreferredCost;
 
   /**
    * Default constructor defines default values. These defaults are overridden by defaults in the
-   * {@link RoutingRequest}.
+   * {@link RouteRequest}.
    */
   private McCostParams() {
     this.boardCost = 600;
     this.transferCost = 0;
     this.transitReluctanceFactors = null;
     this.waitReluctanceFactor = 1.0;
-    this.accessibilityRequest = WheelchairAccessibilityRequest.DEFAULT;
-    this.unpreferredRoutes = Set.of();
+    this.wheelchairEnabled = false;
+    this.accessibilityRequest = WheelchairAccessibilityPreferences.DEFAULT;
+    this.unpreferredPatterns = new BitSet();
     this.unpreferredCost = RequestFunctions.createLinearFunction(0.0, DEFAULT_TRANSIT_RELUCTANCE);
   }
 
@@ -48,8 +49,9 @@ public class McCostParams {
     this.transferCost = builder.transferCost();
     this.transitReluctanceFactors = builder.transitReluctanceFactors();
     this.waitReluctanceFactor = builder.waitReluctanceFactor();
+    this.wheelchairEnabled = builder.wheelchairEnabled();
     this.accessibilityRequest = builder.wheelchairAccessibility();
-    this.unpreferredRoutes = builder.unpreferredRoutes();
+    this.unpreferredPatterns = builder.unpreferredPatterns();
     this.unpreferredCost = builder.unpreferredCost();
   }
 
@@ -81,12 +83,16 @@ public class McCostParams {
     return waitReluctanceFactor;
   }
 
-  public WheelchairAccessibilityRequest accessibilityRequirements() {
+  public boolean wheelchairEnabled() {
+    return wheelchairEnabled;
+  }
+
+  public WheelchairAccessibilityPreferences accessibilityRequirements() {
     return accessibilityRequest;
   }
 
-  public Set<FeedScopedId> unpreferredRoutes() {
-    return unpreferredRoutes;
+  public BitSet unpreferredPatterns() {
+    return unpreferredPatterns;
   }
 
   public DoubleFunction<Double> unnpreferredCost() {
@@ -122,7 +128,7 @@ public class McCostParams {
       .addNum("transferCost", transferCost, 0)
       .addNum("waitReluctanceFactor", waitReluctanceFactor, 1.0)
       .addDoubles("transitReluctanceFactors", transitReluctanceFactors, 1.0)
-      .addNum("routePenaltiesSize", unpreferredRoutes.size(), 0)
+      .addNum("unpreferredPatternsSize", unpreferredPatterns.size(), 0)
       .toString();
   }
 }

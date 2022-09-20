@@ -1,6 +1,7 @@
 package org.opentripplanner.ext.legacygraphqlapi;
 
 import graphql.schema.DataFetchingEnvironment;
+import java.time.Instant;
 import java.util.Locale;
 import java.util.Map;
 import org.opentripplanner.ext.legacygraphqlapi.generated.LegacyGraphQLTypes.LegacyGraphQLFilterPlaceType;
@@ -93,5 +94,20 @@ public class LegacyGraphQLUtils {
       case DEPARTURE_ROW -> PlaceType.PATTERN_AT_STOP;
       case STOP -> PlaceType.STOP;
     };
+  }
+
+  /**
+   * Convert the UNIX timestamp into an Instant, or return the current time if set to zero.
+   */
+  public static Instant getTimeOrNow(long epochSeconds) {
+    return epochSeconds != 0 ? Instant.ofEpochSecond(epochSeconds) : Instant.now();
+  }
+
+  public static boolean startsWith(String str, String name, Locale locale) {
+    return str != null && str.toLowerCase(locale).startsWith(name);
+  }
+
+  public static boolean startsWith(I18NString str, String name, Locale locale) {
+    return str != null && str.toString(locale).toLowerCase(locale).startsWith(name);
   }
 }

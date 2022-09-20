@@ -10,17 +10,17 @@ public class CostCalculatorFactory {
   ) {
     CostCalculator<T> calculator = new DefaultCostCalculator<>(mcCostParams, stopBoardAlightCosts);
 
-    if (mcCostParams.accessibilityRequirements().enabled()) {
+    if (mcCostParams.wheelchairEnabled()) {
       calculator =
         new WheelchairCostCalculator<>(calculator, mcCostParams.accessibilityRequirements());
     }
 
     // append RouteCostCalculator to calculator stack if (un)preferred routes exist
-    if (!mcCostParams.unpreferredRoutes().isEmpty()) {
+    if (!mcCostParams.unpreferredPatterns().isEmpty()) {
       calculator =
-        new RouteCostCalculator(
+        new PatternCostCalculator<>(
           calculator,
-          mcCostParams.unpreferredRoutes(),
+          mcCostParams.unpreferredPatterns(),
           mcCostParams.unnpreferredCost()
         );
     }

@@ -1,9 +1,8 @@
 package org.opentripplanner.routing.algorithm.raptoradapter.transit.cost;
 
-import java.util.Set;
+import java.util.BitSet;
 import java.util.function.DoubleFunction;
-import org.opentripplanner.routing.api.request.WheelchairAccessibilityRequest;
-import org.opentripplanner.transit.model.framework.FeedScopedId;
+import org.opentripplanner.routing.api.request.preference.WheelchairAccessibilityPreferences;
 
 /**
  * Mutable version of the {@link McCostParams}.
@@ -15,8 +14,9 @@ public class McCostParamsBuilder {
   private int transferCost;
   private double[] transitReluctanceFactors;
   private double waitReluctanceFactor;
-  private WheelchairAccessibilityRequest accessibilityRequest;
-  private Set<FeedScopedId> unpreferredRoutes;
+  private boolean wheelchairEnabled;
+  private WheelchairAccessibilityPreferences accessibilityRequest;
+  private BitSet unpreferredPatterns;
   private DoubleFunction<Double> unpreferredCost;
 
   public McCostParamsBuilder() {
@@ -28,8 +28,9 @@ public class McCostParamsBuilder {
     this.transferCost = other.transferCost();
     this.transitReluctanceFactors = other.transitReluctanceFactors();
     this.waitReluctanceFactor = other.waitReluctanceFactor();
+    this.wheelchairEnabled = other.wheelchairEnabled();
     this.accessibilityRequest = other.accessibilityRequirements();
-    this.unpreferredRoutes = other.unpreferredRoutes();
+    this.unpreferredPatterns = other.unpreferredPatterns();
   }
 
   public int boardCost() {
@@ -68,21 +69,30 @@ public class McCostParamsBuilder {
     return this;
   }
 
-  public WheelchairAccessibilityRequest wheelchairAccessibility() {
+  public boolean wheelchairEnabled() {
+    return wheelchairEnabled;
+  }
+
+  public WheelchairAccessibilityPreferences wheelchairAccessibility() {
     return accessibilityRequest;
   }
 
-  public McCostParamsBuilder wheelchairAccessibility(WheelchairAccessibilityRequest mode) {
+  public McCostParamsBuilder wheelchairEnabled(boolean wheelchairEnabled) {
+    this.wheelchairEnabled = wheelchairEnabled;
+    return this;
+  }
+
+  public McCostParamsBuilder wheelchairAccessibility(WheelchairAccessibilityPreferences mode) {
     accessibilityRequest = mode;
     return this;
   }
 
-  public Set<FeedScopedId> unpreferredRoutes() {
-    return unpreferredRoutes;
+  public BitSet unpreferredPatterns() {
+    return unpreferredPatterns;
   }
 
-  public McCostParamsBuilder unpreferredRoutes(Set<FeedScopedId> routes) {
-    this.unpreferredRoutes = routes;
+  public McCostParamsBuilder unpreferredPatterns(BitSet patterns) {
+    this.unpreferredPatterns = patterns;
     return this;
   }
 
