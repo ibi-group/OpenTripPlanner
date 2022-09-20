@@ -417,6 +417,20 @@ public class NodeAdapterTest {
     assertFalse(subject.path("missing").isNonEmptyArray());
   }
 
+  @Test
+  public void shouldFindUnusedParams() {
+    NodeAdapter subject = newNodeAdapterForTest("{ foo : { enabled: true } }");
+    assertEquals(List.of("foo:{\"enabled\":true}"), subject.unusedParams());
+  }
+
+  @Test
+  public void deduplicateChildren() {
+    NodeAdapter subject = newNodeAdapterForTest("{ foo : { enabled: true } }");
+    subject.path("foo");
+    subject.path("foo").asBoolean("enabled", false);
+    assertEquals(List.of(), subject.unusedParams());
+  }
+
   private enum AnEnum {
     A,
     B,

@@ -64,13 +64,13 @@ public class NodeAdapter {
    * This parameter is used internally in this class to be able to produce a list of parameters
    * which is NOT requested.
    */
-  private final List<String> parameterNames = new ArrayList<>();
+  private final Set<String> parameterNames = new HashSet<>();
 
   /**
    * The collection of children is used to be able to produce a list of unused parameters for all
    * children.
    */
-  private final List<NodeAdapter> children = new ArrayList<>();
+  private final Map<String, NodeAdapter> children = new HashMap<>();
 
   public NodeAdapter(@Nonnull JsonNode node, String source) {
     this(node, source, null);
@@ -93,7 +93,7 @@ public class NodeAdapter {
     for (JsonNode node : json) {
       String pName = "[" + i + "]";
       NodeAdapter child = new NodeAdapter(node, source, fullPath(pName));
-      children.add(child);
+      children.put(pName, child);
       result.add(child);
       ++i;
     }
@@ -121,7 +121,7 @@ public class NodeAdapter {
 
     if (!child.isEmpty()) {
       parameterNames.add(paramName);
-      children.add(child);
+      children.put(paramName, child);
     }
     return child;
   }
@@ -564,7 +564,7 @@ public class NodeAdapter {
    * This method list all unused parameters(full path), also nested ones. It uses recursion to get
    * child nodes.
    */
-  private List<String> unusedParams() {
+  protected List<String> unusedParams() {
     List<String> unusedParams = new ArrayList<>();
     Iterator<String> it = json.fieldNames();
 
@@ -575,7 +575,7 @@ public class NodeAdapter {
       }
     }
 
-    for (NodeAdapter c : children) {
+    for (var c : children.values()) {
       // Recursive call to get child unused parameters
       unusedParams.addAll(c.unusedParams());
     }
