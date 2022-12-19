@@ -4,6 +4,7 @@ import static java.util.stream.Collectors.toList;
 
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Multimap;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -12,18 +13,17 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
-import org.opentripplanner.common.model.T2;
-import org.opentripplanner.graph_builder.DataImportIssueStore;
-import org.opentripplanner.graph_builder.Issue;
+import org.opentripplanner.graph_builder.issue.api.DataImportIssueStore;
+import org.opentripplanner.graph_builder.issue.api.Issue;
 import org.opentripplanner.netex.index.api.ReadOnlyHierarchicalVersionMapById;
 import org.opentripplanner.netex.issues.StopPlaceWithoutQuays;
 import org.opentripplanner.netex.mapping.support.FeedScopedIdFactory;
+import org.opentripplanner.netex.mapping.support.NetexMainAndSubMode;
 import org.opentripplanner.netex.mapping.support.StopPlaceVersionAndValidityComparator;
-import org.opentripplanner.transit.model.basic.TransitMode;
-import org.opentripplanner.transit.model.basic.WheelchairAccessibility;
+import org.opentripplanner.transit.model.basic.Accessibility;
 import org.opentripplanner.transit.model.site.FareZone;
+import org.opentripplanner.transit.model.site.RegularStop;
 import org.opentripplanner.transit.model.site.Station;
-import org.opentripplanner.transit.model.site.Stop;
 import org.rutebanken.netex.model.Quay;
 import org.rutebanken.netex.model.Quays_RelStructure;
 import org.rutebanken.netex.model.StopPlace;
@@ -47,7 +47,7 @@ class StopAndStationMapper {
 
   private final ReadOnlyHierarchicalVersionMapById<Quay> quayIndex;
   private final StationMapper stationMapper;
-  private final StopMapper stopMapper;
+  private final QuayMapper quayMapper;
   private final TariffZoneMapper tariffZoneMapper;
   private final StopPlaceTypeMapper stopPlaceTypeMapper = new StopPlaceTypeMapper();
   private final DataImportIssueStore issueStore;
@@ -57,7 +57,7 @@ class StopAndStationMapper {
    */
   private final Set<String> quaysAlreadyProcessed = new HashSet<>();
 
-  final List<Stop> resultStops = new ArrayList<>();
+  final List<RegularStop> resultStops = new ArrayList<>();
   final List<Station> resultStations = new ArrayList<>();
   final Multimap<String, Station> resultStationByMultiModalStationRfs = ArrayListMultimap.create();
 
@@ -65,10 +65,13 @@ class StopAndStationMapper {
     FeedScopedIdFactory idFactory,
     ReadOnlyHierarchicalVersionMapById<Quay> quayIndex,
     TariffZoneMapper tariffZoneMapper,
-    DataImportIssueStore issueStore
+    ZoneId defaultTimeZone,
+    DataImportIssueStore issueStore,
+    boolean noTransfersOnIsolatedStops
   ) {
-    this.stationMapper = new StationMapper(issueStore, idFactory);
-    this.stopMapper = new StopMapper(idFactory, issueStore);
+    this.stationMapper =
+      new StationMapper(issueStore, idFactory, defaultTimeZone, noTransfersOnIsolatedStops);
+    this.quayMapper = new QuayMapper(idFactory, issueStore);
     this.tariffZoneMapper = tariffZoneMapper;
     this.quayIndex = quayIndex;
     this.issueStore = issueStore;
@@ -86,7 +89,7 @@ class StopAndStationMapper {
 
     Station station = mapStopPlaceAllVersionsToStation(selectedStopPlace);
     Collection<FareZone> fareZones = mapTariffZones(selectedStopPlace);
-    T2<TransitMode, String> transitMode = stopPlaceTypeMapper.map(selectedStopPlace);
+    var transitMode = stopPlaceTypeMapper.map(selectedStopPlace);
 
     // Loop through all versions of the StopPlace in order to collect all quays, even if they
     // were deleted in never versions of the StopPlace
@@ -158,7 +161,7 @@ class StopAndStationMapper {
     Quay quay,
     Station station,
     Collection<FareZone> fareZones,
-    T2<TransitMode, String> transitMode,
+    NetexMainAndSubMode transitMode,
     StopPlace stopPlace
   ) {
     // TODO OTP2 - This assumption is only valid because Norway have a
@@ -174,7 +177,7 @@ class StopAndStationMapper {
 
     var wheelchair = wheelchairAccessibilityFromQuay(quay, stopPlace);
 
-    Stop stop = stopMapper.mapQuayToStop(quay, station, fareZones, transitMode, wheelchair);
+    RegularStop stop = quayMapper.mapQuayToStop(quay, station, fareZones, transitMode, wheelchair);
     if (stop == null) {
       return;
     }
@@ -222,14 +225,14 @@ class StopAndStationMapper {
    * @param stopPlace Parent StopPlace for given Quay
    * @return not null value with default NO_INFORMATION if nothing defined in quay or parentStation.
    */
-  private WheelchairAccessibility wheelchairAccessibilityFromQuay(Quay quay, StopPlace stopPlace) {
-    var defaultWheelChairBoarding = WheelchairAccessibility.NO_INFORMATION;
+  private Accessibility wheelchairAccessibilityFromQuay(Quay quay, StopPlace stopPlace) {
+    var defaultWheelChairBoarding = Accessibility.NO_INFORMATION;
 
     if (stopPlace != null) {
       defaultWheelChairBoarding =
         WheelChairMapper.wheelchairAccessibility(
           stopPlace.getAccessibilityAssessment(),
-          WheelchairAccessibility.NO_INFORMATION
+          Accessibility.NO_INFORMATION
         );
     }
 

@@ -1,27 +1,32 @@
 package org.opentripplanner.graph_builder.module;
 
 import java.io.File;
-import java.util.HashMap;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.opentripplanner.ConstantsForTests;
-import org.opentripplanner.graph_builder.module.osm.DefaultWayPropertySetSource;
+import org.opentripplanner.graph_builder.issue.api.DataImportIssueStore;
 import org.opentripplanner.graph_builder.module.osm.OpenStreetMapModule;
 import org.opentripplanner.graph_builder.services.osm.CustomNamer;
 import org.opentripplanner.openstreetmap.OpenStreetMapProvider;
 import org.opentripplanner.openstreetmap.model.OSMWithTags;
-import org.opentripplanner.routing.edgetype.StreetEdge;
 import org.opentripplanner.routing.graph.Graph;
-import org.opentripplanner.routing.trippattern.Deduplicator;
+import org.opentripplanner.street.model.edge.StreetEdge;
+import org.opentripplanner.transit.model.framework.Deduplicator;
 import org.opentripplanner.transit.service.StopModel;
 import org.opentripplanner.transit.service.TransitModel;
 
 public class PruneNoThruIslandsTest {
 
   private static Graph graph;
+
+  @BeforeAll
+  static void setup() {
+    graph = buildOsmGraph(ConstantsForTests.ISLAND_PRUNE_OSM);
+  }
 
   @Test
   public void bicycleNoThruIslandsBecomeNoThru() {
@@ -61,22 +66,21 @@ public class PruneNoThruIslandsTest {
     );
   }
 
-  @BeforeAll
-  static void setup() {
-    graph = buildOsmGraph(ConstantsForTests.ISLAND_PRUNE_OSM);
-  }
-
   private static Graph buildOsmGraph(String osmPath) {
     try {
       var deduplicator = new Deduplicator();
-      var stopModel = new StopModel();
-      var graph = new Graph(stopModel, deduplicator);
-      var transitModel = new TransitModel(stopModel, deduplicator);
+      var graph = new Graph(deduplicator);
+      var transitModel = new TransitModel(new StopModel(), deduplicator);
       // Add street data from OSM
       File osmFile = new File(osmPath);
       OpenStreetMapProvider osmProvider = new OpenStreetMapProvider(osmFile, true);
-      OpenStreetMapModule osmModule = new OpenStreetMapModule(osmProvider);
-      osmModule.setDefaultWayPropertySetSource(new DefaultWayPropertySetSource());
+      OpenStreetMapModule osmModule = new OpenStreetMapModule(
+        List.of(osmProvider),
+        Set.of(),
+        graph,
+        DataImportIssueStore.NOOP,
+        false
+      );
       osmModule.customNamer =
         new CustomNamer() {
           @Override
@@ -93,13 +97,21 @@ public class PruneNoThruIslandsTest {
           @Override
           public void configure() {}
         };
-      osmModule.skipVisibility = true;
-      osmModule.buildGraph(graph, transitModel, new HashMap<>());
+      osmModule.buildGraph();
+
+      transitModel.index();
+      graph.index(transitModel.getStopModel());
+
       // Prune floating islands and set noThru where necessary
-      PruneNoThruIslands pruneNoThruIslands = new PruneNoThruIslands(null);
+      PruneNoThruIslands pruneNoThruIslands = new PruneNoThruIslands(
+        graph,
+        transitModel,
+        DataImportIssueStore.NOOP,
+        null
+      );
       pruneNoThruIslands.setPruningThresholdIslandWithoutStops(40);
       pruneNoThruIslands.setPruningThresholdIslandWithStops(5);
-      pruneNoThruIslands.buildGraph(graph, transitModel, new HashMap<>());
+      pruneNoThruIslands.buildGraph();
 
       return graph;
     } catch (Exception e) {

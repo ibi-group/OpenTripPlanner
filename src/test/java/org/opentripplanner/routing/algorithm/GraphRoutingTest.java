@@ -3,63 +3,58 @@ package org.opentripplanner.routing.algorithm;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import org.locationtech.jts.geom.Coordinate;
 import org.opentripplanner.TestOtpModel;
-import org.opentripplanner.common.geometry.GeometryUtils;
-import org.opentripplanner.model.PathwayMode;
+import org.opentripplanner.framework.geometry.GeometryUtils;
+import org.opentripplanner.framework.geometry.WgsCoordinate;
+import org.opentripplanner.framework.i18n.NonLocalizedString;
+import org.opentripplanner.model.PickDrop;
 import org.opentripplanner.model.StopTime;
-import org.opentripplanner.model.TripPattern;
-import org.opentripplanner.routing.algorithm.astar.AStarBuilder;
-import org.opentripplanner.routing.api.request.RoutingRequest;
-import org.opentripplanner.routing.core.RoutingContext;
-import org.opentripplanner.routing.core.TraverseModeSet;
-import org.opentripplanner.routing.edgetype.ElevatorAlightEdge;
-import org.opentripplanner.routing.edgetype.ElevatorBoardEdge;
-import org.opentripplanner.routing.edgetype.ElevatorEdge;
-import org.opentripplanner.routing.edgetype.ElevatorHopEdge;
-import org.opentripplanner.routing.edgetype.FreeEdge;
-import org.opentripplanner.routing.edgetype.PathwayEdge;
-import org.opentripplanner.routing.edgetype.StreetEdge;
-import org.opentripplanner.routing.edgetype.StreetTransitEntranceLink;
-import org.opentripplanner.routing.edgetype.StreetTransitStopLink;
-import org.opentripplanner.routing.edgetype.StreetTraversalPermission;
-import org.opentripplanner.routing.edgetype.StreetVehicleParkingLink;
-import org.opentripplanner.routing.edgetype.StreetVehicleRentalLink;
-import org.opentripplanner.routing.edgetype.TemporaryFreeEdge;
-import org.opentripplanner.routing.edgetype.VehicleRentalEdge;
 import org.opentripplanner.routing.graph.Graph;
-import org.opentripplanner.routing.graph.Vertex;
-import org.opentripplanner.routing.location.TemporaryStreetLocation;
-import org.opentripplanner.routing.spt.GraphPath;
-import org.opentripplanner.routing.trippattern.Deduplicator;
 import org.opentripplanner.routing.vehicle_parking.VehicleParking;
 import org.opentripplanner.routing.vehicle_parking.VehicleParking.VehicleParkingEntranceCreator;
 import org.opentripplanner.routing.vehicle_parking.VehicleParkingHelper;
 import org.opentripplanner.routing.vehicle_rental.RentalVehicleType;
 import org.opentripplanner.routing.vehicle_rental.VehicleRentalPlace;
 import org.opentripplanner.routing.vehicle_rental.VehicleRentalStation;
-import org.opentripplanner.routing.vertextype.ElevatorOffboardVertex;
-import org.opentripplanner.routing.vertextype.ElevatorOnboardVertex;
-import org.opentripplanner.routing.vertextype.IntersectionVertex;
-import org.opentripplanner.routing.vertextype.StreetVertex;
-import org.opentripplanner.routing.vertextype.TemporaryVertex;
-import org.opentripplanner.routing.vertextype.TransitEntranceVertex;
-import org.opentripplanner.routing.vertextype.TransitStopVertex;
-import org.opentripplanner.routing.vertextype.TransitStopVertexBuilder;
-import org.opentripplanner.routing.vertextype.VehicleParkingEntranceVertex;
-import org.opentripplanner.routing.vertextype.VehicleRentalPlaceVertex;
+import org.opentripplanner.street.model.StreetTraversalPermission;
+import org.opentripplanner.street.model.edge.ElevatorAlightEdge;
+import org.opentripplanner.street.model.edge.ElevatorBoardEdge;
+import org.opentripplanner.street.model.edge.ElevatorEdge;
+import org.opentripplanner.street.model.edge.ElevatorHopEdge;
+import org.opentripplanner.street.model.edge.FreeEdge;
+import org.opentripplanner.street.model.edge.PathwayEdge;
+import org.opentripplanner.street.model.edge.StreetEdge;
+import org.opentripplanner.street.model.edge.StreetTransitEntranceLink;
+import org.opentripplanner.street.model.edge.StreetTransitStopLink;
+import org.opentripplanner.street.model.edge.StreetVehicleParkingLink;
+import org.opentripplanner.street.model.edge.StreetVehicleRentalLink;
+import org.opentripplanner.street.model.edge.TemporaryFreeEdge;
+import org.opentripplanner.street.model.edge.VehicleRentalEdge;
+import org.opentripplanner.street.model.vertex.ElevatorOffboardVertex;
+import org.opentripplanner.street.model.vertex.ElevatorOnboardVertex;
+import org.opentripplanner.street.model.vertex.IntersectionVertex;
+import org.opentripplanner.street.model.vertex.StreetVertex;
+import org.opentripplanner.street.model.vertex.TemporaryStreetLocation;
+import org.opentripplanner.street.model.vertex.TemporaryVertex;
+import org.opentripplanner.street.model.vertex.TransitEntranceVertex;
+import org.opentripplanner.street.model.vertex.TransitStopVertex;
+import org.opentripplanner.street.model.vertex.TransitStopVertexBuilder;
+import org.opentripplanner.street.model.vertex.VehicleParkingEntranceVertex;
+import org.opentripplanner.street.model.vertex.VehicleRentalPlaceVertex;
+import org.opentripplanner.street.model.vertex.Vertex;
 import org.opentripplanner.transit.model._data.TransitModelForTest;
-import org.opentripplanner.transit.model.basic.NonLocalizedString;
+import org.opentripplanner.transit.model.basic.Accessibility;
 import org.opentripplanner.transit.model.basic.TransitMode;
-import org.opentripplanner.transit.model.basic.WheelchairAccessibility;
+import org.opentripplanner.transit.model.framework.Deduplicator;
 import org.opentripplanner.transit.model.framework.FeedScopedId;
 import org.opentripplanner.transit.model.network.Route;
+import org.opentripplanner.transit.model.network.TripPattern;
 import org.opentripplanner.transit.model.organization.Agency;
 import org.opentripplanner.transit.model.site.Entrance;
-import org.opentripplanner.transit.model.site.Stop;
+import org.opentripplanner.transit.model.site.PathwayMode;
+import org.opentripplanner.transit.model.site.RegularStop;
+import org.opentripplanner.transit.model.site.Station;
 import org.opentripplanner.transit.service.StopModel;
 import org.opentripplanner.transit.service.TransitModel;
 
@@ -67,39 +62,11 @@ public abstract class GraphRoutingTest {
 
   public static final String TEST_VEHICLE_RENTAL_NETWORK = "test network";
 
-  public static String graphPathToString(GraphPath graphPath) {
-    return graphPath.states
-      .stream()
-      .flatMap(s ->
-        Stream.of(
-          s.getBackEdge() != null ? s.getBackEdge().getDefaultName() : null,
-          s.getVertex().getDefaultName()
-        )
-      )
-      .filter(Objects::nonNull)
-      .collect(Collectors.joining(" - "));
-  }
-
-  protected TestOtpModel graphOf(Builder builder) {
+  protected TestOtpModel modelOf(Builder builder) {
     builder.build();
     Graph graph = builder.graph();
     TransitModel transitModel = builder.transitModel();
-    transitModel.index();
-    graph.index();
-    return new TestOtpModel(graph, transitModel);
-  }
-
-  protected GraphPath routeParkAndRide(
-    Graph graph,
-    StreetVertex from,
-    StreetVertex to,
-    TraverseModeSet traverseModeSet
-  ) {
-    RoutingRequest request = new RoutingRequest(traverseModeSet);
-    RoutingContext rctx = new RoutingContext(request, graph, from, to);
-    request.parkAndRide = true;
-
-    return AStarBuilder.oneToOne().setContext(rctx).getShortestPathTree().getPath(to);
+    return new TestOtpModel(graph, transitModel).index();
   }
 
   public abstract static class Builder {
@@ -110,7 +77,7 @@ public abstract class GraphRoutingTest {
     protected Builder() {
       var deduplicator = new Deduplicator();
       var stopModel = new StopModel();
-      graph = new Graph(stopModel, deduplicator);
+      graph = new Graph(deduplicator);
       transitModel = new TransitModel(stopModel, deduplicator);
     }
 
@@ -220,8 +187,8 @@ public abstract class GraphRoutingTest {
         var from = onboardVertices.get(i - 1);
         var to = onboardVertices.get(i);
 
-        edges.add(new ElevatorHopEdge(from, to, permission, WheelchairAccessibility.POSSIBLE));
-        edges.add(new ElevatorHopEdge(to, from, permission, WheelchairAccessibility.POSSIBLE));
+        edges.add(new ElevatorHopEdge(from, to, permission, Accessibility.POSSIBLE));
+        edges.add(new ElevatorHopEdge(to, from, permission, Accessibility.POSSIBLE));
       }
 
       return edges;
@@ -237,15 +204,42 @@ public abstract class GraphRoutingTest {
         .build();
     }
 
-    public Stop stopEntity(String id, double latitude, double longitude) {
-      return TransitModelForTest.stop(id).withCoordinate(latitude, longitude).build();
+    public RegularStop stopEntity(
+      String id,
+      double latitude,
+      double longitude,
+      boolean noTransfers
+    ) {
+      var stopBuilder = TransitModelForTest.stop(id).withCoordinate(latitude, longitude);
+      if (noTransfers) {
+        stopBuilder.withParentStation(
+          Station
+            .of(TransitModelForTest.id("1"))
+            .withName(new NonLocalizedString("Malmö C"))
+            .withCoordinate(latitude, longitude)
+            .withTransfersNotAllowed(true)
+            .build()
+        );
+      }
+
+      var stop = stopBuilder.build();
+      transitModel.mergeStopModels(StopModel.of().withRegularStop(stop).build());
+      return stop;
     }
 
     public TransitStopVertex stop(String id, double latitude, double longitude) {
+      return stop(id, latitude, longitude, false);
+    }
+
+    public TransitStopVertex stop(
+      String id,
+      double latitude,
+      double longitude,
+      boolean noTransfers
+    ) {
       return new TransitStopVertexBuilder()
         .withGraph(graph)
-        .withStop(stopEntity(id, latitude, longitude))
-        .withTransitModel(transitModel)
+        .withStop(stopEntity(id, latitude, longitude, noTransfers))
         .build();
     }
 
@@ -317,10 +311,6 @@ public abstract class GraphRoutingTest {
       return new TemporaryFreeEdge(from, to);
     }
 
-    public List<TemporaryFreeEdge> biLink(StreetVertex from, TemporaryVertex to) {
-      return List.of(link(from, to), link(to, from));
-    }
-
     // -- Vehicle rental
     public VehicleRentalPlace vehicleRentalStationEntity(
       String id,
@@ -338,7 +328,7 @@ public abstract class GraphRoutingTest {
       final RentalVehicleType vehicleType = RentalVehicleType.getDefaultType(network);
       vehicleRentalStation.vehicleTypesAvailable = Map.of(vehicleType, 2);
       vehicleRentalStation.vehicleSpacesAvailable = Map.of(vehicleType, 2);
-      vehicleRentalStation.isKeepingVehicleRentalAtDestinationAllowed = false;
+      vehicleRentalStation.isArrivingInRentalVehicleAtDestinationAllowed = false;
       return vehicleRentalStation;
     }
 
@@ -401,8 +391,7 @@ public abstract class GraphRoutingTest {
       var vehicleParking = VehicleParking
         .builder()
         .id(TransitModelForTest.id(id))
-        .x(x)
-        .y(y)
+        .coordinate(new WgsCoordinate(y, x))
         .bicyclePlaces(bicyclePlaces)
         .carPlaces(carPlaces)
         .entrances(entrances)
@@ -426,8 +415,7 @@ public abstract class GraphRoutingTest {
         builder
           .entranceId(TransitModelForTest.id(id))
           .name(new NonLocalizedString(id))
-          .x(streetVertex.getX())
-          .y(streetVertex.getY())
+          .coordinate(new WgsCoordinate(streetVertex.getCoordinate()))
           .vertex(streetVertex)
           .carAccessible(carAccessible)
           .walkAccessible(walkAccessible);
@@ -460,6 +448,14 @@ public abstract class GraphRoutingTest {
     public StopTime st(TransitStopVertex s1) {
       var st = new StopTime();
       st.setStop(s1.getStop());
+      return st;
+    }
+
+    public StopTime st(TransitStopVertex s1, boolean board, boolean alight) {
+      var st = new StopTime();
+      st.setStop(s1.getStop());
+      st.setPickupType(board ? PickDrop.SCHEDULED : PickDrop.NONE);
+      st.setDropOffType(alight ? PickDrop.SCHEDULED : PickDrop.NONE);
       return st;
     }
   }

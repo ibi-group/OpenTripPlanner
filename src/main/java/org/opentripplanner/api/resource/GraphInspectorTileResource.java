@@ -11,12 +11,12 @@ import javax.ws.rs.core.CacheControl;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
-import org.geotools.geometry.Envelope2D;
+import org.locationtech.jts.geom.Envelope;
 import org.opentripplanner.api.parameter.MIMEImageFormat;
-import org.opentripplanner.common.geometry.MapTile;
-import org.opentripplanner.common.geometry.WebMercatorTile;
-import org.opentripplanner.inspector.TileRenderer;
-import org.opentripplanner.standalone.api.OtpServerContext;
+import org.opentripplanner.inspector.raster.MapTile;
+import org.opentripplanner.inspector.raster.TileRenderer;
+import org.opentripplanner.inspector.raster.TileRendererManager;
+import org.opentripplanner.standalone.api.OtpServerRequestContext;
 
 /**
  * Slippy map tile API for rendering various graph information for inspection/debugging purpose
@@ -36,16 +36,16 @@ import org.opentripplanner.standalone.api.OtpServerContext;
  * given layer.
  *
  * @author laurent
- * @see org.opentripplanner.inspector.TileRendererManager
+ * @see TileRendererManager
  * @see TileRenderer
  */
 @Path("/routers/{ignoreRouterId}/inspector")
 public class GraphInspectorTileResource {
 
-  private final OtpServerContext serverContext;
+  private final OtpServerRequestContext serverContext;
 
   public GraphInspectorTileResource(
-    @Context OtpServerContext serverContext,
+    @Context OtpServerRequestContext serverContext,
     /**
      * @deprecated The support for multiple routers are removed from OTP2.
      * See https://github.com/opentripplanner/OpenTripPlanner/issues/2760
@@ -66,10 +66,10 @@ public class GraphInspectorTileResource {
     @PathParam("ext") String ext
   ) throws Exception {
     // Re-use analyst
-    Envelope2D env = WebMercatorTile.tile2Envelope(x, y, z);
+    Envelope env = WebMercatorTile.tile2Envelope(x, y, z);
     MapTile mapTile = new MapTile(env, 256, 256);
 
-    OtpServerContext serverContext = this.serverContext;
+    OtpServerRequestContext serverContext = this.serverContext;
     BufferedImage image = serverContext.tileRendererManager().renderTile(mapTile, layer);
 
     MIMEImageFormat format = new MIMEImageFormat("image/" + ext);
@@ -92,7 +92,7 @@ public class GraphInspectorTileResource {
   @Path("layers")
   @Produces(MediaType.APPLICATION_JSON)
   public InspectorLayersList getLayers() {
-    OtpServerContext serverContext = this.serverContext;
+    OtpServerRequestContext serverContext = this.serverContext;
     return new InspectorLayersList(serverContext.tileRendererManager().getRenderers());
   }
 }

@@ -14,8 +14,8 @@ import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.geom.LinearRing;
 import org.locationtech.jts.geom.Polygon;
-import org.opentripplanner.api.resource.CoordinateArrayListSequence;
-import org.opentripplanner.common.geometry.GeometryUtils;
+import org.opentripplanner.framework.geometry.CoordinateArrayListSequence;
+import org.opentripplanner.framework.geometry.GeometryUtils;
 import org.opentripplanner.openstreetmap.model.OSMNode;
 
 public class Ring {
@@ -130,8 +130,5 @@ public class Ring {
     return factory.createPolygon(shell, lrholes);
   }
 
-  public static class RingConstructionException extends RuntimeException {
-
-    private static final long serialVersionUID = 1L;
-  }
+  public static class RingConstructionException extends RuntimeException {}
 }

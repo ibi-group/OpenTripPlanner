@@ -5,10 +5,11 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
+import org.opentripplanner.framework.i18n.NonLocalizedString;
 import org.opentripplanner.transit.model._data.TransitModelForTest;
+import org.opentripplanner.transit.model.basic.Accessibility;
 import org.opentripplanner.transit.model.basic.SubMode;
 import org.opentripplanner.transit.model.basic.TransitMode;
-import org.opentripplanner.transit.model.basic.WheelchairAccessibility;
 import org.opentripplanner.transit.model.framework.FeedScopedId;
 import org.opentripplanner.transit.model.network.BikeAccess;
 import org.opentripplanner.transit.model.network.Route;
@@ -18,11 +19,10 @@ class TripTest {
 
   private static final String ID = "1";
   private static final String SHORT_NAME = "name";
-  private static final WheelchairAccessibility WHEELCHAIR_ACCESSIBILITY =
-    WheelchairAccessibility.POSSIBLE;
+  private static final Accessibility WHEELCHAIR_ACCESSIBILITY = Accessibility.POSSIBLE;
   public static final Route ROUTE = TransitModelForTest.route("routeId").build();
   private static final Direction DIRECTION = Direction.INBOUND;
-  public static final String HEAD_SIGN = "head sign";
+  public static final NonLocalizedString HEAD_SIGN = new NonLocalizedString("head sign");
   private static final BikeAccess BIKE_ACCESS = BikeAccess.ALLOWED;
   private static final TransitMode TRANSIT_MODE = TransitMode.BUS;
   private static final String BLOCK_ID = "blockId";
@@ -57,6 +57,22 @@ class TripTest {
     .build();
 
   @Test
+  void shouldCopyFieldsFromRoute() {
+    var routeWithModes = ROUTE
+      .copy()
+      .withMode(TRANSIT_MODE)
+      .withNetexSubmode(NETEX_SUBMODE_NAME)
+      .withBikesAllowed(BIKE_ACCESS)
+      .build();
+
+    var subject = Trip.of(TransitModelForTest.id(ID)).withRoute(routeWithModes).build();
+
+    assertEquals(TRANSIT_MODE, subject.getMode());
+    assertEquals(NETEX_SUBMODE, subject.getNetexSubMode());
+    assertEquals(BIKE_ACCESS, subject.getBikesAllowed());
+  }
+
+  @Test
   void copy() {
     assertEquals(ID, subject.getId().getId());
 
@@ -87,9 +103,7 @@ class TripTest {
     assertFalse(subject.sameAs(subject.copy().withId(TransitModelForTest.id("X")).build()));
     assertFalse(subject.sameAs(subject.copy().withShortName("X").build()));
     assertFalse(
-      subject.sameAs(
-        subject.copy().withWheelchairBoarding(WheelchairAccessibility.NOT_POSSIBLE).build()
-      )
+      subject.sameAs(subject.copy().withWheelchairBoarding(Accessibility.NOT_POSSIBLE).build())
     );
     assertFalse(
       subject.sameAs(
@@ -97,7 +111,7 @@ class TripTest {
       )
     );
     assertFalse(subject.sameAs(subject.copy().withDirection(Direction.OUTBOUND).build()));
-    assertFalse(subject.sameAs(subject.copy().withHeadsign("X").build()));
+    assertFalse(subject.sameAs(subject.copy().withHeadsign(new NonLocalizedString("X")).build()));
     assertFalse(subject.sameAs(subject.copy().withBikesAllowed(BikeAccess.NOT_ALLOWED).build()));
     assertFalse(subject.sameAs(subject.copy().withMode(TransitMode.RAIL).build()));
     assertFalse(subject.sameAs(subject.copy().withGtfsBlockId("X").build()));

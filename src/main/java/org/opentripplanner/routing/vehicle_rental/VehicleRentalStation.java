@@ -8,8 +8,9 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.locationtech.jts.geom.Geometry;
+import org.opentripplanner.framework.collection.SetUtils;
+import org.opentripplanner.framework.i18n.I18NString;
 import org.opentripplanner.routing.vehicle_rental.RentalVehicleType.FormFactor;
-import org.opentripplanner.transit.model.basic.I18NString;
 import org.opentripplanner.transit.model.framework.FeedScopedId;
 
 /**
@@ -52,7 +53,7 @@ public class VehicleRentalStation implements VehicleRentalPlace {
 
   // OTP internal data
   public boolean allowOverloading = false;
-  public boolean isKeepingVehicleRentalAtDestinationAllowed = false;
+  public boolean isArrivingInRentalVehicleAtDestinationAllowed = false;
   public boolean realTimeData = true;
 
   @Override
@@ -158,8 +159,8 @@ public class VehicleRentalStation implements VehicleRentalPlace {
   }
 
   @Override
-  public boolean isKeepingVehicleRentalAtDestinationAllowed() {
-    return isKeepingVehicleRentalAtDestinationAllowed;
+  public boolean isArrivingInRentalVehicleAtDestinationAllowed() {
+    return isArrivingInRentalVehicleAtDestinationAllowed;
   }
 
   @Override
@@ -180,6 +181,13 @@ public class VehicleRentalStation implements VehicleRentalPlace {
       name,
       latitude,
       longitude
+    );
+  }
+
+  public Set<FormFactor> formFactors() {
+    return SetUtils.combine(
+      getAvailableDropoffFormFactors(false),
+      getAvailablePickupFormFactors(false)
     );
   }
 }

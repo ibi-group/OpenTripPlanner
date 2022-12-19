@@ -3,9 +3,9 @@ package org.opentripplanner.model;
 
 import java.io.Serializable;
 import java.util.Objects;
-import org.opentripplanner.transit.model.framework.TransitEntity;
+import org.opentripplanner.framework.tostring.ToStringBuilder;
+import org.opentripplanner.transit.model.framework.AbstractTransitEntity;
 import org.opentripplanner.transit.model.timetable.Trip;
-import org.opentripplanner.util.lang.ToStringBuilder;
 
 public final class Frequency implements Serializable {
 
@@ -94,7 +94,7 @@ public final class Frequency implements Serializable {
   public String toString() {
     return ToStringBuilder
       .of(Frequency.class)
-      .addObjOp("trip", trip, TransitEntity::getId)
+      .addObjOp("trip", trip, AbstractTransitEntity::getId)
       .addServiceTime("start", startTime)
       .addServiceTime("end", endTime)
       .toString();

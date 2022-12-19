@@ -4,26 +4,26 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import org.opentripplanner.model.TripPattern;
-import org.opentripplanner.routing.algorithm.astar.TraverseVisitor;
-import org.opentripplanner.routing.algorithm.astar.strategies.SkipEdgeStrategy;
-import org.opentripplanner.routing.core.State;
-import org.opentripplanner.routing.graph.Edge;
-import org.opentripplanner.routing.graph.Vertex;
+import org.opentripplanner.astar.spi.SkipEdgeStrategy;
+import org.opentripplanner.astar.spi.TraverseVisitor;
 import org.opentripplanner.routing.vehicle_parking.VehicleParking;
 import org.opentripplanner.routing.vehicle_rental.VehicleRentalPlace;
-import org.opentripplanner.routing.vertextype.TransitStopVertex;
-import org.opentripplanner.routing.vertextype.VehicleParkingEntranceVertex;
-import org.opentripplanner.routing.vertextype.VehicleRentalPlaceVertex;
+import org.opentripplanner.street.model.edge.Edge;
+import org.opentripplanner.street.model.vertex.TransitStopVertex;
+import org.opentripplanner.street.model.vertex.VehicleParkingEntranceVertex;
+import org.opentripplanner.street.model.vertex.VehicleRentalPlaceVertex;
+import org.opentripplanner.street.model.vertex.Vertex;
+import org.opentripplanner.street.search.state.State;
 import org.opentripplanner.transit.model.basic.TransitMode;
 import org.opentripplanner.transit.model.framework.FeedScopedId;
-import org.opentripplanner.transit.model.site.Stop;
+import org.opentripplanner.transit.model.network.TripPattern;
+import org.opentripplanner.transit.model.site.RegularStop;
 import org.opentripplanner.transit.service.TransitService;
 
 /**
  * A TraverseVisitor used in finding various types of places while walking the street graph.
  */
-public class PlaceFinderTraverseVisitor implements TraverseVisitor {
+public class PlaceFinderTraverseVisitor implements TraverseVisitor<State, Edge> {
 
   public final List<PlaceAtDistance> placesFound = new ArrayList<>();
   private final TransitService transitService;
@@ -92,7 +92,7 @@ public class PlaceFinderTraverseVisitor implements TraverseVisitor {
     Vertex vertex = state.getVertex();
     double distance = state.getWalkDistance();
     if (vertex instanceof TransitStopVertex transitVertex) {
-      Stop stop = transitVertex.getStop();
+      RegularStop stop = transitVertex.getStop();
       handleStop(stop, distance);
       handlePatternsAtStop(stop, distance);
     } else if (vertex instanceof VehicleRentalPlaceVertex rentalVertex) {
@@ -112,7 +112,7 @@ public class PlaceFinderTraverseVisitor implements TraverseVisitor {
    * of the place that is furthest away. This is to account for the fact that the a star does not
    * traverse edges ordered by distance.
    */
-  public SkipEdgeStrategy getSkipEdgeStrategy() {
+  public SkipEdgeStrategy<State, Edge> getSkipEdgeStrategy() {
     return (current, edge) -> {
       double furthestDistance = radiusMeters;
 
@@ -159,7 +159,7 @@ public class PlaceFinderTraverseVisitor implements TraverseVisitor {
     return filterByPlaceTypes == null || filterByPlaceTypes.contains(type);
   }
 
-  private boolean stopHasRoutesWithMode(Stop stop, Set<TransitMode> modes) {
+  private boolean stopHasPatternsWithMode(RegularStop stop, Set<TransitMode> modes) {
     return transitService
       .getPatternsForStop(stop)
       .stream()
@@ -167,21 +167,21 @@ public class PlaceFinderTraverseVisitor implements TraverseVisitor {
       .anyMatch(modes::contains);
   }
 
-  private void handleStop(Stop stop, double distance) {
+  private void handleStop(RegularStop stop, double distance) {
     if (filterByStops != null && !filterByStops.contains(stop.getId())) {
       return;
     }
     if (
       includeStops &&
       !seenStops.contains(stop.getId()) &&
-      (filterByModes == null || stopHasRoutesWithMode(stop, filterByModes))
+      (filterByModes == null || stopHasPatternsWithMode(stop, filterByModes))
     ) {
       placesFound.add(new PlaceAtDistance(stop, distance));
       seenStops.add(stop.getId());
     }
   }
 
-  private void handlePatternsAtStop(Stop stop, double distance) {
+  private void handlePatternsAtStop(RegularStop stop, double distance) {
     if (includePatternAtStops) {
       List<TripPattern> patterns = transitService
         .getPatternsForStop(stop)

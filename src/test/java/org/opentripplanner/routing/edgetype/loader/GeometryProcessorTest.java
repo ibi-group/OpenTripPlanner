@@ -9,39 +9,36 @@ import static org.opentripplanner.gtfs.GtfsContextBuilder.contextBuilder;
 import com.google.common.collect.Iterables;
 import java.time.Instant;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
+import java.time.Month;
 import java.time.ZonedDateTime;
-import java.util.HashMap;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.opentripplanner.ConstantsForTests;
-import org.opentripplanner.common.geometry.GeometryUtils;
-import org.opentripplanner.graph_builder.DataImportIssue;
-import org.opentripplanner.graph_builder.DataImportIssueStore;
+import org.opentripplanner._support.time.ZoneIds;
+import org.opentripplanner.astar.model.GraphPath;
+import org.opentripplanner.astar.model.ShortestPathTree;
+import org.opentripplanner.framework.geometry.GeometryUtils;
+import org.opentripplanner.graph_builder.issue.api.DataImportIssue;
+import org.opentripplanner.graph_builder.issue.service.DefaultDataImportIssueStore;
 import org.opentripplanner.graph_builder.issues.NegativeHopTime;
 import org.opentripplanner.graph_builder.module.StreetLinkerModule;
-import org.opentripplanner.graph_builder.module.geometry.GeometryProcessor;
 import org.opentripplanner.gtfs.GtfsContext;
-import org.opentripplanner.routing.algorithm.astar.AStarBuilder;
-import org.opentripplanner.routing.api.request.RoutingRequest;
-import org.opentripplanner.routing.api.request.WheelchairAccessibilityRequest;
-import org.opentripplanner.routing.core.RoutingContext;
-import org.opentripplanner.routing.core.TraverseMode;
-import org.opentripplanner.routing.core.TraverseModeSet;
-import org.opentripplanner.routing.edgetype.StreetEdge;
-import org.opentripplanner.routing.edgetype.StreetTransitStopLink;
-import org.opentripplanner.routing.edgetype.StreetTraversalPermission;
+import org.opentripplanner.routing.api.request.RouteRequest;
 import org.opentripplanner.routing.graph.Graph;
-import org.opentripplanner.routing.graph.Vertex;
-import org.opentripplanner.routing.spt.GraphPath;
-import org.opentripplanner.routing.spt.ShortestPathTree;
-import org.opentripplanner.routing.trippattern.Deduplicator;
-import org.opentripplanner.routing.vertextype.IntersectionVertex;
-import org.opentripplanner.routing.vertextype.TransitStopVertex;
+import org.opentripplanner.street.model.StreetTraversalPermission;
+import org.opentripplanner.street.model.edge.Edge;
+import org.opentripplanner.street.model.edge.StreetEdge;
+import org.opentripplanner.street.model.edge.StreetTransitStopLink;
+import org.opentripplanner.street.model.vertex.IntersectionVertex;
+import org.opentripplanner.street.model.vertex.TransitStopVertex;
+import org.opentripplanner.street.model.vertex.Vertex;
+import org.opentripplanner.street.search.StreetSearchBuilder;
+import org.opentripplanner.street.search.state.State;
+import org.opentripplanner.street.search.strategy.EuclideanRemainingWeightHeuristic;
+import org.opentripplanner.transit.model.framework.Deduplicator;
 import org.opentripplanner.transit.service.StopModel;
 import org.opentripplanner.transit.service.TransitModel;
-import org.opentripplanner.util.TestUtils;
 
 /**
  * TODO OTP2 - Test is too close to the implementation and will need to be reimplemented.
@@ -50,26 +47,22 @@ import org.opentripplanner.util.TestUtils;
 public class GeometryProcessorTest {
 
   private Graph graph;
-  private TransitModel transitModel;
-
-  private GtfsContext context;
   private String feedId;
-  private DataImportIssueStore issueStore;
+  private DefaultDataImportIssueStore issueStore;
 
   @BeforeEach
   public void setUp() throws Exception {
     var deduplicator = new Deduplicator();
     var stopModel = new StopModel();
-    graph = new Graph(stopModel, deduplicator);
-    transitModel = new TransitModel(stopModel, deduplicator);
-    this.issueStore = new DataImportIssueStore(true);
+    graph = new Graph(deduplicator);
+    TransitModel transitModel = new TransitModel(stopModel, deduplicator);
+    this.issueStore = new DefaultDataImportIssueStore();
 
-    context =
-      contextBuilder(ConstantsForTests.FAKE_GTFS).withIssueStoreAndDeduplicator(graph).build();
+    GtfsContext context = contextBuilder(ConstantsForTests.FAKE_GTFS)
+      .withIssueStoreAndDeduplicator(graph)
+      .build();
 
     feedId = context.getFeedId().getId();
-    GeometryProcessor factory = new GeometryProcessor(context);
-    factory.run(transitModel);
     transitModel.updateCalendarServiceData(true, context.getCalendarServiceData(), null);
 
     String[] stops = {
@@ -127,18 +120,16 @@ public class GeometryProcessorTest {
       );
     }
 
-    StreetLinkerModule ttsnm = new StreetLinkerModule();
     //Linkers aren't run otherwise
     graph.hasStreets = true;
-    ttsnm.buildGraph(graph, transitModel, new HashMap<>());
+    StreetLinkerModule.linkStreetsForTestOnly(graph, transitModel);
   }
 
   @Test
   public void testIssue() {
     boolean found = false;
-    for (DataImportIssue it : issueStore.getIssues()) {
-      if (it instanceof NegativeHopTime) {
-        NegativeHopTime nht = (NegativeHopTime) it;
+    for (DataImportIssue it : issueStore.listIssues()) {
+      if (it instanceof NegativeHopTime nht) {
         assertTrue(nht.st0.getDepartureTime() > nht.st1.getArrivalTime());
         found = true;
       }
@@ -152,17 +143,22 @@ public class GeometryProcessorTest {
     Vertex stop_g = graph.getVertex(feedId + ":G_depart");
     Vertex stop_h = graph.getVertex(feedId + ":H_arrive");
 
-    ShortestPathTree spt;
-    GraphPath path;
-    RoutingRequest options = new RoutingRequest();
+    ShortestPathTree<State, Edge, Vertex> spt;
+    GraphPath<State, Edge, Vertex> path;
+    RouteRequest options = new RouteRequest();
 
     // Friday evening
-    options.setDateTime(TestUtils.dateInstant("America/New_York", 2009, 8, 18, 23, 20, 0));
+    options.setDateTime(
+      LocalDateTime.of(2009, Month.AUGUST, 18, 23, 20).atZone(ZoneIds.NEW_YORK).toInstant()
+    );
 
     spt =
-      AStarBuilder
-        .oneToOne()
-        .setContext(new RoutingContext(options, graph, stop_g, stop_h))
+      StreetSearchBuilder
+        .of()
+        .setHeuristic(new EuclideanRemainingWeightHeuristic())
+        .setRequest(options)
+        .setFrom(stop_g)
+        .setTo(stop_h)
         .getShortestPathTree();
 
     path = spt.getPath(stop_h);
@@ -170,12 +166,18 @@ public class GeometryProcessorTest {
     assertEquals(4, path.states.size());
 
     // Saturday morning
-    long startTime = TestUtils.dateInSeconds("America/New_York", 2009, 8, 19, 0, 5, 0);
+    long startTime = LocalDateTime
+      .of(2009, Month.SEPTEMBER, 19, 0, 5)
+      .atZone(ZoneIds.NEW_YORK)
+      .toEpochSecond();
     options.setDateTime(Instant.ofEpochSecond(startTime));
     spt =
-      AStarBuilder
-        .oneToOne()
-        .setContext(new RoutingContext(options, graph, stop_g, stop_h))
+      StreetSearchBuilder
+        .of()
+        .setHeuristic(new EuclideanRemainingWeightHeuristic())
+        .setRequest(options)
+        .setFrom(stop_g)
+        .setTo(stop_h)
         .getShortestPathTree();
 
     path = spt.getPath(stop_h);
@@ -191,26 +193,40 @@ public class GeometryProcessorTest {
     Vertex stop_p = graph.getVertex(feedId + ":P");
     assertEquals(2, stop_o.getOutgoing().size());
 
-    RoutingRequest options = new RoutingRequest();
-    options.setDateTime(TestUtils.dateInstant("America/New_York", 2009, 8, 19, 12, 0, 0));
-    ShortestPathTree spt = AStarBuilder
-      .oneToOne()
-      .setContext(new RoutingContext(options, graph, stop_o, stop_p))
+    RouteRequest options = new RouteRequest();
+    options.setDateTime(
+      LocalDateTime.of(2009, Month.AUGUST, 19, 12, 0).atZone(ZoneIds.NEW_YORK).toInstant()
+    );
+    ShortestPathTree<State, Edge, Vertex> spt = StreetSearchBuilder
+      .of()
+      .setHeuristic(new EuclideanRemainingWeightHeuristic())
+      .setRequest(options)
+      .setFrom(stop_o)
+      .setTo(stop_p)
       .getShortestPathTree();
-    GraphPath path = spt.getPath(stop_p);
+    GraphPath<State, Edge, Vertex> path = spt.getPath(stop_p);
     assertNotNull(path);
-    long endTime = TestUtils.dateInSeconds("America/New_York", 2009, 8, 19, 12, 10, 0);
+    long endTime = LocalDateTime
+      .of(2009, Month.SEPTEMBER, 19, 12, 10)
+      .atZone(ZoneIds.NEW_YORK)
+      .toEpochSecond();
     assertEquals(endTime, path.getEndTime());
 
-    options.setDateTime(TestUtils.dateInstant("America/New_York", 2009, 8, 19, 12, 0, 1));
+    options.setDateTime(
+      LocalDateTime.of(2009, 8, 19, 12, 0, 1).atZone(ZoneIds.NEW_YORK).toInstant()
+    );
     spt =
-      AStarBuilder
-        .oneToOne()
-        .setContext(new RoutingContext(options, graph, stop_o, stop_p))
+      StreetSearchBuilder
+        .of()
+        .setHeuristic(new EuclideanRemainingWeightHeuristic())
+        .setRequest(options)
+        .setFrom(stop_o)
+        .setTo(stop_p)
         .getShortestPathTree();
     path = spt.getPath(stop_p);
     assertNotNull(path);
-    endTime = TestUtils.dateInSeconds("America/New_York", 2009, 8, 19, 15, 10, 0);
+    endTime =
+      LocalDateTime.of(2009, Month.SEPTEMBER, 19, 15, 10).atZone(ZoneIds.NEW_YORK).toEpochSecond();
     assertEquals(endTime, path.getEndTime());
   }
 
@@ -218,17 +234,22 @@ public class GeometryProcessorTest {
   public void testTimelessStops() {
     Vertex stop_d = graph.getVertex(feedId + ":D");
     Vertex stop_c = graph.getVertex(feedId + ":C");
-    RoutingRequest options = new RoutingRequest();
-    options.setDateTime(TestUtils.dateInstant("America/New_York", 2009, 8, 1, 10, 0, 0));
-    ShortestPathTree spt = AStarBuilder
-      .oneToOne()
-      .setContext(new RoutingContext(options, graph, stop_d, stop_c))
+    RouteRequest options = new RouteRequest();
+    options.setDateTime(
+      LocalDateTime.of(2009, Month.AUGUST, 1, 10, 0).atZone(ZoneIds.NEW_YORK).toInstant()
+    );
+    ShortestPathTree<State, Edge, Vertex> spt = StreetSearchBuilder
+      .of()
+      .setHeuristic(new EuclideanRemainingWeightHeuristic())
+      .setRequest(options)
+      .setFrom(stop_d)
+      .setTo(stop_c)
       .getShortestPathTree();
 
-    GraphPath path = spt.getPath(stop_c);
+    GraphPath<State, Edge, Vertex> path = spt.getPath(stop_c);
     assertNotNull(path);
     assertEquals(
-      TestUtils.dateInSeconds("America/New_York", 2009, 8, 1, 11, 0, 0),
+      LocalDateTime.of(2009, Month.SEPTEMBER, 1, 11, 0).atZone(ZoneIds.NEW_YORK).toEpochSecond(),
       path.getEndTime()
     );
   }
@@ -249,18 +270,23 @@ public class GeometryProcessorTest {
       split_d = e.getToVertex();
     }
 
-    RoutingRequest options = new RoutingRequest();
-    options.wheelchairAccessibility = WheelchairAccessibilityRequest.makeDefault(true);
-    options.setDateTime(TestUtils.dateInstant("America/New_York", 2009, 8, 18, 0, 0, 0));
+    RouteRequest options = new RouteRequest();
+    options.setWheelchair(true);
+    options.setDateTime(
+      LocalDateTime.of(2009, Month.AUGUST, 18, 0, 0).atZone(ZoneIds.NEW_YORK).toInstant()
+    );
 
-    ShortestPathTree spt;
-    GraphPath path;
+    ShortestPathTree<State, Edge, Vertex> spt;
+    GraphPath<State, Edge, Vertex> path;
 
     // stop B is accessible, so there should be a path.
     spt =
-      AStarBuilder
-        .oneToOne()
-        .setContext(new RoutingContext(options, graph, near_a, near_b))
+      StreetSearchBuilder
+        .of()
+        .setHeuristic(new EuclideanRemainingWeightHeuristic())
+        .setRequest(options)
+        .setFrom(near_a)
+        .setTo(near_b)
         .getShortestPathTree();
 
     path = spt.getPath(near_b);
@@ -268,9 +294,12 @@ public class GeometryProcessorTest {
 
     // stop C is not accessible, so there should be no path.
     spt =
-      AStarBuilder
-        .oneToOne()
-        .setContext(new RoutingContext(options, graph, near_a, near_c))
+      StreetSearchBuilder
+        .of()
+        .setHeuristic(new EuclideanRemainingWeightHeuristic())
+        .setRequest(options)
+        .setFrom(near_a)
+        .setTo(near_c)
         .getShortestPathTree();
 
     path = spt.getPath(near_c);
@@ -278,9 +307,12 @@ public class GeometryProcessorTest {
 
     // stop E has no accessibility information, but we should still be able to route to it.
     spt =
-      AStarBuilder
-        .oneToOne()
-        .setContext(new RoutingContext(options, graph, near_a, near_e))
+      StreetSearchBuilder
+        .of()
+        .setHeuristic(new EuclideanRemainingWeightHeuristic())
+        .setRequest(options)
+        .setFrom(near_a)
+        .setTo(near_e)
         .getShortestPathTree();
 
     path = spt.getPath(near_e);
@@ -289,12 +321,15 @@ public class GeometryProcessorTest {
     // from stop A to stop D would normally be trip 1.1 to trip 2.1, arriving at 00:30. But trip
     // 2 is not accessible, so we'll do 1.1 to 3.1, arriving at 01:00
     LocalDateTime ldt = LocalDateTime.of(2009, 7, 18, 0, 0, 0);
-    ZonedDateTime zdt = ZonedDateTime.of(ldt, ZoneId.of("America/New_York"));
+    ZonedDateTime zdt = ZonedDateTime.of(ldt, ZoneIds.NEW_YORK);
     options.setDateTime(zdt.toInstant());
     spt =
-      AStarBuilder
-        .oneToOne()
-        .setContext(new RoutingContext(options, graph, near_a, split_d))
+      StreetSearchBuilder
+        .of()
+        .setHeuristic(new EuclideanRemainingWeightHeuristic())
+        .setRequest(options)
+        .setFrom(near_a)
+        .setTo(split_d)
         .getShortestPathTree();
 
     ZonedDateTime endTime = zdt.plusHours(1).plusSeconds(1);
@@ -312,18 +347,20 @@ public class GeometryProcessorTest {
     // from R to S.  If we take the direct-but-slower 11.1, we'll miss
     // the 8:50 and have to catch the 9:50.
     Vertex destination = graph.getVertex(feedId + ":T");
-    RoutingRequest options = new RoutingRequest();
+    RouteRequest options = new RouteRequest();
     // test is designed such that transfers must be instantaneous
-    options.transferSlack = 0;
-    LocalDateTime ldt = LocalDateTime.of(2009, 10, 2, 8, 30, 0);
-    ZonedDateTime startTime = ZonedDateTime.of(ldt, ZoneId.of("America/New_York"));
+    options.withPreferences(pref -> pref.withTransfer(tx -> tx.withSlack(0)));
+    LocalDateTime ldt = LocalDateTime.of(2009, 10, 2, 8, 30);
+    ZonedDateTime startTime = ZonedDateTime.of(ldt, ZoneIds.NEW_YORK);
     options.setDateTime(startTime.toInstant());
-    Vertex q = graph.getVertex(feedId + ":Q");
-    ShortestPathTree spt = AStarBuilder
-      .oneToOne()
-      .setContext(new RoutingContext(options, graph, q, destination))
+    ShortestPathTree<State, Edge, Vertex> spt = StreetSearchBuilder
+      .of()
+      .setHeuristic(new EuclideanRemainingWeightHeuristic())
+      .setRequest(options)
+      .setFrom(graph.getVertex(feedId + ":Q"))
+      .setTo(destination)
       .getShortestPathTree();
-    GraphPath path = spt.getPath(destination);
+    GraphPath<State, Edge, Vertex> path = spt.getPath(destination);
 
     long endTime = path.getEndTime();
     assertTrue(endTime - startTime.toEpochSecond() < 7200);
@@ -334,49 +371,65 @@ public class GeometryProcessorTest {
     Vertex stop_u = graph.getVertex(feedId + ":U_depart");
     Vertex stop_v = graph.getVertex(feedId + ":V_arrive");
 
-    ShortestPathTree spt;
-    GraphPath path;
+    ShortestPathTree<State, Edge, Vertex> spt;
+    GraphPath<State, Edge, Vertex> path;
 
-    RoutingRequest options = new RoutingRequest();
-    options.setStreetSubRequestModes(new TraverseModeSet(TraverseMode.TRANSIT));
-    options.setDateTime(TestUtils.dateInstant("America/New_York", 2009, 8, 7, 0, 0, 0));
+    RouteRequest options = new RouteRequest();
+    options.setDateTime(
+      LocalDateTime.of(2009, Month.AUGUST, 7, 0, 0).atZone(ZoneIds.NEW_YORK).toInstant()
+    );
 
     // U to V - original stop times - shouldn't be used
     spt =
-      AStarBuilder
-        .oneToOne()
-        .setContext(new RoutingContext(options, graph, stop_u, stop_v))
+      StreetSearchBuilder
+        .of()
+        .setHeuristic(new EuclideanRemainingWeightHeuristic())
+        .setRequest(options)
+        .setFrom(stop_u)
+        .setTo(stop_v)
         .getShortestPathTree();
     path = spt.getPath(stop_v);
     assertNotNull(path);
     assertEquals(4, path.states.size());
-    long endTime = TestUtils.dateInSeconds("America/New_York", 2009, 8, 7, 6, 40, 0);
+    long endTime = LocalDateTime.of(2009, 8 + 1, 7, 6, 40).atZone(ZoneIds.NEW_YORK).toEpochSecond();
     assertEquals(endTime, path.getEndTime());
 
     // U to V - first frequency
-    options.setDateTime(TestUtils.dateInstant("America/New_York", 2009, 8, 7, 7, 0, 0));
+    options.setDateTime(
+      LocalDateTime.of(2009, Month.AUGUST, 7, 7, 0).atZone(ZoneIds.NEW_YORK).toInstant()
+    );
     spt =
-      AStarBuilder
-        .oneToOne()
-        .setContext(new RoutingContext(options, graph, stop_u, stop_v))
+      StreetSearchBuilder
+        .of()
+        .setHeuristic(new EuclideanRemainingWeightHeuristic())
+        .setRequest(options)
+        .setFrom(stop_u)
+        .setTo(stop_v)
         .getShortestPathTree();
     path = spt.getPath(stop_v);
     assertNotNull(path);
     assertEquals(4, path.states.size());
-    endTime = TestUtils.dateInSeconds("America/New_York", 2009, 8, 7, 7, 40, 0);
+    endTime =
+      LocalDateTime.of(2009, Month.SEPTEMBER, 7, 7, 40).atZone(ZoneIds.NEW_YORK).toEpochSecond();
     assertEquals(endTime, path.getEndTime());
 
     // U to V - second frequency
-    options.setDateTime(TestUtils.dateInstant("America/New_York", 2009, 8, 7, 14, 0, 0));
+    options.setDateTime(
+      LocalDateTime.of(2009, Month.AUGUST, 7, 14, 0).atZone(ZoneIds.NEW_YORK).toInstant()
+    );
     spt =
-      AStarBuilder
-        .oneToOne()
-        .setContext(new RoutingContext(options, graph, stop_u, stop_v))
+      StreetSearchBuilder
+        .of()
+        .setHeuristic(new EuclideanRemainingWeightHeuristic())
+        .setRequest(options)
+        .setFrom(stop_u)
+        .setTo(stop_v)
         .getShortestPathTree();
     path = spt.getPath(stop_v);
     assertNotNull(path);
     assertEquals(4, path.states.size());
-    endTime = TestUtils.dateInSeconds("America/New_York", 2009, 8, 7, 14, 40, 0);
+    endTime =
+      LocalDateTime.of(2009, Month.SEPTEMBER, 7, 14, 40).atZone(ZoneIds.NEW_YORK).toEpochSecond();
     assertEquals(endTime, path.getEndTime());
     // TODO more detailed testing of frequencies
 
@@ -389,17 +442,25 @@ public class GeometryProcessorTest {
     Vertex stop = graph.getVertex(feedId + ":A");
     assertNotNull(stop);
 
-    RoutingRequest options = new RoutingRequest();
-    options.setDateTime(TestUtils.dateInstant("America/New_York", 2009, 8, 1, 16, 0, 0));
-    ShortestPathTree spt = AStarBuilder
-      .oneToOne()
-      .setContext(new RoutingContext(options, graph, entrance, stop))
+    RouteRequest options = new RouteRequest();
+    options.setDateTime(
+      LocalDateTime.of(2009, Month.AUGUST, 1, 16, 0).atZone(ZoneIds.NEW_YORK).toInstant()
+    );
+    ShortestPathTree<State, Edge, Vertex> spt = StreetSearchBuilder
+      .of()
+      .setHeuristic(new EuclideanRemainingWeightHeuristic())
+      .setRequest(options)
+      .setFrom(entrance)
+      .setTo(stop)
       .getShortestPathTree();
 
-    GraphPath path = spt.getPath(stop);
+    GraphPath<State, Edge, Vertex> path = spt.getPath(stop);
     assertNotNull(path);
     assertEquals(
-      TestUtils.dateInSeconds("America/New_York", 2009, 8, 1, 16, 0, 34),
+      LocalDateTime
+        .of(2009, Month.SEPTEMBER, 1, 16, 0, 34)
+        .atZone(ZoneIds.NEW_YORK)
+        .toEpochSecond(),
       path.getEndTime()
     );
   }

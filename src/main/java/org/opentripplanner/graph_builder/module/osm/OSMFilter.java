@@ -1,14 +1,10 @@
 package org.opentripplanner.graph_builder.module.osm;
 
-import org.opentripplanner.common.model.P2;
-import org.opentripplanner.graph_builder.DataImportIssueStore;
+import org.opentripplanner.graph_builder.issue.api.DataImportIssueStore;
 import org.opentripplanner.graph_builder.issues.ConflictingBikeTags;
 import org.opentripplanner.openstreetmap.model.OSMWay;
 import org.opentripplanner.openstreetmap.model.OSMWithTags;
-import org.opentripplanner.routing.edgetype.StreetEdge;
-import org.opentripplanner.routing.edgetype.StreetTraversalPermission;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.opentripplanner.street.model.StreetTraversalPermission;
 
 /**
  *
@@ -154,14 +150,14 @@ public class OSMFilter {
     OSMWay way,
     StreetTraversalPermission def
   ) {
-    return getPermissionsForWay(way, def, false, false, new DataImportIssueStore(false));
+    return getPermissionsForWay(way, def, false, false, DataImportIssueStore.NOOP);
   }
 
   /**
    * Check OSM tags for various one-way and one-way-by-mode tags and return a pair of permissions
    * for travel along and against the way.
    */
-  public static P2<StreetTraversalPermission> getPermissions(
+  public static StreetTraversalPermissionPair getPermissions(
     StreetTraversalPermission permissions,
     OSMWay way
   ) {
@@ -208,35 +204,12 @@ public class OSMFilter {
     if (way.isOpposableCycleway()) {
       permissionsBack = permissionsBack.add(StreetTraversalPermission.BICYCLE);
     }
-    return new P2<>(permissionsFront, permissionsBack);
+    return new StreetTraversalPermissionPair(permissionsFront, permissionsBack);
   }
 
-  public static int getStreetClasses(OSMWithTags way) {
-    int link = 0;
+  public static boolean isLink(OSMWithTags way) {
     String highway = way.getTag("highway");
-    if (highway != null && highway.endsWith(("_link"))) {
-      link = StreetEdge.CLASS_LINK;
-    }
-    return getPlatformClass(way) | link;
-  }
-
-  public static int getPlatformClass(OSMWithTags way) {
-    String highway = way.getTag("highway");
-    if ("platform".equals(way.getTag("railway"))) {
-      return StreetEdge.CLASS_TRAIN_PLATFORM;
-    }
-    if ("platform".equals(highway) || "platform".equals(way.getTag("public_transport"))) {
-      if (
-        way.isTagTrue("train") ||
-        way.isTagTrue("subway") ||
-        way.isTagTrue("tram") ||
-        way.isTagTrue("monorail")
-      ) {
-        return StreetEdge.CLASS_TRAIN_PLATFORM;
-      }
-      return StreetEdge.CLASS_OTHER_PLATFORM;
-    }
-    return 0;
+    return highway != null && highway.endsWith(("_link"));
   }
 
   /**

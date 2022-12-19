@@ -2,8 +2,8 @@ package org.opentripplanner.routing.algorithm.raptoradapter.transit;
 
 import java.time.Duration;
 import java.util.List;
+import org.opentripplanner.framework.time.DurationUtils;
 import org.opentripplanner.transit.model.site.StopTransferPriority;
-import org.opentripplanner.util.time.DurationUtils;
 
 public interface TransitTuningParameters {
   List<Duration> PAGING_SEARCH_WINDOW_ADJUSTMENTS = DurationUtils.durations("4h 2h 1h 30m 20m 10m");
@@ -65,7 +65,7 @@ public interface TransitTuningParameters {
   Integer stopTransferCost(StopTransferPriority key);
 
   /**
-   * The maximum number of transfer RoutingRequests for which the pre-calculated transfers should be
+   * The maximum number of transfer RouteRequests for which the pre-calculated transfers should be
    * cached. If too small, the average request may be slower due to the required re-calculating. If
    * too large, more memory may be used than needed.
    */

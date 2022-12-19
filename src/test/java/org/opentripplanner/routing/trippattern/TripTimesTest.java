@@ -3,15 +3,20 @@ package org.opentripplanner.routing.trippattern;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.opentripplanner.model.UpdateError.UpdateErrorType.NEGATIVE_DWELL_TIME;
+import static org.opentripplanner.model.UpdateError.UpdateErrorType.NEGATIVE_HOP_TIME;
 
 import java.util.LinkedList;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.opentripplanner.model.StopTime;
 import org.opentripplanner.transit.model._data.TransitModelForTest;
+import org.opentripplanner.transit.model.framework.Deduplicator;
 import org.opentripplanner.transit.model.framework.FeedScopedId;
-import org.opentripplanner.transit.model.site.Stop;
+import org.opentripplanner.transit.model.site.RegularStop;
+import org.opentripplanner.transit.model.timetable.RealTimeState;
 import org.opentripplanner.transit.model.timetable.Trip;
+import org.opentripplanner.transit.model.timetable.TripTimes;
 
 public class TripTimesTest {
 
@@ -47,7 +52,7 @@ public class TripTimesTest {
     for (int i = 0; i < stops.length; ++i) {
       StopTime stopTime = new StopTime();
 
-      Stop stop = TransitModelForTest.stopForTest(stops[i].getId(), 0.0, 0.0);
+      RegularStop stop = TransitModelForTest.stopForTest(stops[i].getId(), 0.0, 0.0);
       stopTime.setStop(stop);
       stopTime.setArrivalTime(i * 60);
       stopTime.setDepartureTime(i * 60);
@@ -90,14 +95,20 @@ public class TripTimesTest {
     updatedTripTimesA.updateArrivalTime(1, 60);
     updatedTripTimesA.updateDepartureTime(1, 59);
 
-    assertFalse(updatedTripTimesA.timesIncreasing());
+    var error = updatedTripTimesA.validateNonIncreasingTimes();
+    assertTrue(error.isFailure());
+    assertEquals(1, error.failureValue().stopIndex());
+    assertEquals(NEGATIVE_DWELL_TIME, error.failureValue().errorType());
 
     TripTimes updatedTripTimesB = new TripTimes(originalTripTimes);
 
     updatedTripTimesB.updateDepartureTime(6, 421);
     updatedTripTimesB.updateArrivalTime(7, 420);
 
-    assertFalse(updatedTripTimesB.timesIncreasing());
+    error = updatedTripTimesB.validateNonIncreasingTimes();
+    assertTrue(error.isFailure());
+    assertEquals(7, error.failureValue().stopIndex());
+    assertEquals(NEGATIVE_HOP_TIME, error.failureValue().errorType());
   }
 
   @Test
@@ -107,7 +118,7 @@ public class TripTimesTest {
     updatedTripTimesA.updateArrivalTime(0, -300); //"Yesterday"
     updatedTripTimesA.updateDepartureTime(0, 50);
 
-    assertTrue(updatedTripTimesA.timesIncreasing());
+    assertTrue(updatedTripTimesA.validateNonIncreasingTimes().isSuccess());
   }
 
   @Test
@@ -146,9 +157,9 @@ public class TripTimesTest {
     StopTime stopTime1 = new StopTime();
     StopTime stopTime2 = new StopTime();
 
-    Stop stop0 = TransitModelForTest.stopForTest(stops[0].getId(), 0.0, 0.0);
-    Stop stop1 = TransitModelForTest.stopForTest(stops[1].getId(), 0.0, 0.0);
-    Stop stop2 = TransitModelForTest.stopForTest(stops[2].getId(), 0.0, 0.0);
+    RegularStop stop0 = TransitModelForTest.stopForTest(stops[0].getId(), 0.0, 0.0);
+    RegularStop stop1 = TransitModelForTest.stopForTest(stops[1].getId(), 0.0, 0.0);
+    RegularStop stop2 = TransitModelForTest.stopForTest(stops[2].getId(), 0.0, 0.0);
 
     stopTime0.setStop(stop0);
     stopTime0.setDepartureTime(0);
@@ -174,6 +185,9 @@ public class TripTimesTest {
     updatedTripTimesA.updateArrivalTime(1, 89);
     updatedTripTimesA.updateDepartureTime(1, 98);
 
-    assertFalse(updatedTripTimesA.timesIncreasing());
+    var validationResult = updatedTripTimesA.validateNonIncreasingTimes();
+    assertTrue(validationResult.isFailure());
+    assertEquals(2, validationResult.failureValue().stopIndex());
+    assertEquals(NEGATIVE_DWELL_TIME, validationResult.failureValue().errorType());
   }
 }

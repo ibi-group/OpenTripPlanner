@@ -1,0 +1,27 @@
+{
+  "testDate": "2022-10-10",
+  "feedId": "ST",
+  "graph": "graph.obj",
+
+  "tuningParameters": {
+    "dynamicSearchWindow": {
+      "maxWinTimeMinutes": 1440
+    },
+    "stopTransferCost": {
+      "DISCOURAGED": 3000,
+      "ALLOWED": 150,
+      "RECOMMENDED": 60,
+      "PREFERRED": 0
+    }
+  },
+  "routingDefaults": {
+    "walkSpeed": 1.38,
+    "transferSlack": 180,
+    "waitReluctance": 0.175,
+    "walkReluctance": 5,
+    "maxDirectStreetDuration": "1h1m",
+    "boardSlackForMode": {
+      "RAIL": "12m"
+    }
+  }
+}

@@ -2,14 +2,11 @@ package org.opentripplanner.ext.dataoverlay.api;
 
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
-import org.opentripplanner.common.model.T2;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.opentripplanner.framework.tostring.ToStringBuilder;
 
 /**
  * The purpose of this class is to hold all parameters and their value in a map. It also contains
@@ -30,14 +27,18 @@ import org.slf4j.LoggerFactory;
  * carbon_monoxide_threshold
  * carbon_monoxide_penalty
  * </pre>
+ * <p>
+ * THIS CLASS IS IMMUTABLE AND THREAD-SAFE
  */
 public class DataOverlayParameters implements Serializable {
 
-  private static final long serialVersionUID = 1L;
+  private final Map<Parameter, Double> values;
 
-  private static final Logger LOG = LoggerFactory.getLogger(DataOverlayParameters.class);
-
-  private final Map<T2<ParameterName, ParameterType>, Double> values = new HashMap<>();
+  public DataOverlayParameters(Map<Parameter, Double> values) {
+    // Make a defencive copy to protect the map entries, this make this class immutable
+    // and thread safe
+    this.values = Map.copyOf(values);
+  }
 
   /**
    * Parse the input {@code params} and create a new {@link DataOverlayParameters} instance. All
@@ -45,24 +46,7 @@ public class DataOverlayParameters implements Serializable {
    * input and filter out the data-overlay parameters.
    */
   public static DataOverlayParameters parseQueryParams(Map<String, List<String>> params) {
-    var result = new DataOverlayParameters();
-    for (String key : params.keySet()) {
-      var name = resolveKey(key);
-      if (name != null) {
-        List<String> values = params.get(key);
-        if (values == null || values.isEmpty()) {
-          LOG.warn("The data-overlay parameter value is missing. Parameter: {}", key);
-          continue;
-        }
-        var value = resolveValue(values.get(0));
-        if (value == null) {
-          LOG.warn("The data-overlay parameter value is null. Parameter: {}", key);
-          continue;
-        }
-        result.put(name, value);
-      }
-    }
-    return result;
+    return DataOverlayParametersBuilder.parseQueryParams(params);
   }
 
   /**
@@ -98,23 +82,15 @@ public class DataOverlayParameters implements Serializable {
   }
 
   public Double get(ParameterName name, ParameterType type) {
-    return values.get(new T2<>(name, type));
-  }
-
-  public void put(String param, Double value) {
-    put(resolveKey(param), value);
-  }
-
-  public void put(ParameterName name, ParameterType type, Double value) {
-    put(new T2<>(name, type), value);
+    return values.get(new Parameter(name, type));
   }
 
   public Iterable<ParameterName> listParameterNames() {
-    return values.keySet().stream().map(it -> it.first).collect(Collectors.toSet());
+    return values.keySet().stream().map(Parameter::name).collect(Collectors.toSet());
   }
 
   @Nullable
-  static T2<ParameterName, ParameterType> resolveKey(String parameter) {
+  static Parameter resolveKey(String parameter) {
     try {
       int pos = parameter.lastIndexOf('_');
       if (pos < 0 || pos > parameter.length() - 2) {
@@ -122,7 +98,7 @@ public class DataOverlayParameters implements Serializable {
       }
       var name = ParameterName.valueOf(parameter.substring(0, pos).toUpperCase());
       var type = ParameterType.valueOf(parameter.substring(pos + 1).toUpperCase());
-      return new T2<>(name, type);
+      return new Parameter(name, type);
     } catch (IllegalArgumentException ignore) {
       return null;
     }
@@ -137,14 +113,18 @@ public class DataOverlayParameters implements Serializable {
     }
   }
 
-  private Double get(T2<ParameterName, ParameterType> param) {
+  private Double get(Parameter param) {
     return values.get(param);
   }
 
-  private void put(T2<ParameterName, ParameterType> param, Double value) {
-    if (param == null) {
-      return;
+  @Override
+  public String toString() {
+    var buf = ToStringBuilder.of(DataOverlayParameters.class);
+    // Map keys to String and sort to make the toSting() deterministic
+    var keys = values.keySet().stream().map(Parameter::keyString).sorted().toList();
+    for (String key : keys) {
+      buf.addObj(key, get(key));
     }
-    values.put(param, value);
+    return buf.toString();
   }
 }

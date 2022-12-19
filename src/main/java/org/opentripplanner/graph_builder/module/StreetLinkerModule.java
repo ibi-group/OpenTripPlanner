@@ -1,37 +1,36 @@
 package org.opentripplanner.graph_builder.module;
 
-import java.util.Arrays;
-import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
-import org.opentripplanner.graph_builder.DataImportIssueStore;
+import org.opentripplanner.framework.application.OTPFeature;
+import org.opentripplanner.framework.logging.ProgressTracker;
+import org.opentripplanner.graph_builder.issue.api.DataImportIssueStore;
 import org.opentripplanner.graph_builder.issues.ParkAndRideEntranceRemoved;
-import org.opentripplanner.graph_builder.linking.LinkingDirection;
-import org.opentripplanner.graph_builder.services.GraphBuilderModule;
-import org.opentripplanner.routing.core.TraverseMode;
-import org.opentripplanner.routing.core.TraverseModeSet;
-import org.opentripplanner.routing.edgetype.StreetTransitEntranceLink;
-import org.opentripplanner.routing.edgetype.StreetTransitStopLink;
-import org.opentripplanner.routing.edgetype.StreetVehicleParkingLink;
-import org.opentripplanner.routing.edgetype.VehicleParkingEdge;
+import org.opentripplanner.graph_builder.model.GraphBuilderModule;
 import org.opentripplanner.routing.graph.Graph;
+import org.opentripplanner.routing.linking.LinkingDirection;
+import org.opentripplanner.routing.vehicle_parking.VehicleParking;
 import org.opentripplanner.routing.vehicle_parking.VehicleParkingHelper;
-import org.opentripplanner.routing.vehicle_parking.VehicleParkingService;
-import org.opentripplanner.routing.vertextype.TransitEntranceVertex;
-import org.opentripplanner.routing.vertextype.TransitStopVertex;
-import org.opentripplanner.routing.vertextype.VehicleParkingEntranceVertex;
-import org.opentripplanner.transit.model.site.FlexLocationGroup;
-import org.opentripplanner.transit.model.site.Stop;
+import org.opentripplanner.street.model.edge.StreetTransitEntranceLink;
+import org.opentripplanner.street.model.edge.StreetTransitStopLink;
+import org.opentripplanner.street.model.edge.StreetVehicleParkingLink;
+import org.opentripplanner.street.model.edge.VehicleParkingEdge;
+import org.opentripplanner.street.model.vertex.TransitEntranceVertex;
+import org.opentripplanner.street.model.vertex.TransitStopVertex;
+import org.opentripplanner.street.model.vertex.VehicleParkingEntranceVertex;
+import org.opentripplanner.street.search.TraverseMode;
+import org.opentripplanner.street.search.TraverseModeSet;
+import org.opentripplanner.transit.model.site.GroupStop;
+import org.opentripplanner.transit.model.site.RegularStop;
 import org.opentripplanner.transit.model.site.StopLocation;
 import org.opentripplanner.transit.service.TransitModel;
-import org.opentripplanner.util.OTPFeature;
-import org.opentripplanner.util.logging.ProgressTracker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * {@link org.opentripplanner.graph_builder.services.GraphBuilderModule} plugin that links various
+ * {@link GraphBuilderModule} plugin that links various
  * objects in the graph to the street network. It should be run after both the transit network and
  * street network are loaded. It links four things: transit stops, transit entrances, bike rental
  * stations, and bike parks. Therefore it should be run even when there's no GTFS data present to
@@ -40,31 +39,32 @@ import org.slf4j.LoggerFactory;
 public class StreetLinkerModule implements GraphBuilderModule {
 
   private static final Logger LOG = LoggerFactory.getLogger(StreetLinkerModule.class);
-  private Boolean addExtraEdgesToAreas = true;
+  private final Graph graph;
+  private final TransitModel transitModel;
+  private final DataImportIssueStore issueStore;
+  private final Boolean addExtraEdgesToAreas;
 
-  public void setAddExtraEdgesToAreas(Boolean addExtraEdgesToAreas) {
+  public StreetLinkerModule(
+    Graph graph,
+    TransitModel transitModel,
+    DataImportIssueStore issueStore,
+    boolean addExtraEdgesToAreas
+  ) {
+    this.graph = graph;
+    this.transitModel = transitModel;
+    this.issueStore = issueStore;
     this.addExtraEdgesToAreas = addExtraEdgesToAreas;
   }
 
-  public List<String> provides() {
-    return Arrays.asList("street to transit", "linking");
-  }
-
-  public List<String> getPrerequisites() {
-    return List.of("streets"); // don't include transit, because we also link P+Rs and bike rental stations,
-    // which you could have without transit. However, if you have transit, this module should be run after it
-    // is loaded.
+  /** For test only */
+  public static void linkStreetsForTestOnly(Graph graph, TransitModel model) {
+    new StreetLinkerModule(graph, model, DataImportIssueStore.NOOP, false).buildGraph();
   }
 
   @Override
-  public void buildGraph(
-    Graph graph,
-    TransitModel transitModel,
-    HashMap<Class<?>, Object> extra,
-    DataImportIssueStore issueStore
-  ) {
+  public void buildGraph() {
     transitModel.index();
-    graph.index();
+    graph.index(transitModel.getStopModel());
     graph.getLinker().setAddExtraEdgesToAreas(this.addExtraEdgesToAreas);
 
     if (graph.hasStreets) {
@@ -100,10 +100,9 @@ public class StreetLinkerModule implements GraphBuilderModule {
       stopLocationsUsedForFlexTrips.addAll(
         stopLocationsUsedForFlexTrips
           .stream()
-          .filter(s -> s instanceof FlexLocationGroup)
-          .flatMap(g ->
-            ((FlexLocationGroup) g).getLocations().stream().filter(e -> e instanceof Stop)
-          )
+          .filter(GroupStop.class::isInstance)
+          .map(GroupStop.class::cast)
+          .flatMap(g -> g.getLocations().stream().filter(RegularStop.class::isInstance))
           .toList()
       );
     }
@@ -204,6 +203,7 @@ public class StreetLinkerModule implements GraphBuilderModule {
       return;
     }
     LOG.info("Linking vehicle parks to graph...");
+    List<VehicleParking> vehicleParkingToRemove = new ArrayList<>();
     for (VehicleParkingEntranceVertex vehicleParkingEntranceVertex : graph.getVerticesOfType(
       VehicleParkingEntranceVertex.class
     )) {
@@ -224,7 +224,17 @@ public class StreetLinkerModule implements GraphBuilderModule {
       issueStore.add(
         new ParkAndRideEntranceRemoved(vehicleParkingEntranceVertex.getParkingEntrance())
       );
-      removeVehicleParkingEntranceVertexFromGraph(vehicleParkingEntranceVertex, graph);
+      var vehicleParking = removeVehicleParkingEntranceVertexFromGraph(
+        vehicleParkingEntranceVertex,
+        graph
+      );
+      if (vehicleParking != null) {
+        vehicleParkingToRemove.add(vehicleParking);
+      }
+    }
+    if (!vehicleParkingToRemove.isEmpty()) {
+      var vehicleParkingService = graph.getVehicleParkingService();
+      vehicleParkingService.updateVehicleParking(List.of(), vehicleParkingToRemove);
     }
     graph.hasLinkedBikeParks = true;
   }
@@ -244,7 +254,12 @@ public class StreetLinkerModule implements GraphBuilderModule {
     );
   }
 
-  private void removeVehicleParkingEntranceVertexFromGraph(
+  /**
+   * Removes vehicle parking entrace vertex from graph.
+   *
+   * @return vehicle parking for removal if the removed entrance was its only entrance.
+   */
+  private VehicleParking removeVehicleParkingEntranceVertexFromGraph(
     VehicleParkingEntranceVertex vehicleParkingEntranceVertex,
     Graph graph
   ) {
@@ -273,10 +288,10 @@ public class StreetLinkerModule implements GraphBuilderModule {
     graph.remove(vehicleParkingEntranceVertex);
 
     if (removeVehicleParking) {
-      var vehicleParkingService = graph.getService(VehicleParkingService.class);
-      vehicleParkingService.removeVehicleParking(vehicleParking);
+      return vehicleParking;
     } else {
       vehicleParking.getEntrances().remove(entrance);
+      return null;
     }
   }
 }

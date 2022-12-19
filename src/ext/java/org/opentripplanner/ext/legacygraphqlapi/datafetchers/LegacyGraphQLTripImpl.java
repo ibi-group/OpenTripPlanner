@@ -15,28 +15,27 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.LineString;
+import org.opentripplanner.api.support.SemanticHash;
 import org.opentripplanner.ext.legacygraphqlapi.LegacyGraphQLRequestContext;
 import org.opentripplanner.ext.legacygraphqlapi.LegacyGraphQLUtils;
 import org.opentripplanner.ext.legacygraphqlapi.generated.LegacyGraphQLDataFetchers;
 import org.opentripplanner.ext.legacygraphqlapi.generated.LegacyGraphQLTypes;
 import org.opentripplanner.ext.legacygraphqlapi.generated.LegacyGraphQLTypes.LegacyGraphQLWheelchairBoarding;
+import org.opentripplanner.framework.time.ServiceDateUtils;
 import org.opentripplanner.model.Timetable;
-import org.opentripplanner.model.TimetableSnapshot;
-import org.opentripplanner.model.TripPattern;
 import org.opentripplanner.model.TripTimeOnDate;
-import org.opentripplanner.routing.RoutingService;
 import org.opentripplanner.routing.alertpatch.EntitySelector;
 import org.opentripplanner.routing.alertpatch.TransitAlert;
 import org.opentripplanner.routing.services.TransitAlertService;
-import org.opentripplanner.routing.trippattern.TripTimes;
 import org.opentripplanner.transit.model.framework.FeedScopedId;
 import org.opentripplanner.transit.model.network.Route;
+import org.opentripplanner.transit.model.network.TripPattern;
 import org.opentripplanner.transit.model.organization.Agency;
 import org.opentripplanner.transit.model.site.StopLocation;
 import org.opentripplanner.transit.model.timetable.Direction;
 import org.opentripplanner.transit.model.timetable.Trip;
+import org.opentripplanner.transit.model.timetable.TripTimes;
 import org.opentripplanner.transit.service.TransitService;
-import org.opentripplanner.util.time.ServiceDateUtils;
 
 public class LegacyGraphQLTripImpl implements LegacyGraphQLDataFetchers.LegacyGraphQLTrip {
 
@@ -101,20 +100,16 @@ public class LegacyGraphQLTripImpl implements LegacyGraphQLDataFetchers.LegacyGr
                       .stream()
                       .anyMatch(entity ->
                         (
-                          entity instanceof EntitySelector.StopAndRoute &&
-                          ((EntitySelector.StopAndRoute) entity).stopAndRoute.routeOrTrip.equals(
-                              getRoute(environment).getId()
-                            )
+                          entity instanceof EntitySelector.StopAndRoute stopAndRoute &&
+                          stopAndRoute.routeId().equals(getRoute(environment).getId())
                         ) ||
                         (
-                          entity instanceof EntitySelector.StopAndTrip &&
-                          ((EntitySelector.StopAndTrip) entity).stopAndTrip.routeOrTrip.equals(
-                              getSource(environment).getId()
-                            )
+                          entity instanceof EntitySelector.StopAndTrip stopAndTrip &&
+                          stopAndTrip.tripId().equals(getSource(environment).getId())
                         )
                       )
                   )
-                  .collect(Collectors.toList())
+                  .toList()
               );
               getStops(environment)
                 .forEach(stop -> {
@@ -286,7 +281,7 @@ public class LegacyGraphQLTripImpl implements LegacyGraphQLDataFetchers.LegacyGr
       if (tripPattern == null) {
         return null;
       }
-      return tripPattern.semanticHashString(getSource(environment));
+      return SemanticHash.forTripPattern(tripPattern, getSource(environment));
     };
   }
 
@@ -338,16 +333,8 @@ public class LegacyGraphQLTripImpl implements LegacyGraphQLDataFetchers.LegacyGr
           ? ServiceDateUtils.parseString(args.getLegacyGraphQLServiceDate())
           : LocalDate.now(timeZone);
 
-        TripPattern tripPattern = null;
-        TimetableSnapshot timetableSnapshot = transitService.getTimetableSnapshot();
-        if (timetableSnapshot != null) {
-          tripPattern = timetableSnapshot.getLastAddedTripPattern(trip.getId(), serviceDate);
-        }
-        // timetableSnapshot is null or no realtime added pattern found
-        if (tripPattern == null) {
-          tripPattern = getTripPattern(environment);
-        }
-        // no matching pattern found anywhere
+        TripPattern tripPattern = transitService.getPatternForTrip(trip, serviceDate);
+        // no matching pattern found
         if (tripPattern == null) {
           return List.of();
         }
@@ -374,7 +361,8 @@ public class LegacyGraphQLTripImpl implements LegacyGraphQLDataFetchers.LegacyGr
 
   @Override
   public DataFetcher<String> tripHeadsign() {
-    return environment -> getSource(environment).getHeadsign();
+    return environment ->
+      LegacyGraphQLUtils.getTranslation(getSource(environment).getHeadsign(), environment);
   }
 
   @Override

@@ -3,8 +3,8 @@ package org.opentripplanner.model.plan.pagecursor;
 import java.time.Duration;
 import java.time.Instant;
 import javax.annotation.Nullable;
+import org.opentripplanner.framework.tostring.ToStringBuilder;
 import org.opentripplanner.model.plan.SortOrder;
-import org.opentripplanner.util.lang.ToStringBuilder;
 
 /**
  * This class holds all the information needed to page to the next/previous page. It is serialized
@@ -13,6 +13,8 @@ import org.opentripplanner.util.lang.ToStringBuilder;
  * <p>
  * The PageCursor class is internal to the router, only the serialized string is passed to/from the
  * clients.
+ * <p>
+ * THIS CLASS IS IMMUTABLE AND THREAD-SAFE
  */
 public class PageCursor {
 

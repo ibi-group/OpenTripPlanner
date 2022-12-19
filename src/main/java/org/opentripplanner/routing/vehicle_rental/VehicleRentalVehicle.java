@@ -2,8 +2,8 @@ package org.opentripplanner.routing.vehicle_rental;
 
 import java.time.Instant;
 import java.util.Set;
+import org.opentripplanner.framework.i18n.I18NString;
 import org.opentripplanner.routing.vehicle_rental.RentalVehicleType.FormFactor;
-import org.opentripplanner.transit.model.basic.I18NString;
 import org.opentripplanner.transit.model.framework.FeedScopedId;
 
 /**
@@ -115,7 +115,7 @@ public class VehicleRentalVehicle implements VehicleRentalPlace {
   }
 
   @Override
-  public boolean isKeepingVehicleRentalAtDestinationAllowed() {
+  public boolean isArrivingInRentalVehicleAtDestinationAllowed() {
     return false;
   }
 

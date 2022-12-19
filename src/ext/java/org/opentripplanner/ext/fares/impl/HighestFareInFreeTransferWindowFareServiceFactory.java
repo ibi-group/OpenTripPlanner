@@ -1,13 +1,16 @@
 package org.opentripplanner.ext.fares.impl;
 
+import static org.opentripplanner.standalone.config.framework.json.OtpVersion.NA;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
+import org.opentripplanner.ext.fares.model.FareRuleSet;
+import org.opentripplanner.ext.fares.model.FareRulesData;
 import org.opentripplanner.model.OtpTransitService;
-import org.opentripplanner.routing.core.FareRuleSet;
 import org.opentripplanner.routing.fares.FareService;
-import org.opentripplanner.standalone.config.NodeAdapter;
+import org.opentripplanner.standalone.config.framework.json.NodeAdapter;
 import org.opentripplanner.transit.model.framework.FeedScopedId;
 
 /**
@@ -44,20 +47,21 @@ public class HighestFareInFreeTransferWindowFareServiceFactory extends DefaultFa
    * This step ensures that the fares in the source GTFS data are accounted for correctly.
    */
   @Override
-  public void processGtfs(OtpTransitService transitService) {
-    fillFareRules(
-      transitService.getAllFareAttributes(),
-      transitService.getAllFareRules(),
-      regularFareRules
-    );
+  public void processGtfs(FareRulesData fareRulesData, OtpTransitService transitService) {
+    fillFareRules(fareRulesData.fareAttributes(), fareRulesData.fareRules(), regularFareRules);
   }
 
   @Override
   public void configure(JsonNode config) {
     var adapter = new NodeAdapter(config, null);
-    freeTransferWindow = adapter.asDuration("freeTransferWindow", freeTransferWindow);
+    freeTransferWindow =
+      adapter.of("freeTransferWindow").since(NA).summary("TODO").asDuration(freeTransferWindow);
 
     analyzeInterlinedTransfers =
-      adapter.asBoolean("analyzeInterlinedTransfers", analyzeInterlinedTransfers);
+      adapter
+        .of("analyzeInterlinedTransfers")
+        .since(NA)
+        .summary("TODO")
+        .asBoolean(analyzeInterlinedTransfers);
   }
 }

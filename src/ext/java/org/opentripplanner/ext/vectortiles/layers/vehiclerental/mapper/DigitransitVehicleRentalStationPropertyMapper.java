@@ -1,0 +1,56 @@
+package org.opentripplanner.ext.vectortiles.layers.vehiclerental.mapper;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.Locale;
+import java.util.stream.Collectors;
+import org.opentripplanner.api.mapping.I18NStringMapper;
+import org.opentripplanner.api.mapping.PropertyMapper;
+import org.opentripplanner.inspector.vector.KeyValue;
+import org.opentripplanner.routing.vehicle_rental.VehicleRentalPlace;
+import org.opentripplanner.routing.vehicle_rental.VehicleRentalStation;
+
+public class DigitransitVehicleRentalStationPropertyMapper
+  extends PropertyMapper<VehicleRentalStation> {
+
+  private final I18NStringMapper i18NStringMapper;
+
+  public DigitransitVehicleRentalStationPropertyMapper(Locale locale) {
+    this.i18NStringMapper = new I18NStringMapper(locale);
+  }
+
+  @Override
+  protected Collection<KeyValue> map(VehicleRentalStation station) {
+    var items = new ArrayList<KeyValue>();
+    items.addAll(getFeedScopedIdAndNetwork(station));
+    items.addAll(getNameAndFormFactors(station, i18NStringMapper));
+    return items;
+  }
+
+  protected static List<KeyValue> getFeedScopedIdAndNetwork(VehicleRentalPlace vehicleRentalPlace) {
+    return List.of(
+      new KeyValue("id", vehicleRentalPlace.getId().toString()),
+      new KeyValue("network", vehicleRentalPlace.getNetwork())
+    );
+  }
+
+  protected static List<KeyValue> getNameAndFormFactors(
+    VehicleRentalStation vehicleRentalStation,
+    I18NStringMapper i18NStringMapper
+  ) {
+    return List.of(
+      new KeyValue("name", i18NStringMapper.mapToApi(vehicleRentalStation.getName())),
+      // a station can potentially have multiple form factors that's why this is plural
+      new KeyValue(
+        "formFactors",
+        vehicleRentalStation
+          .formFactors()
+          .stream()
+          .map(Enum::name)
+          .sorted()
+          .collect(Collectors.joining(","))
+      )
+    );
+  }
+}

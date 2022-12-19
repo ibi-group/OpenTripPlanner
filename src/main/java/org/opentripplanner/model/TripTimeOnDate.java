@@ -5,11 +5,14 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import org.opentripplanner.routing.trippattern.OccupancyStatus;
-import org.opentripplanner.routing.trippattern.RealTimeState;
-import org.opentripplanner.routing.trippattern.TripTimes;
+import org.opentripplanner.framework.i18n.I18NString;
+import org.opentripplanner.transit.model.network.TripPattern;
 import org.opentripplanner.transit.model.site.StopLocation;
+import org.opentripplanner.transit.model.timetable.OccupancyStatus;
+import org.opentripplanner.transit.model.timetable.RealTimeState;
+import org.opentripplanner.transit.model.timetable.StopTimeKey;
 import org.opentripplanner.transit.model.timetable.Trip;
+import org.opentripplanner.transit.model.timetable.TripTimes;
 
 /**
  * Represents a Trip at a specific stop index and on a specific service day. This is a read-only
@@ -201,7 +204,7 @@ public class TripTimeOnDate {
     return tripTimes.getTrip().getGtfsBlockId();
   }
 
-  public String getHeadsign() {
+  public I18NString getHeadsign() {
     return tripTimes.getHeadsign(stopIndex);
   }
 
@@ -222,7 +225,7 @@ public class TripTimeOnDate {
   }
 
   public StopTimeKey getStopTimeKey() {
-    return new StopTimeKey(tripTimes.getTrip().getId(), stopIndex);
+    return StopTimeKey.of(tripTimes.getTrip().getId(), stopIndex).build();
   }
 
   public BookingInfo getPickupBookingInfo() {

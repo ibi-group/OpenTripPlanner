@@ -6,10 +6,12 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import org.opentripplanner.ext.vehiclerentalservicedirectory.api.VehicleRentalServiceDirectoryFetcherParameters;
+import org.opentripplanner.framework.io.HttpUtils;
+import org.opentripplanner.routing.linking.VertexLinker;
+import org.opentripplanner.routing.vehicle_rental.VehicleRentalService;
 import org.opentripplanner.updater.GraphUpdater;
 import org.opentripplanner.updater.vehicle_rental.VehicleRentalUpdater;
 import org.opentripplanner.updater.vehicle_rental.datasources.VehicleRentalDataSourceFactory;
-import org.opentripplanner.util.HttpUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,7 +28,9 @@ public class VehicleRentalServiceDirectoryFetcher {
   private static final int DEFAULT_FREQUENCY_SEC = 15;
 
   public static List<GraphUpdater> createUpdatersFromEndpoint(
-    VehicleRentalServiceDirectoryFetcherParameters parameters
+    VehicleRentalServiceDirectoryFetcherParameters parameters,
+    VertexLinker vertexLinker,
+    VehicleRentalService vehicleRentalStationService
   ) {
     LOG.info("Fetching list of updaters from {}", parameters.getUrl());
 
@@ -73,7 +77,12 @@ public class VehicleRentalServiceDirectoryFetcher {
         var dataSource = VehicleRentalDataSourceFactory.create(
           vehicleRentalParameters.sourceParameters()
         );
-        GraphUpdater updater = new VehicleRentalUpdater(vehicleRentalParameters, dataSource);
+        GraphUpdater updater = new VehicleRentalUpdater(
+          vehicleRentalParameters,
+          dataSource,
+          vertexLinker,
+          vehicleRentalStationService
+        );
         updaters.add(updater);
       }
     } catch (java.io.IOException e) {

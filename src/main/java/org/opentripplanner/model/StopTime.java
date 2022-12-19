@@ -2,9 +2,11 @@
 package org.opentripplanner.model;
 
 import java.util.List;
+import org.opentripplanner.framework.i18n.I18NString;
+import org.opentripplanner.framework.time.TimeUtils;
 import org.opentripplanner.transit.model.site.StopLocation;
+import org.opentripplanner.transit.model.timetable.StopTimeKey;
 import org.opentripplanner.transit.model.timetable.Trip;
-import org.opentripplanner.util.time.TimeUtils;
 
 /**
  * This class is TEMPORALLY used during mapping of GTFS and Netex into the internal Model, it is not
@@ -29,7 +31,7 @@ public final class StopTime implements Comparable<StopTime> {
 
   private int stopSequence;
 
-  private String stopHeadsign;
+  private I18NString stopHeadsign;
 
   private List<String> headsignVias;
 
@@ -92,7 +94,7 @@ public final class StopTime implements Comparable<StopTime> {
    * is ok.
    */
   public StopTimeKey getId() {
-    return new StopTimeKey(trip.getId(), stopSequence);
+    return StopTimeKey.of(trip.getId(), stopSequence).build();
   }
 
   public Trip getTrip() {
@@ -176,11 +178,11 @@ public final class StopTime implements Comparable<StopTime> {
     this.timepoint = MISSING_VALUE;
   }
 
-  public String getStopHeadsign() {
+  public I18NString getStopHeadsign() {
     return stopHeadsign;
   }
 
-  public void setStopHeadsign(String headSign) {
+  public void setStopHeadsign(I18NString headSign) {
     this.stopHeadsign = headSign;
   }
 

@@ -30,6 +30,10 @@ public class Package implements ArchComponent {
     return packageIdentifier;
   }
 
+  public String packageIdentifierAllSubPackages() {
+    return packageIdentifier + ".(**)";
+  }
+
   public Package dependsOn(ArchComponent... allowedDependencies) {
     for (ArchComponent it : allowedDependencies) {
       this.allowedPackages.addAll(it.packages());
@@ -46,6 +50,8 @@ public class Package implements ArchComponent {
     ArchRule rule = classes()
       .that()
       .resideInAPackage(packageIdentifier)
+      .and()
+      .doNotImplement(dagger.internal.Factory.class)
       .should()
       .onlyDependOnClassesThat()
       .resideInAnyPackage(allAllowedPackages());

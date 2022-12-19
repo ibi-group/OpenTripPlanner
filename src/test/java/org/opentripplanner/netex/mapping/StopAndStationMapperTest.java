@@ -1,22 +1,29 @@
 package org.opentripplanner.netex.mapping;
 
+import static graphql.Assert.assertFalse;
+import static graphql.Assert.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import java.math.BigDecimal;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import org.junit.jupiter.api.Test;
-import org.opentripplanner.graph_builder.DataImportIssueStore;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.opentripplanner._support.time.ZoneIds;
+import org.opentripplanner.graph_builder.issue.api.DataImportIssueStore;
 import org.opentripplanner.netex.index.hierarchy.HierarchicalVersionMapById;
-import org.opentripplanner.transit.model.basic.WheelchairAccessibility;
+import org.opentripplanner.transit.model.basic.Accessibility;
+import org.opentripplanner.transit.model.site.RegularStop;
 import org.opentripplanner.transit.model.site.Station;
-import org.opentripplanner.transit.model.site.Stop;
 import org.rutebanken.netex.model.AccessibilityAssessment;
 import org.rutebanken.netex.model.AccessibilityLimitation;
 import org.rutebanken.netex.model.AccessibilityLimitations_RelStructure;
 import org.rutebanken.netex.model.LimitationStatusEnumeration;
+import org.rutebanken.netex.model.LimitedUseTypeEnumeration;
 import org.rutebanken.netex.model.LocationStructure;
 import org.rutebanken.netex.model.MultilingualString;
 import org.rutebanken.netex.model.Quay;
@@ -26,6 +33,8 @@ import org.rutebanken.netex.model.StopPlace;
 import org.rutebanken.netex.model.VehicleModeEnumeration;
 
 public class StopAndStationMapperTest {
+
+  public static final ZoneId DEFAULT_TIME_ZONE = ZoneIds.OSLO;
 
   @Test
   public void testWheelChairBoarding() {
@@ -68,7 +77,9 @@ public class StopAndStationMapperTest {
       MappingSupport.ID_FACTORY,
       new HierarchicalVersionMapById<>(),
       null,
-      new DataImportIssueStore(false)
+      DEFAULT_TIME_ZONE,
+      DataImportIssueStore.NOOP,
+      false
     );
 
     stopAndStationMapper.mapParentAndChildStops(List.of(stopPlace));
@@ -77,9 +88,9 @@ public class StopAndStationMapperTest {
 
     assertEquals(3, stops.size(), "Stops.size must be 3 found " + stops.size());
 
-    assertWheelchairAccessibility("ST:Quay:1", WheelchairAccessibility.POSSIBLE, stops);
-    assertWheelchairAccessibility("ST:Quay:2", WheelchairAccessibility.NOT_POSSIBLE, stops);
-    assertWheelchairAccessibility("ST:Quay:3", WheelchairAccessibility.NO_INFORMATION, stops);
+    assertWheelchairAccessibility("ST:Quay:1", Accessibility.POSSIBLE, stops);
+    assertWheelchairAccessibility("ST:Quay:2", Accessibility.NOT_POSSIBLE, stops);
+    assertWheelchairAccessibility("ST:Quay:3", Accessibility.NO_INFORMATION, stops);
 
     // Now test with AccessibilityAssessment set on StopPlace (should be default)
     stopPlace.withAccessibilityAssessment(
@@ -92,7 +103,7 @@ public class StopAndStationMapperTest {
     stopAndStationMapper.mapParentAndChildStops(List.of(stopPlace));
 
     assertEquals(4, stops.size(), "stops.size must be 4 found " + stops.size());
-    assertWheelchairAccessibility("ST:Quay:4", WheelchairAccessibility.POSSIBLE, stops);
+    assertWheelchairAccessibility("ST:Quay:4", Accessibility.POSSIBLE, stops);
   }
 
   @Test
@@ -146,12 +157,14 @@ public class StopAndStationMapperTest {
       MappingSupport.ID_FACTORY,
       quaysById,
       null,
-      new DataImportIssueStore(false)
+      DEFAULT_TIME_ZONE,
+      DataImportIssueStore.NOOP,
+      false
     );
 
     stopMapper.mapParentAndChildStops(stopPlaces);
 
-    Collection<Stop> stops = stopMapper.resultStops;
+    Collection<RegularStop> stops = stopMapper.resultStops;
     Collection<Station> stations = stopMapper.resultStations;
 
     assertEquals(3, stops.size());
@@ -162,17 +175,17 @@ public class StopAndStationMapperTest {
       .filter(s -> s.getId().getId().equals("NSR:StopPlace:1"))
       .findFirst()
       .get();
-    Stop childStop1 = stops
+    RegularStop childStop1 = stops
       .stream()
       .filter(s -> s.getId().getId().equals("NSR:Quay:1"))
       .findFirst()
       .get();
-    Stop childStop2 = stops
+    RegularStop childStop2 = stops
       .stream()
       .filter(s -> s.getId().getId().equals("NSR:Quay:2"))
       .findFirst()
       .get();
-    Stop childStop3 = stops
+    RegularStop childStop3 = stops
       .stream()
       .filter(s -> s.getId().getId().equals("NSR:Quay:3"))
       .findFirst()
@@ -186,6 +199,47 @@ public class StopAndStationMapperTest {
     assertEquals(59.909911, childStop1.getLat(), 0.0001);
     assertEquals(10.753008, childStop1.getLon(), 0.0001);
     assertEquals("A", childStop1.getPlatformCode());
+
+    assertEquals(DEFAULT_TIME_ZONE, parentStop.getTimezone());
+    assertEquals(DEFAULT_TIME_ZONE, childStop1.getTimeZone());
+  }
+
+  @ParameterizedTest
+  @CsvSource(value = { "true", "false" })
+  public void testMapIsolatedStopPlace(boolean isolated) {
+    Collection<StopPlace> stopPlaces = new ArrayList<>();
+    StopPlace stopPlace;
+    stopPlace =
+      createStopPlace(
+        "NSR:StopPlace:1",
+        "Oslo A",
+        "1",
+        59.909584,
+        10.755165,
+        VehicleModeEnumeration.TRAM
+      );
+
+    stopPlace.withLimitedUse(LimitedUseTypeEnumeration.ISOLATED);
+
+    stopPlaces.add(stopPlace);
+    StopAndStationMapper stopMapper = new StopAndStationMapper(
+      MappingSupport.ID_FACTORY,
+      new HierarchicalVersionMapById<>(),
+      null,
+      DEFAULT_TIME_ZONE,
+      DataImportIssueStore.NOOP,
+      isolated
+    );
+
+    stopMapper.mapParentAndChildStops(stopPlaces);
+    Collection<Station> stations = stopMapper.resultStations;
+
+    assertEquals(1, stations.size());
+    if (isolated) {
+      assertTrue(stations.stream().findFirst().get().isTransfersNotAllowed());
+    } else {
+      assertFalse(stations.stream().findFirst().get().isTransfersNotAllowed());
+    }
   }
 
   private static StopPlace createStopPlace(
@@ -240,14 +294,14 @@ public class StopAndStationMapperTest {
    */
   private void assertWheelchairAccessibility(
     String quayId,
-    WheelchairAccessibility expected,
-    List<Stop> stops
+    Accessibility expected,
+    List<RegularStop> stops
   ) {
     var wheelchairAccessibility = stops
       .stream()
       .filter(s -> s.getId().getId().equals(quayId))
       .findAny()
-      .map(Stop::getWheelchairAccessibility)
+      .map(RegularStop::getWheelchairAccessibility)
       .orElse(null);
 
     assertNotNull(wheelchairAccessibility, "wheelchairAccessibility must not be null");

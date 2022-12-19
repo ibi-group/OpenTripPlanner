@@ -2,15 +2,16 @@ package org.opentripplanner.transit.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.opentripplanner.framework.application.OtpFileNames.BUILD_CONFIG_FILENAME;
 
-import java.time.ZoneId;
 import org.junit.jupiter.api.Test;
 import org.opentripplanner.ConstantsForTests;
+import org.opentripplanner._support.time.ZoneIds;
 import org.opentripplanner.ext.fares.impl.DefaultFareServiceFactory;
 import org.opentripplanner.graph_builder.module.TimeZoneAdjusterModule;
 import org.opentripplanner.model.Timetable;
 import org.opentripplanner.routing.graph.Graph;
-import org.opentripplanner.routing.trippattern.Deduplicator;
+import org.opentripplanner.transit.model.framework.Deduplicator;
 import org.opentripplanner.transit.model.framework.FeedScopedId;
 import org.opentripplanner.transit.model.timetable.Trip;
 
@@ -24,7 +25,7 @@ class TransitModelTest {
     // First GTFS bundle should be added successfully
     var deduplicator = new Deduplicator();
     var stopModel = new StopModel();
-    var graph = new Graph(stopModel, deduplicator);
+    var graph = new Graph(deduplicator);
     var transitModel = new TransitModel(stopModel, deduplicator);
     ConstantsForTests.addGtfsToGraph(
       graph,
@@ -54,7 +55,11 @@ class TransitModelTest {
           new DefaultFareServiceFactory(),
           null
         ),
-      "The graph contains agencies with different time zones. Please configure the one to be used in the build-config.json"
+      (
+        "The graph contains agencies with different time zones. " +
+        "Please configure the one to be used in the " +
+        BUILD_CONFIG_FILENAME
+      )
     );
   }
 
@@ -62,11 +67,11 @@ class TransitModelTest {
   void validateTimeZonesWithExplicitTimeZone() {
     var deduplicator = new Deduplicator();
     var stopModel = new StopModel();
-    var graph = new Graph(stopModel, deduplicator);
+    var graph = new Graph(deduplicator);
     var transitModel = new TransitModel(stopModel, deduplicator);
 
     // Whit explicit time zone
-    transitModel.initTimeZone(ZoneId.of("America/Chicago"));
+    transitModel.initTimeZone(ZoneIds.CHICAGO);
 
     // First GTFS bundle should be added successfully
     ConstantsForTests.addGtfsToGraph(
@@ -86,7 +91,7 @@ class TransitModelTest {
       null
     );
 
-    new TimeZoneAdjusterModule().buildGraph(graph, transitModel, null);
+    new TimeZoneAdjusterModule(transitModel).buildGraph();
 
     TransitModelIndex transitModelIndex = transitModel.getTransitModelIndex();
 

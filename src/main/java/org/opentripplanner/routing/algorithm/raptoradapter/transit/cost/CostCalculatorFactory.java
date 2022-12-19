@@ -1,27 +1,33 @@
 package org.opentripplanner.routing.algorithm.raptoradapter.transit.cost;
 
-import org.opentripplanner.transit.raptor.api.transit.CostCalculator;
+import org.opentripplanner.raptor.spi.CostCalculator;
 
 public class CostCalculatorFactory {
 
   public static <T extends DefaultTripSchedule> CostCalculator<T> createCostCalculator(
-    McCostParams mcCostParams,
+    GeneralizedCostParameters generalizedCostParameters,
     int[] stopBoardAlightCosts
   ) {
-    CostCalculator<T> calculator = new DefaultCostCalculator<>(mcCostParams, stopBoardAlightCosts);
+    CostCalculator<T> calculator = new DefaultCostCalculator<>(
+      generalizedCostParameters,
+      stopBoardAlightCosts
+    );
 
-    if (mcCostParams.accessibilityRequirements().enabled()) {
+    if (generalizedCostParameters.wheelchairEnabled()) {
       calculator =
-        new WheelchairCostCalculator<>(calculator, mcCostParams.accessibilityRequirements());
+        new WheelchairCostCalculator<>(
+          calculator,
+          generalizedCostParameters.wheelchairAccessibility()
+        );
     }
 
     // append RouteCostCalculator to calculator stack if (un)preferred routes exist
-    if (!mcCostParams.unpreferredRoutes().isEmpty()) {
+    if (!generalizedCostParameters.unpreferredPatterns().isEmpty()) {
       calculator =
-        new RouteCostCalculator(
+        new PatternCostCalculator<>(
           calculator,
-          mcCostParams.unpreferredRoutes(),
-          mcCostParams.unnpreferredCost()
+          generalizedCostParameters.unpreferredPatterns(),
+          generalizedCostParameters.unnpreferredCost()
         );
     }
 

@@ -9,7 +9,7 @@ import java.util.Collection;
 import java.util.Collections;
 import org.junit.jupiter.api.Test;
 import org.onebusaway.gtfs.model.Frequency;
-import org.opentripplanner.graph_builder.DataImportIssueStore;
+import org.opentripplanner.graph_builder.issue.api.DataImportIssueStore;
 
 public class FrequencyMapperTest {
 
@@ -29,11 +29,13 @@ public class FrequencyMapperTest {
 
   private static final int LABEL_ONLY = 1;
 
-  public static final DataImportIssueStore ISSUE_STORE = new DataImportIssueStore(false);
+  public static final DataImportIssueStore ISSUE_STORE = DataImportIssueStore.NOOP;
 
+  private static final TranslationHelper translationHelper = new TranslationHelper();
   private static final TripMapper TRIP_MAPPER = new TripMapper(
-    new RouteMapper(new AgencyMapper(FEED_ID), ISSUE_STORE),
-    new DirectionMapper(ISSUE_STORE)
+    new RouteMapper(new AgencyMapper(FEED_ID), ISSUE_STORE, translationHelper),
+    new DirectionMapper(ISSUE_STORE),
+    translationHelper
   );
 
   private static final Frequency FREQUENCY = new Frequency();

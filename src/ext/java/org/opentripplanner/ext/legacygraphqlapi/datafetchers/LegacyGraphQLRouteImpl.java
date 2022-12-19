@@ -7,13 +7,14 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.stream.Collectors;
 import org.opentripplanner.ext.legacygraphqlapi.LegacyGraphQLRequestContext;
+import org.opentripplanner.ext.legacygraphqlapi.LegacyGraphQLUtils;
 import org.opentripplanner.ext.legacygraphqlapi.generated.LegacyGraphQLDataFetchers;
 import org.opentripplanner.ext.legacygraphqlapi.generated.LegacyGraphQLTypes;
-import org.opentripplanner.model.TripPattern;
 import org.opentripplanner.routing.alertpatch.EntitySelector;
 import org.opentripplanner.routing.alertpatch.TransitAlert;
 import org.opentripplanner.routing.services.TransitAlertService;
 import org.opentripplanner.transit.model.network.Route;
+import org.opentripplanner.transit.model.network.TripPattern;
 import org.opentripplanner.transit.model.organization.Agency;
 import org.opentripplanner.transit.model.site.StopLocation;
 import org.opentripplanner.transit.model.timetable.Direction;
@@ -73,10 +74,8 @@ public class LegacyGraphQLRouteImpl implements LegacyGraphQLDataFetchers.LegacyG
                       .getEntities()
                       .stream()
                       .anyMatch(entity ->
-                        entity instanceof EntitySelector.StopAndRoute &&
-                        ((EntitySelector.StopAndRoute) entity).stopAndRoute.routeOrTrip.equals(
-                            getSource(environment).getId()
-                          )
+                        entity instanceof EntitySelector.StopAndRoute stopAndRoute &&
+                        stopAndRoute.routeId().equals(getSource(environment).getId())
                       )
                   )
                   .toList()
@@ -98,10 +97,8 @@ public class LegacyGraphQLRouteImpl implements LegacyGraphQLDataFetchers.LegacyG
                         .getEntities()
                         .stream()
                         .anyMatch(entity ->
-                          entity instanceof EntitySelector.StopAndTrip &&
-                          ((EntitySelector.StopAndTrip) entity).stopAndTrip.routeOrTrip.equals(
-                              trip.getId()
-                            )
+                          entity instanceof EntitySelector.StopAndTrip stopAndTrip &&
+                          stopAndTrip.tripId().equals(trip.getId())
                         )
                     )
                     .toList()
@@ -164,7 +161,8 @@ public class LegacyGraphQLRouteImpl implements LegacyGraphQLDataFetchers.LegacyG
 
   @Override
   public DataFetcher<String> longName() {
-    return environment -> getSource(environment).getLongName();
+    return environment ->
+      LegacyGraphQLUtils.getTranslation(getSource(environment).getLongName(), environment);
   }
 
   @Override

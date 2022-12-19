@@ -1,6 +1,5 @@
 package org.opentripplanner.ext.flex.template;
 
-import com.google.common.base.MoreObjects;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -8,19 +7,20 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Stream;
 import org.opentripplanner.ext.flex.FlexAccessEgress;
-import org.opentripplanner.ext.flex.FlexParameters;
 import org.opentripplanner.ext.flex.FlexServiceDate;
 import org.opentripplanner.ext.flex.edgetype.FlexTripEdge;
 import org.opentripplanner.ext.flex.flexpathcalculator.FlexPathCalculator;
 import org.opentripplanner.ext.flex.trip.FlexTrip;
+import org.opentripplanner.framework.tostring.ToStringBuilder;
 import org.opentripplanner.model.PathTransfer;
-import org.opentripplanner.routing.core.State;
-import org.opentripplanner.routing.graph.Edge;
 import org.opentripplanner.routing.graph.Graph;
-import org.opentripplanner.routing.graph.Vertex;
 import org.opentripplanner.routing.graphfinder.NearbyStop;
-import org.opentripplanner.routing.vertextype.TransitStopVertex;
-import org.opentripplanner.transit.model.site.Stop;
+import org.opentripplanner.standalone.config.sandbox.FlexConfig;
+import org.opentripplanner.street.model.edge.Edge;
+import org.opentripplanner.street.model.vertex.TransitStopVertex;
+import org.opentripplanner.street.model.vertex.Vertex;
+import org.opentripplanner.street.search.state.State;
+import org.opentripplanner.transit.model.site.RegularStop;
 import org.opentripplanner.transit.model.site.StopLocation;
 import org.opentripplanner.transit.service.TransitService;
 
@@ -34,7 +34,7 @@ public abstract class FlexAccessEgressTemplate {
   protected final int secondsFromStartOfTime;
   public final LocalDate serviceDate;
   protected final FlexPathCalculator calculator;
-  private final FlexParameters flexParams;
+  private final FlexConfig flexConfig;
 
   /**
    * @param accessEgress  Path from origin to the point of boarding for this flex trip
@@ -53,7 +53,7 @@ public abstract class FlexAccessEgressTemplate {
     StopLocation transferStop,
     FlexServiceDate date,
     FlexPathCalculator calculator,
-    FlexParameters flexParams
+    FlexConfig config
   ) {
     this.accessEgress = accessEgress;
     this.trip = trip;
@@ -63,7 +63,7 @@ public abstract class FlexAccessEgressTemplate {
     this.secondsFromStartOfTime = date.secondsFromStartOfTime;
     this.serviceDate = date.serviceDate;
     this.calculator = calculator;
-    this.flexParams = flexParams;
+    this.flexConfig = config;
   }
 
   public StopLocation getTransferStop() {
@@ -74,10 +74,6 @@ public abstract class FlexAccessEgressTemplate {
     return accessEgress.stop;
   }
 
-  public FlexTrip getFlexTrip() {
-    return trip;
-  }
-
   /**
    * This method is very much the hot code path in the flex access/egress search so any optimization
    * here will lead to noticeable speedups.
@@ -86,17 +82,21 @@ public abstract class FlexAccessEgressTemplate {
     Graph graph,
     TransitService transitService
   ) {
-    if (transferStop instanceof Stop stop) {
-      TransitStopVertex flexVertex = transitService.getStopVertexForStop(stop);
+    if (transferStop instanceof RegularStop stop) {
+      TransitStopVertex flexVertex = graph.getStopVertexForStopId(stop.getId());
       return Stream
-        .of(getFlexAccessEgress(new ArrayList<>(), flexVertex, (Stop) transferStop))
+        .of(getFlexAccessEgress(new ArrayList<>(), flexVertex, (RegularStop) transferStop))
         .filter(Objects::nonNull);
     }
     // transferStop is Location Area/Line
     else {
+      double maxDistanceMeters =
+        flexConfig.maxTransferDuration().getSeconds() *
+        accessEgress.state.getRequest().preferences().walk().speed();
+
       return getTransfersFromTransferStop(transitService)
         .stream()
-        .filter(pathTransfer -> pathTransfer.getDistanceMeters() <= flexParams.maxTransferMeters)
+        .filter(pathTransfer -> pathTransfer.getDistanceMeters() <= maxDistanceMeters)
         .filter(transfer -> getFinalStop(transfer) != null)
         .map(transfer -> {
           List<Edge> edges = getTransferEdges(transfer);
@@ -108,17 +108,17 @@ public abstract class FlexAccessEgressTemplate {
 
   @Override
   public String toString() {
-    return MoreObjects
-      .toStringHelper(this)
-      .add("accessEgress", accessEgress)
-      .add("trip", trip)
-      .add("fromStopIndex", fromStopIndex)
-      .add("toStopIndex", toStopIndex)
-      .add("transferStop", transferStop)
-      .add("secondsFromStartOfTime", secondsFromStartOfTime)
-      .add("serviceDate", serviceDate)
-      .add("calculator", calculator)
-      .add("flexParams", flexParams)
+    return ToStringBuilder
+      .of(FlexAccessEgressTemplate.class)
+      .addObj("accessEgress", accessEgress)
+      .addObj("trip", trip)
+      .addNum("fromStopIndex", fromStopIndex)
+      .addNum("toStopIndex", toStopIndex)
+      .addObj("transferStop", transferStop)
+      .addServiceTime("secondsFromStartOfTime", secondsFromStartOfTime)
+      .addDate("serviceDate", serviceDate)
+      .addObj("calculator", calculator)
+      .addObj("flexConfig", flexConfig)
       .toString();
   }
 
@@ -131,7 +131,7 @@ public abstract class FlexAccessEgressTemplate {
   /**
    * Get the {@Link Stop} where the connection to the scheduled transit network is made.
    */
-  protected abstract Stop getFinalStop(PathTransfer transfer);
+  protected abstract RegularStop getFinalStop(PathTransfer transfer);
 
   /**
    * Get the transfers to/from stops in the scheduled transit network from the beginning/end of the
@@ -159,7 +159,7 @@ public abstract class FlexAccessEgressTemplate {
   protected FlexAccessEgress getFlexAccessEgress(
     List<Edge> transferEdges,
     Vertex flexVertex,
-    Stop stop
+    RegularStop stop
   ) {
     FlexTripEdge flexEdge = getFlexEdge(flexVertex, transferStop);
 

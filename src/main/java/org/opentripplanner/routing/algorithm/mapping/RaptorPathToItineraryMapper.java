@@ -5,7 +5,8 @@ import static org.opentripplanner.routing.algorithm.raptoradapter.transit.cost.R
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import org.opentripplanner.common.geometry.GeometryUtils;
+import org.opentripplanner.astar.model.GraphPath;
+import org.opentripplanner.framework.geometry.GeometryUtils;
 import org.opentripplanner.model.plan.FrequencyTransitLeg;
 import org.opentripplanner.model.plan.Itinerary;
 import org.opentripplanner.model.plan.Leg;
@@ -13,29 +14,28 @@ import org.opentripplanner.model.plan.Place;
 import org.opentripplanner.model.plan.ScheduledTransitLeg;
 import org.opentripplanner.model.plan.StreetLeg;
 import org.opentripplanner.model.transfer.ConstrainedTransfer;
-import org.opentripplanner.routing.algorithm.raptoradapter.transit.AccessEgress;
+import org.opentripplanner.raptor.api.path.AccessPathLeg;
+import org.opentripplanner.raptor.api.path.EgressPathLeg;
+import org.opentripplanner.raptor.api.path.Path;
+import org.opentripplanner.raptor.api.path.PathLeg;
+import org.opentripplanner.raptor.api.path.TransferPathLeg;
+import org.opentripplanner.raptor.api.path.TransitPathLeg;
+import org.opentripplanner.raptor.spi.RaptorAccessEgress;
+import org.opentripplanner.routing.algorithm.raptoradapter.transit.DefaultAccessEgress;
+import org.opentripplanner.routing.algorithm.raptoradapter.transit.DefaultRaptorTransfer;
 import org.opentripplanner.routing.algorithm.raptoradapter.transit.Transfer;
 import org.opentripplanner.routing.algorithm.raptoradapter.transit.TransitLayer;
 import org.opentripplanner.routing.algorithm.raptoradapter.transit.TripSchedule;
-import org.opentripplanner.routing.algorithm.raptoradapter.transit.request.TransferWithDuration;
 import org.opentripplanner.routing.algorithm.transferoptimization.api.OptimizedPath;
-import org.opentripplanner.routing.api.request.RoutingRequest;
+import org.opentripplanner.routing.api.request.RouteRequest;
 import org.opentripplanner.routing.api.request.StreetMode;
-import org.opentripplanner.routing.core.RoutingContext;
-import org.opentripplanner.routing.core.State;
-import org.opentripplanner.routing.core.StateEditor;
-import org.opentripplanner.routing.core.TraverseMode;
-import org.opentripplanner.routing.graph.Edge;
 import org.opentripplanner.routing.graph.Graph;
-import org.opentripplanner.routing.graph.Vertex;
-import org.opentripplanner.routing.spt.GraphPath;
-import org.opentripplanner.transit.raptor.api.path.AccessPathLeg;
-import org.opentripplanner.transit.raptor.api.path.EgressPathLeg;
-import org.opentripplanner.transit.raptor.api.path.Path;
-import org.opentripplanner.transit.raptor.api.path.PathLeg;
-import org.opentripplanner.transit.raptor.api.path.TransferPathLeg;
-import org.opentripplanner.transit.raptor.api.path.TransitPathLeg;
-import org.opentripplanner.transit.service.TransitModel;
+import org.opentripplanner.street.model.edge.Edge;
+import org.opentripplanner.street.search.TraverseMode;
+import org.opentripplanner.street.search.request.StreetSearchRequest;
+import org.opentripplanner.street.search.request.StreetSearchRequestMapper;
+import org.opentripplanner.street.search.state.State;
+import org.opentripplanner.street.search.state.StateEditor;
 import org.opentripplanner.transit.service.TransitService;
 
 /**
@@ -44,14 +44,12 @@ import org.opentripplanner.transit.service.TransitService;
  * information needed for routing. Additional information has to be fetched from the graph index to
  * create complete itineraries that can be shown in a trip planner.
  */
-public class RaptorPathToItineraryMapper {
-
-  private final Graph graph;
+public class RaptorPathToItineraryMapper<T extends TripSchedule> {
 
   private final TransitLayer transitLayer;
 
-  private final RoutingRequest request;
-
+  private final StreetSearchRequest request;
+  private final StreetMode transferMode;
   private final ZonedDateTime transitSearchTimeZero;
 
   private final GraphPathToItineraryMapper graphPathToItineraryMapper;
@@ -69,12 +67,12 @@ public class RaptorPathToItineraryMapper {
     TransitService transitService,
     TransitLayer transitLayer,
     ZonedDateTime transitSearchTimeZero,
-    RoutingRequest request
+    RouteRequest request
   ) {
-    this.graph = graph;
     this.transitLayer = transitLayer;
     this.transitSearchTimeZero = transitSearchTimeZero;
-    this.request = request;
+    this.transferMode = request.journey().transfer().mode();
+    this.request = StreetSearchRequestMapper.mapToTransferRequest(request).build();
     this.graphPathToItineraryMapper =
       new GraphPathToItineraryMapper(
         transitService.getTimeZone(),
@@ -83,13 +81,13 @@ public class RaptorPathToItineraryMapper {
       );
   }
 
-  public Itinerary createItinerary(Path<TripSchedule> path) {
+  public Itinerary createItinerary(Path<T> path) {
     var optimizedPath = path instanceof OptimizedPath ? (OptimizedPath<TripSchedule>) path : null;
 
     // Map access leg
     List<Leg> legs = new ArrayList<>(mapAccessLeg(path.accessLeg()));
 
-    PathLeg<TripSchedule> pathLeg = path.accessLeg().nextLeg();
+    PathLeg<T> pathLeg = path.accessLeg().nextLeg();
 
     Leg transitLeg = null;
 
@@ -104,7 +102,7 @@ public class RaptorPathToItineraryMapper {
         legs.addAll(
           mapTransferLeg(
             pathLeg.asTransferLeg(),
-            request.modes.transferMode == StreetMode.BIKE ? TraverseMode.BICYCLE : TraverseMode.WALK
+            transferMode == StreetMode.BIKE ? TraverseMode.BICYCLE : TraverseMode.WALK
           )
         );
       }
@@ -113,7 +111,7 @@ public class RaptorPathToItineraryMapper {
     }
 
     // Map egress leg
-    EgressPathLeg<TripSchedule> egressPathLeg = pathLeg.asEgressLeg();
+    EgressPathLeg<T> egressPathLeg = pathLeg.asEgressLeg();
     Itinerary mapped = mapEgressLeg(egressPathLeg);
     legs.addAll(mapped == null ? List.of() : mapped.getLegs());
 
@@ -135,12 +133,12 @@ public class RaptorPathToItineraryMapper {
     return itinerary;
   }
 
-  private List<Leg> mapAccessLeg(AccessPathLeg<TripSchedule> accessPathLeg) {
-    AccessEgress accessPath = (AccessEgress) accessPathLeg.access();
-
-    if (accessPath.durationInSeconds() == 0) {
+  private List<Leg> mapAccessLeg(AccessPathLeg<T> accessPathLeg) {
+    if (isEmptyAccessEgress(accessPathLeg.access())) {
       return List.of();
     }
+
+    DefaultAccessEgress accessPath = (DefaultAccessEgress) accessPathLeg.access();
 
     GraphPath graphPath = new GraphPath(accessPath.getLastState());
 
@@ -155,8 +153,18 @@ public class RaptorPathToItineraryMapper {
       .getLegs();
   }
 
-  private Leg mapTransitLeg(Leg prevTransitLeg, TransitPathLeg<TripSchedule> pathLeg) {
-    TripSchedule tripSchedule = pathLeg.trip();
+  private Leg mapTransitLeg(Leg prevTransitLeg, TransitPathLeg<T> pathLeg) {
+    T tripSchedule = pathLeg.trip();
+
+    // If the next leg is an egress leg without a duration then this transit leg
+    // arrives at the destination.
+    // The cost of the egress should therefore be included in the last transit
+    // leg given that it is the last leg.
+    int lastLegCost = 0;
+    PathLeg<T> nextLeg = pathLeg.nextLeg();
+    if (nextLeg.isEgressLeg() && isEmpty(nextLeg.asEgressLeg())) {
+      lastLegCost = pathLeg.nextLeg().generalizedCost();
+    }
 
     // Find stop positions in pattern where this leg boards and alights.
     // We cannot assume every stop appears only once in a pattern, so we
@@ -183,7 +191,7 @@ public class RaptorPathToItineraryMapper {
         transitSearchTimeZero.getZone().normalized(),
         (prevTransitLeg == null ? null : prevTransitLeg.getTransferToNextLeg()),
         (ConstrainedTransfer) pathLeg.getConstrainedTransferAfterLeg(),
-        toOtpDomainCost(pathLeg.generalizedCost()),
+        toOtpDomainCost(pathLeg.generalizedCost() + lastLegCost),
         frequencyHeadwayInSeconds,
         null
       );
@@ -199,30 +207,35 @@ public class RaptorPathToItineraryMapper {
       transitSearchTimeZero.getZone().normalized(),
       (prevTransitLeg == null ? null : prevTransitLeg.getTransferToNextLeg()),
       (ConstrainedTransfer) pathLeg.getConstrainedTransferAfterLeg(),
-      toOtpDomainCost(pathLeg.generalizedCost()),
+      toOtpDomainCost(pathLeg.generalizedCost() + lastLegCost),
       null
     );
   }
 
-  private List<Leg> mapTransferLeg(
-    TransferPathLeg<TripSchedule> pathLeg,
-    TraverseMode transferMode
-  ) {
+  private boolean isEmpty(EgressPathLeg<T> egressPathLeg) {
+    return isEmptyAccessEgress(egressPathLeg.egress());
+  }
+
+  private boolean isEmptyAccessEgress(RaptorAccessEgress accessEgress) {
+    return accessEgress.isEmpty();
+  }
+
+  private List<Leg> mapTransferLeg(TransferPathLeg<T> pathLeg, TraverseMode transferMode) {
     var transferFromStop = transitLayer.getStopByIndex(pathLeg.fromStop());
     var transferToStop = transitLayer.getStopByIndex(pathLeg.toStop());
-    Transfer transfer = ((TransferWithDuration) pathLeg.transfer()).transfer();
+    Transfer transfer = ((DefaultRaptorTransfer) pathLeg.transfer()).transfer();
 
     Place from = Place.forStop(transferFromStop);
     Place to = Place.forStop(transferToStop);
     return mapNonTransitLeg(pathLeg, transfer, transferMode, from, to);
   }
 
-  private Itinerary mapEgressLeg(EgressPathLeg<TripSchedule> egressPathLeg) {
-    AccessEgress egressPath = (AccessEgress) egressPathLeg.egress();
-
-    if (egressPath.durationInSeconds() == 0) {
+  private Itinerary mapEgressLeg(EgressPathLeg<T> egressPathLeg) {
+    if (isEmpty(egressPathLeg)) {
       return null;
     }
+
+    DefaultAccessEgress egressPath = (DefaultAccessEgress) egressPathLeg.egress();
 
     GraphPath graphPath = new GraphPath(egressPath.getLastState());
 
@@ -236,7 +249,7 @@ public class RaptorPathToItineraryMapper {
   }
 
   private List<Leg> mapNonTransitLeg(
-    PathLeg<TripSchedule> pathLeg,
+    PathLeg<T> pathLeg,
     Transfer transfer,
     TraverseMode transferMode,
     Place from,
@@ -259,18 +272,7 @@ public class RaptorPathToItineraryMapper {
           .build()
       );
     } else {
-      // A RoutingRequest with a RoutingContext must be constructed so that the edges
-      // may be re-traversed to create the leg(s) from the list of edges.
-      RoutingRequest traverseRequest = Transfer.prepareTransferRoutingRequest(request);
-      traverseRequest.arriveBy = false;
-      RoutingContext routingContext = new RoutingContext(
-        traverseRequest,
-        graph,
-        (Vertex) null,
-        null
-      );
-
-      StateEditor se = new StateEditor(routingContext, edges.get(0).getFromVertex());
+      StateEditor se = new StateEditor(edges.get(0).getFromVertex(), request);
       se.setTimeSeconds(createZonedDateTime(pathLeg.fromTime()).toEpochSecond());
 
       State s = se.makeState();

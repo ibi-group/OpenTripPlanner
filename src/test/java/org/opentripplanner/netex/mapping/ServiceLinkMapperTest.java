@@ -12,18 +12,17 @@ import net.opengis.gml._3.LineStringType;
 import org.junit.jupiter.api.Test;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.LineString;
-import org.opentripplanner.common.model.T2;
-import org.opentripplanner.graph_builder.DataImportIssueStore;
-import org.opentripplanner.model.StopPattern;
-import org.opentripplanner.model.TripPattern;
-import org.opentripplanner.model.impl.EntityById;
+import org.opentripplanner.framework.i18n.NonLocalizedString;
+import org.opentripplanner.graph_builder.issue.api.DataImportIssueStore;
 import org.opentripplanner.netex.index.hierarchy.HierarchicalMap;
 import org.opentripplanner.netex.index.hierarchy.HierarchicalMapById;
-import org.opentripplanner.transit.model.basic.NonLocalizedString;
+import org.opentripplanner.netex.mapping.support.NetexMainAndSubMode;
+import org.opentripplanner.transit.model.basic.Accessibility;
 import org.opentripplanner.transit.model.basic.TransitMode;
-import org.opentripplanner.transit.model.basic.WheelchairAccessibility;
+import org.opentripplanner.transit.model.framework.EntityById;
+import org.opentripplanner.transit.model.network.StopPattern;
+import org.opentripplanner.transit.model.site.RegularStop;
 import org.opentripplanner.transit.model.site.Station;
-import org.opentripplanner.transit.model.site.Stop;
 import org.rutebanken.netex.model.JourneyPattern;
 import org.rutebanken.netex.model.LinkSequenceProjection;
 import org.rutebanken.netex.model.LinkSequenceProjection_VersionStructure;
@@ -95,10 +94,10 @@ public class ServiceLinkMapperTest {
     quayIdByStopPointRef.add("RUT:StopPoint:2", "NSR:Quay:2");
     quayIdByStopPointRef.add("RUT:StopPoint:3", "NSR:Quay:3");
 
-    EntityById<Stop> stopsById = new EntityById<>();
+    EntityById<RegularStop> stopsById = new EntityById<>();
 
-    DataImportIssueStore issueStore = new DataImportIssueStore(false);
-    StopMapper stopMapper = new StopMapper(ID_FACTORY, issueStore);
+    DataImportIssueStore issueStore = DataImportIssueStore.NOOP;
+    QuayMapper quayMapper = new QuayMapper(ID_FACTORY, issueStore);
     StopPattern.StopPatternBuilder stopPatternBuilder = StopPattern.create(3);
 
     Station parentStation = Station
@@ -108,22 +107,16 @@ public class ServiceLinkMapperTest {
       .build();
 
     for (int i = 0; i < quaysById.size(); i++) {
-      Stop stop = stopMapper.mapQuayToStop(
+      RegularStop stop = quayMapper.mapQuayToStop(
         quaysById.get(i),
         parentStation,
         List.of(),
-        new T2<>(TransitMode.BUS, "UNKNOWN"),
-        WheelchairAccessibility.NO_INFORMATION
+        new NetexMainAndSubMode(TransitMode.BUS, "UNKNOWN"),
+        Accessibility.NO_INFORMATION
       );
       stopPatternBuilder.stops[i] = stop;
       stopsById.add(stop);
     }
-
-    TripPattern tripPattern = new TripPattern(
-      ID_FACTORY.createId("RUT:JourneyPattern:1"),
-      null,
-      stopPatternBuilder.build()
-    );
 
     ServiceLinkMapper serviceLinkMapper = new ServiceLinkMapper(
       ID_FACTORY,
@@ -134,21 +127,21 @@ public class ServiceLinkMapperTest {
       150
     );
 
-    LineString[] shape = serviceLinkMapper.getGeometriesByJourneyPattern(
+    List<LineString> shape = serviceLinkMapper.getGeometriesByJourneyPattern(
       journeyPattern,
-      tripPattern
+      stopPatternBuilder.build()
     );
 
-    Coordinate[] coordinates = shape[0].getCoordinates();
+    Coordinate[] coordinates = shape.get(0).getCoordinates();
 
-    assertEquals(0, issueStore.getIssues().size());
+    assertEquals(0, issueStore.listIssues().size());
 
     assertEquals(COORDINATES[0], coordinates[0].getY(), 0.000001);
     assertEquals(COORDINATES[1], coordinates[0].getX(), 0.000001);
     assertEquals(COORDINATES[2], coordinates[1].getY(), 0.000001);
     assertEquals(COORDINATES[3], coordinates[1].getX(), 0.000001);
 
-    coordinates = shape[1].getCoordinates();
+    coordinates = shape.get(1).getCoordinates();
 
     assertEquals(COORDINATES[2], coordinates[0].getY(), 0.000001);
     assertEquals(COORDINATES[3], coordinates[0].getX(), 0.000001);

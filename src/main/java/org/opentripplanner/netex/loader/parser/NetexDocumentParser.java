@@ -6,6 +6,7 @@ import javax.xml.bind.JAXBElement;
 import org.opentripplanner.netex.index.NetexEntityIndex;
 import org.rutebanken.netex.model.Common_VersionFrameStructure;
 import org.rutebanken.netex.model.CompositeFrame;
+import org.rutebanken.netex.model.FareFrame;
 import org.rutebanken.netex.model.GeneralFrame;
 import org.rutebanken.netex.model.InfrastructureFrame;
 import org.rutebanken.netex.model.PublicationDeliveryStructure;
@@ -15,6 +16,7 @@ import org.rutebanken.netex.model.ServiceFrame;
 import org.rutebanken.netex.model.SiteFrame;
 import org.rutebanken.netex.model.TimetableFrame;
 import org.rutebanken.netex.model.VersionFrameDefaultsStructure;
+import org.rutebanken.netex.model.VersionFrame_VersionStructure;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,9 +30,11 @@ public class NetexDocumentParser {
   private static final Logger LOG = LoggerFactory.getLogger(NetexDocumentParser.class);
 
   private final NetexEntityIndex netexIndex;
+  private final boolean ignoreFareFrame;
 
-  private NetexDocumentParser(NetexEntityIndex netexIndex) {
+  private NetexDocumentParser(NetexEntityIndex netexIndex, boolean ignoreFareFrame) {
     this.netexIndex = netexIndex;
+    this.ignoreFareFrame = ignoreFareFrame;
   }
 
   /**
@@ -39,9 +43,10 @@ public class NetexDocumentParser {
    */
   public static void parseAndPopulateIndex(
     NetexEntityIndex index,
-    PublicationDeliveryStructure doc
+    PublicationDeliveryStructure doc,
+    boolean ignoreFareFrame
   ) {
-    new NetexDocumentParser(index).parse(doc);
+    new NetexDocumentParser(index, ignoreFareFrame).parse(doc);
   }
 
   public static void finnishUp() {
@@ -70,6 +75,8 @@ public class NetexDocumentParser {
       parse((ServiceFrame) value, new ServiceFrameParser(netexIndex.flexibleStopPlaceById));
     } else if (value instanceof SiteFrame) {
       parse((SiteFrame) value, new SiteFrameParser());
+    } else if (!ignoreFareFrame && value instanceof FareFrame) {
+      parse((FareFrame) value, new FareFrameParser());
     } else if (value instanceof CompositeFrame) {
       // We recursively parse composite frames and content until there
       // is no more nested frames - this is accepting documents which
@@ -87,12 +94,7 @@ public class NetexDocumentParser {
     // Declare some ugly types to prevent obstructing the reading later...
     Collection<JAXBElement<? extends Common_VersionFrameStructure>> frames;
 
-    // TODO OTP2 #2781 - Frame defaults can be set on any frame according to the Norwegian
-    //                 - profile. This only set it on the composite frame, and further
-    //                 - overriding it at a sub-level will not be acknowledged, or even
-    //                 - given any kind of warning. This should be fixed as part of Issue
-    //                 - https://github.com/opentripplanner/OpenTripPlanner/issues/2781
-    parseFrameDefaultsLikeTimeZone(frame.getFrameDefaults());
+    netexIndex.timeZone.set(resolveTimeZone(frame.getFrameDefaults()));
 
     frames = frame.getFrames().getCommonFrame();
 
@@ -101,22 +103,27 @@ public class NetexDocumentParser {
     }
   }
 
-  private void parseFrameDefaultsLikeTimeZone(VersionFrameDefaultsStructure frameDefaults) {
-    String timeZone = "GMT";
-
-    if (
-      frameDefaults != null &&
-      frameDefaults.getDefaultLocale() != null &&
-      frameDefaults.getDefaultLocale().getTimeZone() != null
-    ) {
-      timeZone = frameDefaults.getDefaultLocale().getTimeZone();
-    }
-
-    netexIndex.timeZone.set(timeZone);
-  }
-
   private <T> void parse(T node, NetexParser<T> parser) {
     parser.parse(node);
     parser.setResultOnIndex(netexIndex);
+
+    if (node instanceof VersionFrame_VersionStructure frame) {
+      netexIndex.timeZone.set(resolveTimeZone(frame.getFrameDefaults()));
+    }
+  }
+
+  private String resolveTimeZone(VersionFrameDefaultsStructure frameDefaults) {
+    if (frameDefaults != null) {
+      var defaultLocale = frameDefaults.getDefaultLocale();
+      if (defaultLocale != null && defaultLocale.getTimeZone() != null) {
+        return defaultLocale.getTimeZone();
+      }
+    }
+    // Fallback to previously set time zone in hierarchy
+    if (netexIndex.timeZone.get() != null) {
+      return netexIndex.timeZone.get();
+    }
+    // Fallback to GMT if no time zone exists in hierarchy
+    return "GMT";
   }
 }

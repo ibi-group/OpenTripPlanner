@@ -11,22 +11,24 @@ import org.junit.jupiter.api.Test;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.LineString;
-import org.opentripplanner.common.geometry.GeometryUtils;
-import org.opentripplanner.routing.core.TraverseMode;
-import org.opentripplanner.routing.core.TraverseModeSet;
-import org.opentripplanner.routing.edgetype.AreaEdge;
-import org.opentripplanner.routing.edgetype.AreaEdgeList;
-import org.opentripplanner.routing.edgetype.StreetTransitStopLink;
-import org.opentripplanner.routing.edgetype.StreetTraversalPermission;
+import org.opentripplanner.framework.geometry.GeometryUtils;
+import org.opentripplanner.framework.i18n.I18NString;
+import org.opentripplanner.framework.i18n.LocalizedString;
 import org.opentripplanner.routing.graph.Graph;
-import org.opentripplanner.routing.trippattern.Deduplicator;
-import org.opentripplanner.routing.vertextype.IntersectionVertex;
-import org.opentripplanner.routing.vertextype.TransitStopVertex;
-import org.opentripplanner.routing.vertextype.TransitStopVertexBuilder;
+import org.opentripplanner.routing.linking.LinkingDirection;
+import org.opentripplanner.routing.linking.VertexLinker;
+import org.opentripplanner.street.model.StreetTraversalPermission;
+import org.opentripplanner.street.model.edge.AreaEdge;
+import org.opentripplanner.street.model.edge.AreaEdgeList;
+import org.opentripplanner.street.model.edge.StreetTransitStopLink;
+import org.opentripplanner.street.model.vertex.IntersectionVertex;
+import org.opentripplanner.street.model.vertex.TransitStopVertex;
+import org.opentripplanner.street.model.vertex.TransitStopVertexBuilder;
+import org.opentripplanner.street.search.TraverseMode;
+import org.opentripplanner.street.search.TraverseModeSet;
 import org.opentripplanner.transit.model._data.TransitModelForTest;
-import org.opentripplanner.transit.model.basic.I18NString;
-import org.opentripplanner.transit.model.basic.LocalizedString;
-import org.opentripplanner.transit.model.site.Stop;
+import org.opentripplanner.transit.model.framework.Deduplicator;
+import org.opentripplanner.transit.model.site.RegularStop;
 import org.opentripplanner.transit.service.StopModel;
 import org.opentripplanner.transit.service.TransitModel;
 
@@ -35,7 +37,6 @@ public class LinkStopToPlatformTest {
   private static final GeometryFactory geometryFactory = GeometryUtils.getGeometryFactory();
 
   private Graph graph;
-  private TransitModel transitModel;
 
   @BeforeEach
   public void before() {
@@ -43,8 +44,8 @@ public class LinkStopToPlatformTest {
 
     var deduplicator = new Deduplicator();
     var stopModel = new StopModel();
-    graph = new Graph(stopModel, deduplicator);
-    transitModel = new TransitModel(stopModel, deduplicator);
+    graph = new Graph(deduplicator);
+    var transitModel = new TransitModel(stopModel, deduplicator);
 
     ArrayList<IntersectionVertex> vertices = new ArrayList<>();
 
@@ -73,13 +74,15 @@ public class LinkStopToPlatformTest {
     edges.add(createAreaEdge(vertices.get(4), vertices.get(3), areaEdgeList, "edge 9"));
     edges.add(createAreaEdge(vertices.get(0), vertices.get(4), areaEdgeList, "edge 10"));
 
-    Stop stop = TransitModelForTest.stop("TestStop").withCoordinate(59.13545, 10.22213).build();
-
-    TransitStopVertex stopVertex = new TransitStopVertexBuilder()
-      .withGraph(graph)
-      .withStop(stop)
-      .withTransitModel(transitModel)
+    RegularStop stop = TransitModelForTest
+      .stop("TestStop")
+      .withCoordinate(59.13545, 10.22213)
       .build();
+
+    transitModel.index();
+    graph.index(transitModel.getStopModel());
+
+    new TransitStopVertexBuilder().withGraph(graph).withStop(stop).build();
   }
 
   /**

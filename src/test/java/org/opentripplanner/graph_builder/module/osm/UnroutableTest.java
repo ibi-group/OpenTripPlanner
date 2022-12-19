@@ -2,27 +2,27 @@ package org.opentripplanner.graph_builder.module.osm;
 
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
-import com.google.common.collect.Maps;
 import java.io.File;
 import java.net.URL;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
+import java.util.List;
+import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.opentripplanner.astar.model.GraphPath;
+import org.opentripplanner.astar.model.ShortestPathTree;
+import org.opentripplanner.graph_builder.issue.api.DataImportIssueStore;
 import org.opentripplanner.openstreetmap.OpenStreetMapProvider;
-import org.opentripplanner.routing.algorithm.astar.AStarBuilder;
-import org.opentripplanner.routing.api.request.RoutingRequest;
-import org.opentripplanner.routing.core.RoutingContext;
-import org.opentripplanner.routing.core.TraverseMode;
-import org.opentripplanner.routing.graph.Edge;
+import org.opentripplanner.routing.api.request.RouteRequest;
+import org.opentripplanner.routing.api.request.StreetMode;
 import org.opentripplanner.routing.graph.Graph;
-import org.opentripplanner.routing.graph.Vertex;
-import org.opentripplanner.routing.spt.GraphPath;
-import org.opentripplanner.routing.spt.ShortestPathTree;
-import org.opentripplanner.routing.trippattern.Deduplicator;
-import org.opentripplanner.transit.service.StopModel;
-import org.opentripplanner.transit.service.TransitModel;
+import org.opentripplanner.street.model.edge.Edge;
+import org.opentripplanner.street.model.vertex.Vertex;
+import org.opentripplanner.street.search.StreetSearchBuilder;
+import org.opentripplanner.street.search.state.State;
+import org.opentripplanner.street.search.strategy.EuclideanRemainingWeightHeuristic;
+import org.opentripplanner.transit.model.framework.Deduplicator;
 
 /**
  * Verify that OSM ways that represent proposed or as yet unbuilt roads are not used for routing.
@@ -34,22 +34,23 @@ import org.opentripplanner.transit.service.TransitModel;
 public class UnroutableTest {
 
   private Graph graph;
-  private TransitModel transitModel;
 
   @BeforeEach
   public void setUp() throws Exception {
     var deduplicator = new Deduplicator();
-    var stopModel = new StopModel();
-    graph = new Graph(stopModel, deduplicator);
-    transitModel = new TransitModel(stopModel, deduplicator);
+    graph = new Graph(deduplicator);
 
     URL osmDataUrl = getClass().getResource("bridge_construction.osm.pbf");
     File osmDataFile = new File(URLDecoder.decode(osmDataUrl.getFile(), StandardCharsets.UTF_8));
     OpenStreetMapProvider provider = new OpenStreetMapProvider(osmDataFile, true);
-    OpenStreetMapModule osmBuilder = new OpenStreetMapModule(provider);
-    osmBuilder.setDefaultWayPropertySetSource(new DefaultWayPropertySetSource());
-    HashMap<Class<?>, Object> extra = Maps.newHashMap();
-    osmBuilder.buildGraph(graph, transitModel, extra); // TODO get rid of this "extra" thing
+    OpenStreetMapModule osmBuilder = new OpenStreetMapModule(
+      List.of(provider),
+      Set.of(),
+      graph,
+      DataImportIssueStore.NOOP,
+      true
+    );
+    osmBuilder.buildGraph();
   }
 
   /**
@@ -59,17 +60,21 @@ public class UnroutableTest {
    */
   @Test
   public void testOnBoardRouting() {
-    RoutingRequest options = new RoutingRequest();
+    RouteRequest options = new RouteRequest();
+    options.journey().direct().setMode(StreetMode.BIKE);
 
     Vertex from = graph.getVertex("osm:node:2003617278");
     Vertex to = graph.getVertex("osm:node:40446276");
-    options.setMode(TraverseMode.BICYCLE);
-    ShortestPathTree spt = AStarBuilder
-      .oneToOne()
-      .setContext(new RoutingContext(options, graph, from, to))
+    ShortestPathTree<State, Edge, Vertex> spt = StreetSearchBuilder
+      .of()
+      .setHeuristic(new EuclideanRemainingWeightHeuristic())
+      .setRequest(options)
+      .setStreetRequest(options.journey().direct())
+      .setFrom(from)
+      .setTo(to)
       .getShortestPathTree();
 
-    GraphPath path = spt.getPath(to);
+    GraphPath<State, Edge, Vertex> path = spt.getPath(to);
     // At the time of writing this test, the router simply doesn't find a path at all when highway=construction
     // is filtered out, thus the null check.
     if (path != null) {

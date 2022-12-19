@@ -1,37 +1,39 @@
 package org.opentripplanner.ext.vectortiles.layers.stations;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
-import java.util.function.Function;
+import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Envelope;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.Point;
-import org.opentripplanner.common.geometry.GeometryUtils;
-import org.opentripplanner.ext.vectortiles.LayerBuilder;
-import org.opentripplanner.ext.vectortiles.PropertyMapper;
+import org.opentripplanner.api.mapping.PropertyMapper;
 import org.opentripplanner.ext.vectortiles.VectorTilesResource;
-import org.opentripplanner.routing.graph.Graph;
+import org.opentripplanner.framework.geometry.GeometryUtils;
+import org.opentripplanner.inspector.vector.LayerBuilder;
+import org.opentripplanner.inspector.vector.LayerParameters;
 import org.opentripplanner.transit.model.site.Station;
 import org.opentripplanner.transit.service.TransitService;
 
 public class StationsLayerBuilder extends LayerBuilder<Station> {
 
-  static Map<MapperType, Function<TransitService, PropertyMapper<Station>>> mappers = Map.of(
+  static Map<MapperType, BiFunction<TransitService, Locale, PropertyMapper<Station>>> mappers = Map.of(
     MapperType.Digitransit,
     DigitransitStationPropertyMapper::create
   );
   private final TransitService transitModel;
 
   public StationsLayerBuilder(
-    Graph graph,
     TransitService transitService,
-    VectorTilesResource.LayerParameters layerParameters
+    LayerParameters<VectorTilesResource.LayerType> layerParameters,
+    Locale locale
   ) {
     super(
+      mappers.get(MapperType.valueOf(layerParameters.mapper())).apply(transitService, locale),
       layerParameters.name(),
-      mappers.get(MapperType.valueOf(layerParameters.mapper())).apply(transitService)
+      layerParameters.expansionFactor()
     );
     this.transitModel = transitService;
   }

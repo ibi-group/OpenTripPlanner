@@ -1,7 +1,6 @@
 package org.opentripplanner.ext.transmodelapi.model.siri.et;
 
 import static org.opentripplanner.model.PickDrop.COORDINATE_WITH_DRIVER;
-import static org.opentripplanner.model.PickDrop.NONE;
 
 import graphql.Scalars;
 import graphql.schema.DataFetchingEnvironment;
@@ -13,21 +12,20 @@ import graphql.schema.GraphQLOutputType;
 import graphql.schema.GraphQLTypeReference;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import org.opentripplanner.ext.transmodelapi.model.EnumTypes;
 import org.opentripplanner.ext.transmodelapi.support.GqlUtil;
 import org.opentripplanner.model.TripTimeOnDate;
-import org.opentripplanner.routing.DatedServiceJourneyHelper;
 import org.opentripplanner.routing.alertpatch.StopCondition;
 import org.opentripplanner.routing.alertpatch.TransitAlert;
 import org.opentripplanner.routing.services.TransitAlertService;
 import org.opentripplanner.transit.model.framework.FeedScopedId;
 import org.opentripplanner.transit.model.site.StopLocation;
 import org.opentripplanner.transit.model.timetable.Trip;
+import org.opentripplanner.transit.model.timetable.TripIdAndServiceDate;
 import org.opentripplanner.transit.service.TransitService;
 
 public class EstimatedCallType {
@@ -222,13 +220,9 @@ public class EstimatedCallType {
           .newFieldDefinition()
           .name("forBoarding")
           .type(new GraphQLNonNull(Scalars.GraphQLBoolean))
-          .description(
-            "Whether vehicle may be boarded at quay according to the planned data. " +
-            "If the cancellation flag is set, boarding is not possible, even if this field " +
-            "is set to true."
-          )
+          .description("Whether vehicle may be boarded at quay.")
           .dataFetcher(environment ->
-            ((TripTimeOnDate) environment.getSource()).getPickupType() != NONE
+            ((TripTimeOnDate) environment.getSource()).getPickupType().isRoutable()
           )
           .build()
       )
@@ -237,13 +231,9 @@ public class EstimatedCallType {
           .newFieldDefinition()
           .name("forAlighting")
           .type(new GraphQLNonNull(Scalars.GraphQLBoolean))
-          .description(
-            "Whether vehicle may be alighted at quay according to the planned data. " +
-            "If the cancellation flag is set, alighting is not possible, even if this field " +
-            "is set to true."
-          )
+          .description("Whether vehicle may be alighted at quay.")
           .dataFetcher(environment ->
-            ((TripTimeOnDate) environment.getSource()).getDropoffType() != NONE
+            ((TripTimeOnDate) environment.getSource()).getDropoffType().isRoutable()
           )
           .build()
       )
@@ -304,11 +294,14 @@ public class EstimatedCallType {
           .name("datedServiceJourney")
           .type(datedServiceJourneyType)
           .dataFetcher(environment ->
-            DatedServiceJourneyHelper.getTripOnServiceDate(
-              GqlUtil.getTransitService(environment),
-              environment.<TripTimeOnDate>getSource().getTrip().getId(),
-              environment.<TripTimeOnDate>getSource().getServiceDay()
-            )
+            GqlUtil
+              .getTransitService(environment)
+              .getTripOnServiceDateForTripAndDay(
+                new TripIdAndServiceDate(
+                  environment.<TripTimeOnDate>getSource().getTrip().getId(),
+                  environment.<TripTimeOnDate>getSource().getServiceDay()
+                )
+              )
           )
           .build()
       )
@@ -387,14 +380,26 @@ public class EstimatedCallType {
 
     final LocalDate serviceDate = tripTimeOnDate.getServiceDay();
 
+    Set<StopCondition> stopConditions = Set.of(
+      StopCondition.STOP,
+      StopCondition.START_POINT,
+      StopCondition.EXCEPTIONAL_STOP
+    );
+
     // Quay
-    allAlerts.addAll(alertPatchService.getStopAlerts(stopId));
-    allAlerts.addAll(alertPatchService.getStopAndTripAlerts(stopId, tripId, serviceDate));
-    allAlerts.addAll(alertPatchService.getStopAndRouteAlerts(stopId, routeId));
+    allAlerts.addAll(alertPatchService.getStopAlerts(stopId, stopConditions));
+    allAlerts.addAll(
+      alertPatchService.getStopAndTripAlerts(stopId, tripId, serviceDate, stopConditions)
+    );
+    allAlerts.addAll(alertPatchService.getStopAndRouteAlerts(stopId, routeId, stopConditions));
     // StopPlace
-    allAlerts.addAll(alertPatchService.getStopAlerts(parentStopId));
-    allAlerts.addAll(alertPatchService.getStopAndTripAlerts(parentStopId, tripId, serviceDate));
-    allAlerts.addAll(alertPatchService.getStopAndRouteAlerts(parentStopId, routeId));
+    allAlerts.addAll(alertPatchService.getStopAlerts(parentStopId, stopConditions));
+    allAlerts.addAll(
+      alertPatchService.getStopAndTripAlerts(parentStopId, tripId, serviceDate, stopConditions)
+    );
+    allAlerts.addAll(
+      alertPatchService.getStopAndRouteAlerts(parentStopId, routeId, stopConditions)
+    );
     // Trip
     allAlerts.addAll(alertPatchService.getTripAlerts(tripId, serviceDate));
     // Route
@@ -412,8 +417,7 @@ public class EstimatedCallType {
     filterSituationsByDateAndStopConditions(
       allAlerts,
       Instant.ofEpochSecond(serviceDay + arrivalTime),
-      Instant.ofEpochSecond(serviceDay + departureTime),
-      Arrays.asList(StopCondition.STOP, StopCondition.START_POINT, StopCondition.EXCEPTIONAL_STOP)
+      Instant.ofEpochSecond(serviceDay + departureTime)
     );
 
     return allAlerts;
@@ -422,8 +426,7 @@ public class EstimatedCallType {
   private static void filterSituationsByDateAndStopConditions(
     Collection<TransitAlert> alertPatches,
     Instant fromTime,
-    Instant toTime,
-    List<StopCondition> stopConditions
+    Instant toTime
   ) {
     if (alertPatches != null) {
       // First and last period
@@ -435,13 +438,6 @@ public class EstimatedCallType {
       // Handle repeating validityPeriods
       alertPatches.removeIf(alertPatch ->
         !alertPatch.displayDuring(fromTime.getEpochSecond(), toTime.getEpochSecond())
-      );
-
-      alertPatches.removeIf(alert ->
-        !alert.getStopConditions().isEmpty() &&
-        stopConditions
-          .stream()
-          .noneMatch(stopCondition -> alert.getStopConditions().contains(stopCondition))
       );
     }
   }

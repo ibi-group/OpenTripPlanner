@@ -38,10 +38,11 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.commons.collections4.CollectionUtils;
-import org.opentripplanner.ext.flex.FlexIndex;
+import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.Envelope;
 import org.opentripplanner.ext.transmodelapi.mapping.PlaceMapper;
 import org.opentripplanner.ext.transmodelapi.mapping.TransitIdMapper;
-import org.opentripplanner.ext.transmodelapi.model.DefaultRoutingRequestType;
+import org.opentripplanner.ext.transmodelapi.model.DefaultRouteRequestType;
 import org.opentripplanner.ext.transmodelapi.model.EnumTypes;
 import org.opentripplanner.ext.transmodelapi.model.TransmodelPlaceType;
 import org.opentripplanner.ext.transmodelapi.model.framework.AuthorityType;
@@ -91,7 +92,7 @@ import org.opentripplanner.ext.transmodelapi.support.GqlUtil;
 import org.opentripplanner.model.plan.legreference.LegReference;
 import org.opentripplanner.model.plan.legreference.LegReferenceSerializer;
 import org.opentripplanner.routing.alertpatch.TransitAlert;
-import org.opentripplanner.routing.api.request.RoutingRequest;
+import org.opentripplanner.routing.api.request.RouteRequest;
 import org.opentripplanner.routing.error.RoutingValidationException;
 import org.opentripplanner.routing.graphfinder.NearbyStop;
 import org.opentripplanner.routing.graphfinder.PlaceAtDistance;
@@ -115,18 +116,18 @@ public class TransmodelGraphQLSchema {
 
   private static final Logger LOG = LoggerFactory.getLogger(TransmodelGraphQLSchema.class);
 
-  private final DefaultRoutingRequestType routing;
+  private final DefaultRouteRequestType routing;
 
   private final GqlUtil gqlUtil;
 
   private final Relay relay = new Relay();
 
-  private TransmodelGraphQLSchema(RoutingRequest defaultRequest, GqlUtil gqlUtil) {
+  private TransmodelGraphQLSchema(RouteRequest defaultRequest, GqlUtil gqlUtil) {
     this.gqlUtil = gqlUtil;
-    this.routing = new DefaultRoutingRequestType(defaultRequest);
+    this.routing = new DefaultRouteRequestType(defaultRequest);
   }
 
-  public static GraphQLSchema create(RoutingRequest defaultRequest, GqlUtil qglUtil) {
+  public static GraphQLSchema create(RouteRequest defaultRequest, GqlUtil qglUtil) {
     return new TransmodelGraphQLSchema(defaultRequest, qglUtil).create();
   }
 
@@ -321,6 +322,9 @@ public class TransmodelGraphQLSchema {
 
     GraphQLOutputType datedServiceJourneyType = DatedServiceJourneyType.create(
       serviceJourneyType,
+      journeyPatternType,
+      estimatedCallType,
+      quayType,
       gqlUtil
     );
 
@@ -553,11 +557,11 @@ public class TransmodelGraphQLSchema {
               .type(new GraphQLNonNull(Scalars.GraphQLString))
               .build()
           )
-          .dataFetcher(environment -> {
-            return GqlUtil
+          .dataFetcher(environment ->
+            GqlUtil
               .getTransitService(environment)
-              .getStopForId(TransitIdMapper.mapIDToDomain(environment.getArgument("id")));
-          })
+              .getStopLocation(TransitIdMapper.mapIDToDomain(environment.getArgument("id")))
+          )
           .build()
       )
       .field(
@@ -590,11 +594,11 @@ public class TransmodelGraphQLSchema {
               }
               TransitService transitService = GqlUtil.getTransitService(environment);
               return ((List<String>) environment.getArgument("ids")).stream()
-                .map(id -> transitService.getStopForId(TransitIdMapper.mapIDToDomain(id)))
+                .map(id -> transitService.getStopLocation(TransitIdMapper.mapIDToDomain(id)))
                 .collect(Collectors.toList());
             }
             if (environment.getArgument("name") == null) {
-              return GqlUtil.getTransitService(environment).getAllStops();
+              return GqlUtil.getTransitService(environment).listStopLocations();
             }
             //                            else {
             //                                return index.getLuceneIndex().query(environment.getArgument("name"), true, true, false)
@@ -653,15 +657,21 @@ public class TransmodelGraphQLSchema {
               .build()
           )
           .dataFetcher(environment -> {
-            return GqlUtil
-              .getRoutingService(environment)
-              .getStopsByBoundingBox(
-                environment.getArgument("minimumLatitude"),
+            Envelope envelope = new Envelope(
+              new Coordinate(
                 environment.getArgument("minimumLongitude"),
-                environment.getArgument("maximumLatitude"),
-                environment.getArgument("maximumLongitude")
+                environment.getArgument("minimumLatitude")
+              ),
+              new Coordinate(
+                environment.getArgument("maximumLongitude"),
+                environment.getArgument("maximumLatitude")
               )
+            );
+            return GqlUtil
+              .getTransitService(environment)
+              .findRegularStop(envelope)
               .stream()
+              .filter(stop -> envelope.contains(stop.getCoordinate().asJtsCoordinate()))
               .filter(stop ->
                 environment.getArgument("authority") == null ||
                 stop.getId().getFeedId().equalsIgnoreCase(environment.getArgument("authority"))
@@ -730,8 +740,10 @@ public class TransmodelGraphQLSchema {
                 GqlUtil
                   .getRoutingService(environment)
                   .findClosestStops(
-                    environment.getArgument("latitude"),
-                    environment.getArgument("longitude"),
+                    new Coordinate(
+                      environment.getArgument("longitude"),
+                      environment.getArgument("latitude")
+                    ),
                     environment.getArgument("radius")
                   )
                   .stream()
@@ -1141,6 +1153,7 @@ public class TransmodelGraphQLSchema {
                   .filter(route ->
                     route
                       .getLongName()
+                      .toString()
                       .toLowerCase()
                       .startsWith(((String) environment.getArgument("name")).toLowerCase())
                   );
@@ -1323,7 +1336,7 @@ public class TransmodelGraphQLSchema {
             Collection<VehicleRentalPlace> all = new ArrayList<>(
               GqlUtil
                 .getRoutingService(environment)
-                .getVehicleRentalStationService()
+                .getVehicleRentalService()
                 .getVehicleRentalStations()
             );
             List<String> filterByIds = environment.getArgument("ids");
@@ -1354,7 +1367,7 @@ public class TransmodelGraphQLSchema {
           .dataFetcher(environment -> {
             return GqlUtil
               .getRoutingService(environment)
-              .getVehicleRentalStationService()
+              .getVehicleRentalService()
               .getVehicleRentalStations()
               .stream()
               .filter(bikeRentalStation ->
@@ -1395,7 +1408,7 @@ public class TransmodelGraphQLSchema {
           .dataFetcher(environment ->
             GqlUtil
               .getRoutingService(environment)
-              .getVehicleRentalStationService()
+              .getVehicleRentalService()
               .getVehicleRentalStationForEnvelope(
                 environment.getArgument("minimumLongitude"),
                 environment.getArgument("minimumLatitude"),

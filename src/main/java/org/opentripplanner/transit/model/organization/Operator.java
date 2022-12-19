@@ -1,13 +1,13 @@
 package org.opentripplanner.transit.model.organization;
 
-import static org.opentripplanner.util.lang.AssertUtils.assertHasValue;
+import static org.opentripplanner.framework.lang.StringUtils.assertHasValue;
 
 import java.util.Objects;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import org.opentripplanner.transit.model.framework.AbstractTransitEntity;
 import org.opentripplanner.transit.model.framework.FeedScopedId;
 import org.opentripplanner.transit.model.framework.LogInfo;
-import org.opentripplanner.transit.model.framework.TransitEntity2;
 
 /**
  * A company which is responsible for operating public transport services. The operator will often
@@ -17,7 +17,7 @@ import org.opentripplanner.transit.model.framework.TransitEntity2;
  *
  * @see Agency
  */
-public class Operator extends TransitEntity2<Operator, OperatorBuilder> implements LogInfo {
+public class Operator extends AbstractTransitEntity<Operator, OperatorBuilder> implements LogInfo {
 
   private final String name;
   private final String url;
@@ -26,7 +26,8 @@ public class Operator extends TransitEntity2<Operator, OperatorBuilder> implemen
   Operator(OperatorBuilder builder) {
     super(builder.getId());
     // Required fields
-    this.name = assertHasValue(builder.getName());
+    this.name =
+      assertHasValue(builder.getName(), "Missing mandatory name on Operator %s", builder.getId());
 
     // Optional fields
     this.url = builder.getUrl();

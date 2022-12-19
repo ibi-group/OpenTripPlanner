@@ -12,6 +12,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import javax.media.jai.RasterFactory;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
@@ -45,46 +46,45 @@ import org.opengis.parameter.GeneralParameterValue;
 import org.opengis.parameter.ParameterValueGroup;
 import org.opentripplanner.api.common.LocationStringParser;
 import org.opentripplanner.api.parameter.QualifiedModeSet;
+import org.opentripplanner.astar.strategy.DurationSkipEdgeStrategy;
 import org.opentripplanner.ext.traveltime.geometry.ZSampleGrid;
-import org.opentripplanner.routing.algorithm.astar.AStarBuilder;
+import org.opentripplanner.framework.time.DurationUtils;
+import org.opentripplanner.framework.time.ServiceDateUtils;
+import org.opentripplanner.raptor.RaptorService;
+import org.opentripplanner.raptor.api.request.RaptorProfile;
+import org.opentripplanner.raptor.api.request.RaptorRequest;
+import org.opentripplanner.raptor.api.request.RaptorRequestBuilder;
+import org.opentripplanner.raptor.api.response.RaptorResponse;
+import org.opentripplanner.raptor.api.response.StopArrivals;
+import org.opentripplanner.raptor.spi.RaptorAccessEgress;
 import org.opentripplanner.routing.algorithm.raptoradapter.router.street.AccessEgressRouter;
-import org.opentripplanner.routing.algorithm.raptoradapter.transit.AccessEgress;
-import org.opentripplanner.routing.algorithm.raptoradapter.transit.Transfer;
-import org.opentripplanner.routing.algorithm.raptoradapter.transit.TransitLayer;
+import org.opentripplanner.routing.algorithm.raptoradapter.transit.DefaultAccessEgress;
 import org.opentripplanner.routing.algorithm.raptoradapter.transit.TripSchedule;
 import org.opentripplanner.routing.algorithm.raptoradapter.transit.mappers.AccessEgressMapper;
 import org.opentripplanner.routing.algorithm.raptoradapter.transit.request.RaptorRoutingRequestTransitData;
-import org.opentripplanner.routing.algorithm.raptoradapter.transit.request.RoutingRequestTransitDataProviderFilter;
-import org.opentripplanner.routing.api.request.RoutingRequest;
-import org.opentripplanner.routing.core.RoutingContext;
-import org.opentripplanner.routing.core.State;
-import org.opentripplanner.routing.core.StateData;
-import org.opentripplanner.routing.core.TemporaryVerticesContainer;
+import org.opentripplanner.routing.algorithm.raptoradapter.transit.request.RouteRequestTransitDataProviderFilter;
+import org.opentripplanner.routing.api.request.RouteRequest;
+import org.opentripplanner.routing.api.request.StreetMode;
 import org.opentripplanner.routing.graph.Graph;
-import org.opentripplanner.routing.graph.Vertex;
 import org.opentripplanner.routing.graphfinder.NearbyStop;
-import org.opentripplanner.routing.spt.DominanceFunction;
-import org.opentripplanner.standalone.api.OtpServerContext;
-import org.opentripplanner.transit.model.site.Stop;
-import org.opentripplanner.transit.model.site.StopLocation;
-import org.opentripplanner.transit.raptor.RaptorService;
-import org.opentripplanner.transit.raptor.api.request.RaptorProfile;
-import org.opentripplanner.transit.raptor.api.request.RaptorRequest;
-import org.opentripplanner.transit.raptor.api.request.RaptorRequestBuilder;
-import org.opentripplanner.transit.raptor.api.response.RaptorResponse;
-import org.opentripplanner.transit.raptor.api.response.StopArrivals;
-import org.opentripplanner.transit.raptor.api.transit.RaptorTransfer;
+import org.opentripplanner.standalone.api.OtpServerRequestContext;
+import org.opentripplanner.street.model.vertex.Vertex;
+import org.opentripplanner.street.search.StreetSearchBuilder;
+import org.opentripplanner.street.search.TemporaryVerticesContainer;
+import org.opentripplanner.street.search.request.StreetSearchRequest;
+import org.opentripplanner.street.search.request.StreetSearchRequestMapper;
+import org.opentripplanner.street.search.state.State;
+import org.opentripplanner.street.search.state.StateData;
+import org.opentripplanner.street.search.strategy.DominanceFunctions;
+import org.opentripplanner.transit.model.site.RegularStop;
 import org.opentripplanner.transit.service.TransitService;
-import org.opentripplanner.util.time.DurationUtils;
-import org.opentripplanner.util.time.ServiceDateUtils;
 
 @Path("/traveltime")
 public class TravelTimeResource {
 
   private static final SimpleFeatureType contourSchema = makeContourSchema();
 
-  private final RoutingRequest routingRequest;
-  private final TransitLayer transitLayer;
+  private final RouteRequest routingRequest;
   private final RaptorRoutingRequestTransitData requestTransitDataProvider;
   private final Instant startTime;
   private final Instant endTime;
@@ -95,25 +95,28 @@ public class TravelTimeResource {
   private final TransitService transitService;
 
   public TravelTimeResource(
-    @Context OtpServerContext serverContext,
+    @Context OtpServerRequestContext serverContext,
     @QueryParam("location") String location,
     @QueryParam("time") String time,
     @QueryParam("cutoff") @DefaultValue("60m") List<String> cutoffs,
     @QueryParam("modes") String modes
   ) {
-    transitLayer = serverContext.transitService().getRealtimeTransitLayer();
     this.graph = serverContext.graph();
     this.transitService = serverContext.transitService();
-    ZoneId zoneId = transitLayer.getTransitDataZoneId();
-    routingRequest = serverContext.defaultRoutingRequest();
-    routingRequest.from = LocationStringParser.fromOldStyleString(location);
+    routingRequest = serverContext.defaultRouteRequest();
+    routingRequest.setFrom(LocationStringParser.fromOldStyleString(location));
     if (modes != null) {
-      routingRequest.modes = new QualifiedModeSet(modes).getRequestModes();
+      routingRequest.journey().setModes(new QualifiedModeSet(modes).getRequestModes());
     }
+
     traveltimeRequest =
       new TravelTimeRequest(
         cutoffs.stream().map(DurationUtils::duration).toList(),
-        routingRequest.getMaxAccessEgressDuration(routingRequest.modes.accessMode)
+        routingRequest
+          .preferences()
+          .street()
+          .maxAccessEgressDuration()
+          .valueOf(routingRequest.journey().access().mode())
       );
 
     if (time != null) {
@@ -122,23 +125,22 @@ public class TravelTimeResource {
       startTime = Instant.now();
     }
 
+    routingRequest.setDateTime(startTime);
     endTime = startTime.plus(traveltimeRequest.maxCutoff);
 
+    ZoneId zoneId = transitService.getTimeZone();
     LocalDate startDate = LocalDate.ofInstant(startTime, zoneId);
     LocalDate endDate = LocalDate.ofInstant(endTime, zoneId);
     startOfTime = ServiceDateUtils.asStartOfService(startDate, zoneId);
 
-    RoutingRequest transferRoutingRequest = Transfer.prepareTransferRoutingRequest(routingRequest);
-
     requestTransitDataProvider =
       new RaptorRoutingRequestTransitData(
-        transitService.getTransferService(),
-        transitLayer,
+        transitService.getRealtimeTransitLayer(),
         startOfTime,
         0,
         (int) Period.between(startDate, endDate).get(ChronoUnit.DAYS),
-        new RoutingRequestTransitDataProviderFilter(routingRequest, transitService),
-        new RoutingContext(transferRoutingRequest, graph, (Vertex) null, null)
+        new RouteRequestTransitDataProviderFilter(routingRequest, transitService),
+        routingRequest
       );
 
     raptorService = new RaptorService<>(serverContext.raptorConfig());
@@ -218,75 +220,96 @@ public class TravelTimeResource {
   }
 
   private ZSampleGrid<WTWD> getSampleGrid() {
-    final RoutingRequest accessRequest = routingRequest.clone();
+    final RouteRequest accessRequest = routingRequest.clone();
 
-    accessRequest.maxAccessEgressDuration = traveltimeRequest.maxAccessDuration;
+    accessRequest.withPreferences(preferences ->
+      preferences.withStreet(it ->
+        it.withMaxAccessEgressDuration(traveltimeRequest.maxAccessDuration, Map.of())
+      )
+    );
 
-    try (var temporaryVertices = new TemporaryVerticesContainer(graph, accessRequest)) {
-      final Collection<AccessEgress> accessList = getAccess(accessRequest, temporaryVertices);
+    try (
+      var temporaryVertices = new TemporaryVerticesContainer(
+        graph,
+        accessRequest,
+        accessRequest.journey().access().mode(),
+        StreetMode.NOT_SET
+      )
+    ) {
+      final Collection<DefaultAccessEgress> accessList = getAccess(
+        accessRequest,
+        temporaryVertices
+      );
 
       var arrivals = route(accessList).getArrivals();
 
-      RoutingContext routingContext = new RoutingContext(routingRequest, graph, temporaryVertices);
-
-      var spt = AStarBuilder
-        .allDirectionsMaxDuration(traveltimeRequest.maxCutoff)
-        .setContext(routingContext)
-        .setDominanceFunction(new DominanceFunction.EarliestArrival())
-        .setInitialStates(getInitialStates(arrivals, temporaryVertices, routingContext))
+      var spt = StreetSearchBuilder
+        .of()
+        .setSkipEdgeStrategy(new DurationSkipEdgeStrategy(traveltimeRequest.maxCutoff))
+        .setRequest(routingRequest)
+        .setStreetRequest(accessRequest.journey().access())
+        .setVerticesContainer(temporaryVertices)
+        .setDominanceFunction(new DominanceFunctions.EarliestArrival())
+        .setInitialStates(getInitialStates(arrivals, temporaryVertices))
         .getShortestPathTree();
 
       return SampleGridRenderer.getSampleGrid(spt, traveltimeRequest);
     }
   }
 
-  private Collection<AccessEgress> getAccess(
-    RoutingRequest accessRequest,
+  private Collection<DefaultAccessEgress> getAccess(
+    RouteRequest accessRequest,
     TemporaryVerticesContainer temporaryVertices
   ) {
     final Collection<NearbyStop> accessStops = AccessEgressRouter.streetSearch(
-      new RoutingContext(accessRequest, graph, temporaryVertices),
+      accessRequest,
+      temporaryVertices,
       transitService,
-      routingRequest.modes.accessMode,
-      false
+      routingRequest.journey().access(),
+      null,
+      false,
+      traveltimeRequest.maxAccessDuration
     );
-    return new AccessEgressMapper(transitLayer.getStopIndex()).mapNearbyStops(accessStops, false);
+    return new AccessEgressMapper().mapNearbyStops(accessStops, false);
   }
 
   private List<State> getInitialStates(
     StopArrivals arrivals,
-    TemporaryVerticesContainer temporaryVertices,
-    RoutingContext routingContext
+    TemporaryVerticesContainer temporaryVertices
   ) {
     List<State> initialStates = new ArrayList<>();
 
-    StateData stateData = StateData.getInitialStateData(routingRequest);
+    StreetSearchRequest streetSearchRequest = StreetSearchRequestMapper
+      .map(routingRequest)
+      .withMode(routingRequest.journey().egress().mode())
+      .withArriveBy(false)
+      .build();
+
+    StateData stateData = StateData.getInitialStateData(streetSearchRequest);
 
     for (var vertex : temporaryVertices.getFromVertices()) {
-      initialStates.add(new State(vertex, startTime, routingContext, stateData));
+      // TODO StateData should be of direct mode here
+      initialStates.add(new State(vertex, startTime, stateData, streetSearchRequest));
     }
 
-    for (int i = 0; i < transitLayer.getStopIndex().size(); i++) {
-      if (arrivals.reachedByTransit(i)) {
-        final int arrivalTime = arrivals.bestTransitArrivalTime(i);
-        StopLocation stopLocation = transitLayer.getStopIndex().stopByIndex(i);
-        if (stopLocation instanceof Stop stop) {
-          Vertex v = transitService.getStopVertexForStop(stop);
-          if (v != null) {
-            Instant time = startOfTime.plusSeconds(arrivalTime).toInstant();
-            State s = new State(v, time, routingContext, stateData.clone());
-            s.weight = startTime.until(time, ChronoUnit.SECONDS);
-            // TODO: This shouldn't be overridden in state initialization
-            s.stateData.startTime = stateData.startTime;
-            initialStates.add(s);
-          }
+    // TODO - Add a method to return all Stops, not StopLocations
+    for (RegularStop stop : transitService.listRegularStops()) {
+      int index = stop.getIndex();
+      if (arrivals.reachedByTransit(index)) {
+        final int arrivalTime = arrivals.bestTransitArrivalTime(index);
+        Vertex v = graph.getStopVertexForStopId(stop.getId());
+        if (v != null) {
+          Instant time = startOfTime.plusSeconds(arrivalTime).toInstant();
+          State s = new State(v, time, stateData.clone(), streetSearchRequest);
+          s.weight = startTime.until(time, ChronoUnit.SECONDS);
+          initialStates.add(s);
         }
       }
     }
     return initialStates;
   }
 
-  private RaptorResponse<TripSchedule> route(Collection<? extends RaptorTransfer> accessList) {
+  private RaptorResponse<TripSchedule> route(Collection<? extends RaptorAccessEgress> accessList) {
     final RaptorRequest<TripSchedule> request = new RaptorRequestBuilder<TripSchedule>()
       .profile(RaptorProfile.BEST_TIME)
       .searchParams()

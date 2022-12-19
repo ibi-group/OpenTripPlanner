@@ -3,7 +3,6 @@ package org.opentripplanner.routing.algorithm.filterchain;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
 import static org.opentripplanner.model.plan.Itinerary.toStr;
 import static org.opentripplanner.model.plan.SortOrder.STREET_AND_ARRIVAL_TIME;
 import static org.opentripplanner.model.plan.SortOrder.STREET_AND_DEPARTURE_TIME;
@@ -20,10 +19,10 @@ import org.mockito.Mockito;
 import org.opentripplanner.model.plan.Itinerary;
 import org.opentripplanner.model.plan.PlanTestConstants;
 import org.opentripplanner.model.plan.TestItineraryBuilder;
+import org.opentripplanner.routing.alertpatch.StopCondition;
 import org.opentripplanner.routing.api.response.RoutingError;
 import org.opentripplanner.routing.api.response.RoutingErrorCode;
 import org.opentripplanner.routing.services.TransitAlertService;
-import org.opentripplanner.transit.model.framework.FeedScopedId;
 
 /**
  * This class test the whole filter chain with a few test cases. Each filter should be tested with a
@@ -67,6 +66,22 @@ public class ItineraryListFilterChainTest implements PlanTestConstants {
       .build();
 
     assertEquals(toStr(List.of(i1)), toStr(chain.filter(List.of(i1, i2, i3))));
+  }
+
+  @Test
+  public void withMinBikeParkingDistance() {
+    // Given a "default" chain
+    ItineraryListFilterChain chain = createBuilder(false, false, 10)
+      .withMinBikeParkingDistance(500)
+      .build();
+
+    var shortBikeToStop = newItinerary(A)
+      .bicycle(T11_05, T11_06, B)
+      .rail(30, T11_16, T11_20, C)
+      .build();
+    assertEquals(300, shortBikeToStop.getLegs().get(0).getDistanceMeters());
+    // should do nothing to non-bike trips but remove a bike+ride route that cycles only for one minute
+    assertEquals(List.of(i1), chain.filter(List.of(i1, shortBikeToStop)));
   }
 
   @Test
@@ -191,9 +206,32 @@ public class ItineraryListFilterChainTest implements PlanTestConstants {
     chain.filter(List.of(i1, i2, i3));
 
     // Then transitAlertService should have been called with stop and route ids
-    Mockito.verify(transitAlertService, Mockito.atLeastOnce()).getStopAlerts(A.stop.getId());
-    Mockito.verify(transitAlertService, Mockito.atLeastOnce()).getStopAlerts(E.stop.getId());
+    Mockito
+      .verify(transitAlertService, Mockito.atLeastOnce())
+      .getStopAlerts(A.stop.getId(), StopCondition.FIRST_DEPARTURE);
+    Mockito
+      .verify(transitAlertService, Mockito.atLeastOnce())
+      .getStopAlerts(E.stop.getId(), StopCondition.ARRIVING);
     Mockito.verify(transitAlertService, Mockito.atLeastOnce()).getRouteAlerts(BUS_ROUTE.getId());
+  }
+
+  @Test
+  public void removeItinerariesWithSameRoutesAndStops() {
+    var i1 = newItinerary(A).bus(21, T11_06, T11_28, E).bus(41, T11_30, T11_32, D).build();
+    var i2 = newItinerary(A).bus(22, T11_09, T11_30, E).bus(42, T11_32, T11_33, D).build();
+    var i3 = newItinerary(A).bus(23, T11_10, T11_32, E).bus(43, T11_33, T11_50, D).build();
+
+    var i4 = newItinerary(A).bus(31, T11_09, T11_20, D).build();
+    var i5 = newItinerary(A).bus(32, T11_10, T11_23, D).build();
+    var i6 = newItinerary(A).bus(32, T11_10, T11_23, D).build();
+
+    ItineraryListFilterChain chain = createBuilder(false, false, 10)
+      // we need to add the group-by-distance-and-id filter because it undeletes those with the
+      // fewest transfers and we want to make sure that the filter under test comes _after_
+      .addGroupBySimilarity(GroupBySimilarity.createWithOneItineraryPerGroup(.5))
+      .withRemoveTimeshiftedItinerariesWithSameRoutesAndStops(true)
+      .build();
+    assertEquals(toStr(List.of(i4, i1)), toStr(chain.filter(List.of(i1, i2, i3, i4, i5, i6))));
   }
 
   private ItineraryListFilterChainBuilder createBuilder(

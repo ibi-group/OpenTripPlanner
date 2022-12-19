@@ -1,16 +1,16 @@
 package org.opentripplanner.ext.vehicleparking.hslpark;
 
-import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import org.opentripplanner.framework.io.JsonDataListDownloader;
 import org.opentripplanner.model.calendar.openinghours.OpeningHoursCalendarService;
 import org.opentripplanner.routing.vehicle_parking.VehicleParking;
+import org.opentripplanner.routing.vehicle_parking.VehicleParkingGroup;
 import org.opentripplanner.routing.vehicle_parking.VehicleParkingSpaces;
 import org.opentripplanner.routing.vehicle_parking.VehicleParkingSpaces.VehicleParkingSpacesBuilder;
 import org.opentripplanner.transit.model.framework.FeedScopedId;
 import org.opentripplanner.updater.DataSource;
-import org.opentripplanner.util.xml.JsonDataListDownloader;
 
 /**
  * Vehicle parking updater class for https://github.com/HSLdevcom/parkandrideAPI format APIs. There
@@ -21,60 +21,73 @@ public class HslParkUpdater implements DataSource<VehicleParking> {
 
   private static final String JSON_PARSE_PATH = "results";
 
-  private final JsonDataListDownloader facilitiesDownloader;
+  private final HslFacilitiesDownloader facilitiesDownloader;
   private final int facilitiesFrequencySec;
+  private final HslHubsDownloader hubsDownloader;
   private final JsonDataListDownloader utilizationsDownloader;
   private final HslParkToVehicleParkingMapper vehicleParkingMapper;
+  private final HslHubToVehicleParkingGroupMapper vehicleParkingGroupMapper;
   private final HslParkUtilizationToPatchMapper parkPatchMapper;
 
   private long lastFacilitiesFetchTime;
 
   private List<VehicleParking> parks;
+  private Map<FeedScopedId, VehicleParkingGroup> hubForPark;
 
   public HslParkUpdater(
     HslParkUpdaterParameters parameters,
-    OpeningHoursCalendarService openingHoursCalendarService,
-    ZoneId zoneId
+    OpeningHoursCalendarService openingHoursCalendarService
   ) {
-    String feedId = parameters.getFeedId();
+    String feedId = parameters.feedId();
     vehicleParkingMapper =
-      new HslParkToVehicleParkingMapper(feedId, openingHoursCalendarService, zoneId);
+      new HslParkToVehicleParkingMapper(feedId, openingHoursCalendarService, parameters.timeZone());
+    vehicleParkingGroupMapper = new HslHubToVehicleParkingGroupMapper(feedId);
     parkPatchMapper = new HslParkUtilizationToPatchMapper(feedId);
     facilitiesDownloader =
-      new JsonDataListDownloader<>(
-        parameters.getFacilitiesUrl(),
+      new HslFacilitiesDownloader(
+        parameters.facilitiesUrl(),
         JSON_PARSE_PATH,
-        vehicleParkingMapper::parsePark,
-        null
+        vehicleParkingMapper::parsePark
+      );
+    hubsDownloader =
+      new HslHubsDownloader(
+        parameters.hubsUrl(),
+        JSON_PARSE_PATH,
+        vehicleParkingGroupMapper::parseHub
       );
     utilizationsDownloader =
       new JsonDataListDownloader<>(
-        parameters.getUtilizationsUrl(),
+        parameters.utilizationsUrl(),
         "",
         parkPatchMapper::parseUtilization,
         null
       );
-    this.facilitiesFrequencySec = parameters.getFacilitiesFrequencySec();
+    this.facilitiesFrequencySec = parameters.facilitiesFrequencySec();
   }
 
   /**
-   * Update the data from the sources. It first fetches parks from the facilities URL and then
-   * realtime updates from utilizations URL. If facilitiesFrequencySec is configured to be over 0,
-   * it also occasionally retches the parks as new parks might have been added or the state of the
-   * old parks might have changed.
+   * Update the data from the sources. It first fetches parks from the facilities URL and park
+   * groups from hubs URL and then realtime updates from utilizations URL. If facilitiesFrequencySec
+   * is configured to be over 0, it also occasionally retches the parks as new parks might have been
+   * added or the state of the old parks might have changed.
    *
    * @return true if there might have been changes
    */
   @Override
   public boolean update() {
-    List<VehicleParking> parks;
-    if (fetchFacilitiesNow()) {
-      parks = facilitiesDownloader.download();
-      if (parks != null) {
-        lastFacilitiesFetchTime = System.currentTimeMillis();
+    List<VehicleParking> parks = null;
+    Map<FeedScopedId, VehicleParkingGroup> hubForPark;
+    if (fetchFacilitiesAndHubsNow()) {
+      hubForPark = hubsDownloader.downloadHubs();
+      if (hubForPark != null) {
+        parks = facilitiesDownloader.downloadFacilities(hubForPark);
+        if (parks != null) {
+          lastFacilitiesFetchTime = System.currentTimeMillis();
+        }
       }
     } else {
       parks = this.parks;
+      hubForPark = this.hubForPark;
     }
     if (parks != null) {
       List<HslParkPatch> utilizations = utilizationsDownloader.download();
@@ -94,6 +107,7 @@ public class HslParkUpdater implements DataSource<VehicleParking> {
       synchronized (this) {
         // Update atomically
         this.parks = parks;
+        this.hubForPark = hubForPark;
       }
       return true;
     }
@@ -136,11 +150,11 @@ public class HslParkUpdater implements DataSource<VehicleParking> {
   }
 
   /**
-   * @return true if facilities have not been successfully downloaded before, or
+   * @return true if facilities and hubs have not been successfully downloaded before, or
    * facilitiesFrequencySec > 0 and over facilitiesFrequencySec has passed since last successful
    * fetch
    */
-  private boolean fetchFacilitiesNow() {
+  private boolean fetchFacilitiesAndHubsNow() {
     if (parks == null) {
       return true;
     }

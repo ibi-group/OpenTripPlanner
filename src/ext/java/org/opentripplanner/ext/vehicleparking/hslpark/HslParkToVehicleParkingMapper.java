@@ -12,15 +12,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.locationtech.jts.geom.Geometry;
-import org.opentripplanner.common.geometry.GeometryUtils;
+import org.opentripplanner.framework.geometry.GeometryUtils;
+import org.opentripplanner.framework.geometry.WgsCoordinate;
+import org.opentripplanner.framework.i18n.I18NString;
+import org.opentripplanner.framework.i18n.NonLocalizedString;
+import org.opentripplanner.framework.i18n.TranslatedString;
 import org.opentripplanner.model.calendar.openinghours.OHCalendar;
 import org.opentripplanner.model.calendar.openinghours.OpeningHoursCalendarService;
 import org.opentripplanner.routing.vehicle_parking.VehicleParking;
+import org.opentripplanner.routing.vehicle_parking.VehicleParkingGroup;
 import org.opentripplanner.routing.vehicle_parking.VehicleParkingSpaces;
 import org.opentripplanner.routing.vehicle_parking.VehicleParkingState;
-import org.opentripplanner.transit.model.basic.I18NString;
-import org.opentripplanner.transit.model.basic.NonLocalizedString;
-import org.opentripplanner.transit.model.basic.TranslatedString;
 import org.opentripplanner.transit.model.framework.FeedScopedId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -64,7 +66,10 @@ public class HslParkToVehicleParkingMapper {
     return jsonNode.get(fieldName).asInt();
   }
 
-  public VehicleParking parsePark(JsonNode jsonNode) {
+  public VehicleParking parsePark(
+    JsonNode jsonNode,
+    Map<FeedScopedId, VehicleParkingGroup> hubForPark
+  ) {
     var vehicleParkId = createIdForNode(jsonNode, "id", feedId);
     try {
       var capacity = parseVehicleSpaces(
@@ -87,8 +92,6 @@ public class HslParkToVehicleParkingMapper {
         ? new NonLocalizedString(vehicleParkId.getId())
         : TranslatedString.getI18NString(translations, true, false);
       Geometry geometry = GEOMETRY_PARSER.geometryFromJson(jsonNode.path("location"));
-      double x = geometry.getCentroid().getX();
-      double y = geometry.getCentroid().getY();
 
       var stateText = jsonNode.path("status").asText();
       var state = stateMapper(stateText);
@@ -104,14 +107,14 @@ public class HslParkToVehicleParkingMapper {
         .orElse(false);
       var openingHoursByDayType = jsonNode.path("openingHours").path("byDayType");
       var openingHoursCalendar = parseOpeningHours(openingHoursByDayType);
+      VehicleParkingGroup vehicleParkingGroup = hubForPark.get(vehicleParkId);
 
       return VehicleParking
         .builder()
         .id(vehicleParkId)
         .name(name)
         .state(state)
-        .x(x)
-        .y(y)
+        .coordinate(new WgsCoordinate(geometry.getCentroid()))
         .capacity(capacity)
         .bicyclePlaces(bicyclePlaces)
         .carPlaces(carPlaces)
@@ -122,14 +125,14 @@ public class HslParkToVehicleParkingMapper {
           builder
             .entranceId(new FeedScopedId(feedId, vehicleParkId.getId() + "/entrance"))
             .name(name)
-            .x(x)
-            .y(y)
+            .coordinate(new WgsCoordinate(geometry.getCentroid()))
             .walkAccessible(true)
             .carAccessible(carPlaces || wheelChairAccessiblePlaces)
         )
+        .vehicleParkingGroup(vehicleParkingGroup)
         .build();
     } catch (Exception e) {
-      log.warn("Error parsing park " + vehicleParkId, e);
+      log.warn("Error parsing park {}", vehicleParkId, e);
       return null;
     }
   }
@@ -223,6 +226,9 @@ public class HslParkToVehicleParkingMapper {
   );
 
   private OHCalendar parseOpeningHours(JsonNode openingHoursByDayType) {
+    if (zoneId == null) {
+      return null;
+    }
     var calendarBuilder = openingHoursCalendarService.newBuilder(zoneId);
     for (DayTypeAndDays dayTypeAndDays : DAYS_FOR_DAY_TYPES) {
       String key = dayTypeAndDays.typeKey();

@@ -18,36 +18,36 @@ import org.locationtech.jts.geom.MultiLineString;
 import org.locationtech.jts.geom.MultiPolygon;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.Polygon;
-import org.opentripplanner.common.geometry.GeometryUtils;
-import org.opentripplanner.common.geometry.SphericalDistanceLibrary;
-import org.opentripplanner.common.model.P2;
-import org.opentripplanner.graph_builder.DataImportIssueStore;
+import org.opentripplanner.astar.model.GraphPath;
+import org.opentripplanner.astar.model.ShortestPathTree;
+import org.opentripplanner.astar.spi.SkipEdgeStrategy;
+import org.opentripplanner.framework.geometry.GeometryUtils;
+import org.opentripplanner.framework.geometry.SphericalDistanceLibrary;
+import org.opentripplanner.framework.i18n.I18NString;
+import org.opentripplanner.graph_builder.issue.api.DataImportIssueStore;
 import org.opentripplanner.graph_builder.issues.AreaTooComplicated;
 import org.opentripplanner.graph_builder.module.osm.OpenStreetMapModule.Handler;
 import org.opentripplanner.openstreetmap.model.OSMNode;
 import org.opentripplanner.openstreetmap.model.OSMRelation;
 import org.opentripplanner.openstreetmap.model.OSMRelationMember;
 import org.opentripplanner.openstreetmap.model.OSMWithTags;
-import org.opentripplanner.routing.algorithm.astar.AStarBuilder;
-import org.opentripplanner.routing.algorithm.astar.strategies.SkipEdgeStrategy;
-import org.opentripplanner.routing.api.request.RoutingRequest;
-import org.opentripplanner.routing.core.RoutingContext;
-import org.opentripplanner.routing.core.State;
-import org.opentripplanner.routing.core.TraverseMode;
-import org.opentripplanner.routing.edgetype.AreaEdge;
-import org.opentripplanner.routing.edgetype.AreaEdgeList;
-import org.opentripplanner.routing.edgetype.NamedArea;
-import org.opentripplanner.routing.edgetype.StreetEdge;
-import org.opentripplanner.routing.edgetype.StreetTraversalPermission;
-import org.opentripplanner.routing.graph.Edge;
+import org.opentripplanner.openstreetmap.wayproperty.WayProperties;
+import org.opentripplanner.routing.api.request.RouteRequest;
+import org.opentripplanner.routing.api.request.StreetMode;
+import org.opentripplanner.routing.api.request.request.StreetRequest;
 import org.opentripplanner.routing.graph.Graph;
-import org.opentripplanner.routing.graph.Vertex;
-import org.opentripplanner.routing.spt.DominanceFunction;
-import org.opentripplanner.routing.spt.GraphPath;
-import org.opentripplanner.routing.spt.ShortestPathTree;
-import org.opentripplanner.routing.vertextype.IntersectionVertex;
-import org.opentripplanner.routing.vertextype.OsmVertex;
-import org.opentripplanner.transit.model.basic.I18NString;
+import org.opentripplanner.street.model.StreetTraversalPermission;
+import org.opentripplanner.street.model.edge.AreaEdge;
+import org.opentripplanner.street.model.edge.AreaEdgeList;
+import org.opentripplanner.street.model.edge.Edge;
+import org.opentripplanner.street.model.edge.NamedArea;
+import org.opentripplanner.street.model.edge.StreetEdge;
+import org.opentripplanner.street.model.vertex.IntersectionVertex;
+import org.opentripplanner.street.model.vertex.OsmVertex;
+import org.opentripplanner.street.model.vertex.Vertex;
+import org.opentripplanner.street.search.StreetSearchBuilder;
+import org.opentripplanner.street.search.state.State;
+import org.opentripplanner.street.search.strategy.DominanceFunctions;
 
 /**
  * Theoretically, it is not correct to build the visibility graph on the joined polygon of areas
@@ -77,8 +77,6 @@ public class WalkableAreaBuilder {
 
   private final OSMDatabase osmdb;
 
-  private final WayPropertySet wayPropertySet;
-
   private final Map<OSMWithTags, WayProperties> wayPropertiesCache = new HashMap<>();
 
   // This is an awful hack, but this class (WalkableAreaBuilder) ought to be rewritten.
@@ -94,7 +92,6 @@ public class WalkableAreaBuilder {
   public WalkableAreaBuilder(
     Graph graph,
     OSMDatabase osmdb,
-    WayPropertySet wayPropertySet,
     Handler handler,
     DataImportIssueStore issueStore,
     int maxAreaNodes,
@@ -103,7 +100,6 @@ public class WalkableAreaBuilder {
   ) {
     this.graph = graph;
     this.osmdb = osmdb;
-    this.wayPropertySet = wayPropertySet;
     this.handler = handler;
     this.issueStore = issueStore;
     this.maxAreaNodes = maxAreaNodes;
@@ -134,7 +130,7 @@ public class WalkableAreaBuilder {
       AreaEdgeList edgeList = new AreaEdgeList(ring.jtsPolygon, references);
       // the points corresponding to concave or hole vertices
       // or those linked to ways
-      HashSet<P2<OSMNode>> alreadyAddedEdges = new HashSet<>();
+      HashSet<NodeEdge> alreadyAddedEdges = new HashSet<>();
 
       // we also want to fill in the edges of this area anyway, because we can,
       // and to avoid the numerical problems that they tend to cause
@@ -208,7 +204,7 @@ public class WalkableAreaBuilder {
       // the points corresponding to concave or hole vertices
       // or those linked to ways
       HashSet<OSMNode> visibilityNodes = new HashSet<>();
-      HashSet<P2<OSMNode>> alreadyAddedEdges = new HashSet<>();
+      HashSet<NodeEdge> alreadyAddedEdges = new HashSet<>();
       HashSet<IntersectionVertex> platformLinkingVertices = new HashSet<>();
       // we need to accumulate visibility points from all contained areas
       // inside this ring, but only for shared nodes; we don't care about
@@ -329,8 +325,8 @@ public class WalkableAreaBuilder {
         }
 
         for (OSMNode nodeJ : visibilityNodes) {
-          P2<OSMNode> nodePair = new P2<>(nodeI, nodeJ);
-          if (alreadyAddedEdges.contains(nodePair)) continue;
+          NodeEdge edge = new NodeEdge(nodeI, nodeJ);
+          if (alreadyAddedEdges.contains(edge)) continue;
 
           IntersectionVertex endEndpoint = handler.getVertexForOsmNode(nodeJ, areaEntity);
 
@@ -378,27 +374,30 @@ public class WalkableAreaBuilder {
     Set<Edge> edgesToKeep
   ) {
     if (edges.size() == 0) return;
-    TraverseMode mode;
+    StreetMode mode;
     StreetEdge firstEdge = (StreetEdge) edges.iterator().next();
 
     if (firstEdge.getPermission().allows(StreetTraversalPermission.PEDESTRIAN)) {
-      mode = TraverseMode.WALK;
+      mode = StreetMode.WALK;
     } else if (firstEdge.getPermission().allows(StreetTraversalPermission.BICYCLE)) {
-      mode = TraverseMode.BICYCLE;
+      mode = StreetMode.BIKE;
     } else {
-      mode = TraverseMode.CAR;
+      mode = StreetMode.CAR;
     }
-    RoutingRequest options = new RoutingRequest(mode);
+    RouteRequest options = new RouteRequest();
     Set<Edge> usedEdges = new HashSet<>();
     for (Vertex vertex : startingVertices) {
-      ShortestPathTree spt = AStarBuilder
-        .allDirections(new ListedEdgesOnly(edges))
-        .setDominanceFunction(new DominanceFunction.EarliestArrival())
-        .setContext(new RoutingContext(options, graph, vertex, null))
+      ShortestPathTree<State, Edge, Vertex> spt = StreetSearchBuilder
+        .of()
+        .setSkipEdgeStrategy(new ListedEdgesOnly(edges))
+        .setDominanceFunction(new DominanceFunctions.EarliestArrival())
+        .setRequest(options)
+        .setStreetRequest(new StreetRequest(mode))
+        .setFrom(vertex)
         .getShortestPathTree();
 
       for (Vertex endVertex : startingVertices) {
-        GraphPath path = spt.getPath(endVertex);
+        GraphPath<State, Edge, Vertex> path = spt.getPath(endVertex);
         if (path != null) {
           usedEdges.addAll(path.edges);
         }
@@ -428,15 +427,15 @@ public class WalkableAreaBuilder {
     Area area,
     Ring ring,
     int i,
-    HashSet<P2<OSMNode>> alreadyAddedEdges
+    HashSet<NodeEdge> alreadyAddedEdges
   ) {
     OSMNode node = ring.nodes.get(i);
     OSMNode nextNode = ring.nodes.get((i + 1) % ring.nodes.size());
-    P2<OSMNode> nodePair = new P2<>(node, nextNode);
-    if (alreadyAddedEdges.contains(nodePair)) {
+    NodeEdge nodeEdge = new NodeEdge(node, nextNode);
+    if (alreadyAddedEdges.contains(nodeEdge)) {
       return Set.of();
     }
-    alreadyAddedEdges.add(nodePair);
+    alreadyAddedEdges.add(nodeEdge);
     IntersectionVertex startEndpoint = handler.getVertexForOsmNode(node, area.parent);
     IntersectionVertex endEndpoint = handler.getVertexForOsmNode(nextNode, area.parent);
 
@@ -478,15 +477,15 @@ public class WalkableAreaBuilder {
         StreetTraversalPermission.PEDESTRIAN_AND_BICYCLE
       );
 
-      float carSpeed = wayPropertySet.getCarSpeedForWay(areaEntity, false);
+      float carSpeed = areaEntity
+        .getOsmProvider()
+        .getWayPropertySet()
+        .getCarSpeedForWay(areaEntity, false);
 
       double length = SphericalDistanceLibrary.distance(
         startEndpoint.getCoordinate(),
         endEndpoint.getCoordinate()
       );
-
-      int cls = StreetEdge.CLASS_OTHERPATH;
-      cls |= OSMFilter.getStreetClasses(areaEntity);
 
       String label =
         "way (area) " +
@@ -517,7 +516,7 @@ public class WalkableAreaBuilder {
         street.setWheelchairAccessible(false);
       }
 
-      street.setStreetClass(cls);
+      street.setLink(OSMFilter.isLink(areaEntity));
 
       label =
         "way (area) " +
@@ -548,10 +547,13 @@ public class WalkableAreaBuilder {
         backStreet.setWheelchairAccessible(false);
       }
 
-      backStreet.setStreetClass(cls);
+      backStreet.setLink(OSMFilter.isLink(areaEntity));
 
       if (!wayPropertiesCache.containsKey(areaEntity)) {
-        WayProperties wayData = wayPropertySet.getDataForWay(areaEntity);
+        WayProperties wayData = areaEntity
+          .getOsmProvider()
+          .getWayPropertySet()
+          .getDataForWay(areaEntity);
         wayPropertiesCache.put(areaEntity, wayData);
       }
 
@@ -628,21 +630,27 @@ public class WalkableAreaBuilder {
       }
       NamedArea namedArea = new NamedArea();
       OSMWithTags areaEntity = area.parent;
-      int cls = StreetEdge.CLASS_OTHERPATH;
-      cls |= OSMFilter.getStreetClasses(areaEntity);
-      namedArea.setStreetClass(cls);
 
       String id = "way (area) " + areaEntity.getId() + " (splitter linking)";
       I18NString name = handler.getNameForWay(areaEntity, id);
       namedArea.setName(name);
 
       if (!wayPropertiesCache.containsKey(areaEntity)) {
-        WayProperties wayData = wayPropertySet.getDataForWay(areaEntity);
+        WayProperties wayData = areaEntity
+          .getOsmProvider()
+          .getWayPropertySet()
+          .getDataForWay(areaEntity);
         wayPropertiesCache.put(areaEntity, wayData);
       }
 
-      Double safety = wayPropertiesCache.get(areaEntity).getSafetyFeatures().first;
-      namedArea.setBicycleSafetyMultiplier(safety);
+      Double bicycleSafety = wayPropertiesCache
+        .get(areaEntity)
+        .getBicycleSafetyFeatures()
+        .forward();
+      namedArea.setBicycleSafetyMultiplier(bicycleSafety);
+
+      Double walkSafety = wayPropertiesCache.get(areaEntity).getWalkSafetyFeatures().forward();
+      namedArea.setWalkSafetyMultiplier(walkSafety);
 
       namedArea.setOriginalEdges(intersection);
 
@@ -685,10 +693,12 @@ public class WalkableAreaBuilder {
     return false;
   }
 
-  record ListedEdgesOnly(Set<Edge> edges) implements SkipEdgeStrategy {
+  record ListedEdgesOnly(Set<Edge> edges) implements SkipEdgeStrategy<State, Edge> {
     @Override
     public boolean shouldSkipEdge(State current, Edge edge) {
       return !edges.contains(edge);
     }
   }
+
+  private record NodeEdge(OSMNode from, OSMNode to) {}
 }

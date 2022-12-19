@@ -9,9 +9,11 @@ import java.util.List;
 import java.util.Locale;
 import org.opentripplanner.api.model.ApiAlert;
 import org.opentripplanner.api.model.ApiLeg;
+import org.opentripplanner.framework.geometry.EncodedPolyline;
 import org.opentripplanner.model.PickDrop;
 import org.opentripplanner.model.plan.Leg;
-import org.opentripplanner.util.PolylineEncoder;
+import org.opentripplanner.model.plan.StreetLeg;
+import org.opentripplanner.model.plan.TransitLeg;
 
 public class LegMapper {
 
@@ -21,12 +23,15 @@ public class LegMapper {
   private final PlaceMapper placeMapper;
   private final boolean addIntermediateStops;
 
+  private final I18NStringMapper i18NStringMapper;
+
   public LegMapper(Locale locale, boolean addIntermediateStops) {
     this.walkStepMapper = new WalkStepMapper(locale);
     this.streetNoteMaperMapper = new StreetNoteMaperMapper(locale);
     this.alertMapper = new AlertMapper(locale);
     this.placeMapper = new PlaceMapper(locale);
     this.addIntermediateStops = addIntermediateStops;
+    this.i18NStringMapper = new I18NStringMapper(locale);
   }
 
   public List<ApiLeg> mapLegs(List<Leg> domain) {
@@ -86,46 +91,51 @@ public class LegMapper {
     api.distance = round3Decimals(domain.getDistanceMeters());
     api.generalizedCost = domain.getGeneralizedCost();
     api.pathway = domain.getPathwayId() != null;
-    api.mode = TraverseModeMapper.mapToApi(domain.getMode());
     api.agencyTimeZoneOffset = domain.getAgencyTimeZoneOffset();
-    api.transitLeg = domain.isTransitLeg();
 
-    if (domain.isTransitLeg()) {
+    if (domain instanceof TransitLeg trLeg) {
+      api.transitLeg = true;
       var agency = domain.getAgency();
       api.agencyId = FeedScopedIdMapper.mapToApi(agency.getId());
       api.agencyName = agency.getName();
       api.agencyUrl = agency.getUrl();
       api.agencyBrandingUrl = agency.getBrandingUrl();
+      api.mode = ModeMapper.mapToApi(trLeg.getMode());
 
       var route = domain.getRoute();
-      api.route = route.getLongName();
+      api.route = i18NStringMapper.mapToApi(route.getLongName());
       api.routeColor = route.getColor();
       api.routeType = domain.getRouteType();
       api.routeId = FeedScopedIdMapper.mapToApi(route.getId());
       api.routeShortName = route.getShortName();
-      api.routeLongName = route.getLongName();
+      api.routeLongName = i18NStringMapper.mapToApi(route.getLongName());
       api.routeTextColor = route.getTextColor();
 
       var trip = domain.getTrip();
       api.tripId = FeedScopedIdMapper.mapToApi(trip.getId());
       api.tripShortName = trip.getShortName();
       api.tripBlockId = trip.getGtfsBlockId();
-    } else if (domain.getPathwayId() != null) {
-      api.route = FeedScopedIdMapper.mapToApi(domain.getPathwayId());
-    } else {
-      // TODO OTP2 - This should be set to the street name according to the JavaDoc
-      api.route = "";
+    } else if (domain instanceof StreetLeg streetLeg) {
+      api.transitLeg = false;
+      api.mode = ModeMapper.mapToApi(streetLeg.getMode());
+
+      if (domain.getPathwayId() != null) {
+        api.route = FeedScopedIdMapper.mapToApi(domain.getPathwayId());
+      } else {
+        // TODO OTP2 - This should be set to the street name according to the JavaDoc
+        api.route = "";
+      }
     }
 
     api.interlineWithPreviousLeg = domain.isInterlinedWithPreviousLeg();
-    api.headsign = domain.getHeadsign();
+    api.headsign = i18NStringMapper.mapToApi(domain.getHeadsign());
     api.serviceDate = LocalDateMapper.mapToApi(domain.getServiceDate());
     api.routeBrandingUrl = domain.getRouteBrandingUrl();
     if (addIntermediateStops) {
       api.intermediateStops = placeMapper.mapStopArrivals(domain.getIntermediateStops());
     }
-    api.legGeometry = PolylineEncoder.encodeGeometry(domain.getLegGeometry());
-    api.legElevation = mapElevation(domain.getLegElevation());
+    api.legGeometry = EncodedPolyline.encode(domain.getLegGeometry());
+    api.legElevation = mapElevation(domain.getElevationProfile());
     api.steps = walkStepMapper.mapWalkSteps(domain.getWalkSteps());
     api.alerts =
       concatenateAlerts(

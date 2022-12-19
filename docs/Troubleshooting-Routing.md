@@ -79,7 +79,7 @@ OTP has a very flexible system for deciding when a street is to be allowed by pe
 or cars.
 
 To configure the which settings to use for your location, please use
-the [osmWayPropertySet config attribute](BuildConfiguration.md#Way-property-sets).
+the [osmTagMapping config attribute](BuildConfiguration.md#Osm-Tag-Mapping).
 
 In the following section we will discuss the default case, which will be used if the property is not
 set.
@@ -136,7 +136,7 @@ it is chosen instead and its settings applied.
 
 The score can be any positive number but the range (as of writing this) goes from `0.6` for bike
 lanes to `100` for ways that consist of sand. To figure out a good value for your set of tags you
-should read the bicycle safety report (see below) or the source code of your `WayPropertySetSource`
+should read the bicycle safety report (see below) or the source code of your `OsmTagMapper`
 to get a feeling for how much certain tags are penalised or rewarded.
 
 There are also so-called mixins. These are applied on top of the most specific matchers and a single
@@ -182,7 +182,7 @@ Some useful loggers
 - `TRANSFERS_EXPORT` Dump transfers to _transfers-debug.csv_ file.
 - `DATA_IMPORT_ISSUES` Write issues to debug lag as well as to the issue report.
 - `REQ_LOG` Router request log. Enable with `requestLogFile` config parameter in build config.
-- `org.opentripplanner.transit.raptor.RaptorService` Debug Raptor request and response
+- `org.opentripplanner.raptor.RaptorService` Debug Raptor request and response
 
 ### Transit search
 

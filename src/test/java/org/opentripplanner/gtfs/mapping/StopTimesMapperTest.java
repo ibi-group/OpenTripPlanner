@@ -14,7 +14,7 @@ import org.onebusaway.gtfs.model.AgencyAndId;
 import org.onebusaway.gtfs.model.Stop;
 import org.onebusaway.gtfs.model.StopTime;
 import org.onebusaway.gtfs.model.Trip;
-import org.opentripplanner.graph_builder.DataImportIssueStore;
+import org.opentripplanner.graph_builder.issue.api.DataImportIssueStore;
 import org.opentripplanner.model.PickDrop;
 
 public class StopTimesMapperTest {
@@ -53,7 +53,7 @@ public class StopTimesMapperTest {
 
   private static final StopTime STOP_TIME = new StopTime();
 
-  public static final DataImportIssueStore ISSUE_STORE = new DataImportIssueStore(false);
+  public static final DataImportIssueStore ISSUE_STORE = DataImportIssueStore.NOOP;
 
   private final StopMapper stopMapper = new StopMapper(new TranslationHelper(), stationId -> null);
   private final BookingRuleMapper bookingRuleMapper = new BookingRuleMapper();
@@ -62,15 +62,18 @@ public class StopTimesMapperTest {
     stopMapper,
     locationMapper
   );
+  private final TranslationHelper translationHelper = new TranslationHelper();
   private final StopTimeMapper subject = new StopTimeMapper(
     stopMapper,
     locationMapper,
     locationGroupMapper,
     new TripMapper(
-      new RouteMapper(new AgencyMapper(FEED_ID), ISSUE_STORE),
-      new DirectionMapper(ISSUE_STORE)
+      new RouteMapper(new AgencyMapper(FEED_ID), ISSUE_STORE, translationHelper),
+      new DirectionMapper(ISSUE_STORE),
+      translationHelper
     ),
-    bookingRuleMapper
+    bookingRuleMapper,
+    new TranslationHelper()
   );
 
   static {
@@ -112,7 +115,7 @@ public class StopTimesMapperTest {
     assertEquals(ROUTE_SHORT_NAME, result.getRouteShortName());
     assertEquals(SHAPE_DIST_TRAVELED, result.getShapeDistTraveled(), 0.0001d);
     assertNotNull(result.getStop());
-    assertEquals(HEAD_SIGN, result.getStopHeadsign());
+    assertEquals(HEAD_SIGN, result.getStopHeadsign().toString());
     assertEquals(STOP_SEQUENCE, result.getStopSequence());
     assertEquals(TIMEPOINT, result.getTimepoint());
     assertNotNull(result.getTrip());

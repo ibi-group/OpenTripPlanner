@@ -8,12 +8,33 @@ site_url: https://docs.opentripplanner.org
 repo_url: https://github.com/opentripplanner/OpenTripPlanner
 docs_dir: docs
 site_dir: target/mkdocs
+strict: true
+
+theme:
+    name: material
+    features:
+        - toc.integrate
+    palette:
+        primary: blue
+        accent: blue
+        scheme: default
+
+extra:
+    version:
+        provider: mike
+
+markdown_extensions:
+    - pymdownx.highlight:
+          anchor_linenums: true
+    - pymdownx.inlinehilite
+    - pymdownx.snippets
+    - pymdownx.superfences
 
 # MkDocs will automatically discover pages if you don't list them here.
 # In that case subdirectories can be used to organize pages.
 # The list below organizes them into categories and controls the order.
 
-pages:
+nav:
 - Home: 'index.md'
 - About:
     - Governance: 'Governance.md'
@@ -33,6 +54,9 @@ pages:
         - "Boarding locations": 'BoardingLocations.md'
         - Router: 'RouterConfiguration.md'
         - Accessibility: 'Accessibility.md'
+        - "Route Request": 'RouteRequest.md'
+        - "Realtime Updaters" : 'UpdaterConfig.md'
+        - "Routing Modes" : "RoutingModes.md"
     - Preparing OSM Data: 'Preparing-OSM.md'
     - Netex and SIRI: 'Netex-Norway.md'
     - Security: 'Security.md'
@@ -44,6 +68,7 @@ pages:
     - Bibliography: 'Bibliography.md'
     - Codestyle: 'Codestyle.md'
     - Sandbox development: 'SandboxExtension.md'
+    - Release Checklist: 'ReleaseChecklist.md'
 - Sandbox:
     - About: 'SandboxExtension.md'
     - Actuator API: 'sandbox/ActuatorAPI.md'

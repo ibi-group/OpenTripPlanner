@@ -7,12 +7,15 @@ import java.util.Objects;
 import java.util.OptionalInt;
 import java.util.Set;
 import java.util.function.Consumer;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-import org.opentripplanner.graph_builder.module.osm.TemplateLibrary;
-import org.opentripplanner.transit.model.basic.I18NString;
-import org.opentripplanner.transit.model.basic.NonLocalizedString;
-import org.opentripplanner.transit.model.basic.TranslatedString;
-import org.opentripplanner.transit.model.basic.WheelchairAccessibility;
+import org.opentripplanner.framework.i18n.I18NString;
+import org.opentripplanner.framework.i18n.NonLocalizedString;
+import org.opentripplanner.framework.i18n.TranslatedString;
+import org.opentripplanner.framework.tostring.ToStringBuilder;
+import org.opentripplanner.openstreetmap.api.OSMProvider;
+import org.opentripplanner.transit.model.basic.Accessibility;
 
 /**
  * A base class for OSM entities containing common methods.
@@ -26,6 +29,8 @@ public class OSMWithTags {
   protected long id;
 
   protected I18NString creativeName;
+
+  private OSMProvider osmProvider;
 
   public static boolean isFalse(String tagValue) {
     return ("no".equals(tagValue) || "0".equals(tagValue) || "false".equals(tagValue));
@@ -99,13 +104,13 @@ public class OSMWithTags {
   /**
    * Returns the level of wheelchair access of the element.
    */
-  public WheelchairAccessibility getWheelchairAccessibility() {
+  public Accessibility getWheelchairAccessibility() {
     if (isTagTrue("wheelchair")) {
-      return WheelchairAccessibility.POSSIBLE;
+      return Accessibility.POSSIBLE;
     } else if (isTagFalse("wheelchair")) {
-      return WheelchairAccessibility.NOT_POSSIBLE;
+      return Accessibility.NOT_POSSIBLE;
     } else {
-      return WheelchairAccessibility.NO_INFORMATION;
+      return Accessibility.NO_INFORMATION;
     }
   }
 
@@ -148,6 +153,13 @@ public class OSMWithTags {
   }
 
   /**
+   * Returns true if both key and value matches.
+   */
+  public boolean matchesKeyValue(String key, String value) {
+    return hasTag(key) && getTag(key).equals(value);
+  }
+
+  /**
    * Get tag and convert it to an integer. If the tag exist, but can not be parsed into a number,
    * then the error handler is called with the value witch failed to parse.
    */
@@ -184,11 +196,7 @@ public class OSMWithTags {
       return null;
     }
     if (tags.containsKey("name")) {
-      return TranslatedString.getI18NString(
-        TemplateLibrary.generateI18N("{name}", this),
-        true,
-        false
-      );
+      return TranslatedString.getI18NString(this.generateI18NForPattern("{name}"), true, false);
     }
     if (tags.containsKey("otp:route_name")) {
       return new NonLocalizedString(tags.get("otp:route_name"));
@@ -203,6 +211,61 @@ public class OSMWithTags {
       return new NonLocalizedString(tags.get("ref"));
     }
     return null;
+  }
+
+  /**
+   * Replace various pattern by the OSM tag values, with I18n support.
+   *
+   * @param pattern Pattern containing options tags to replace, such as "text" or "note: {note}".
+   *                Tag names between {} are replaced by the OSM tag value, if it is present (or the
+   *                empty string if not).
+   * @return A map language code → text, with at least one entry for the default language, and any
+   * other language found in OSM tag.
+   */
+  public Map<String, String> generateI18NForPattern(String pattern) {
+    if (pattern == null) {
+      return null;
+    }
+
+    Map<String, StringBuffer> i18n = new HashMap<>();
+    i18n.put(null, new StringBuffer());
+    Matcher matcher = Pattern.compile("\\{(.*?)}").matcher(pattern);
+
+    int lastEnd = 0;
+    while (matcher.find()) {
+      // add the stuff before the match
+      for (StringBuffer sb : i18n.values()) sb.append(pattern, lastEnd, matcher.start());
+      lastEnd = matcher.end();
+      // and then the value for the match
+      String defKey = matcher.group(1);
+      // scan all translated tags
+      Map<String, String> i18nTags = getTagsByPrefix(defKey);
+      if (i18nTags != null) {
+        for (Map.Entry<String, String> kv : i18nTags.entrySet()) {
+          if (!kv.getKey().equals(defKey)) {
+            String lang = kv.getKey().substring(defKey.length() + 1);
+            if (!i18n.containsKey(lang)) i18n.put(lang, new StringBuffer(i18n.get(null)));
+          }
+        }
+      }
+      // get the simple value (eg: description=...)
+      String defTag = getTag(defKey);
+      if (defTag == null && i18nTags != null && i18nTags.size() != 0) {
+        defTag = i18nTags.values().iterator().next();
+      }
+      // get the translated value, if exists
+      for (String lang : i18n.keySet()) {
+        String i18nTag = getTag(defKey + ":" + lang);
+        i18n.get(lang).append(i18nTag != null ? i18nTag : (defTag != null ? defTag : ""));
+      }
+    }
+    for (StringBuffer sb : i18n.values()) sb.append(pattern, lastEnd, pattern.length());
+    Map<String, String> out = new HashMap<>(i18n.size());
+    for (Map.Entry<String, StringBuffer> kv : i18n.entrySet()) out.put(
+      kv.getKey(),
+      kv.getValue().toString()
+    );
+    return out;
   }
 
   public Map<String, String> getTagsByPrefix(String prefix) {
@@ -281,10 +344,14 @@ public class OSMWithTags {
   /**
    * Returns true if bikes are explicitly denied access.
    * <p>
-   * bicycle is denied if bicycle:no, bicycle:license or bicycle:use_sidepath
+   * bicycle is denied if bicycle:no, bicycle:dismount, bicycle:license or bicycle:use_sidepath
    */
   public boolean isBicycleExplicitlyDenied() {
-    return isTagDeniedAccess("bicycle") || "use_sidepath".equals(getTag("bicycle"));
+    return (
+      isTagDeniedAccess("bicycle") ||
+      "dismount".equals(getTag("bicycle")) ||
+      "use_sidepath".equals(getTag("bicycle"))
+    );
   }
 
   /**
@@ -380,11 +447,24 @@ public class OSMWithTags {
       .collect(Collectors.toSet());
   }
 
+  public OSMProvider getOsmProvider() {
+    return osmProvider;
+  }
+
+  public void setOsmProvider(OSMProvider provider) {
+    this.osmProvider = provider;
+  }
+
   /**
    * Returns true if this tag is explicitly access to this entity.
    */
   private boolean isTagDeniedAccess(String tagName) {
     String tagValue = getTag(tagName);
     return "no".equals(tagValue) || "license".equals(tagValue);
+  }
+
+  @Override
+  public String toString() {
+    return ToStringBuilder.of(this.getClass()).addObj("tags", tags).toString();
   }
 }

@@ -17,9 +17,9 @@ import org.locationtech.jts.geom.LineString;
 import org.opentripplanner.ext.transmodelapi.mapping.GeometryMapper;
 import org.opentripplanner.ext.transmodelapi.model.EnumTypes;
 import org.opentripplanner.ext.transmodelapi.support.GqlUtil;
-import org.opentripplanner.model.TripPattern;
-import org.opentripplanner.routing.trippattern.TripTimes;
-import org.opentripplanner.util.PolylineEncoder;
+import org.opentripplanner.framework.geometry.EncodedPolyline;
+import org.opentripplanner.transit.model.network.TripPattern;
+import org.opentripplanner.transit.model.timetable.TripTimes;
 
 public class JourneyPatternType {
 
@@ -86,7 +86,7 @@ public class JourneyPatternType {
           .dataFetcher(environment -> {
             TIntSet services = GqlUtil
               .getTransitService(environment)
-              .getServicesRunningForDate(
+              .getServiceCodesRunningForDate(
                 Optional
                   .ofNullable((LocalDate) environment.getArgument("date"))
                   .orElse(LocalDate.now())
@@ -120,7 +120,7 @@ public class JourneyPatternType {
             if (geometry == null) {
               return null;
             } else {
-              return PolylineEncoder.encodeGeometry(geometry);
+              return EncodedPolyline.encode(geometry);
             }
           })
           .build()

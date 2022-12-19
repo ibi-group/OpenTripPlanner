@@ -1,29 +1,42 @@
 package org.opentripplanner.model.plan;
 
 import static java.time.ZoneOffset.UTC;
-import static org.opentripplanner.routing.core.TraverseMode.BICYCLE;
-import static org.opentripplanner.routing.core.TraverseMode.CAR;
-import static org.opentripplanner.routing.core.TraverseMode.WALK;
+import static org.opentripplanner.street.search.TraverseMode.BICYCLE;
+import static org.opentripplanner.street.search.TraverseMode.CAR;
+import static org.opentripplanner.street.search.TraverseMode.WALK;
+import static org.opentripplanner.transit.model._data.TransitModelForTest.FEED_ID;
+import static org.opentripplanner.transit.model._data.TransitModelForTest.id;
 import static org.opentripplanner.transit.model._data.TransitModelForTest.route;
 
+import gnu.trove.set.hash.TIntHashSet;
 import java.time.LocalDate;
 import java.time.Month;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import org.opentripplanner.model.StopPattern;
+import org.opentripplanner.ext.flex.FlexServiceDate;
+import org.opentripplanner.ext.flex.FlexibleTransitLeg;
+import org.opentripplanner.ext.flex.edgetype.FlexTripEdge;
+import org.opentripplanner.ext.flex.flexpathcalculator.DirectFlexPathCalculator;
+import org.opentripplanner.ext.flex.template.FlexAccessTemplate;
+import org.opentripplanner.ext.flex.trip.UnscheduledTrip;
+import org.opentripplanner.framework.time.TimeUtils;
 import org.opentripplanner.model.StopTime;
-import org.opentripplanner.model.TripPattern;
 import org.opentripplanner.model.transfer.ConstrainedTransfer;
 import org.opentripplanner.model.transfer.TransferConstraint;
-import org.opentripplanner.routing.core.TraverseMode;
-import org.opentripplanner.routing.trippattern.Deduplicator;
-import org.opentripplanner.routing.trippattern.TripTimes;
+import org.opentripplanner.routing.graph.SimpleConcreteVertex;
+import org.opentripplanner.standalone.config.sandbox.FlexConfig;
+import org.opentripplanner.street.search.TraverseMode;
 import org.opentripplanner.transit.model._data.TransitModelForTest;
 import org.opentripplanner.transit.model.basic.TransitMode;
+import org.opentripplanner.transit.model.framework.Deduplicator;
+import org.opentripplanner.transit.model.framework.FeedScopedId;
+import org.opentripplanner.transit.model.network.GroupOfRoutes;
 import org.opentripplanner.transit.model.network.Route;
+import org.opentripplanner.transit.model.network.StopPattern;
+import org.opentripplanner.transit.model.network.TripPattern;
 import org.opentripplanner.transit.model.timetable.Trip;
-import org.opentripplanner.util.time.TimeUtils;
+import org.opentripplanner.transit.model.timetable.TripTimes;
 
 /**
  * This is a helper class to allow unit-testing on Itineraries. The builder does not necessarily
@@ -151,6 +164,63 @@ public class TestItineraryBuilder implements PlanTestConstants {
     return bus(tripId, startTime, endTime, TRIP_FROM_STOP_INDEX, TRIP_TO_STOP_INDEX, to, null);
   }
 
+  public TestItineraryBuilder flex(int start, int end, Place to) {
+    if (lastPlace == null) {
+      throw new IllegalStateException("Trip from place is unknown!");
+    }
+    int legCost = 0;
+    StopTime fromStopTime = new StopTime();
+    fromStopTime.setStop(lastPlace.stop);
+
+    StopTime toStopTime = new StopTime();
+    toStopTime.setStop(to.stop);
+
+    Trip trip = trip(1, route("flex").build());
+
+    var flexTrip = UnscheduledTrip
+      .of(id("flex-1"))
+      .withStopTimes(List.of(fromStopTime, toStopTime))
+      .withTrip(trip)
+      .build();
+
+    var template = new FlexAccessTemplate(
+      null,
+      flexTrip,
+      0,
+      1,
+      null,
+      new FlexServiceDate(LocalDate.now(), 0, new TIntHashSet()),
+      new DirectFlexPathCalculator(),
+      FlexConfig.DEFAULT
+    );
+
+    var edge = new FlexTripEdge(
+      new SimpleConcreteVertex(
+        null,
+        "v1",
+        lastPlace.coordinate.latitude(),
+        lastPlace.coordinate.longitude()
+      ),
+      new SimpleConcreteVertex(null, "v2", to.coordinate.latitude(), to.coordinate.longitude()),
+      lastPlace.stop,
+      to.stop,
+      flexTrip,
+      template,
+      new DirectFlexPathCalculator()
+    );
+
+    FlexibleTransitLeg leg = new FlexibleTransitLeg(edge, newTime(start), newTime(end), legCost);
+
+    legs.add(leg);
+    cost += legCost;
+
+    // Setup for adding another leg
+    lastEndTime = end;
+    lastPlace = to;
+
+    return this;
+  }
+
   public TestItineraryBuilder bus(Route route, int tripId, int startTime, int endTime, Place to) {
     return transit(
       route,
@@ -190,6 +260,35 @@ public class TestItineraryBuilder implements PlanTestConstants {
   public TestItineraryBuilder rail(int tripId, int startTime, int endTime, Place to) {
     return transit(
       RAIL_ROUTE,
+      tripId,
+      startTime,
+      endTime,
+      TRIP_FROM_STOP_INDEX,
+      TRIP_TO_STOP_INDEX,
+      to,
+      null,
+      null,
+      null
+    );
+  }
+
+  public TestItineraryBuilder faresV2Rail(
+    int tripId,
+    int startTime,
+    int endTime,
+    Place to,
+    String networkId
+  ) {
+    Route route = RAIL_ROUTE;
+    if (networkId != null) {
+      var builder = RAIL_ROUTE.copy();
+      var group = GroupOfRoutes.of(new FeedScopedId(FEED_ID, networkId)).build();
+      builder.getGroupsOfRoutes().add(group);
+      route = builder.build();
+    }
+
+    return transit(
+      route,
       tripId,
       startTime,
       endTime,
@@ -280,7 +379,7 @@ public class TestItineraryBuilder implements PlanTestConstants {
     legCost += cost(WAIT_RELUCTANCE_FACTOR, waitTime);
     legCost += cost(1.0f, end - start) + BOARD_COST;
 
-    Trip trip = trip(tripId, route.copy().withShortName("" + tripId).build());
+    Trip trip = trip(tripId, route);
 
     final List<StopTime> stopTimes = new ArrayList<>();
     StopTime fromStopTime = new StopTime();
@@ -303,7 +402,11 @@ public class TestItineraryBuilder implements PlanTestConstants {
     stopTimes.add(toStopTime);
 
     StopPattern stopPattern = new StopPattern(stopTimes);
-    TripPattern tripPattern = new TripPattern(route.getId(), route, stopPattern);
+    TripPattern tripPattern = TripPattern
+      .of(route.getId())
+      .withRoute(route)
+      .withStopPattern(stopPattern)
+      .build();
     final TripTimes tripTimes = new TripTimes(trip, stopTimes, new Deduplicator());
     tripPattern.add(tripTimes);
 
@@ -379,21 +482,21 @@ public class TestItineraryBuilder implements PlanTestConstants {
     return leg;
   }
 
+  private double speed(TransitMode mode) {
+    return switch (mode) {
+      case BUS -> BUS_SPEED;
+      case RAIL -> RAIL_SPEED;
+      default -> throw new IllegalStateException("Unsupported mode: " + mode);
+    };
+  }
+
   private double speed(TraverseMode mode) {
-    switch (mode) {
-      case WALK:
-        return WALK_SPEED;
-      case BICYCLE:
-        return BICYCLE_SPEED;
-      case BUS:
-        return BUS_SPEED;
-      case RAIL:
-        return RAIL_SPEED;
-      case CAR:
-        return CAR_SPEED;
-      default:
-        throw new IllegalStateException("Unsupported mode: " + mode);
-    }
+    return switch (mode) {
+      case WALK -> WALK_SPEED;
+      case BICYCLE -> BICYCLE_SPEED;
+      case CAR -> CAR_SPEED;
+      default -> throw new IllegalStateException("Unsupported mode: " + mode);
+    };
   }
 
   private int cost(float reluctance, int durationSeconds) {

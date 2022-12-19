@@ -2,6 +2,7 @@ package org.opentripplanner.ext.vehicleparking.hslpark;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -10,16 +11,20 @@ import java.time.Month;
 import java.time.ZoneId;
 import java.util.Locale;
 import org.junit.jupiter.api.Test;
+import org.opentripplanner._support.time.ZoneIds;
 import org.opentripplanner.model.calendar.openinghours.OpeningHoursCalendarService;
-import org.opentripplanner.routing.trippattern.Deduplicator;
+import org.opentripplanner.model.calendar.openinghours.OsmOpeningHoursSupport;
 import org.opentripplanner.routing.vehicle_parking.VehicleParkingState;
+import org.opentripplanner.transit.model.framework.Deduplicator;
 
 public class HslParkUpdaterTest {
 
   @Test
   void parseParks() {
     var facilitiesUrl = "file:src/ext-test/resources/vehicleparking/hslpark/facilities.json";
+    var hubsUrl = "file:src/ext-test/resources/vehicleparking/hslpark/hubs.json";
     var utilizationsUrl = "file:src/ext-test/resources/vehicleparking/hslpark/utilizations.json";
+    var timeZone = ZoneIds.HELSINKI;
 
     var parameters = new HslParkUpdaterParameters(
       "",
@@ -28,18 +33,16 @@ public class HslParkUpdaterTest {
       "hslpark",
       null,
       30,
-      utilizationsUrl
+      utilizationsUrl,
+      timeZone,
+      hubsUrl
     );
     var openingHoursCalendarService = new OpeningHoursCalendarService(
       new Deduplicator(),
       LocalDate.of(2022, Month.JANUARY, 1),
       LocalDate.of(2023, Month.JANUARY, 1)
     );
-    var updater = new HslParkUpdater(
-      parameters,
-      openingHoursCalendarService,
-      ZoneId.of("Europe/Helsinki")
-    );
+    var updater = new HslParkUpdater(parameters, openingHoursCalendarService);
 
     assertTrue(updater.update());
     var parkingLots = updater.getUpdates();
@@ -49,11 +52,11 @@ public class HslParkUpdaterTest {
     var first = parkingLots.get(0);
     assertEquals("Tapiola Park", first.getName().toString());
     assertEquals("hslpark:990", first.getId().toString());
-    assertEquals(24.804713028552346, first.getX());
-    assertEquals(60.176018858575354, first.getY());
+    assertEquals(24.804713, first.getCoordinate().longitude());
+    assertEquals(60.1760189, first.getCoordinate().latitude());
     var entrance = first.getEntrances().get(0);
-    assertEquals(24.804713028552346, entrance.getX());
-    assertEquals(60.176018858575354, entrance.getY());
+    assertEquals(24.804713, entrance.getCoordinate().longitude());
+    assertEquals(60.1760189, entrance.getCoordinate().latitude());
     assertTrue(entrance.isCarAccessible());
     assertTrue(entrance.isWalkAccessible());
     assertTrue(first.hasAnyCarPlaces());
@@ -80,6 +83,17 @@ public class HslParkUpdaterTest {
       "}",
       first.getOpeningHours().toString()
     );
+    assertEquals(
+      "Mo-Fr 0:00-23:59; Sa 0:00-23:59; Su 0:00-23:59",
+      OsmOpeningHoursSupport.osmFormat(first.getOpeningHours())
+    );
+
+    var firstVehicleParkingGroup = first.getVehicleParkingGroup();
+    assertEquals("hslpark:321", firstVehicleParkingGroup.id().toString());
+    assertEquals("HubYksi", firstVehicleParkingGroup.name().toString(new Locale("fi")));
+    assertEquals("HubEn", firstVehicleParkingGroup.name().toString(new Locale("sv")));
+    assertEquals(24.804913, firstVehicleParkingGroup.coordinate().longitude());
+    assertEquals(60.176064, firstVehicleParkingGroup.coordinate().latitude());
 
     var second = parkingLots.get(1);
     var name = second.getName();
@@ -95,6 +109,7 @@ public class HslParkUpdaterTest {
     assertNull(second.getCapacity().getBicycleSpaces());
     assertFalse(second.hasRealTimeData());
     assertNull(second.getAvailability());
+
     assertEquals(
       "OHCalendar{" +
       "zoneId: Europe/Helsinki, " +
@@ -102,6 +117,7 @@ public class HslParkUpdaterTest {
       "}",
       second.getOpeningHours().toString()
     );
+    assertEquals(firstVehicleParkingGroup, second.getVehicleParkingGroup());
 
     var third = parkingLots.get(2);
     assertEquals("Alberganpromenadi", third.getName().toString());
@@ -114,6 +130,7 @@ public class HslParkUpdaterTest {
     assertTrue(third.hasRealTimeData());
     assertEquals(43, third.getAvailability().getBicycleSpaces());
     assertNull(third.getAvailability().getCarSpaces());
+    assertNotEquals(firstVehicleParkingGroup, third.getVehicleParkingGroup());
 
     var fourth = parkingLots.get(3);
     assertEquals(VehicleParkingState.TEMPORARILY_CLOSED, fourth.getState());
@@ -127,5 +144,44 @@ public class HslParkUpdaterTest {
       "}",
       fourth.getOpeningHours().toString()
     );
+    assertNull(fourth.getVehicleParkingGroup());
+  }
+
+  @Test
+  void parseParksWithoutTimeZone() {
+    var facilitiesUrl = "file:src/ext-test/resources/vehicleparking/hslpark/facilities.json";
+    var hubsUrl = "file:src/ext-test/resources/vehicleparking/hslpark/hubs.json";
+    var utilizationsUrl = "file:src/ext-test/resources/vehicleparking/hslpark/utilizations.json";
+    ZoneId timeZone = null;
+
+    var parameters = new HslParkUpdaterParameters(
+      "",
+      3000,
+      facilitiesUrl,
+      "hslpark",
+      null,
+      30,
+      utilizationsUrl,
+      timeZone,
+      hubsUrl
+    );
+    var openingHoursCalendarService = new OpeningHoursCalendarService(
+      new Deduplicator(),
+      LocalDate.of(2022, Month.JANUARY, 1),
+      LocalDate.of(2023, Month.JANUARY, 1)
+    );
+    var updater = new HslParkUpdater(parameters, openingHoursCalendarService);
+
+    assertTrue(updater.update());
+    var parkingLots = updater.getUpdates();
+
+    assertEquals(4, parkingLots.size());
+
+    var first = parkingLots.get(0);
+    assertEquals("Tapiola Park", first.getName().toString());
+    assertEquals("hslpark:990", first.getId().toString());
+    assertEquals(24.804713, first.getCoordinate().longitude());
+    assertEquals(60.1760189, first.getCoordinate().latitude());
+    assertNull(first.getOpeningHours());
   }
 }

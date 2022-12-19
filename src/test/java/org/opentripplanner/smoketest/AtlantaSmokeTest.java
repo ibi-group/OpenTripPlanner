@@ -3,12 +3,13 @@ package org.opentripplanner.smoketest;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.opentripplanner.smoketest.SmokeTest.assertThatItineraryHasModes;
 
-import java.time.Duration;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
+import java.util.Set;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.opentripplanner.framework.geometry.WgsCoordinate;
+import org.opentripplanner.smoketest.util.RestClient;
+import org.opentripplanner.smoketest.util.SmokeTestRequest;
 
 /**
  * This smoke test expects an OTP installation running at localhost:8080
@@ -21,61 +22,33 @@ import org.junit.jupiter.api.Test;
  * when there are slight changes in the schedule.
  */
 @Tag("smoke-test")
+@Tag("atlanta")
 public class AtlantaSmokeTest {
 
-  String nearGeorgiaStateStation = "33.74139944890028,-84.38607215881348";
-  String powderSpringsInsideFlexZone1 = "33.86916840022388,-84.66315507888794";
+  WgsCoordinate nearGeorgiaStateStation = new WgsCoordinate(33.74139944890028, -84.38607215881348);
+  WgsCoordinate powderSpringsInsideFlexZone1 = new WgsCoordinate(
+    33.86916840022388,
+    -84.66315507888794
+  );
 
   @Test
   public void regularRouteFromCentralAtlantaToPowderSprings() {
-    var params = Map.of(
-      "fromPlace",
+    SmokeTest.basicRouteTest(
       nearGeorgiaStateStation,
-      "toPlace",
       powderSpringsInsideFlexZone1,
-      "time",
-      "1:00pm",
-      "date",
-      SmokeTest.nextMonday().toString(),
-      "mode",
-      "TRANSIT,WALK",
-      "showIntermediateStops",
-      "true",
-      "locale",
-      "en",
-      "searchWindow",
-      Long.toString(Duration.ofHours(2).toSeconds())
+      Set.of("TRANSIT", "WALK"),
+      List.of("WALK", "SUBWAY", "WALK", "BUS", "WALK", "BUS", "WALK")
     );
-    var otpResponse = SmokeTest.sendPlanRequest(params);
-    var itineraries = otpResponse.getPlan().itineraries;
-
-    assertTrue(itineraries.size() > 1);
-
-    var expectedModes = List.of("WALK", "SUBWAY", "WALK", "BUS", "WALK", "BUS", "WALK");
-    assertThatItineraryHasModes(itineraries, expectedModes);
   }
 
   @Test
   public void flexRouteFromCentralAtlantaToPowderSprings() {
-    var params = Map.of(
-      "fromPlace",
+    var params = new SmokeTestRequest(
       nearGeorgiaStateStation,
-      "toPlace",
       powderSpringsInsideFlexZone1,
-      "time",
-      "1:00pm",
-      "date",
-      SmokeTest.nextMonday().toString(),
-      "mode",
-      "FLEX_EGRESS,WALK,TRANSIT",
-      "showIntermediateStops",
-      "true",
-      "locale",
-      "en",
-      "searchWindow",
-      Long.toString(Duration.ofHours(2).toSeconds())
+      Set.of("FLEX_EGRESS", "WALK", "TRANSIT")
     );
-    var otpResponse = SmokeTest.sendPlanRequest(params);
+    var otpResponse = RestClient.sendPlanRequest(params);
     var itineraries = otpResponse.getPlan().itineraries;
 
     assertTrue(itineraries.size() > 0);
@@ -86,7 +59,7 @@ public class AtlantaSmokeTest {
     var transitLegs = itineraries
       .stream()
       .flatMap(i -> i.legs.stream().filter(l -> l.transitLeg))
-      .collect(Collectors.toList());
+      .toList();
 
     var usesZone1Route = transitLegs
       .stream()

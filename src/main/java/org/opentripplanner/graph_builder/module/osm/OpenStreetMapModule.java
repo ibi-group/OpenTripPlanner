@@ -1,6 +1,5 @@
 package org.opentripplanner.graph_builder.module.osm;
 
-import ch.poole.openinghoursparser.OpeningHoursParseException;
 import com.google.common.collect.Iterables;
 import gnu.trove.iterator.TLongIterator;
 import gnu.trove.list.TLongList;
@@ -14,71 +13,53 @@ import java.util.List;
 import java.util.Map;
 import java.util.OptionalInt;
 import java.util.Set;
-import java.util.stream.Collectors;
 import org.locationtech.jts.geom.Coordinate;
-import org.locationtech.jts.geom.Envelope;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.LineString;
-import org.opentripplanner.common.TurnRestriction;
-import org.opentripplanner.common.geometry.GeometryUtils;
-import org.opentripplanner.common.geometry.SphericalDistanceLibrary;
-import org.opentripplanner.common.model.P2;
-import org.opentripplanner.common.model.T2;
-import org.opentripplanner.graph_builder.DataImportIssueStore;
-import org.opentripplanner.graph_builder.Issue;
+import org.opentripplanner.framework.geometry.GeometryUtils;
+import org.opentripplanner.framework.geometry.SphericalDistanceLibrary;
+import org.opentripplanner.framework.i18n.I18NString;
+import org.opentripplanner.framework.i18n.NonLocalizedString;
+import org.opentripplanner.framework.logging.ProgressTracker;
+import org.opentripplanner.graph_builder.issue.api.DataImportIssueStore;
+import org.opentripplanner.graph_builder.issue.api.Issue;
 import org.opentripplanner.graph_builder.issues.Graphwide;
-import org.opentripplanner.graph_builder.issues.InvalidVehicleParkingCapacity;
-import org.opentripplanner.graph_builder.issues.ParkAndRideUnlinked;
 import org.opentripplanner.graph_builder.issues.StreetCarSpeedZero;
 import org.opentripplanner.graph_builder.issues.TurnRestrictionBad;
-import org.opentripplanner.graph_builder.module.extra_elevation_data.ElevationPoint;
-import org.opentripplanner.graph_builder.services.GraphBuilderModule;
+import org.opentripplanner.graph_builder.model.GraphBuilderModule;
 import org.opentripplanner.graph_builder.services.osm.CustomNamer;
-import org.opentripplanner.model.StreetNote;
-import org.opentripplanner.model.calendar.openinghours.OHCalendar;
-import org.opentripplanner.openstreetmap.OSMOpeningHoursParser;
 import org.opentripplanner.openstreetmap.OpenStreetMapProvider;
 import org.opentripplanner.openstreetmap.model.OSMLevel;
 import org.opentripplanner.openstreetmap.model.OSMNode;
 import org.opentripplanner.openstreetmap.model.OSMWay;
 import org.opentripplanner.openstreetmap.model.OSMWithTags;
-import org.opentripplanner.routing.api.request.RoutingRequest;
-import org.opentripplanner.routing.core.TraverseMode;
-import org.opentripplanner.routing.edgetype.AreaEdge;
-import org.opentripplanner.routing.edgetype.AreaEdgeList;
-import org.opentripplanner.routing.edgetype.ElevatorAlightEdge;
-import org.opentripplanner.routing.edgetype.ElevatorBoardEdge;
-import org.opentripplanner.routing.edgetype.ElevatorHopEdge;
-import org.opentripplanner.routing.edgetype.FreeEdge;
-import org.opentripplanner.routing.edgetype.NamedArea;
-import org.opentripplanner.routing.edgetype.StreetEdge;
-import org.opentripplanner.routing.edgetype.StreetTraversalPermission;
-import org.opentripplanner.routing.edgetype.VehicleParkingEdge;
-import org.opentripplanner.routing.graph.Edge;
+import org.opentripplanner.openstreetmap.tagmapping.OsmTagMapper;
+import org.opentripplanner.openstreetmap.wayproperty.WayProperties;
 import org.opentripplanner.routing.graph.Graph;
-import org.opentripplanner.routing.graph.Vertex;
-import org.opentripplanner.routing.services.notes.NoteMatcher;
 import org.opentripplanner.routing.util.ElevationUtils;
 import org.opentripplanner.routing.vehicle_parking.VehicleParking;
-import org.opentripplanner.routing.vehicle_parking.VehicleParking.VehicleParkingEntranceCreator;
-import org.opentripplanner.routing.vehicle_parking.VehicleParkingHelper;
-import org.opentripplanner.routing.vehicle_parking.VehicleParkingService;
-import org.opentripplanner.routing.vehicle_parking.VehicleParkingSpaces;
-import org.opentripplanner.routing.vertextype.BarrierVertex;
-import org.opentripplanner.routing.vertextype.ElevatorOffboardVertex;
-import org.opentripplanner.routing.vertextype.ElevatorOnboardVertex;
-import org.opentripplanner.routing.vertextype.ExitVertex;
-import org.opentripplanner.routing.vertextype.IntersectionVertex;
-import org.opentripplanner.routing.vertextype.OsmBoardingLocationVertex;
-import org.opentripplanner.routing.vertextype.OsmVertex;
-import org.opentripplanner.routing.vertextype.VehicleParkingEntranceVertex;
-import org.opentripplanner.transit.model.basic.I18NString;
-import org.opentripplanner.transit.model.basic.LocalizedStringFormat;
-import org.opentripplanner.transit.model.basic.NonLocalizedString;
-import org.opentripplanner.transit.model.basic.WheelchairAccessibility;
-import org.opentripplanner.transit.model.framework.FeedScopedId;
-import org.opentripplanner.transit.service.TransitModel;
-import org.opentripplanner.util.logging.ProgressTracker;
+import org.opentripplanner.standalone.config.BuildConfig;
+import org.opentripplanner.street.model.StreetTraversalPermission;
+import org.opentripplanner.street.model.TurnRestriction;
+import org.opentripplanner.street.model.edge.AreaEdge;
+import org.opentripplanner.street.model.edge.AreaEdgeList;
+import org.opentripplanner.street.model.edge.Edge;
+import org.opentripplanner.street.model.edge.ElevatorAlightEdge;
+import org.opentripplanner.street.model.edge.ElevatorBoardEdge;
+import org.opentripplanner.street.model.edge.ElevatorHopEdge;
+import org.opentripplanner.street.model.edge.FreeEdge;
+import org.opentripplanner.street.model.edge.NamedArea;
+import org.opentripplanner.street.model.edge.StreetEdge;
+import org.opentripplanner.street.model.note.StreetNoteAndMatcher;
+import org.opentripplanner.street.model.vertex.BarrierVertex;
+import org.opentripplanner.street.model.vertex.ElevatorOffboardVertex;
+import org.opentripplanner.street.model.vertex.ElevatorOnboardVertex;
+import org.opentripplanner.street.model.vertex.ExitVertex;
+import org.opentripplanner.street.model.vertex.IntersectionVertex;
+import org.opentripplanner.street.model.vertex.OsmBoardingLocationVertex;
+import org.opentripplanner.street.model.vertex.OsmVertex;
+import org.opentripplanner.street.model.vertex.Vertex;
+import org.opentripplanner.transit.model.basic.Accessibility;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -89,26 +70,20 @@ public class OpenStreetMapModule implements GraphBuilderModule {
 
   private static final Logger LOG = LoggerFactory.getLogger(OpenStreetMapModule.class);
 
-  private static final String VEHICLE_PARKING_OSM_FEED_ID = "OSM";
-  private final HashMap<Vertex, Double> elevationData = new HashMap<>();
+  private final Map<Vertex, Double> elevationData = new HashMap<>();
 
   // Private members that are only read or written internally.
   /**
    * Providers of OSM data.
    */
   private final List<OpenStreetMapProvider> providers;
-
-  private OSMOpeningHoursParser osmOpeningHoursParser;
-
   private final Set<String> boardingAreaRefTags;
+  private final DataImportIssueStore issueStore;
+  private final Graph graph;
 
-  public boolean skipVisibility = false;
+  private final boolean areaVisibility;
   // Members that can be set by clients.
   public boolean platformEntriesLinking = false;
-  /**
-   * WayPropertySet computes edge properties from OSM way data.
-   */
-  public WayPropertySet wayPropertySet = new WayPropertySet();
   /**
    * Allows for arbitrary custom naming of edges.
    */
@@ -128,78 +103,60 @@ public class OpenStreetMapModule implements GraphBuilderModule {
    */
   public boolean staticBikeParkAndRide;
   public int maxAreaNodes = 500;
-
   /**
    * Whether ways tagged foot/bicycle=discouraged should be marked as inaccessible
    */
   public boolean banDiscouragedWalking = false;
   public boolean banDiscouragedBiking = false;
-  private DataImportIssueStore issueStore;
-  private WayPropertySetSource wayPropertySetSource = new DefaultWayPropertySetSource();
 
-  /**
-   * Construct and set providers all at once.
-   */
   public OpenStreetMapModule(
-    List<OpenStreetMapProvider> providers,
-    Set<String> boardingAreaRefTags
+    Collection<OpenStreetMapProvider> providers,
+    Set<String> boardingAreaRefTags,
+    Graph graph,
+    DataImportIssueStore issueStore,
+    boolean areaVisibility
   ) {
     this.providers = List.copyOf(providers);
     this.boardingAreaRefTags = boardingAreaRefTags;
+    this.graph = graph;
+    this.issueStore = issueStore;
+    this.areaVisibility = areaVisibility;
   }
 
-  public OpenStreetMapModule(OpenStreetMapProvider provider) {
-    this(List.of(provider), Set.of());
-  }
-
-  /**
-   * Set the way properties from a {@link WayPropertySetSource} source.
-   *
-   * @param source the way properties source
-   */
-  public void setDefaultWayPropertySetSource(WayPropertySetSource source) {
-    wayPropertySet = new WayPropertySet();
-    source.populateProperties(wayPropertySet);
-    wayPropertySetSource = source;
+  public OpenStreetMapModule(
+    BuildConfig config,
+    Collection<OpenStreetMapProvider> providers,
+    Set<String> boardingAreaRefTags,
+    Graph graph,
+    DataImportIssueStore issueStore
+  ) {
+    this(List.copyOf(providers), boardingAreaRefTags, graph, issueStore, config.areaVisibility);
+    this.customNamer = config.customNamer;
+    this.platformEntriesLinking = config.platformEntriesLinking;
+    this.staticBikeParkAndRide = config.staticBikeParkAndRide;
+    this.staticParkAndRide = config.staticParkAndRide;
+    this.banDiscouragedWalking = config.banDiscouragedWalking;
+    this.banDiscouragedBiking = config.banDiscouragedBiking;
+    this.maxAreaNodes = config.maxAreaNodes;
   }
 
   @Override
-  public void buildGraph(
-    Graph graph,
-    TransitModel transitModel,
-    HashMap<Class<?>, Object> extra,
-    DataImportIssueStore issueStore
-  ) {
-    this.issueStore = issueStore;
-    this.osmOpeningHoursParser =
-      new OSMOpeningHoursParser(
-        graph.getOpeningHoursCalendarService(),
-        transitModel.getTimeZone(),
-        issueStore
-      );
+  public void buildGraph() {
     OSMDatabase osmdb = new OSMDatabase(issueStore, boardingAreaRefTags);
-    Handler handler = new Handler(graph, transitModel, osmdb);
+    Handler handler = new Handler(graph, osmdb);
     for (OpenStreetMapProvider provider : providers) {
-      LOG.info("Gathering OSM from provider: " + provider);
+      LOG.info("Gathering OSM from provider: {}", provider);
+      LOG.info(
+        "Using OSM way configuration from {}.",
+        provider.getOsmTagMapper().getClass().getSimpleName()
+      );
       provider.readOSM(osmdb);
     }
     osmdb.postLoad();
 
-    LOG.info(
-      "Using OSM way configuration from {}. Setting driving direction of the graph to {}.",
-      wayPropertySetSource.getClass().getSimpleName(),
-      wayPropertySetSource.drivingDirection()
-    );
-    graph.setDrivingDirection(wayPropertySetSource.drivingDirection());
-    graph.setIntersectionTraversalCostModel(
-      wayPropertySetSource.getIntersectionTraversalCostModel()
-    );
-
     LOG.info("Building street graph from OSM");
-    handler.buildGraph(extra);
+    handler.buildGraph();
     graph.hasStreets = true;
-    //Calculates envelope for OSM
-    graph.calculateEnvelope();
   }
 
   @Override
@@ -207,6 +164,10 @@ public class OpenStreetMapModule implements GraphBuilderModule {
     for (OpenStreetMapProvider provider : providers) {
       provider.checkInputs();
     }
+  }
+
+  public Map<Vertex, Double> elevationDataOutput() {
+    return elevationData;
   }
 
   private Issue invalidDuration(OSMWithTags element, String v) {
@@ -226,8 +187,6 @@ public class OpenStreetMapModule implements GraphBuilderModule {
 
     private final Graph graph;
 
-    private final TransitModel transitModel;
-
     private final OSMDatabase osmdb;
     // track OSM nodes which are decomposed into multiple graph vertices because they are
     // elevators. later they will be iterated over to build ElevatorEdges between them.
@@ -238,19 +197,34 @@ public class OpenStreetMapModule implements GraphBuilderModule {
      * The bike safety factor of the safest street
      */
     private float bestBikeSafety = 1.0f;
+    /**
+     * The walk safety factor of the safest street
+     */
+    private float bestWalkSafety = 1.0f;
 
-    public Handler(Graph graph, TransitModel transitModel, OSMDatabase osmdb) {
+    public Handler(Graph graph, OSMDatabase osmdb) {
       this.graph = graph;
-      this.transitModel = transitModel;
       this.osmdb = osmdb;
     }
 
-    public void buildGraph(HashMap<Class<?>, Object> extra) {
+    public void buildGraph() {
+      var parkingProcessor = new ParkingProcessor(graph, issueStore, this::getVertexForOsmNode);
+
+      var parkingLots = new ArrayList<VehicleParking>();
+
       if (staticParkAndRide) {
-        processParkAndRideNodes(osmdb.getCarParkingNodes(), true);
+        var carParkingNodes = parkingProcessor.buildParkAndRideNodes(
+          osmdb.getCarParkingNodes(),
+          true
+        );
+        parkingLots.addAll(carParkingNodes);
       }
       if (staticBikeParkAndRide) {
-        processParkAndRideNodes(osmdb.getBikeParkingNodes(), false);
+        var bikeParkingNodes = parkingProcessor.buildParkAndRideNodes(
+          osmdb.getBikeParkingNodes(),
+          false
+        );
+        parkingLots.addAll(bikeParkingNodes);
       }
 
       for (Area area : Iterables.concat(
@@ -263,13 +237,23 @@ public class OpenStreetMapModule implements GraphBuilderModule {
       initIntersectionNodes();
 
       buildBasicGraph();
-      buildWalkableAreas(skipVisibility, platformEntriesLinking);
+      buildWalkableAreas(!areaVisibility, platformEntriesLinking);
 
       if (staticParkAndRide) {
-        buildParkAndRideAreas();
+        List<AreaGroup> areaGroups = groupAreas(osmdb.getParkAndRideAreas());
+        var carParkingAreas = parkingProcessor.buildParkAndRideAreas(areaGroups);
+        parkingLots.addAll(carParkingAreas);
+        LOG.info("Created {} car P+R areas.", carParkingAreas.size());
       }
       if (staticBikeParkAndRide) {
-        buildBikeParkAndRideAreas();
+        List<AreaGroup> areaGroups = groupAreas(osmdb.getBikeParkingAreas());
+        var bikeParkingAreas = parkingProcessor.buildBikeParkAndRideAreas(areaGroups);
+        parkingLots.addAll(bikeParkingAreas);
+        LOG.info("Created {} bike P+R areas", bikeParkingAreas.size());
+      }
+
+      if (!parkingLots.isEmpty()) {
+        graph.getVehicleParkingService().updateVehicleParking(parkingLots, List.of());
       }
 
       buildElevatorEdges(graph);
@@ -280,10 +264,7 @@ public class OpenStreetMapModule implements GraphBuilderModule {
         customNamer.postprocess(graph);
       }
 
-      // generate elevation profiles
-      extra.put(ElevationPoint.class, elevationData);
-
-      applyBikeSafetyFactor(graph);
+      applySafetyFactors(graph);
     } // END buildGraph()
 
     // TODO Set this to private once WalkableAreaBuilder is gone
@@ -293,27 +274,31 @@ public class OpenStreetMapModule implements GraphBuilderModule {
       WayProperties wayData,
       OSMWithTags way
     ) {
-      Set<T2<StreetNote, NoteMatcher>> notes = wayPropertySet.getNoteForWay(way);
-      boolean motorVehicleNoThrough = wayPropertySetSource.isMotorVehicleThroughTrafficExplicitlyDisallowed(
+      OsmTagMapper tagMapperForWay = way.getOsmProvider().getOsmTagMapper();
+
+      Set<StreetNoteAndMatcher> notes = way.getOsmProvider().getWayPropertySet().getNoteForWay(way);
+
+      boolean motorVehicleNoThrough = tagMapperForWay.isMotorVehicleThroughTrafficExplicitlyDisallowed(
         way
       );
-      boolean bicycleNoThrough = wayPropertySetSource.isBicycleNoThroughTrafficExplicitlyDisallowed(
-        way
-      );
-      boolean walkNoThrough = wayPropertySetSource.isWalkNoThroughTrafficExplicitlyDisallowed(way);
+      boolean bicycleNoThrough = tagMapperForWay.isBicycleNoThroughTrafficExplicitlyDisallowed(way);
+      boolean walkNoThrough = tagMapperForWay.isWalkNoThroughTrafficExplicitlyDisallowed(way);
 
       if (street != null) {
-        double safety = wayData.getSafetyFeatures().first;
-        street.setBicycleSafetyFactor((float) safety);
-        if (safety < bestBikeSafety) {
-          bestBikeSafety = (float) safety;
+        double bicycleSafety = wayData.getBicycleSafetyFeatures().forward();
+        street.setBicycleSafetyFactor((float) bicycleSafety);
+        if (bicycleSafety < bestBikeSafety) {
+          bestBikeSafety = (float) bicycleSafety;
+        }
+        double walkSafety = wayData.getWalkSafetyFeatures().forward();
+        street.setWalkSafetyFactor((float) walkSafety);
+        if (walkSafety < bestWalkSafety) {
+          bestWalkSafety = (float) walkSafety;
         }
         if (notes != null) {
-          for (T2<StreetNote, NoteMatcher> note : notes) graph.streetNotesService.addStaticNote(
-            street,
-            note.first,
-            note.second
-          );
+          for (var it : notes) {
+            graph.streetNotesService.addStaticNote(street, it.note(), it.matcher());
+          }
         }
         street.setMotorVehicleNoThruTraffic(motorVehicleNoThrough);
         street.setBicycleNoThruTraffic(bicycleNoThrough);
@@ -321,17 +306,20 @@ public class OpenStreetMapModule implements GraphBuilderModule {
       }
 
       if (backStreet != null) {
-        double safety = wayData.getSafetyFeatures().second;
-        if (safety < bestBikeSafety) {
-          bestBikeSafety = (float) safety;
+        double bicycleSafety = wayData.getBicycleSafetyFeatures().back();
+        if (bicycleSafety < bestBikeSafety) {
+          bestBikeSafety = (float) bicycleSafety;
         }
-        backStreet.setBicycleSafetyFactor((float) safety);
+        backStreet.setBicycleSafetyFactor((float) bicycleSafety);
+        double walkSafety = wayData.getWalkSafetyFeatures().back();
+        if (walkSafety < bestWalkSafety) {
+          bestWalkSafety = (float) walkSafety;
+        }
+        backStreet.setWalkSafetyFactor((float) walkSafety);
         if (notes != null) {
-          for (T2<StreetNote, NoteMatcher> note : notes) graph.streetNotesService.addStaticNote(
-            backStreet,
-            note.first,
-            note.second
-          );
+          for (var it : notes) {
+            graph.streetNotesService.addStaticNote(backStreet, it.note(), it.matcher());
+          }
         }
         backStreet.setMotorVehicleNoThruTraffic(motorVehicleNoThrough);
         backStreet.setBicycleNoThruTraffic(bicycleNoThrough);
@@ -434,80 +422,16 @@ public class OpenStreetMapModule implements GraphBuilderModule {
       return iv;
     }
 
-    private OptionalInt parseCapacity(OSMWithTags element) {
-      return parseCapacity(element, "capacity");
-    }
-
-    private OptionalInt parseCapacity(OSMWithTags element, String capacityTag) {
-      return element.getTagAsInt(
-        capacityTag,
-        v -> issueStore.add(new InvalidVehicleParkingCapacity(element.getId(), v))
-      );
-    }
-
     private OptionalInt parseDuration(OSMWithTags element) {
       return element.getTagAsInt("duration", v -> issueStore.add(invalidDuration(element, v)));
     }
 
-    private void processParkAndRideNodes(Collection<OSMNode> nodes, boolean isCarParkAndRide) {
-      LOG.info("Processing {} P+R nodes.", isCarParkAndRide ? "car" : "bike");
-      int n = 0;
-      VehicleParkingService vehicleParkingService = graph.getService(
-        VehicleParkingService.class,
-        true
-      );
-
-      for (OSMNode node : nodes) {
-        n++;
-
-        I18NString creativeName = nameParkAndRideEntity(node);
-
-        VehicleParkingEntranceCreator entrance = builder ->
-          builder
-            .entranceId(
-              new FeedScopedId(
-                VEHICLE_PARKING_OSM_FEED_ID,
-                String.format("%s/%s/entrance", node.getClass().getSimpleName(), node.getId())
-              )
-            )
-            .name(creativeName)
-            .x(node.lon)
-            .y(node.lat)
-            .walkAccessible(true)
-            .carAccessible(isCarParkAndRide);
-
-        var vehicleParking = createVehicleParkingObjectFromOsmEntity(
-          isCarParkAndRide,
-          node.lon,
-          node.lat,
-          node,
-          creativeName,
-          List.of(entrance)
-        );
-
-        vehicleParkingService.addVehicleParking(vehicleParking);
-
-        VehicleParkingEntranceVertex parkVertex = new VehicleParkingEntranceVertex(
-          graph,
-          vehicleParking.getEntrances().get(0)
-        );
-        new VehicleParkingEdge(parkVertex);
+    private List<AreaGroup> groupAreas(Collection<Area> areas) {
+      Map<Area, OSMLevel> areasLevels = new HashMap<>(areas.size());
+      for (Area area : areas) {
+        areasLevels.put(area, osmdb.getLevelForWay(area.parent));
       }
-
-      LOG.info("Created {} {} P+R nodes.", n, isCarParkAndRide ? "car" : "bike");
-    }
-
-    private void buildBikeParkAndRideAreas() {
-      LOG.info("Building bike P+R areas");
-      List<AreaGroup> areaGroups = groupAreas(osmdb.getBikeParkingAreas());
-      int n = 0;
-      for (AreaGroup group : areaGroups) {
-        if (buildParkAndRideAreasForGroup(group, false)) n++;
-      }
-      if (n > 0) {
-        graph.hasBikeRide = true;
-      }
-      LOG.info("Created {} bike P+R areas.", n);
+      return AreaGroup.groupAreas(areasLevels);
     }
 
     private void buildWalkableAreas(boolean skipVisibility, boolean platformEntriesLinking) {
@@ -522,7 +446,6 @@ public class OpenStreetMapModule implements GraphBuilderModule {
       WalkableAreaBuilder walkableAreaBuilder = new WalkableAreaBuilder(
         graph,
         osmdb,
-        wayPropertySet,
         this,
         issueStore,
         maxAreaNodes,
@@ -555,315 +478,6 @@ public class OpenStreetMapModule implements GraphBuilderModule {
       }
     }
 
-    private void buildParkAndRideAreas() {
-      LOG.info("Building car P+R areas");
-      List<AreaGroup> areaGroups = groupAreas(osmdb.getParkAndRideAreas());
-      int n = 0;
-      for (AreaGroup group : areaGroups) {
-        if (buildParkAndRideAreasForGroup(group, true)) n++;
-      }
-      if (n > 0) {
-        graph.hasParkRide = true;
-      }
-      LOG.info("Created {} car P+R areas.", n);
-    }
-
-    private boolean buildParkAndRideAreasForGroup(AreaGroup group, boolean isCarParkAndRide) {
-      Envelope envelope = new Envelope();
-      Set<VertexAndName> accessVertices = new HashSet<>();
-
-      OSMWithTags entity = null;
-
-      // Process all nodes from outer rings
-      // These are IntersectionVertices not OsmVertices because there can be both OsmVertices and TransitStopStreetVertices.
-      for (Area area : group.areas) {
-        entity = area.parent;
-
-        var areaAccessVertices = processVehicleParkingArea(area, envelope);
-        accessVertices.addAll(areaAccessVertices);
-      }
-
-      if (entity == null) {
-        return false;
-      }
-
-      var creativeName = nameParkAndRideEntity(entity);
-
-      // Check P+R accessibility by walking and driving.
-      RoutingRequest walkReq = new RoutingRequest(TraverseMode.WALK);
-      RoutingRequest driveReq = new RoutingRequest(TraverseMode.CAR);
-      boolean walkAccessibleIn = false;
-      boolean carAccessibleIn = false;
-      boolean walkAccessibleOut = false;
-      boolean carAccessibleOut = false;
-      for (VertexAndName access : accessVertices) {
-        var accessVertex = access.getVertex();
-        for (Edge incoming : accessVertex.getIncoming()) {
-          if (incoming instanceof StreetEdge streetEdge) {
-            if (streetEdge.canTraverse(TraverseMode.WALK)) {
-              walkAccessibleIn = true;
-            }
-            if (streetEdge.canTraverse(TraverseMode.CAR)) {
-              carAccessibleIn = true;
-            }
-          }
-        }
-        for (Edge outgoing : accessVertex.getOutgoing()) {
-          if (outgoing instanceof StreetEdge streetEdge) {
-            if (streetEdge.canTraverse(TraverseMode.WALK)) {
-              walkAccessibleOut = true;
-            }
-            if (streetEdge.canTraverse(TraverseMode.CAR)) {
-              carAccessibleOut = true;
-            }
-          }
-        }
-      }
-
-      if (walkAccessibleIn != walkAccessibleOut) {
-        LOG.error(
-          "P+R walk IN/OUT accessibility mismatch! Please have a look as this should not happen."
-        );
-      }
-
-      if (isCarParkAndRide) {
-        if (!walkAccessibleOut || !carAccessibleIn || !walkAccessibleIn || !carAccessibleOut) {
-          // This will prevent the P+R to be useful.
-          issueStore.add(new ParkAndRideUnlinked(creativeName.toString(), entity));
-          return false;
-        }
-      } else {
-        if (!walkAccessibleOut || !walkAccessibleIn) {
-          // This will prevent the P+R to be useful.
-          issueStore.add(new ParkAndRideUnlinked(creativeName.toString(), entity));
-          return false;
-        }
-      }
-
-      List<VehicleParking.VehicleParkingEntranceCreator> entrances = createParkingEntrancesFromAccessVertices(
-        accessVertices,
-        creativeName,
-        entity
-      );
-
-      var vehicleParking = createVehicleParkingObjectFromOsmEntity(
-        isCarParkAndRide,
-        (envelope.getMinX() + envelope.getMaxX()) / 2,
-        (envelope.getMinY() + envelope.getMaxY()) / 2,
-        entity,
-        creativeName,
-        entrances
-      );
-
-      VehicleParkingService vehicleParkingService = graph.getService(
-        VehicleParkingService.class,
-        true
-      );
-      vehicleParkingService.addVehicleParking(vehicleParking);
-
-      VehicleParkingHelper.linkVehicleParkingToGraph(graph, vehicleParking);
-
-      return true;
-    }
-
-    private VehicleParking createVehicleParkingObjectFromOsmEntity(
-      boolean isCarParkAndRide,
-      double lon,
-      double lat,
-      OSMWithTags entity,
-      I18NString creativeName,
-      List<VehicleParking.VehicleParkingEntranceCreator> entrances
-    ) {
-      OptionalInt bicycleCapacity, carCapacity, wheelchairAccessibleCarCapacity;
-      if (isCarParkAndRide) {
-        carCapacity = parseCapacity(entity);
-        bicycleCapacity = parseCapacity(entity, "capacity:bike");
-        wheelchairAccessibleCarCapacity = parseCapacity(entity, "capacity:disabled");
-      } else {
-        bicycleCapacity = parseCapacity(entity);
-        carCapacity = OptionalInt.empty();
-        wheelchairAccessibleCarCapacity = OptionalInt.empty();
-      }
-
-      VehicleParkingSpaces vehicleParkingSpaces = null;
-      if (
-        bicycleCapacity.isPresent() ||
-        carCapacity.isPresent() ||
-        wheelchairAccessibleCarCapacity.isPresent()
-      ) {
-        vehicleParkingSpaces =
-          VehicleParkingSpaces
-            .builder()
-            .bicycleSpaces(bicycleCapacity.isPresent() ? bicycleCapacity.getAsInt() : null)
-            .carSpaces(carCapacity.isPresent() ? carCapacity.getAsInt() : null)
-            .wheelchairAccessibleCarSpaces(
-              wheelchairAccessibleCarCapacity.isPresent()
-                ? wheelchairAccessibleCarCapacity.getAsInt()
-                : null
-            )
-            .build();
-      }
-
-      var bicyclePlaces = !isCarParkAndRide || bicycleCapacity.orElse(0) > 0;
-      var carPlaces =
-        (isCarParkAndRide && wheelchairAccessibleCarCapacity.isEmpty() && carCapacity.isEmpty()) ||
-        carCapacity.orElse(0) > 0;
-      var wheelchairAccessibleCarPlaces = wheelchairAccessibleCarCapacity.orElse(0) > 0;
-
-      var openingHours = parseOpeningHours(entity);
-
-      var id = new FeedScopedId(
-        VEHICLE_PARKING_OSM_FEED_ID,
-        String.format("%s/%d", entity.getClass().getSimpleName(), entity.getId())
-      );
-
-      var tags = new ArrayList<String>();
-
-      tags.add(isCarParkAndRide ? "osm:amenity=parking" : "osm:amenity=bicycle_parking");
-
-      if (entity.isTagTrue("fee")) {
-        tags.add("osm:fee");
-      }
-      if (entity.hasTag("supervised") && !entity.isTagTrue("supervised")) {
-        tags.add("osm:supervised");
-      }
-      if (entity.hasTag("covered") && !entity.isTagFalse("covered")) {
-        tags.add("osm:covered");
-      }
-      if (entity.hasTag("surveillance") && !entity.isTagFalse("surveillance")) {
-        tags.add("osm:surveillance");
-      }
-
-      return VehicleParking
-        .builder()
-        .id(id)
-        .name(creativeName)
-        .x(lon)
-        .y(lat)
-        .tags(tags)
-        .detailsUrl(entity.getTag("website"))
-        .openingHoursCalendar(openingHours)
-        .bicyclePlaces(bicyclePlaces)
-        .carPlaces(carPlaces)
-        .wheelchairAccessibleCarPlaces(wheelchairAccessibleCarPlaces)
-        .capacity(vehicleParkingSpaces)
-        .entrances(entrances)
-        .build();
-    }
-
-    private OHCalendar parseOpeningHours(OSMWithTags entity) {
-      final var openingHoursTag = entity.getTag("opening_hours");
-      final var id = entity.getId();
-      final var link = entity.getOpenStreetMapLink();
-      if (openingHoursTag != null) {
-        try {
-          return osmOpeningHoursParser.parseOpeningHours(openingHoursTag, String.valueOf(id), link);
-        } catch (OpeningHoursParseException e) {
-          issueStore.add(
-            "OSMOpeningHoursUnparsed",
-            "OSM object with id '%s' (%s) has an invalid opening_hours value, it will always be open",
-            id,
-            link
-          );
-        }
-      }
-      return null;
-    }
-
-    private I18NString nameParkAndRideEntity(OSMWithTags osmWithTags) {
-      // If there is an explicit name user that. The explicit name is used so that tag-based
-      // translations are used, which are not handled by "CreativeNamer"s.
-      I18NString creativeName = osmWithTags.getAssumedName();
-      if (creativeName == null) {
-        // ... otherwise resort to "CreativeNamer"s
-        creativeName = wayPropertySet.getCreativeNameForWay(osmWithTags);
-      }
-      return creativeName;
-    }
-
-    private List<VertexAndName> processVehicleParkingArea(Area area, Envelope envelope) {
-      return area.outermostRings
-        .stream()
-        .flatMap(ring -> processVehicleParkingArea(ring, area.parent, envelope).stream())
-        .collect(Collectors.toList());
-    }
-
-    private List<VertexAndName> processVehicleParkingArea(
-      Ring ring,
-      OSMWithTags entity,
-      Envelope envelope
-    ) {
-      List<VertexAndName> accessVertices = new ArrayList<>();
-      for (OSMNode node : ring.nodes) {
-        envelope.expandToInclude(new Coordinate(node.lon, node.lat));
-        var accessVertex = getVertexForOsmNode(node, entity);
-        if (accessVertex.getIncoming().isEmpty() || accessVertex.getOutgoing().isEmpty()) continue;
-        accessVertices.add(new VertexAndName(node.getAssumedName(), accessVertex));
-      }
-
-      accessVertices.addAll(
-        ring
-          .getHoles()
-          .stream()
-          .flatMap(innerRing -> processVehicleParkingArea(innerRing, entity, envelope).stream())
-          .collect(Collectors.toList())
-      );
-
-      return accessVertices;
-    }
-
-    private List<VehicleParking.VehicleParkingEntranceCreator> createParkingEntrancesFromAccessVertices(
-      Set<VertexAndName> accessVertices,
-      I18NString vehicleParkingName,
-      OSMWithTags entity
-    ) {
-      List<VehicleParking.VehicleParkingEntranceCreator> entrances = new ArrayList<>();
-
-      for (var access : accessVertices) {
-        I18NString suffix = null;
-        if (access.getName() != null) {
-          suffix = access.getName();
-        }
-
-        if (suffix == null) {
-          suffix = new NonLocalizedString(String.format("#%d", entrances.size() + 1));
-        }
-
-        var entranceName = new LocalizedStringFormat("%s (%s)", vehicleParkingName, suffix);
-
-        entrances.add(builder ->
-          builder
-            .entranceId(
-              new FeedScopedId(
-                VEHICLE_PARKING_OSM_FEED_ID,
-                String.format(
-                  "%s/%d/%s",
-                  entity.getClass().getSimpleName(),
-                  entity.getId(),
-                  access.getVertex().getLabel()
-                )
-              )
-            )
-            .name(entranceName)
-            .x(access.getVertex().getX())
-            .y(access.getVertex().getY())
-            .vertex(access.getVertex())
-            .walkAccessible(access.getVertex().isConnectedToWalkingEdge())
-            .carAccessible(access.getVertex().isConnectedToDriveableEdge())
-        );
-      }
-
-      return entrances;
-    }
-
-    private List<AreaGroup> groupAreas(Collection<Area> areas) {
-      Map<Area, OSMLevel> areasLevels = new HashMap<>(areas.size());
-      for (Area area : areas) {
-        areasLevels.put(area, osmdb.getLevelForWay(area.parent));
-      }
-      return AreaGroup.groupAreas(areasLevels);
-    }
-
     private void buildBasicGraph() {
       /* build the street segment graph from OSM ways */
       long wayCount = osmdb.getWays().size();
@@ -871,7 +485,7 @@ public class OpenStreetMapModule implements GraphBuilderModule {
       LOG.info(progress.startMessage());
 
       WAY:for (OSMWay way : osmdb.getWays()) {
-        WayProperties wayData = wayPropertySet.getDataForWay(way);
+        WayProperties wayData = way.getOsmProvider().getWayPropertySet().getDataForWay(way);
         setWayName(way);
         StreetTraversalPermission permissions = OSMFilter.getPermissionsForWay(
           way,
@@ -997,7 +611,7 @@ public class OpenStreetMapModule implements GraphBuilderModule {
               elevationData.put(endEndpoint, elevation);
             }
           }
-          P2<StreetEdge> streets = getEdgesForStreet(
+          StreetEdgePair streets = getEdgesForStreet(
             startEndpoint,
             endEndpoint,
             way,
@@ -1008,8 +622,8 @@ public class OpenStreetMapModule implements GraphBuilderModule {
             geometry
           );
 
-          StreetEdge street = streets.first;
-          StreetEdge backStreet = streets.second;
+          StreetEdge street = streets.main;
+          StreetEdge backStreet = streets.back;
           applyWayProperties(street, backStreet, wayData, way);
 
           applyEdgesToTurnRestrictions(way, startNode, endNode, street, backStreet);
@@ -1027,7 +641,10 @@ public class OpenStreetMapModule implements GraphBuilderModule {
 
     private void setWayName(OSMWithTags way) {
       if (!way.hasTag("name")) {
-        I18NString creativeName = wayPropertySet.getCreativeNameForWay(way);
+        I18NString creativeName = way
+          .getOsmProvider()
+          .getWayPropertySet()
+          .getCreativeNameForWay(way);
         if (creativeName != null) {
           //way.addTag("otp:gen_name", creativeName);
           way.setCreativeName(creativeName);
@@ -1185,7 +802,7 @@ public class OpenStreetMapModule implements GraphBuilderModule {
 
     private void createElevatorHopEdges(
       ArrayList<Vertex> onboardVertices,
-      WheelchairAccessibility wheelchair,
+      Accessibility wheelchair,
       boolean bicycleAllowed,
       int levels,
       int travelTime
@@ -1382,9 +999,12 @@ public class OpenStreetMapModule implements GraphBuilderModule {
      * <p>
      * TODO Move this away, this is common to all street builders.
      */
-    private void applyBikeSafetyFactor(Graph graph) {
+    private void applySafetyFactors(Graph graph) {
       issueStore.add(
         new Graphwide("Multiplying all bike safety values by " + (1 / bestBikeSafety))
+      );
+      issueStore.add(
+        new Graphwide("Multiplying all walk safety values by " + (1 / bestWalkSafety))
       );
       HashSet<Edge> seenEdges = new HashSet<>();
       HashSet<AreaEdgeList> seenAreas = new HashSet<>();
@@ -1396,6 +1016,7 @@ public class OpenStreetMapModule implements GraphBuilderModule {
             seenAreas.add(areaEdgeList);
             for (NamedArea area : areaEdgeList.getAreas()) {
               area.setBicycleSafetyMultiplier(area.getBicycleSafetyMultiplier() / bestBikeSafety);
+              area.setWalkSafetyMultiplier(area.getWalkSafetyMultiplier() / bestWalkSafety);
             }
           }
           if (!(e instanceof StreetEdge)) {
@@ -1406,6 +1027,7 @@ public class OpenStreetMapModule implements GraphBuilderModule {
           if (!seenEdges.contains(e)) {
             seenEdges.add(e);
             pse.setBicycleSafetyFactor(pse.getBicycleSafetyFactor() / bestBikeSafety);
+            pse.setWalkSafetyFactor(pse.getWalkSafetyFactor() / bestWalkSafety);
           }
         }
         for (Edge e : vertex.getIncoming()) {
@@ -1417,6 +1039,7 @@ public class OpenStreetMapModule implements GraphBuilderModule {
           if (!seenEdges.contains(e)) {
             seenEdges.add(e);
             pse.setBicycleSafetyFactor(pse.getBicycleSafetyFactor() / bestBikeSafety);
+            pse.setWalkSafetyFactor(pse.getWalkSafetyFactor() / bestWalkSafety);
           }
         }
       }
@@ -1451,7 +1074,7 @@ public class OpenStreetMapModule implements GraphBuilderModule {
      * http://wiki.openstreetmap.org/wiki/Bicycle for various scenarios, along with
      * http://wiki.openstreetmap.org/wiki/OSM_tags_for_routing#Oneway.
      */
-    private P2<StreetEdge> getEdgesForStreet(
+    private StreetEdgePair getEdgesForStreet(
       IntersectionVertex startEndpoint,
       IntersectionVertex endEndpoint,
       OSMWay way,
@@ -1463,16 +1086,16 @@ public class OpenStreetMapModule implements GraphBuilderModule {
     ) {
       // No point in returning edges that can't be traversed by anyone.
       if (permissions.allowsNothing()) {
-        return new P2<>(null, null);
+        return new StreetEdgePair(null, null);
       }
 
       LineString backGeometry = geometry.reverse();
       StreetEdge street = null, backStreet = null;
       double length = this.getGeometryLengthMeters(geometry);
 
-      P2<StreetTraversalPermission> permissionPair = OSMFilter.getPermissions(permissions, way);
-      StreetTraversalPermission permissionsFront = permissionPair.first;
-      StreetTraversalPermission permissionsBack = permissionPair.second;
+      var permissionPair = OSMFilter.getPermissions(permissions, way);
+      var permissionsFront = permissionPair.main();
+      var permissionsBack = permissionPair.back();
 
       if (permissionsFront.allowsAnything()) {
         street =
@@ -1510,7 +1133,7 @@ public class OpenStreetMapModule implements GraphBuilderModule {
         if (backStreet != null) backStreet.setRoundabout(true);
       }
 
-      return new P2<>(street, backStreet);
+      return new StreetEdgePair(street, backStreet);
     }
 
     private StreetEdge getEdgeForStreet(
@@ -1527,7 +1150,7 @@ public class OpenStreetMapModule implements GraphBuilderModule {
       label = label.intern();
       I18NString name = getNameForWay(way, label);
 
-      float carSpeed = wayPropertySet.getCarSpeedForWay(way, back);
+      float carSpeed = way.getOsmProvider().getWayPropertySet().getCarSpeedForWay(way, back);
 
       StreetEdge street = new StreetEdge(
         startEndpoint,
@@ -1539,34 +1162,7 @@ public class OpenStreetMapModule implements GraphBuilderModule {
         back
       );
       street.setCarSpeed(carSpeed);
-
-      String highway = way.getTag("highway");
-      int cls;
-      if ("crossing".equals(highway) && !way.isTag("bicycle", "designated")) {
-        cls = StreetEdge.CLASS_CROSSING;
-      } else if (
-        "footway".equals(highway) &&
-        way.isTag("footway", "crossing") &&
-        !way.isTag("bicycle", "designated")
-      ) {
-        cls = StreetEdge.CLASS_CROSSING;
-      } else if (
-        "residential".equals(highway) ||
-        "tertiary".equals(highway) ||
-        "secondary".equals(highway) ||
-        "secondary_link".equals(highway) ||
-        "primary".equals(highway) ||
-        "primary_link".equals(highway) ||
-        "trunk".equals(highway) ||
-        "trunk_link".equals(highway)
-      ) {
-        cls = StreetEdge.CLASS_STREET;
-      } else {
-        cls = StreetEdge.CLASS_OTHERPATH;
-      }
-
-      cls |= OSMFilter.getStreetClasses(way);
-      street.setStreetClass(cls);
+      street.setLink(OSMFilter.isLink(way));
 
       if (!way.hasTag("name") && !way.hasTag("ref")) {
         street.setHasBogusName(true);
@@ -1583,7 +1179,7 @@ public class OpenStreetMapModule implements GraphBuilderModule {
         street.setWheelchairAccessible(false);
       }
 
-      street.setSlopeOverride(wayPropertySet.getSlopeOverride(way));
+      street.setSlopeOverride(way.getOsmProvider().getWayPropertySet().getSlopeOverride(way));
 
       // < 0.04: account for
       if (carSpeed < 0.04) {
@@ -1633,4 +1229,6 @@ public class OpenStreetMapModule implements GraphBuilderModule {
       return vertices.get(level);
     }
   }
+
+  private record StreetEdgePair(StreetEdge main, StreetEdge back) {}
 }

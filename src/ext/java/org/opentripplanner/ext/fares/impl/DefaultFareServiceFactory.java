@@ -1,14 +1,21 @@
 package org.opentripplanner.ext.fares.impl;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.Multimap;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-import org.opentripplanner.model.FareAttribute;
-import org.opentripplanner.model.FareRule;
+import org.opentripplanner.ext.fares.model.FareAttribute;
+import org.opentripplanner.ext.fares.model.FareLegRule;
+import org.opentripplanner.ext.fares.model.FareRule;
+import org.opentripplanner.ext.fares.model.FareRuleSet;
+import org.opentripplanner.ext.fares.model.FareRulesData;
+import org.opentripplanner.ext.fares.model.FareTransferRule;
 import org.opentripplanner.model.OtpTransitService;
-import org.opentripplanner.routing.core.Fare.FareType;
-import org.opentripplanner.routing.core.FareRuleSet;
+import org.opentripplanner.routing.core.FareType;
 import org.opentripplanner.routing.fares.FareService;
 import org.opentripplanner.routing.fares.FareServiceFactory;
 import org.opentripplanner.transit.model.framework.FeedScopedId;
@@ -18,8 +25,8 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Implements the default GTFS fare rules as described in http://groups.google.com/group/gtfs-changes/msg/4f81b826cb732f3b
+ * as well as Fares V2.
  *
- * @author novalis
  */
 public class DefaultFareServiceFactory implements FareServiceFactory {
 
@@ -27,20 +34,26 @@ public class DefaultFareServiceFactory implements FareServiceFactory {
 
   protected Map<FeedScopedId, FareRuleSet> regularFareRules = new HashMap<>();
 
+  private final List<FareLegRule> fareLegRules = new ArrayList<>();
+  private final List<FareTransferRule> fareTransferRules = new ArrayList<>();
+
+  // mapping the stop ids to area ids. one stop can be in several areas.
+  private final Multimap<FeedScopedId, String> stopAreas = ArrayListMultimap.create();
+
   @Override
   public FareService makeFareService() {
-    DefaultFareServiceImpl fareService = new DefaultFareServiceImpl();
+    DefaultFareService fareService = new DefaultFareService();
     fareService.addFareRules(FareType.regular, regularFareRules.values());
-    return fareService;
+
+    var faresV2Service = new GtfsFaresV2Service(fareLegRules, fareTransferRules, stopAreas);
+    return new GtfsFaresService(fareService, faresV2Service);
   }
 
   @Override
-  public void processGtfs(OtpTransitService transitService) {
-    fillFareRules(
-      transitService.getAllFareAttributes(),
-      transitService.getAllFareRules(),
-      regularFareRules
-    );
+  public void processGtfs(FareRulesData fareRulesData, OtpTransitService transitService) {
+    fillFareRules(fareRulesData.fareAttributes(), fareRulesData.fareRules(), regularFareRules);
+    this.fareLegRules.addAll(fareRulesData.fareLegRules());
+    this.fareTransferRules.addAll(fareRulesData.fareTransferRules());
   }
 
   public void configure(JsonNode config) {

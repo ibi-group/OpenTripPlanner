@@ -1,9 +1,14 @@
 package org.opentripplanner.routing.graphfinder;
 
+import java.util.Collection;
 import java.util.List;
+import java.util.function.Function;
+import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.Envelope;
 import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.transit.model.basic.TransitMode;
 import org.opentripplanner.transit.model.framework.FeedScopedId;
+import org.opentripplanner.transit.model.site.RegularStop;
 import org.opentripplanner.transit.service.TransitService;
 
 /**
@@ -15,18 +20,22 @@ public interface GraphFinder {
    * Get a new GraphFinder instance depending on whether the graph includes a street network or
    * not.
    */
-  static GraphFinder getInstance(Graph graph) {
-    return graph.hasStreets ? new StreetGraphFinder(graph) : new DirectGraphFinder(graph);
+  static GraphFinder getInstance(
+    Graph graph,
+    Function<Envelope, Collection<RegularStop>> queryNearbyStops
+  ) {
+    return graph.hasStreets
+      ? new StreetGraphFinder(graph)
+      : new DirectGraphFinder(queryNearbyStops);
   }
 
   /**
    * Search closest stops from a given coordinate, extending up to a specified max radius.
    *
-   * @param lat          Origin latitude
-   * @param lon          Origin longitude
+   * @param coordinate   Origin
    * @param radiusMeters Search radius from the origin in meters
    */
-  List<NearbyStop> findClosestStops(double lat, double lon, double radiusMeters);
+  List<NearbyStop> findClosestStops(Coordinate coordinate, double radiusMeters);
 
   /**
    * Search closest places, including stops, bike rental stations, bike and car parking etc, from a

@@ -7,6 +7,7 @@ import java.io.File;
 import java.lang.ref.SoftReference;
 import java.lang.reflect.Method;
 import java.util.BitSet;
+import java.util.Set;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.jar.JarFile;
 import org.geotools.util.WeakValueHashMap;
@@ -16,12 +17,13 @@ import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.geom.Polygon;
 import org.opentripplanner.ConstantsForTests;
 import org.opentripplanner.TestOtpModel;
-import org.opentripplanner.common.geometry.HashGridSpatialIndex;
 import org.opentripplanner.datastore.api.FileType;
 import org.opentripplanner.datastore.file.FileDataSource;
-import org.opentripplanner.routing.trippattern.Deduplicator;
+import org.opentripplanner.framework.geometry.HashGridSpatialIndex;
+import org.opentripplanner.service.worldenvelope.service.WorldEnvelopeModel;
 import org.opentripplanner.standalone.config.BuildConfig;
 import org.opentripplanner.standalone.config.RouterConfig;
+import org.opentripplanner.transit.model.framework.Deduplicator;
 import org.opentripplanner.transit.service.TransitModel;
 
 /**
@@ -34,6 +36,21 @@ import org.opentripplanner.transit.service.TransitModel;
  * Created by abyrd on 2018-10-26
  */
 public class GraphSerializationTest {
+
+  static Class<?>[] IGNORED_CLASSES = Set
+    .of(
+      ThreadPoolExecutor.class,
+      WeakValueHashMap.class,
+      Method.class,
+      JarFile.class,
+      SoftReference.class,
+      Class.class,
+      org.slf4j.Logger.class,
+      ch.qos.logback.classic.Logger.class,
+      HashGridSpatialIndex.class,
+      Deduplicator.class
+    )
+    .toArray(Class[]::new);
 
   /**
    * Tests GTFS based graph serialization to file.
@@ -74,11 +91,12 @@ public class GraphSerializationTest {
    */
   @Test
   public void compareGraphToItself() {
-    TestOtpModel cachedPortlandGraph = ConstantsForTests.getInstance().getCachedPortlandGraph();
+    TestOtpModel cachedPortlandGraph = ConstantsForTests
+      .getInstance()
+      .getCachedPortlandGraph()
+      .index();
     Graph originalGraph = cachedPortlandGraph.graph();
-    TransitModel originalTransitModel = cachedPortlandGraph.transitModel();
-    originalTransitModel.index();
-    originalGraph.index();
+
     // We can exclude relatively few classes here, because the object trees are of course perfectly identical.
     // We do skip edge lists - otherwise we trigger a depth-first search of the graph causing a stack overflow.
     // We also skip some deeply buried weak-value hash maps, which refuse to tell you what their keys are.
@@ -87,14 +105,8 @@ public class GraphSerializationTest {
     objectDiffer.useEquals(BitSet.class, LineString.class, Polygon.class);
     // ThreadPoolExecutor contains a weak reference to a very deep chain of Finalizer instances.
     // Method instances usually are part of a proxy which are totally un-reflectable in Java 11.
-    objectDiffer.ignoreClasses(
-      ThreadPoolExecutor.class,
-      WeakValueHashMap.class,
-      Method.class,
-      JarFile.class,
-      SoftReference.class,
-      Class.class
-    );
+
+    objectDiffer.ignoreClasses(IGNORED_CLASSES);
     // This setting is critical to perform a deep test of an object against itself.
     objectDiffer.enableComparingIdenticalObjects();
     objectDiffer.compareTwoObjects(originalGraph, originalGraph);
@@ -134,21 +146,12 @@ public class GraphSerializationTest {
       "uniqueMatchers"
     );
     // Edges have very detailed String representation including lat/lon coordinates and OSM IDs. They should be unique.
-    objectDiffer.setKeyExtractor("turnRestrictions", edge -> edge.toString());
+    objectDiffer.setKeyExtractor("turnRestrictions", Object::toString);
     objectDiffer.useEquals(BitSet.class, LineString.class, Polygon.class);
     // HashGridSpatialIndex contains unordered lists in its bins. This is rebuilt after deserialization anyway.
     // The deduplicator in the loaded graph will be empty, because it is transient and only fills up when items
     // are deduplicated.
-    objectDiffer.ignoreClasses(
-      HashGridSpatialIndex.class,
-      ThreadPoolExecutor.class,
-      Deduplicator.class,
-      WeakValueHashMap.class,
-      Method.class,
-      JarFile.class,
-      SoftReference.class,
-      Class.class
-    );
+    objectDiffer.ignoreClasses(IGNORED_CLASSES);
     objectDiffer.compareTwoObjects(g1, g2);
     objectDiffer.printSummary();
     // Print differences before assertion so we can see what went wrong.
@@ -166,6 +169,7 @@ public class GraphSerializationTest {
     SerializedGraphObject serializedObj = new SerializedGraphObject(
       originalGraph,
       originalTransitModel,
+      new WorldEnvelopeModel(),
       BuildConfig.DEFAULT,
       RouterConfig.DEFAULT
     );
@@ -177,10 +181,10 @@ public class GraphSerializationTest {
     // might be indexed by other tests.
 
     originalTransitModel.index();
-    originalGraph.index();
+    originalGraph.index(originalTransitModel.getStopModel());
 
     copiedTransitModel1.index();
-    copiedGraph1.index();
+    copiedGraph1.index(copiedTransitModel1.getStopModel());
 
     assertNoDifferences(originalGraph, copiedGraph1);
 
@@ -188,7 +192,7 @@ public class GraphSerializationTest {
     Graph copiedGraph2 = deserializedGraph2.graph;
     TransitModel copiedTransitModel2 = deserializedGraph2.transitModel;
     copiedTransitModel2.index();
-    copiedGraph2.index();
+    copiedGraph2.index(copiedTransitModel2.getStopModel());
     assertNoDifferences(copiedGraph1, copiedGraph2);
   }
 }

@@ -1,9 +1,10 @@
 package org.opentripplanner.model.plan;
 
-import static org.opentripplanner.util.time.TimeUtils.time;
+import static org.opentripplanner.framework.time.TimeUtils.time;
 
+import org.opentripplanner.framework.time.DurationUtils;
 import org.opentripplanner.transit.model._data.TransitModelForTest;
-import org.opentripplanner.util.time.DurationUtils;
+import org.opentripplanner.transit.model.site.FareZone;
 
 public interface PlanTestConstants {
   int NOT_SET = -999_999;
@@ -64,5 +65,11 @@ public interface PlanTestConstants {
 
   static Place place(String name, double lat, double lon) {
     return Place.forStop(TransitModelForTest.stop(name).withCoordinate(lat, lon).build());
+  }
+
+  static Place place(String name, double lat, double lon, FareZone zone) {
+    return Place.forStop(
+      TransitModelForTest.stop(name).withCoordinate(lat, lon).addFareZones(zone).build()
+    );
   }
 }

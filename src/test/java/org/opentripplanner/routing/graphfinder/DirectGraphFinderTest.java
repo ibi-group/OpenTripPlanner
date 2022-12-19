@@ -5,24 +5,21 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.locationtech.jts.geom.GeometryFactory;
+import org.locationtech.jts.geom.Coordinate;
 import org.opentripplanner.TestOtpModel;
-import org.opentripplanner.common.geometry.GeometryUtils;
 import org.opentripplanner.routing.algorithm.GraphRoutingTest;
-import org.opentripplanner.routing.graph.Graph;
-import org.opentripplanner.routing.vertextype.TransitStopVertex;
+import org.opentripplanner.street.model.vertex.TransitStopVertex;
+import org.opentripplanner.transit.service.StopModel;
 
 class DirectGraphFinderTest extends GraphRoutingTest {
 
-  private static final GeometryFactory geometryFactory = GeometryUtils.getGeometryFactory();
-
-  private Graph graph;
+  private StopModel stopModel;
 
   private TransitStopVertex S1, S2, S3;
 
   @BeforeEach
   protected void setUp() throws Exception {
-    TestOtpModel model = graphOf(
+    TestOtpModel model = modelOf(
       new Builder() {
         @Override
         public void build() {
@@ -32,17 +29,18 @@ class DirectGraphFinderTest extends GraphRoutingTest {
         }
       }
     );
-    graph = model.graph();
+    stopModel = model.transitModel().getStopModel();
   }
 
   @Test
   void findClosestStops() {
-    var ns1 = new NearbyStop(S1.getStop(), 0, null, null, null);
-    var ns2 = new NearbyStop(S2.getStop(), 1112, null, null, null);
+    var ns1 = new NearbyStop(S1.getStop(), 0, null, null);
+    var ns2 = new NearbyStop(S2.getStop(), 1112, null, null);
 
-    var testee = new DirectGraphFinder(graph);
-    assertEquals(List.of(ns1), testee.findClosestStops(47.500, 19.000, 100));
+    var subject = new DirectGraphFinder(stopModel::findRegularStops);
+    var coordinate = new Coordinate(19.000, 47.500);
+    assertEquals(List.of(ns1), subject.findClosestStops(coordinate, 100));
 
-    assertEquals(List.of(ns1, ns2), testee.findClosestStops(47.500, 19.000, 2000));
+    assertEquals(List.of(ns1, ns2), subject.findClosestStops(coordinate, 2000));
   }
 }

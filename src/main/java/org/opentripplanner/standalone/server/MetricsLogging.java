@@ -17,7 +17,9 @@ import io.micrometer.core.instrument.binder.system.ProcessorMetrics;
 import io.micrometer.core.instrument.binder.system.UptimeMetrics;
 import java.util.List;
 import java.util.concurrent.ForkJoinPool;
-import org.opentripplanner.transit.raptor.configure.RaptorConfig;
+import javax.inject.Inject;
+import org.opentripplanner.raptor.configure.RaptorConfig;
+import org.opentripplanner.routing.algorithm.raptoradapter.transit.TripSchedule;
 import org.opentripplanner.transit.service.TransitModel;
 
 /**
@@ -26,7 +28,8 @@ import org.opentripplanner.transit.service.TransitModel;
  */
 public class MetricsLogging {
 
-  public MetricsLogging(TransitModel transitModel, RaptorConfig<?> raptorConfig) {
+  @Inject
+  public MetricsLogging(TransitModel transitModel, RaptorConfig<TripSchedule> raptorConfig) {
     new ClassLoaderMetrics().bindTo(Metrics.globalRegistry);
     new FileDescriptorMetrics().bindTo(Metrics.globalRegistry);
     new JvmCompilationMetrics().bindTo(Metrics.globalRegistry);

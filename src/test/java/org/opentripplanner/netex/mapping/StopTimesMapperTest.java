@@ -13,12 +13,12 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
-import org.opentripplanner.graph_builder.DataImportIssueStore;
+import org.opentripplanner.graph_builder.issue.api.DataImportIssueStore;
 import org.opentripplanner.model.StopTime;
-import org.opentripplanner.model.impl.EntityById;
 import org.opentripplanner.netex.index.hierarchy.HierarchicalMap;
 import org.opentripplanner.netex.index.hierarchy.HierarchicalMapById;
 import org.opentripplanner.transit.model._data.TransitModelForTest;
+import org.opentripplanner.transit.model.framework.EntityById;
 import org.opentripplanner.transit.model.timetable.Trip;
 import org.rutebanken.netex.model.StopPointInJourneyPattern;
 import org.rutebanken.netex.model.TimetabledPassingTime;
@@ -44,7 +44,7 @@ public class StopTimesMapperTest {
     NetexTestDataSample sample = new NetexTestDataSample();
 
     StopTimesMapper stopTimesMapper = new StopTimesMapper(
-      new DataImportIssueStore(false),
+      DataImportIssueStore.NOOP,
       MappingSupport.ID_FACTORY,
       sample.getStopsById(),
       new EntityById<>(),
@@ -134,7 +134,7 @@ public class StopTimesMapperTest {
     fourthPassingTime.setWaitingTime(Duration.ofSeconds(-5));
 
     StopTimesMapper stopTimesMapper = new StopTimesMapper(
-      new DataImportIssueStore(false),
+      DataImportIssueStore.NOOP,
       MappingSupport.ID_FACTORY,
       netexSample.getStopsById(),
       new EntityById<>(),
@@ -187,7 +187,7 @@ public class StopTimesMapperTest {
   ) {
     assertEquals(stopId, stopTime.getStop().getId().getId());
     assertEquals(departureTime, stopTime.getDepartureTime());
-    assertEquals(headsign, stopTime.getStopHeadsign());
+    assertEquals(headsign, stopTime.getStopHeadsign().toString());
 
     List<String> stopTimeVia = stopTime.getHeadsignVias();
     assertEquals(via, stopTimeVia);

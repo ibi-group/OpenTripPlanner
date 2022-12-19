@@ -5,23 +5,23 @@ import java.util.List;
 import java.util.Objects;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
-import org.opentripplanner.common.geometry.DirectionUtils;
-import org.opentripplanner.common.model.P2;
+import org.opentripplanner.framework.geometry.DirectionUtils;
+import org.opentripplanner.framework.geometry.WgsCoordinate;
 import org.opentripplanner.model.VehicleRentalStationInfo;
+import org.opentripplanner.model.plan.ElevationProfile;
 import org.opentripplanner.model.plan.RelativeDirection;
 import org.opentripplanner.model.plan.WalkStep;
-import org.opentripplanner.routing.core.State;
-import org.opentripplanner.routing.core.TraverseMode;
-import org.opentripplanner.routing.edgetype.AreaEdge;
-import org.opentripplanner.routing.edgetype.ElevatorAlightEdge;
-import org.opentripplanner.routing.edgetype.FreeEdge;
-import org.opentripplanner.routing.edgetype.StreetEdge;
-import org.opentripplanner.routing.graph.Edge;
-import org.opentripplanner.routing.graph.Vertex;
 import org.opentripplanner.routing.services.notes.StreetNotesService;
-import org.opentripplanner.routing.vertextype.ExitVertex;
-import org.opentripplanner.routing.vertextype.VehicleRentalPlaceVertex;
-import org.opentripplanner.transit.model.basic.WgsCoordinate;
+import org.opentripplanner.street.model.edge.AreaEdge;
+import org.opentripplanner.street.model.edge.Edge;
+import org.opentripplanner.street.model.edge.ElevatorAlightEdge;
+import org.opentripplanner.street.model.edge.FreeEdge;
+import org.opentripplanner.street.model.edge.StreetEdge;
+import org.opentripplanner.street.model.vertex.ExitVertex;
+import org.opentripplanner.street.model.vertex.VehicleRentalPlaceVertex;
+import org.opentripplanner.street.model.vertex.Vertex;
+import org.opentripplanner.street.search.TraverseMode;
+import org.opentripplanner.street.search.state.State;
 
 /**
  * Process a list of states into a list of walking/driving instructions for a street leg.
@@ -139,28 +139,25 @@ public class StatesToWalkStepsMapper {
   }
 
   private static boolean isLink(Edge edge) {
-    return (
-      edge instanceof StreetEdge &&
-      (((StreetEdge) edge).getStreetClass() & StreetEdge.CLASS_LINK) == StreetEdge.CLASS_LINK
-    );
+    return (edge instanceof StreetEdge streetEdge && streetEdge.isLink());
   }
 
-  private static List<P2<Double>> encodeElevationProfile(
+  private static ElevationProfile encodeElevationProfile(
     Edge edge,
     double distanceOffset,
     double heightOffset
   ) {
     if (!(edge instanceof StreetEdge elevEdge)) {
-      return new ArrayList<>();
+      return ElevationProfile.empty();
     }
     if (elevEdge.getElevationProfile() == null) {
-      return new ArrayList<>();
+      return ElevationProfile.empty();
     }
-    ArrayList<P2<Double>> out = new ArrayList<>();
+    var out = ElevationProfile.of();
     for (Coordinate coordinate : elevEdge.getElevationProfile().toCoordinateArray()) {
-      out.add(new P2<>(coordinate.x + distanceOffset, coordinate.y + heightOffset));
+      out.step(coordinate.x + distanceOffset, coordinate.y + heightOffset);
     }
-    return out;
+    return out.build();
   }
 
   private void processState(State backState, State forwardState) {
@@ -285,7 +282,7 @@ public class StatesToWalkStepsMapper {
         }
       }
     } else {
-      if (!createdNewStep && current.getElevation() != null) {
+      if (!createdNewStep && current.getElevationProfile() != null) {
         updateElevationProfile(backState, edge);
       }
       distance += edge.getDistanceMeters();
@@ -300,12 +297,12 @@ public class StatesToWalkStepsMapper {
   }
 
   private void updateElevationProfile(State backState, Edge edge) {
-    List<P2<Double>> s = encodeElevationProfile(
+    ElevationProfile p = encodeElevationProfile(
       edge,
       distance,
-      backState.getOptions().geoidElevation ? -ellipsoidToGeoidDifference : 0
+      backState.getPreferences().system().geoidElevation() ? -ellipsoidToGeoidDifference : 0
     );
-    current.addElevation(s);
+    current.addElevation(p);
   }
 
   /**
@@ -323,17 +320,11 @@ public class StatesToWalkStepsMapper {
     current = threeBack;
     current.addDistance(twoBack.getDistance());
     distance += current.getDistance();
-    if (twoBack.getElevation() != null) {
-      if (current.getElevation() == null) {
-        current.addElevation(twoBack.getElevation());
+    if (twoBack.getElevationProfile() != null) {
+      if (current.getElevationProfile() == null) {
+        current.addElevation(twoBack.getElevationProfile());
       } else {
-        current.addElevation(
-          twoBack
-            .getElevation()
-            .stream()
-            .map(p -> new P2<>(p.first + current.getDistance(), p.second))
-            .toList()
-        );
+        current.addElevation(twoBack.getElevationProfile().transformX(current.getDistance()));
       }
     }
   }
@@ -514,7 +505,7 @@ public class StatesToWalkStepsMapper {
     step =
       new WalkStep(
         en.getName(),
-        new WgsCoordinate(backState.getVertex().getLat(), backState.getVertex().getLon()),
+        new WgsCoordinate(backState.getVertex().getCoordinate()),
         en.hasBogusName(),
         DirectionUtils.getFirstAngle(forwardState.getBackEdge().getGeometry()),
         forwardState.isBackWalkingBike(),
@@ -524,7 +515,7 @@ public class StatesToWalkStepsMapper {
       encodeElevationProfile(
         forwardState.getBackEdge(),
         0,
-        forwardState.getOptions().geoidElevation ? -ellipsoidToGeoidDifference : 0
+        forwardState.getPreferences().system().geoidElevation() ? -ellipsoidToGeoidDifference : 0
       )
     );
     step.addStreetNotes(streetNotesService.getNotes(forwardState));

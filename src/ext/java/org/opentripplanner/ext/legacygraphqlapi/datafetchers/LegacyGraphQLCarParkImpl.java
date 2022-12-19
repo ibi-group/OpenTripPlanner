@@ -3,7 +3,9 @@ package org.opentripplanner.ext.legacygraphqlapi.datafetchers;
 import graphql.relay.Relay;
 import graphql.schema.DataFetcher;
 import graphql.schema.DataFetchingEnvironment;
+import org.opentripplanner.ext.legacygraphqlapi.LegacyGraphQLUtils;
 import org.opentripplanner.ext.legacygraphqlapi.generated.LegacyGraphQLDataFetchers;
+import org.opentripplanner.model.calendar.openinghours.OHCalendar;
 import org.opentripplanner.routing.vehicle_parking.VehicleParking;
 
 public class LegacyGraphQLCarParkImpl implements LegacyGraphQLDataFetchers.LegacyGraphQLCarPark {
@@ -21,12 +23,12 @@ public class LegacyGraphQLCarParkImpl implements LegacyGraphQLDataFetchers.Legac
 
   @Override
   public DataFetcher<Double> lat() {
-    return environment -> getSource(environment).getY();
+    return environment -> getSource(environment).getCoordinate().latitude();
   }
 
   @Override
   public DataFetcher<Double> lon() {
-    return environment -> getSource(environment).getX();
+    return environment -> getSource(environment).getCoordinate().longitude();
   }
 
   @Override
@@ -42,13 +44,13 @@ public class LegacyGraphQLCarParkImpl implements LegacyGraphQLDataFetchers.Legac
 
   @Override
   public DataFetcher<String> name() {
-    return environment -> getSource(environment).getName().toString();
+    return environment ->
+      LegacyGraphQLUtils.getTranslation(getSource(environment).getName(), environment);
   }
 
-  // TODO
   @Override
-  public DataFetcher<Iterable<Object>> openingHours() {
-    return environment -> null;
+  public DataFetcher<OHCalendar> openingHours() {
+    return environment -> getSource(environment).getOpeningHours();
   }
 
   @Override

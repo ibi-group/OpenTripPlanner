@@ -7,12 +7,12 @@ import java.util.List;
 import org.opentripplanner.ext.flex.trip.FlexTrip;
 import org.opentripplanner.ext.flex.trip.ScheduledDeviatedTrip;
 import org.opentripplanner.ext.flex.trip.UnscheduledTrip;
-import org.opentripplanner.graph_builder.DataImportIssueStore;
+import org.opentripplanner.framework.logging.ProgressTracker;
+import org.opentripplanner.graph_builder.issue.api.DataImportIssueStore;
 import org.opentripplanner.model.StopTime;
 import org.opentripplanner.model.TripStopTimes;
 import org.opentripplanner.model.impl.OtpTransitServiceBuilder;
 import org.opentripplanner.transit.model.timetable.Trip;
-import org.opentripplanner.util.logging.ProgressTracker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,11 +20,11 @@ public class FlexTripsMapper {
 
   private static final Logger LOG = LoggerFactory.getLogger(FlexTripsMapper.class);
 
-  public static List<FlexTrip> createFlexTrips(
+  public static List<FlexTrip<?, ?>> createFlexTrips(
     OtpTransitServiceBuilder builder,
     DataImportIssueStore store
   ) {
-    List<FlexTrip> result = new ArrayList<>();
+    List<FlexTrip<?, ?>> result = new ArrayList<>();
     TripStopTimes stopTimesByTrip = builder.getStopTimesSortedByTrip();
 
     final int tripSize = stopTimesByTrip.size();
@@ -36,9 +36,13 @@ public class FlexTripsMapper {
       List<StopTime> stopTimes = new ArrayList<>(stopTimesByTrip.get(trip));
 
       if (UnscheduledTrip.isUnscheduledTrip(stopTimes)) {
-        result.add(new UnscheduledTrip(trip, stopTimes));
+        result.add(
+          UnscheduledTrip.of(trip.getId()).withTrip(trip).withStopTimes(stopTimes).build()
+        );
       } else if (ScheduledDeviatedTrip.isScheduledFlexTrip(stopTimes)) {
-        result.add(new ScheduledDeviatedTrip(trip, stopTimes));
+        result.add(
+          ScheduledDeviatedTrip.of(trip.getId()).withTrip(trip).withStopTimes(stopTimes).build()
+        );
       } else if (hasContinuousStops(stopTimes) && FlexTrip.containsFlexStops(stopTimes)) {
         store.add(
           "ContinuousFlexTrip",

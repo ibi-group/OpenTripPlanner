@@ -1,13 +1,15 @@
 package org.opentripplanner.routing.graph;
 
 import org.locationtech.jts.geom.LineString;
-import org.opentripplanner.common.geometry.SphericalDistanceLibrary;
-import org.opentripplanner.routing.core.State;
-import org.opentripplanner.routing.core.StateEditor;
-import org.opentripplanner.routing.core.TraverseMode;
-import org.opentripplanner.routing.edgetype.TemporaryEdge;
-import org.opentripplanner.routing.vertextype.TemporaryVertex;
-import org.opentripplanner.transit.model.basic.I18NString;
+import org.opentripplanner.framework.geometry.SphericalDistanceLibrary;
+import org.opentripplanner.framework.i18n.I18NString;
+import org.opentripplanner.street.model.edge.Edge;
+import org.opentripplanner.street.model.edge.TemporaryEdge;
+import org.opentripplanner.street.model.vertex.TemporaryVertex;
+import org.opentripplanner.street.model.vertex.Vertex;
+import org.opentripplanner.street.search.TraverseMode;
+import org.opentripplanner.street.search.state.State;
+import org.opentripplanner.street.search.state.StateEditor;
 
 public class TemporaryConcreteEdge extends Edge implements TemporaryEdge {
 
@@ -29,7 +31,7 @@ public class TemporaryConcreteEdge extends Edge implements TemporaryEdge {
   public State traverse(State s0) {
     double d = getDistanceMeters();
     TraverseMode mode = s0.getNonTransitMode();
-    int t = (int) (d / s0.getOptions().getSpeed(mode, false));
+    int t = (int) (d / s0.getPreferences().getSpeed(mode, false));
     StateEditor s1 = s0.edit(this);
     s1.incrementTimeInSeconds(t);
     s1.incrementWeight(d);

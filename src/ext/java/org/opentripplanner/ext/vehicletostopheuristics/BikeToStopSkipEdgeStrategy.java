@@ -2,12 +2,12 @@ package org.opentripplanner.ext.vehicletostopheuristics;
 
 import java.util.Collection;
 import java.util.function.Function;
-import org.opentripplanner.routing.algorithm.astar.strategies.SkipEdgeStrategy;
-import org.opentripplanner.routing.core.State;
-import org.opentripplanner.routing.graph.Edge;
-import org.opentripplanner.routing.vertextype.TransitStopVertex;
+import org.opentripplanner.astar.spi.SkipEdgeStrategy;
+import org.opentripplanner.street.model.edge.Edge;
+import org.opentripplanner.street.model.vertex.TransitStopVertex;
+import org.opentripplanner.street.search.state.State;
 import org.opentripplanner.transit.model.network.BikeAccess;
-import org.opentripplanner.transit.model.site.Stop;
+import org.opentripplanner.transit.model.site.RegularStop;
 import org.opentripplanner.transit.model.timetable.Trip;
 
 /**
@@ -15,17 +15,17 @@ import org.opentripplanner.transit.model.timetable.Trip;
  * number of accesses to those stops which actually have trips where you can take the bike on. Once
  * we have reached enough of trips we skip all further edges.
  */
-public class BikeToStopSkipEdgeStrategy implements SkipEdgeStrategy {
+public class BikeToStopSkipEdgeStrategy implements SkipEdgeStrategy<State, Edge> {
 
   private static final int LIMIT = 100;
   private static final double MAX_FACTOR = 1.2;
 
-  private final Function<Stop, Collection<Trip>> getTripsForStop;
+  private final Function<RegularStop, Collection<Trip>> getTripsForStop;
 
   int numberOfBikeableTripsReached = 0;
   double distanceLimit = Double.MAX_VALUE;
 
-  public BikeToStopSkipEdgeStrategy(Function<Stop, Collection<Trip>> getTripsForStop) {
+  public BikeToStopSkipEdgeStrategy(Function<RegularStop, Collection<Trip>> getTripsForStop) {
     this.getTripsForStop = getTripsForStop;
   }
 

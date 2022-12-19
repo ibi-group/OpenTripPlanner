@@ -12,7 +12,7 @@ import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import org.opentripplanner.ext.flex.FlexParameters;
+import javax.annotation.Nonnull;
 import org.opentripplanner.ext.flex.FlexServiceDate;
 import org.opentripplanner.ext.flex.flexpathcalculator.FlexPathCalculator;
 import org.opentripplanner.ext.flex.template.FlexAccessTemplate;
@@ -21,9 +21,11 @@ import org.opentripplanner.model.BookingInfo;
 import org.opentripplanner.model.PickDrop;
 import org.opentripplanner.model.StopTime;
 import org.opentripplanner.routing.graphfinder.NearbyStop;
-import org.opentripplanner.transit.model.site.FlexLocationGroup;
+import org.opentripplanner.standalone.config.sandbox.FlexConfig;
+import org.opentripplanner.transit.model.framework.FeedScopedId;
+import org.opentripplanner.transit.model.framework.TransitBuilder;
+import org.opentripplanner.transit.model.site.GroupStop;
 import org.opentripplanner.transit.model.site.StopLocation;
-import org.opentripplanner.transit.model.timetable.Trip;
 
 /**
  * This type of FlexTrip is used when a taxi-type service is modeled, which operates in one or
@@ -31,7 +33,7 @@ import org.opentripplanner.transit.model.timetable.Trip;
  * on the driving time between the stops, with the schedule times being used just for deciding if a
  * trip is possible.
  */
-public class UnscheduledTrip extends FlexTrip {
+public class UnscheduledTrip extends FlexTrip<UnscheduledTrip, UnscheduledTripBuilder> {
 
   // unscheduled trips can contain one or two stop_times
   private static final Set<Integer> N_STOPS = Set.of(1, 2);
@@ -41,8 +43,9 @@ public class UnscheduledTrip extends FlexTrip {
   private final BookingInfo[] dropOffBookingInfos;
   private final BookingInfo[] pickupBookingInfos;
 
-  public UnscheduledTrip(Trip trip, List<StopTime> stopTimes) {
-    super(trip);
+  public UnscheduledTrip(UnscheduledTripBuilder builder) {
+    super(builder);
+    List<StopTime> stopTimes = builder.stopTimes();
     if (!isUnscheduledTrip(stopTimes)) {
       throw new IllegalArgumentException("Incompatible stopTimes for unscheduled trip");
     }
@@ -57,6 +60,10 @@ public class UnscheduledTrip extends FlexTrip {
       this.dropOffBookingInfos[i] = stopTimes.get(0).getDropOffBookingInfo();
       this.pickupBookingInfos[i] = stopTimes.get(0).getPickupBookingInfo();
     }
+  }
+
+  public static UnscheduledTripBuilder of(FeedScopedId id) {
+    return new UnscheduledTripBuilder(id);
   }
 
   public static boolean isUnscheduledTrip(List<StopTime> stopTimes) {
@@ -77,7 +84,7 @@ public class UnscheduledTrip extends FlexTrip {
     NearbyStop access,
     FlexServiceDate date,
     FlexPathCalculator calculator,
-    FlexParameters params
+    FlexConfig config
   ) {
     // Find boarding index
     int fromIndex = getFromIndex(access);
@@ -94,7 +101,7 @@ public class UnscheduledTrip extends FlexTrip {
 
     for (StopLocation stop : expandStops(stopTimes[toIndex].stop)) {
       res.add(
-        new FlexAccessTemplate(access, this, fromIndex, toIndex, stop, date, calculator, params)
+        new FlexAccessTemplate(access, this, fromIndex, toIndex, stop, date, calculator, config)
       );
     }
 
@@ -106,7 +113,7 @@ public class UnscheduledTrip extends FlexTrip {
     NearbyStop egress,
     FlexServiceDate date,
     FlexPathCalculator calculator,
-    FlexParameters params
+    FlexConfig config
   ) {
     // Boarding is always at the first stop for unscheduled trips
     int fromIndex = 0;
@@ -123,7 +130,7 @@ public class UnscheduledTrip extends FlexTrip {
 
     for (StopLocation stop : expandStops(stopTimes[fromIndex].stop)) {
       res.add(
-        new FlexEgressTemplate(egress, this, fromIndex, toIndex, stop, date, calculator, params)
+        new FlexEgressTemplate(egress, this, fromIndex, toIndex, stop, date, calculator, config)
       );
     }
 
@@ -209,9 +216,25 @@ public class UnscheduledTrip extends FlexTrip {
     return stopTimes[i].dropOffType;
   }
 
+  @Override
+  public boolean sameAs(@Nonnull UnscheduledTrip other) {
+    return (
+      super.sameAs(other) &&
+      Arrays.equals(stopTimes, other.stopTimes) &&
+      Arrays.equals(pickupBookingInfos, other.pickupBookingInfos) &&
+      Arrays.equals(dropOffBookingInfos, other.dropOffBookingInfos)
+    );
+  }
+
+  @Nonnull
+  @Override
+  public TransitBuilder<UnscheduledTrip, UnscheduledTripBuilder> copy() {
+    return new UnscheduledTripBuilder(this);
+  }
+
   private Collection<StopLocation> expandStops(StopLocation stop) {
-    return stop instanceof FlexLocationGroup
-      ? ((FlexLocationGroup) stop).getLocations()
+    return stop instanceof GroupStop groupStop
+      ? groupStop.getLocations()
       : Collections.singleton(stop);
   }
 
@@ -221,8 +244,8 @@ public class UnscheduledTrip extends FlexTrip {
         continue;
       }
       StopLocation stop = stopTimes[i].stop;
-      if (stop instanceof FlexLocationGroup) {
-        if (((FlexLocationGroup) stop).getLocations().contains(accessEgress.stop)) {
+      if (stop instanceof GroupStop groupStop) {
+        if (groupStop.getLocations().contains(accessEgress.stop)) {
           return i;
         }
       } else {
@@ -240,8 +263,8 @@ public class UnscheduledTrip extends FlexTrip {
         continue;
       }
       StopLocation stop = stopTimes[i].stop;
-      if (stop instanceof FlexLocationGroup) {
-        if (((FlexLocationGroup) stop).getLocations().contains(accessEgress.stop)) {
+      if (stop instanceof GroupStop groupStop) {
+        if (groupStop.getLocations().contains(accessEgress.stop)) {
           return i;
         }
       } else {

@@ -1,16 +1,22 @@
 package org.opentripplanner.openstreetmap;
 
-import com.google.common.base.MoreObjects;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.ZoneId;
 import org.openstreetmap.osmosis.osmbinary.file.BlockInputStream;
 import org.opentripplanner.datastore.api.DataSource;
 import org.opentripplanner.datastore.api.FileType;
 import org.opentripplanner.datastore.file.FileDataSource;
-import org.opentripplanner.graph_builder.module.osm.OSMDatabase;
-import org.opentripplanner.util.logging.ProgressTracker;
+import org.opentripplanner.framework.application.OtpFileNames;
+import org.opentripplanner.framework.logging.ProgressTracker;
+import org.opentripplanner.framework.tostring.ToStringBuilder;
+import org.opentripplanner.openstreetmap.api.OSMProvider;
+import org.opentripplanner.openstreetmap.spi.OSMDatabase;
+import org.opentripplanner.openstreetmap.tagmapping.OsmTagMapper;
+import org.opentripplanner.openstreetmap.tagmapping.OsmTagMapperSource;
+import org.opentripplanner.openstreetmap.wayproperty.WayPropertySet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,27 +24,44 @@ import org.slf4j.LoggerFactory;
  * Parser for the OpenStreetMap PBF format. Parses files in three passes: First the relations, then
  * the ways, then the nodes are also loaded.
  */
-public class OpenStreetMapProvider {
+public class OpenStreetMapProvider implements OSMProvider {
 
   private static final Logger LOG = LoggerFactory.getLogger(OpenStreetMapProvider.class);
 
   private final DataSource source;
   private final boolean cacheDataInMem;
+
+  private final ZoneId zoneId;
+
+  private boolean hasWarnedAboutMissingTimeZone = false;
+
+  private final OsmTagMapper osmTagMapper;
+
+  private final WayPropertySet wayPropertySet;
   private byte[] cachedBytes = null;
 
   /** For tests */
   public OpenStreetMapProvider(File file, boolean cacheDataInMem) {
-    this(new FileDataSource(file, FileType.OSM), cacheDataInMem);
+    this(new FileDataSource(file, FileType.OSM), OsmTagMapperSource.DEFAULT, null, cacheDataInMem);
   }
 
-  public OpenStreetMapProvider(DataSource source, boolean cacheDataInMem) {
-    this.source = source;
+  public OpenStreetMapProvider(
+    DataSource dataSource,
+    OsmTagMapperSource tagMapperSource,
+    ZoneId zoneId,
+    boolean cacheDataInMem
+  ) {
+    this.source = dataSource;
+    this.zoneId = zoneId;
+    this.osmTagMapper = tagMapperSource.getInstance();
+    this.wayPropertySet = new WayPropertySet();
+    osmTagMapper.populateProperties(wayPropertySet);
     this.cacheDataInMem = cacheDataInMem;
   }
 
   public void readOSM(OSMDatabase osmdb) {
     try {
-      OpenStreetMapParser parser = new OpenStreetMapParser(osmdb);
+      OpenStreetMapParser parser = new OpenStreetMapParser(osmdb, this);
 
       parsePhase(parser, OsmParserPhase.Relations);
       osmdb.doneFirstPhaseRelations();
@@ -55,10 +78,10 @@ public class OpenStreetMapProvider {
 
   @Override
   public String toString() {
-    return MoreObjects
-      .toStringHelper(this)
-      .add("source", source)
-      .add("cacheDataInMem", cacheDataInMem)
+    return ToStringBuilder
+      .of(OpenStreetMapProvider.class)
+      .addObj("source", source)
+      .addBool("cacheDataInMem", cacheDataInMem)
       .toString();
   }
 
@@ -101,5 +124,31 @@ public class OpenStreetMapProvider {
       return track(phase, cachedBytes.length, new ByteArrayInputStream(cachedBytes));
     }
     return track(phase, source.size(), source.asInputStream());
+  }
+
+  @Override
+  public ZoneId getZoneId() {
+    if (zoneId == null) {
+      if (!hasWarnedAboutMissingTimeZone) {
+        hasWarnedAboutMissingTimeZone = true;
+        LOG.warn(
+          "Missing time zone for OSM source {} - time-restricted entities will " +
+          "not be created, please configure it in the {}",
+          source.uri(),
+          OtpFileNames.BUILD_CONFIG_FILENAME
+        );
+      }
+    }
+    return zoneId;
+  }
+
+  @Override
+  public OsmTagMapper getOsmTagMapper() {
+    return osmTagMapper;
+  }
+
+  @Override
+  public WayPropertySet getWayPropertySet() {
+    return wayPropertySet;
   }
 }

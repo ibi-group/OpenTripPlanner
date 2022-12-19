@@ -263,6 +263,28 @@ enum AlertSeverityLevelType {
     SEVERE
 }
 
+type OpeningHours {
+    """
+    OSM-formatted string of the opening hours.
+
+    The spec is available at: https://wiki.openstreetmap.org/wiki/Key:opening_hours
+    """
+    osm: String
+
+    """
+    Opening hours for the selected dates using the local time of the parking lot.
+    Each date can have multiple time spans.
+
+    Note: This is not implemented yet and always returns null.
+    """
+    dates(
+        """
+        Opening hours will be returned for these dates. Dates should use YYYYMMDD format.
+        """
+        dates: [String!]!
+    ): [LocalTimeSpanDate]
+}
+
 """Bike park represents a location where bicycles can be parked."""
 type BikePark implements Node & PlaceInterface {
     """
@@ -274,7 +296,9 @@ type BikePark implements Node & PlaceInterface {
     bikeParkId: String
 
     """Name of the bike park"""
-    name: String!
+    name(
+        """Returns name with the specified language, if found, otherwise returns with some default language."""
+        language: String): String!
 
     """Number of spaces available for bikes"""
     spacesAvailable: Int
@@ -295,16 +319,8 @@ type BikePark implements Node & PlaceInterface {
     """
     tags: [String]
 
-    """
-    Opening hours for the selected dates using the local time of the park.
-    Each date can have multiple time spans.
-    """
-    openingHours(
-        """
-        Opening hours will be returned for these dates. Dates should use YYYYMMDD format.
-        """
-        dates: [String!]!
-    ): [LocalTimeSpanDate]
+    """Opening hours of the parking facility"""
+    openingHours: OpeningHours
 }
 
 """Vehicle parking represents a location where bicycles or cars can be parked."""
@@ -318,7 +334,9 @@ type VehicleParking implements Node & PlaceInterface {
     vehicleParkingId: String
 
     """Name of the park"""
-    name: String!
+    name(
+        """Returns name with the specified language, if found, otherwise returns with some default language."""
+        language: String): String!
 
     """
     If true, value of `spacesAvailable` is updated from a real-time source.
@@ -350,7 +368,9 @@ type VehicleParking implements Node & PlaceInterface {
     """
     A short translatable note containing details of this vehicle parking.
     """
-    note: String
+    note(
+        """Returns note with the specified language, if found, otherwise returns with some default language."""
+        language: String): String
 
     """
     The state of this vehicle parking.
@@ -389,6 +409,9 @@ type VehicleParking implements Node & PlaceInterface {
     The currently available spaces at this vehicle parking.
     """
     availability: VehicleParkingSpaces
+
+    """Opening hours of the parking facility"""
+    openingHours: OpeningHours
 }
 
 """
@@ -722,7 +745,9 @@ type CarPark implements Node & PlaceInterface {
     carParkId: String
 
     """Name of the car park"""
-    name: String!
+    name(
+        """Returns name with the specified language, if found, otherwise returns with some default language."""
+        language: String): String!
 
     """Number of parking spaces at the car park"""
     maxCapacity: Int
@@ -750,12 +775,7 @@ type CarPark implements Node & PlaceInterface {
     Opening hours for the selected dates using the local time of the park.
     Each date can have multiple time spans.
     """
-    openingHours(
-        """
-        Opening hours will be returned for these dates. Dates should use YYYYMMDD format.
-        """
-        dates: [String!]!
-    ): [LocalTimeSpanDate]
+    openingHours: OpeningHours
 }
 
 """Cluster is a list of stops grouped by name and proximity"""
@@ -1114,20 +1134,21 @@ input InputUnpreferred {
     agencies: String
 
     """
-    An cost function used to calculate penalty for an unpreferred route. Function should return
-    number of seconds that we are willing to wait for preferred route. String must be of the format:
+    An cost function used to calculate penalty for an unpreferred route/agency. Function should return
+    number of seconds that we are willing to wait for unpreferred route/agency.
+    String must be of the format:
     `A + B x`, where A is fixed penalty and B is a multiplier of transit leg travel time x.
     For example: `600 + 2.0 x`
     """
-    unpreferredRouteCost: String
+    unpreferredCost: String
 
     """
     Penalty added for using route that is unpreferred, i.e. number of seconds that we are willing to
     wait for route that is unpreferred.
 
-    Deprecated: Use `unpreferredRouteCost` instead.
+    Deprecated: Use `unpreferredCost` instead.
     """
-    useUnpreferredRoutesPenalty: Int @deprecated(reason: "Use unpreferredRouteCost instead")
+    useUnpreferredRoutesPenalty: Int @deprecated(reason: "Use unpreferredCost instead")
 }
 
 enum RoutingErrorCode {
@@ -1436,6 +1457,12 @@ enum Mode {
 
     """TRAM"""
     TRAM
+
+    """"Private car trips shared with others."""
+    CARPOOL
+
+    """A taxi, possibly operated by a public transport agency."""
+    TAXI
 
     """A special transport mode, which includes all public transport."""
     TRANSIT
@@ -2414,8 +2441,10 @@ type QueryType {
 
         """
         How much more reluctant is the user to walk on streets with car traffic allowed. Default value: 1.0
+
+        Deprecated, use walkSafetyFactor instead.
         """
-        walkOnStreetReluctance: Float
+        walkOnStreetReluctance: Float @deprecated(reason: "Use walkSafetyFactor instead")
 
         """
         How much worse is waiting for a transit vehicle than being on a transit
@@ -2433,6 +2462,8 @@ type QueryType {
         """
         How much less bad is waiting at the beginning of the trip (replaces
         `waitReluctance` on the first boarding). Default value: 0.4
+
+        Deprecated, not used, the timetable-view replaces this functionality.
         """
         waitAtBeginningFactor: Float
 
@@ -2668,6 +2699,12 @@ type QueryType {
         Which vehicle rental networks cannot be used. By default, all networks are allowed.
         """
         bannedVehicleRentalNetworks: [String]
+
+        """
+        Factor for how much the walk safety is considered in routing. Value should be between 0 and 1.
+        If the value is set to be 0, safety is ignored. Default is 1.0.
+        """
+        walkSafetyFactor: Float
     ): Plan
 }
 
@@ -2720,7 +2757,11 @@ type Route implements Node {
     shortName: String
 
     """Long name of the route, e.g. Helsinki-Leppävaara"""
-    longName: String
+    longName(
+        """If translated longName is found from gtfs translation.txt and wanted language is not same as
+        feed's language then returns wanted translation. Otherwise uses name from routes.txt.
+        """
+        language: String): String
 
     """Transport mode of this route, e.g. `BUS`"""
     mode: Mode
@@ -2834,6 +2875,35 @@ type serviceTimeRange {
     end: Long
 }
 
+"""Actions to take relative to the current position when engaging a walking/driving step."""
+enum RelativeDirection {
+  DEPART
+  HARD_LEFT
+  LEFT
+  SLIGHTLY_LEFT
+  CONTINUE
+  SLIGHTLY_RIGHT
+  RIGHT
+  HARD_RIGHT
+  CIRCLE_CLOCKWISE
+  CIRCLE_COUNTERCLOCKWISE
+  ELEVATOR
+  UTURN_LEFT
+  UTURN_RIGHT
+}
+
+"""The cardinal (compass) direction taken when engaging a walking/driving step."""
+enum AbsoluteDirection {
+  NORTH
+  NORTHEAST
+  EAST
+  SOUTHEAST
+  SOUTH
+  SOUTHWEST
+  WEST
+  NORTHWEST
+}
+
 type step {
     """The distance in meters that this step takes."""
     distance: Float
@@ -2846,6 +2916,39 @@ type step {
 
     """The elevation profile as a list of { distance, elevation } values."""
     elevationProfile: [elevationProfileComponent]
+
+    """The relative direction (e.g. left or right turn) to take when engaging this step."""
+    relativeDirection: RelativeDirection
+
+    """The cardinal (compass) direction (e.g. north, northeast) taken when engaging this step."""
+    absoluteDirection: AbsoluteDirection
+
+    """The name of the street, road, or path taken for this step."""
+    streetName: String
+
+    """When exiting a highway or traffic circle, the exit name/number."""
+    exit: String
+
+    """Indicates whether or not a street changes direction at an intersection."""
+    stayOn: Boolean
+
+    """
+    This step is on an open area, such as a plaza or train platform,
+    and thus the directions should say something like "cross".
+    """
+    area: Boolean
+
+    """
+    The name of this street was generated by the system, so we should only display it once, and
+    generally just display right/left directions
+    """
+    bogusName: Boolean
+
+    """Is this step walking with a bike?"""
+    walkingBike: Boolean
+
+    """A list of alerts (e.g. construction, detours) applicable to the step."""
+    alerts: [Alert]
 }
 
 """
@@ -3208,7 +3311,11 @@ type Stoptime {
     the trip (e.g. on routes which run on loops), so this value should be used
     instead of `tripHeadsign` to display the headsign relevant to the user.
     """
-    headsign: String
+    headsign(
+        """If translated headsign is found from gtfs translation.txt and wanted language is not same as
+    feed's language then returns wanted translation. Otherwise uses name from trip_headsign.txt.
+    """
+    language: String): String
 }
 
 """Stoptimes grouped by pattern"""
@@ -3228,7 +3335,7 @@ type TicketType implements Node {
     Ticket type ID in format `FeedId:TicketTypeId`. Ticket type IDs are usually
     combination of ticket zones where the ticket is valid.
     """
-    fareId: ID!
+    fareId: String!
 
     """Price of the ticket in currency that is specified in `currency` field"""
     price: Float
@@ -3278,9 +3385,12 @@ type Trip implements Node {
     """List of dates when this trip is in service. Format: YYYYMMDD"""
     activeDates: [String]
     tripShortName: String
-
     """Headsign of the vehicle when running on this trip"""
-    tripHeadsign: String
+    tripHeadsign(
+        """If translated headsign is found from gtfs translation.txt and wanted language is not same as
+        feed's language then returns wanted translation. Otherwise uses name from trip_headsign.txt.
+        """
+        language: String): String
 
     """
     Short name of the route this trip is running. See field `shortName` of Route.

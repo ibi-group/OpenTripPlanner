@@ -6,11 +6,12 @@ import java.util.HashSet;
 import java.util.Set;
 import javax.annotation.Nullable;
 import javax.xml.bind.annotation.adapters.HexBinaryAdapter;
-import org.opentripplanner.graph_builder.DataImportIssueStore;
-import org.opentripplanner.model.impl.EntityById;
+import org.opentripplanner.framework.i18n.NonLocalizedString;
+import org.opentripplanner.graph_builder.issue.api.DataImportIssueStore;
 import org.opentripplanner.netex.index.api.NetexEntityIndexReadOnlyView;
 import org.opentripplanner.netex.mapping.support.FeedScopedIdFactory;
-import org.opentripplanner.netex.mapping.support.MainAndSubMode;
+import org.opentripplanner.netex.mapping.support.NetexMainAndSubMode;
+import org.opentripplanner.transit.model.framework.EntityById;
 import org.opentripplanner.transit.model.framework.FeedScopedId;
 import org.opentripplanner.transit.model.network.BikeAccess;
 import org.opentripplanner.transit.model.network.GroupOfRoutes;
@@ -77,10 +78,11 @@ class RouteMapper {
     builder.withAgency(findOrCreateAuthority(line));
     builder.withOperator(findOperator(line));
     builder.withBranding(findBranding(line));
-    builder.withLongName(line.getName().getValue());
+    NonLocalizedString longName = NonLocalizedString.ofNullable(line.getName().getValue());
+    builder.withLongName(longName);
     builder.withShortName(line.getPublicCode());
 
-    MainAndSubMode mode;
+    NetexMainAndSubMode mode;
     try {
       mode = transportModeMapper.map(line.getTransportMode(), line.getTransportSubmode());
     } catch (TransportModeMapper.UnsupportedModeException e) {

@@ -6,13 +6,17 @@ import com.google.common.cache.LoadingCache;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ExecutionException;
+import javax.annotation.Nonnull;
 import org.opentripplanner.routing.algorithm.raptoradapter.transit.RaptorTransferIndex;
 import org.opentripplanner.routing.algorithm.raptoradapter.transit.Transfer;
-import org.opentripplanner.routing.api.request.RoutingRequest;
+import org.opentripplanner.routing.api.request.RouteRequest;
 import org.opentripplanner.routing.api.request.StreetMode;
-import org.opentripplanner.routing.api.request.WheelchairAccessibilityRequest;
-import org.opentripplanner.routing.core.BicycleOptimizeType;
-import org.opentripplanner.routing.core.RoutingContext;
+import org.opentripplanner.routing.api.request.preference.BikePreferences;
+import org.opentripplanner.routing.api.request.preference.StreetPreferences;
+import org.opentripplanner.routing.api.request.preference.WalkPreferences;
+import org.opentripplanner.routing.api.request.preference.WheelchairPreferences;
+import org.opentripplanner.street.search.request.StreetSearchRequest;
+import org.opentripplanner.street.search.request.StreetSearchRequestMapper;
 
 public class RaptorRequestTransferCache {
 
@@ -26,12 +30,14 @@ public class RaptorRequestTransferCache {
     return transferCache;
   }
 
-  public RaptorTransferIndex get(
-    List<List<Transfer>> transfersByStopIndex,
-    RoutingContext routingContext
-  ) {
+  public RaptorTransferIndex get(List<List<Transfer>> transfersByStopIndex, RouteRequest request) {
     try {
-      return transferCache.get(new CacheKey(transfersByStopIndex, routingContext));
+      return transferCache.get(
+        new CacheKey(
+          transfersByStopIndex,
+          StreetSearchRequestMapper.mapToTransferRequest(request).build()
+        )
+      );
     } catch (ExecutionException e) {
       throw new RuntimeException("Failed to get item from transfer cache", e);
     }
@@ -40,8 +46,9 @@ public class RaptorRequestTransferCache {
   private CacheLoader<CacheKey, RaptorTransferIndex> cacheLoader() {
     return new CacheLoader<>() {
       @Override
+      @Nonnull
       public RaptorTransferIndex load(@javax.annotation.Nonnull CacheKey cacheKey) {
-        return RaptorTransferIndex.create(cacheKey.transfersByStopIndex, cacheKey.routingContext);
+        return RaptorTransferIndex.create(cacheKey.transfersByStopIndex, cacheKey.request);
       }
     };
   }
@@ -49,13 +56,13 @@ public class RaptorRequestTransferCache {
   private static class CacheKey {
 
     private final List<List<Transfer>> transfersByStopIndex;
-    private final RoutingContext routingContext;
+    private final StreetSearchRequest request;
     private final StreetRelevantOptions options;
 
-    private CacheKey(List<List<Transfer>> transfersByStopIndex, RoutingContext routingContext) {
+    private CacheKey(List<List<Transfer>> transfersByStopIndex, StreetSearchRequest request) {
       this.transfersByStopIndex = transfersByStopIndex;
-      this.routingContext = routingContext;
-      this.options = new StreetRelevantOptions(routingContext.opt);
+      this.request = request;
+      this.options = new StreetRelevantOptions(request);
     }
 
     @Override
@@ -83,80 +90,33 @@ public class RaptorRequestTransferCache {
   }
 
   /**
-   * This contains an extract of the parameters which may influence transfers. The possible values
-   * are somewhat limited by rounding in {@link Transfer#prepareTransferRoutingRequest(RoutingRequest)}.
+   * This contains an extract of the parameters which may influence transfers.
    * <p>
-   * TODO: the bikeWalking options are not used.
    */
   private static class StreetRelevantOptions {
 
     private final StreetMode transferMode;
-    private final BicycleOptimizeType optimize;
-    private final double bikeTriangleSafetyFactor;
-    private final double bikeTriangleSlopeFactor;
-    private final double bikeTriangleTimeFactor;
-    private final WheelchairAccessibilityRequest wheelchairAccessibility;
-    private final double walkSpeed;
-    private final double bikeSpeed;
-    private final double walkReluctance;
-    private final double stairsReluctance;
-    private final double stairsTimeFactor;
-    private final double turnReluctance;
-    private final int elevatorBoardCost;
-    private final int elevatorBoardTime;
-    private final int elevatorHopCost;
-    private final int elevatorHopTime;
-    private final int bikeSwitchCost;
-    private final int bikeSwitchTime;
+    private final boolean wheelchair;
+    private final WalkPreferences walk;
+    private final BikePreferences bike;
+    private final StreetPreferences street;
+    private final WheelchairPreferences wheelchairPreferences;
 
-    public StreetRelevantOptions(RoutingRequest routingRequest) {
-      this.transferMode = routingRequest.modes.transferMode;
+    public StreetRelevantOptions(StreetSearchRequest request) {
+      this.transferMode = request.mode();
+      this.wheelchair = request.wheelchair();
 
-      this.optimize = routingRequest.bicycleOptimizeType;
-      this.bikeTriangleSafetyFactor = routingRequest.bikeTriangleSafetyFactor;
-      this.bikeTriangleSlopeFactor = routingRequest.bikeTriangleSlopeFactor;
-      this.bikeTriangleTimeFactor = routingRequest.bikeTriangleTimeFactor;
-      this.bikeSwitchCost = routingRequest.bikeSwitchCost;
-      this.bikeSwitchTime = routingRequest.bikeSwitchTime;
-
-      this.wheelchairAccessibility = routingRequest.wheelchairAccessibility.round();
-
-      this.walkSpeed = routingRequest.walkSpeed;
-      this.bikeSpeed = routingRequest.bikeSpeed;
-
-      this.walkReluctance = routingRequest.walkReluctance;
-      this.stairsReluctance = routingRequest.stairsReluctance;
-      this.stairsTimeFactor = routingRequest.stairsTimeFactor;
-      this.turnReluctance = routingRequest.turnReluctance;
-
-      this.elevatorBoardCost = routingRequest.elevatorBoardCost;
-      this.elevatorBoardTime = routingRequest.elevatorBoardTime;
-      this.elevatorHopCost = routingRequest.elevatorHopCost;
-      this.elevatorHopTime = routingRequest.elevatorHopTime;
+      var preferences = request.preferences();
+      this.walk = preferences.walk();
+      this.bike = transferMode.includesBiking() ? preferences.bike() : BikePreferences.DEFAULT;
+      this.street = preferences.street();
+      this.wheelchairPreferences =
+        this.wheelchair ? preferences.wheelchair() : WheelchairPreferences.DEFAULT;
     }
 
     @Override
     public int hashCode() {
-      return Objects.hash(
-        transferMode,
-        optimize,
-        bikeTriangleSafetyFactor,
-        bikeTriangleSlopeFactor,
-        bikeTriangleTimeFactor,
-        wheelchairAccessibility,
-        walkSpeed,
-        bikeSpeed,
-        walkReluctance,
-        stairsReluctance,
-        turnReluctance,
-        elevatorBoardCost,
-        elevatorBoardTime,
-        elevatorHopCost,
-        elevatorHopTime,
-        bikeSwitchCost,
-        bikeSwitchTime,
-        stairsTimeFactor
-      );
+      return Objects.hash(transferMode, wheelchair, walk, bike, street, wheelchairPreferences);
     }
 
     @Override
@@ -164,29 +124,16 @@ public class RaptorRequestTransferCache {
       if (this == o) {
         return true;
       }
-      if (o == null || getClass() != o.getClass()) {
+      if (!(o instanceof StreetRelevantOptions that)) {
         return false;
       }
-      final StreetRelevantOptions that = (StreetRelevantOptions) o;
       return (
-        Double.compare(that.bikeTriangleSafetyFactor, bikeTriangleSafetyFactor) == 0 &&
-        Double.compare(that.bikeTriangleSlopeFactor, bikeTriangleSlopeFactor) == 0 &&
-        Double.compare(that.bikeTriangleTimeFactor, bikeTriangleTimeFactor) == 0 &&
-        Double.compare(that.walkSpeed, walkSpeed) == 0 &&
-        Double.compare(that.bikeSpeed, bikeSpeed) == 0 &&
-        Double.compare(that.walkReluctance, walkReluctance) == 0 &&
-        Double.compare(that.stairsReluctance, stairsReluctance) == 0 &&
-        Double.compare(that.stairsTimeFactor, stairsTimeFactor) == 0 &&
-        Double.compare(that.turnReluctance, turnReluctance) == 0 &&
-        wheelchairAccessibility.equals(that.wheelchairAccessibility) &&
-        elevatorBoardCost == that.elevatorBoardCost &&
-        elevatorBoardTime == that.elevatorBoardTime &&
-        elevatorHopCost == that.elevatorHopCost &&
-        elevatorHopTime == that.elevatorHopTime &&
-        bikeSwitchCost == that.bikeSwitchCost &&
-        bikeSwitchTime == that.bikeSwitchTime &&
         transferMode == that.transferMode &&
-        optimize == that.optimize
+        wheelchair == that.wheelchair &&
+        Objects.equals(that.walk, walk) &&
+        Objects.equals(that.bike, bike) &&
+        Objects.equals(that.street, street) &&
+        Objects.equals(that.wheelchairPreferences, wheelchairPreferences)
       );
     }
   }

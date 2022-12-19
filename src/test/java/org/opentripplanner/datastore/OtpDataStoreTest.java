@@ -11,6 +11,8 @@ import static org.opentripplanner.datastore.api.FileType.NETEX;
 import static org.opentripplanner.datastore.api.FileType.OSM;
 import static org.opentripplanner.datastore.api.FileType.REPORT;
 import static org.opentripplanner.datastore.api.FileType.UNKNOWN;
+import static org.opentripplanner.framework.application.OtpFileNames.BUILD_CONFIG_FILENAME;
+import static org.opentripplanner.framework.application.OtpFileNames.ROUTER_CONFIG_FILENAME;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -33,12 +35,11 @@ import org.opentripplanner.datastore.api.DataSource;
 import org.opentripplanner.datastore.api.FileType;
 import org.opentripplanner.datastore.api.OtpDataStoreConfig;
 import org.opentripplanner.datastore.configure.DataStoreModule;
-import org.opentripplanner.standalone.config.ConfigLoader;
+import org.opentripplanner.framework.lang.StringUtils;
+import org.opentripplanner.standalone.config.OtpConfigLoader;
 
 public class OtpDataStoreTest {
 
-  private static final String BUILD_CONFIG_FILENAME = "build-config.json";
-  private static final String ROUTER_CONFIG_FILENAME = "router-config.json";
   private static final String OSM_FILENAME = "osm.pbf";
   private static final String DEM_FILENAME = "dem.tif";
   private static final String NETEX_FILENAME = "netex.zip";
@@ -131,24 +132,28 @@ public class OtpDataStoreTest {
     }
 
     // Insert a URI for osm, gtfs, graph and report data sources
-    String buildConfigJson = String
-      .format(
-        "{" +
-        "%n  storage: {" +
-        "%n      osm: ['%s']," +
-        "%n      gtfs: ['%s']," +
-        "%n      graph: '%s'," +
-        "%n      buildReportDir: '%s'" +
-        "%n  }" +
-        "%n}",
-        uri + OSM_FILENAME,
-        uri + GTFS_FILENAME,
-        uri + GRAPH_FILENAME,
-        uri + REPORT_FILENAME
-      )
-      .replace('\'', '\"');
+    String buildConfigJson = StringUtils.quoteReplace(
+      """
+      {
+        osm: [{
+          source: '%s'
+        }],
+        transitFeeds: [{
+          type: 'GTFS',
+          feedId: 'NO',
+          source: '%s'
+        }],
+        graph: '%s',
+        buildReportDir: '%s'
+        }""".formatted(
+          uri + OSM_FILENAME,
+          uri + GTFS_FILENAME,
+          uri + GRAPH_FILENAME,
+          uri + REPORT_FILENAME
+        )
+    );
 
-    // Create build-config  and a unknown file in the 'baseDir'
+    // Create build-config  and an unknown file in the 'baseDir'
     write(baseDir, BUILD_CONFIG_FILENAME, buildConfigJson);
     write(baseDir, "unknown.txt", "Data");
 
@@ -165,10 +170,10 @@ public class OtpDataStoreTest {
 
     // Open data store using the base-dir
 
-    var confLoader = new ConfigLoader(baseDir);
+    var confLoader = new OtpConfigLoader(baseDir);
     var buildConfig = confLoader.loadBuildConfig();
 
-    OtpDataStore store = DataStoreModule.provideDataStore(baseDir, buildConfig.storage, null);
+    OtpDataStore store = DataStoreModule.provideDataStore(baseDir, buildConfig, null);
 
     // Collect result and prepare it for assertion
     List<String> filenames = listFilesByRelativeName(store, baseDir, tempDataDir);
@@ -266,8 +271,7 @@ public class OtpDataStoreTest {
   }
 
   private OtpDataStoreConfig config() {
-    var confLoader = new ConfigLoader(baseDir);
-    var buildConfig = confLoader.loadBuildConfig();
-    return buildConfig.storage;
+    var confLoader = new OtpConfigLoader(baseDir);
+    return confLoader.loadBuildConfig();
   }
 }

@@ -7,53 +7,56 @@ import java.util.List;
 import org.opentripplanner.ext.flex.FlexRouter;
 import org.opentripplanner.model.plan.Itinerary;
 import org.opentripplanner.routing.algorithm.raptoradapter.router.AdditionalSearchDays;
-import org.opentripplanner.routing.api.request.RoutingRequest;
+import org.opentripplanner.routing.api.request.RouteRequest;
 import org.opentripplanner.routing.api.request.StreetMode;
-import org.opentripplanner.routing.core.RoutingContext;
-import org.opentripplanner.routing.core.TemporaryVerticesContainer;
 import org.opentripplanner.routing.graphfinder.NearbyStop;
-import org.opentripplanner.standalone.api.OtpServerContext;
+import org.opentripplanner.standalone.api.OtpServerRequestContext;
+import org.opentripplanner.street.search.TemporaryVerticesContainer;
 
 public class DirectFlexRouter {
 
   public static List<Itinerary> route(
-    OtpServerContext serverContext,
-    RoutingRequest request,
+    OtpServerRequestContext serverContext,
+    RouteRequest request,
     AdditionalSearchDays additionalSearchDays
   ) {
-    if (!StreetMode.FLEXIBLE.equals(request.modes.directMode)) {
+    if (!StreetMode.FLEXIBLE.equals(request.journey().direct().mode())) {
       return Collections.emptyList();
     }
-    RoutingRequest directRequest = request.getStreetSearchRequest(request.modes.directMode);
     try (
-      var temporaryVertices = new TemporaryVerticesContainer(serverContext.graph(), directRequest)
-    ) {
-      RoutingContext routingContext = new RoutingContext(
-        directRequest,
+      var temporaryVertices = new TemporaryVerticesContainer(
         serverContext.graph(),
-        temporaryVertices
-      );
-
+        request,
+        request.journey().direct().mode(),
+        request.journey().direct().mode()
+      )
+    ) {
       // Prepare access/egress transfers
       Collection<NearbyStop> accessStops = AccessEgressRouter.streetSearch(
-        routingContext,
+        request,
+        temporaryVertices,
         serverContext.transitService(),
-        StreetMode.WALK,
-        false
+        request.journey().direct(),
+        serverContext.dataOverlayContext(request),
+        false,
+        serverContext.flexConfig().maxAccessWalkDuration()
       );
       Collection<NearbyStop> egressStops = AccessEgressRouter.streetSearch(
-        routingContext,
+        request,
+        temporaryVertices,
         serverContext.transitService(),
-        StreetMode.WALK,
-        true
+        request.journey().direct(),
+        serverContext.dataOverlayContext(request),
+        true,
+        serverContext.flexConfig().maxEgressWalkDuration()
       );
 
       FlexRouter flexRouter = new FlexRouter(
         serverContext.graph(),
         serverContext.transitService(),
-        serverContext.routerConfig().flexParameters(request),
-        directRequest.getDateTime(),
-        directRequest.arriveBy,
+        serverContext.flexConfig(),
+        request.dateTime(),
+        request.arriveBy(),
         additionalSearchDays.additionalSearchDaysInPast(),
         additionalSearchDays.additionalSearchDaysInFuture(),
         accessStops,

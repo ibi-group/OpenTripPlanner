@@ -1,10 +1,9 @@
 package org.opentripplanner.updater.vehicle_parking;
 
-import java.time.ZoneId;
+import org.opentripplanner.ext.vehicleparking.bikely.BikelyUpdater;
+import org.opentripplanner.ext.vehicleparking.bikely.BikelyUpdaterParameters;
 import org.opentripplanner.ext.vehicleparking.hslpark.HslParkUpdater;
 import org.opentripplanner.ext.vehicleparking.hslpark.HslParkUpdaterParameters;
-import org.opentripplanner.ext.vehicleparking.kml.KmlBikeParkDataSource;
-import org.opentripplanner.ext.vehicleparking.kml.KmlUpdaterParameters;
 import org.opentripplanner.ext.vehicleparking.parkapi.BicycleParkAPIUpdater;
 import org.opentripplanner.ext.vehicleparking.parkapi.CarParkAPIUpdater;
 import org.opentripplanner.ext.vehicleparking.parkapi.ParkAPIUpdaterParameters;
@@ -21,33 +20,22 @@ public class VehicleParkingDataSourceFactory {
 
   public static DataSource<VehicleParking> create(
     VehicleParkingUpdaterParameters parameters,
-    OpeningHoursCalendarService openingHoursCalendarService,
-    ZoneId zoneId
+    OpeningHoursCalendarService openingHoursCalendarService
   ) {
-    switch (parameters.getSourceType()) {
-      case HSL_PARK:
-        return new HslParkUpdater(
-          (HslParkUpdaterParameters) parameters,
-          openingHoursCalendarService,
-          zoneId
-        );
-      case KML:
-        return new KmlBikeParkDataSource((KmlUpdaterParameters) parameters);
-      case PARK_API:
-        return new CarParkAPIUpdater(
-          (ParkAPIUpdaterParameters) parameters,
-          openingHoursCalendarService,
-          zoneId
-        );
-      case BICYCLE_PARK_API:
-        return new BicycleParkAPIUpdater(
-          (ParkAPIUpdaterParameters) parameters,
-          openingHoursCalendarService,
-          zoneId
-        );
-    }
-    throw new IllegalArgumentException(
-      "Unknown vehicle parking source type: " + parameters.getSourceType()
-    );
+    return switch (parameters.sourceType()) {
+      case HSL_PARK -> new HslParkUpdater(
+        (HslParkUpdaterParameters) parameters,
+        openingHoursCalendarService
+      );
+      case PARK_API -> new CarParkAPIUpdater(
+        (ParkAPIUpdaterParameters) parameters,
+        openingHoursCalendarService
+      );
+      case BICYCLE_PARK_API -> new BicycleParkAPIUpdater(
+        (ParkAPIUpdaterParameters) parameters,
+        openingHoursCalendarService
+      );
+      case BIKELY -> new BikelyUpdater((BikelyUpdaterParameters) parameters);
+    };
   }
 }

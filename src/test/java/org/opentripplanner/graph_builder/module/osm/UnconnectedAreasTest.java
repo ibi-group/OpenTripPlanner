@@ -4,28 +4,29 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.File;
-import java.net.URISyntaxException;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
-import org.opentripplanner.graph_builder.DataImportIssueStore;
+import org.opentripplanner.graph_builder.issue.api.DataImportIssueStore;
+import org.opentripplanner.graph_builder.issue.service.DefaultDataImportIssueStore;
+import org.opentripplanner.graph_builder.issues.ParkAndRideUnlinked;
 import org.opentripplanner.graph_builder.module.StreetLinkerModule;
 import org.opentripplanner.openstreetmap.OpenStreetMapProvider;
-import org.opentripplanner.routing.edgetype.StreetVehicleParkingLink;
-import org.opentripplanner.routing.edgetype.VehicleParkingEdge;
 import org.opentripplanner.routing.graph.Graph;
-import org.opentripplanner.routing.trippattern.Deduplicator;
-import org.opentripplanner.routing.vertextype.VehicleParkingEntranceVertex;
+import org.opentripplanner.street.model.edge.StreetVehicleParkingLink;
+import org.opentripplanner.street.model.edge.VehicleParkingEdge;
+import org.opentripplanner.street.model.vertex.VehicleParkingEntranceVertex;
+import org.opentripplanner.transit.model.framework.Deduplicator;
 import org.opentripplanner.transit.service.StopModel;
 import org.opentripplanner.transit.service.TransitModel;
 
 public class UnconnectedAreasTest {
 
   /**
-   * The P+R.osm.gz file contains 2 park and ride, one a single way area and the other a
+   * The P+R.osm.pbf file contains 2 park and ride, one a single way area and the other a
    * multipolygon with a hole. Both are not linked to any street, apart from three roads that
    * crosses the P+R with w/o common nodes.
    * <p>
@@ -33,11 +34,11 @@ public class UnconnectedAreasTest {
    * virtual nodes at the place where the street intersects the P+R areas. See ticket #1562.
    */
   @Test
-  public void testUnconnectedCarParkAndRide() {
-    DataImportIssueStore issueStore = new DataImportIssueStore(true);
+  public void unconnectedCarParkAndRide() {
+    DefaultDataImportIssueStore issueStore = new DefaultDataImportIssueStore();
     Graph gg = buildOSMGraph("P+R.osm.pbf", issueStore);
 
-    assertEquals(2, issueStore.getIssues().size());
+    assertEquals(1, getParkAndRideUnlinkedIssueCount(issueStore));
 
     var vehicleParkingVertices = gg.getVerticesOfType(VehicleParkingEntranceVertex.class);
     int nParkAndRide = vehicleParkingVertices.size();
@@ -50,11 +51,11 @@ public class UnconnectedAreasTest {
   }
 
   @Test
-  public void testUnconnectedBikeParkAndRide() {
-    DataImportIssueStore issueStore = new DataImportIssueStore(true);
+  public void unconnectedBikeParkAndRide() {
+    DefaultDataImportIssueStore issueStore = new DefaultDataImportIssueStore();
     Graph gg = buildOSMGraph("B+R.osm.pbf", issueStore);
 
-    assertEquals(3, issueStore.getIssues().size());
+    assertEquals(2, getParkAndRideUnlinkedIssueCount(issueStore));
 
     var vehicleParkingVertices = gg.getVerticesOfType(VehicleParkingEntranceVertex.class);
     int nParkAndRideEntrances = vehicleParkingVertices.size();
@@ -111,7 +112,7 @@ public class UnconnectedAreasTest {
    * there. Additionally, the node of the ring is duplicated to test this corner case.
    */
   @Test
-  public void testRoadPassingOverDuplicatedNode() throws URISyntaxException {
+  public void testRoadPassingOverDuplicatedNode() {
     List<String> connections = testGeometricGraphWithClasspathFile(
       "coincident_pr_dupl.osm.pbf",
       1,
@@ -143,28 +144,32 @@ public class UnconnectedAreasTest {
   }
 
   private Graph buildOSMGraph(String osmFileName) {
-    return buildOSMGraph(osmFileName, new DataImportIssueStore(false));
+    return buildOSMGraph(osmFileName, DataImportIssueStore.NOOP);
   }
 
   private Graph buildOSMGraph(String osmFileName, DataImportIssueStore issueStore) {
     var deduplicator = new Deduplicator();
     var stopModel = new StopModel();
-    var graph = new Graph(stopModel, deduplicator);
+    var graph = new Graph(deduplicator);
     var transitModel = new TransitModel(stopModel, deduplicator);
     var fileUrl = getClass().getResource(osmFileName);
     Assertions.assertNotNull(fileUrl);
     File file = new File(fileUrl.getFile());
 
     OpenStreetMapProvider provider = new OpenStreetMapProvider(file, false);
-    OpenStreetMapModule loader = new OpenStreetMapModule(provider);
-    loader.setDefaultWayPropertySetSource(new DefaultWayPropertySetSource());
+    OpenStreetMapModule loader = new OpenStreetMapModule(
+      List.of(provider),
+      Set.of(),
+      graph,
+      issueStore,
+      true
+    );
     loader.staticParkAndRide = true;
     loader.staticBikeParkAndRide = true;
 
-    loader.buildGraph(graph, transitModel, new HashMap<>(), issueStore);
+    loader.buildGraph();
 
-    StreetLinkerModule streetLinkerModule = new StreetLinkerModule();
-    streetLinkerModule.buildGraph(graph, transitModel, new HashMap<>(), issueStore);
+    StreetLinkerModule.linkStreetsForTestOnly(graph, transitModel);
 
     return graph;
   }
@@ -212,5 +217,13 @@ public class UnconnectedAreasTest {
       .forEach(e -> assertTrue(connections.contains(e.getFromVertex().getLabel())));
 
     return connections;
+  }
+
+  private int getParkAndRideUnlinkedIssueCount(DefaultDataImportIssueStore issueStore) {
+    return (int) issueStore
+      .listIssues()
+      .stream()
+      .filter(dataImportIssue -> dataImportIssue instanceof ParkAndRideUnlinked)
+      .count();
   }
 }

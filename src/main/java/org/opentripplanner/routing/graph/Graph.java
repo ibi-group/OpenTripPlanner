@@ -1,50 +1,40 @@
 package org.opentripplanner.routing.graph;
 
 import com.google.common.annotations.VisibleForTesting;
-import java.io.IOException;
-import java.io.ObjectInputStream;
 import java.io.Serializable;
-import java.lang.reflect.InvocationTargetException;
 import java.time.Instant;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.prefs.Preferences;
 import java.util.stream.Collectors;
-import org.locationtech.jts.geom.Coordinate;
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+import javax.inject.Inject;
 import org.locationtech.jts.geom.Envelope;
 import org.locationtech.jts.geom.Geometry;
-import org.opentripplanner.common.TurnRestriction;
-import org.opentripplanner.common.geometry.CompactElevationProfile;
-import org.opentripplanner.common.geometry.GraphUtils;
-import org.opentripplanner.common.geometry.SphericalDistanceLibrary;
-import org.opentripplanner.common.model.T2;
 import org.opentripplanner.ext.dataoverlay.configuration.DataOverlayParameterBindings;
-import org.opentripplanner.graph_builder.linking.VertexLinker;
-import org.opentripplanner.graph_builder.module.osm.WayPropertySetSource.DrivingDirection;
-import org.opentripplanner.model.calendar.ServiceDateInterval;
+import org.opentripplanner.ext.geocoder.LuceneIndex;
+import org.opentripplanner.framework.geometry.CompactElevationProfile;
+import org.opentripplanner.framework.geometry.GeometryUtils;
 import org.opentripplanner.model.calendar.openinghours.OpeningHoursCalendarService;
-import org.opentripplanner.routing.core.intersection_model.IntersectionTraversalCostModel;
-import org.opentripplanner.routing.core.intersection_model.SimpleIntersectionTraversalCostModel;
-import org.opentripplanner.routing.edgetype.StreetEdge;
-import org.opentripplanner.routing.impl.StreetVertexIndex;
+import org.opentripplanner.routing.fares.FareService;
+import org.opentripplanner.routing.graph.index.StreetIndex;
+import org.opentripplanner.routing.linking.VertexLinker;
 import org.opentripplanner.routing.services.RealtimeVehiclePositionService;
 import org.opentripplanner.routing.services.notes.StreetNotesService;
-import org.opentripplanner.routing.trippattern.Deduplicator;
 import org.opentripplanner.routing.vehicle_parking.VehicleParkingService;
-import org.opentripplanner.routing.vehicle_rental.VehicleRentalStationService;
-import org.opentripplanner.routing.vertextype.TransitStopVertex;
-import org.opentripplanner.transit.model.basic.WgsCoordinate;
-import org.opentripplanner.transit.model.site.Stop;
-import org.opentripplanner.transit.model.site.StopLocation;
+import org.opentripplanner.routing.vehicle_rental.VehicleRentalService;
+import org.opentripplanner.street.model.edge.Edge;
+import org.opentripplanner.street.model.edge.StreetEdge;
+import org.opentripplanner.street.model.vertex.TransitStopVertex;
+import org.opentripplanner.street.model.vertex.Vertex;
+import org.opentripplanner.transit.model.framework.Deduplicator;
+import org.opentripplanner.transit.model.framework.FeedScopedId;
 import org.opentripplanner.transit.service.StopModel;
-import org.opentripplanner.util.ElevationUtils;
-import org.opentripplanner.util.WorldEnvelope;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -56,18 +46,7 @@ public class Graph implements Serializable {
 
   private static final Logger LOG = LoggerFactory.getLogger(Graph.class);
 
-  private static final long serialVersionUID = 1L;
-
-  public static final DrivingDirection DEFAULT_DRIVING_DIRECTION =
-    DrivingDirection.RIGHT_HAND_TRAFFIC;
-
-  public static final IntersectionTraversalCostModel DEFAULT_INTERSECTION_TRAVERSAL_COST_MODEL = new SimpleIntersectionTraversalCostModel(
-    DEFAULT_DRIVING_DIRECTION
-  );
-
   public final StreetNotesService streetNotesService = new StreetNotesService();
-
-  private final Map<Class<?>, Serializable> services = new HashMap<>();
 
   /* Ideally we could just get rid of vertex labels, but they're used in tests and graph building. */
   private final Map<String, Vertex> vertices = new ConcurrentHashMap<>();
@@ -75,22 +54,17 @@ public class Graph implements Serializable {
   public final transient Deduplicator deduplicator;
 
   public final Instant buildTime = Instant.now();
-  private StopModel stopModel;
 
-  private OpeningHoursCalendarService openingHoursCalendarService;
-  private transient StreetVertexIndex streetIndex;
+  @Nullable
+  private final OpeningHoursCalendarService openingHoursCalendarService;
 
-  //Envelope of all OSM and transit vertices. Calculated during build time
-  private WorldEnvelope envelope = null;
+  private transient StreetIndex streetIndex;
+
   //ConvexHull of all the graph vertices. Generated at Graph build time.
   private Geometry convexHull = null;
 
   /* The preferences that were used for graph building. */
   public Preferences preferences = null;
-  // TODO OTP2: This is only enabled with static bike rental
-  public boolean hasBikeSharing = false;
-  public boolean hasParkRide = false;
-  public boolean hasBikeRide = false;
 
   /** True if OSM data was loaded into this Graph. */
   public boolean hasStreets = false;
@@ -124,11 +98,10 @@ public class Graph implements Serializable {
   private double distanceBetweenElevationSamples;
 
   private transient RealtimeVehiclePositionService vehiclePositionService;
+  private final VehicleRentalService vehicleRentalStationService = new VehicleRentalService();
 
-  private DrivingDirection drivingDirection = DEFAULT_DRIVING_DIRECTION;
-
-  private IntersectionTraversalCostModel intersectionTraversalCostModel =
-    DEFAULT_INTERSECTION_TRAVERSAL_COST_MODEL;
+  private final VehicleParkingService vehicleParkingService = new VehicleParkingService();
+  private FareService fareService;
 
   /**
    * Hack. I've tried three different ways of generating unique labels. Previously we were just
@@ -144,15 +117,24 @@ public class Graph implements Serializable {
    * creating the data overlay context when routing.
    */
   public DataOverlayParameterBindings dataOverlayParameterBindings;
+  private LuceneIndex luceneIndex;
 
-  public Graph(StopModel stopModel, Deduplicator deduplicator) {
-    this.stopModel = stopModel;
+  @Inject
+  public Graph(
+    Deduplicator deduplicator,
+    @Nullable OpeningHoursCalendarService openingHoursCalendarService
+  ) {
     this.deduplicator = deduplicator;
+    this.openingHoursCalendarService = openingHoursCalendarService;
   }
 
-  // Constructor for deserialization.
+  public Graph(Deduplicator deduplicator) {
+    this(deduplicator, null);
+  }
+
+  /** Constructor for deserialization. */
   public Graph() {
-    this.deduplicator = new Deduplicator();
+    this(new Deduplicator(), null);
   }
 
   /**
@@ -168,10 +150,11 @@ public class Graph implements Serializable {
   public void addVertex(Vertex v) {
     Vertex old = vertices.put(v.getLabel(), v);
     if (old != null) {
-      if (old == v) LOG.error("repeatedly added the same vertex: {}", v); else LOG.error(
-        "duplicate vertex label in graph (added vertex to graph anyway): {}",
-        v
-      );
+      if (old == v) {
+        LOG.error("repeatedly added the same vertex: {}", v);
+      } else {
+        LOG.error("duplicate vertex label in graph (added vertex to graph anyway): {}", v);
+      }
     }
   }
 
@@ -184,32 +167,7 @@ public class Graph implements Serializable {
     if (e != null) {
       streetNotesService.removeStaticNotes(e);
 
-      if (e instanceof StreetEdge) {
-        ((StreetEdge) e).removeAllTurnRestrictions();
-      }
-
-      if (e.fromv != null) {
-        e.fromv
-          .getIncoming()
-          .stream()
-          .filter(StreetEdge.class::isInstance)
-          .map(StreetEdge.class::cast)
-          .forEach(otherEdge -> {
-            for (TurnRestriction turnRestriction : otherEdge.getTurnRestrictions()) {
-              if (turnRestriction.to == e) {
-                otherEdge.removeTurnRestriction(turnRestriction);
-              }
-            }
-          });
-
-        e.fromv.removeOutgoing(e);
-        e.fromv = null;
-      }
-
-      if (e.tov != null) {
-        e.tov.removeIncoming(e);
-        e.tov = null;
-      }
+      e.remove();
     }
   }
 
@@ -232,6 +190,10 @@ public class Graph implements Serializable {
       .filter(cls::isInstance)
       .map(cls::cast)
       .collect(Collectors.toList());
+  }
+
+  public TransitStopVertex getStopVertexForStopId(FeedScopedId id) {
+    return streetIndex.findTransitStopVertices(id);
   }
 
   /**
@@ -262,38 +224,6 @@ public class Graph implements Serializable {
 
   public boolean containsVertex(Vertex v) {
     return (v != null) && vertices.get(v.getLabel()) == v;
-  }
-
-  @SuppressWarnings("unchecked")
-  public <T extends Serializable> T putService(Class<T> serviceType, T service) {
-    return (T) services.put(serviceType, service);
-  }
-
-  public boolean hasService(Class<? extends Serializable> serviceType) {
-    return services.containsKey(serviceType);
-  }
-
-  @SuppressWarnings("unchecked")
-  public <T extends Serializable> T getService(Class<T> serviceType) {
-    return (T) services.get(serviceType);
-  }
-
-  public <T extends Serializable> T getService(Class<T> serviceType, boolean autoCreate) {
-    T t = (T) services.get(serviceType);
-    if (t == null && autoCreate) {
-      try {
-        t = serviceType.getDeclaredConstructor().newInstance();
-      } catch (
-        IllegalAccessException
-        | InvocationTargetException
-        | NoSuchMethodException
-        | InstantiationException e
-      ) {
-        throw new RuntimeException(e);
-      }
-      services.put(serviceType, t);
-    }
-    return t;
   }
 
   public void remove(Vertex vertex) {
@@ -336,72 +266,61 @@ public class Graph implements Serializable {
    * Perform indexing on vertices, edges and create transient data structures. This used to be done
    * in readObject methods upon deserialization, but stand-alone mode now allows passing graphs from
    * graphbuilder to server in memory, without a round trip through serialization.
+   * <p>
+   * TODO OTP2 - Indexing the streetIndex is not something that should be delegated outside the
+   *           - graph. This allows a module to index the streetIndex BEFORE another module add
+   *           - something that should go into the index; Hence, inconsistent data.
    */
-  public void index() {
+  public void index(StopModel stopModel) {
     LOG.info("Index street model...");
-    streetIndex = new StreetVertexIndex(this, stopModel);
+    streetIndex = new StreetIndex(this, stopModel);
     LOG.info("Index street model complete.");
   }
 
+  @Nullable
   public OpeningHoursCalendarService getOpeningHoursCalendarService() {
     return this.openingHoursCalendarService;
   }
 
-  public void initOpeningHoursCalendarService(ServiceDateInterval serviceDateInterval) {
-    this.openingHoursCalendarService =
-      new OpeningHoursCalendarService(
-        deduplicator,
-        serviceDateInterval.getStart(),
-        serviceDateInterval.getEnd()
-      );
-  }
-
-  public StreetVertexIndex getStreetIndex() {
-    //TODO refactoring transit model - thread safety
-    if (this.streetIndex == null) {
-      index();
-    }
+  /**
+   * Get streetIndex, safe to use while routing, but do not use during graph build.
+   * @see #getStreetIndexSafe(StopModel)
+   */
+  public StreetIndex getStreetIndex() {
     return this.streetIndex;
   }
 
-  public VertexLinker getLinker() {
-    return getStreetIndex().getVertexLinker();
-  }
-
-  public int removeEdgelessVertices() {
-    int removed = 0;
-    List<Vertex> toRemove = new LinkedList<>();
-    for (Vertex v : this.getVertices()) if (v.getDegreeOut() + v.getDegreeIn() == 0) toRemove.add(
-      v
-    );
-    // avoid concurrent vertex map modification
-    for (Vertex v : toRemove) {
-      this.remove(v);
-      removed += 1;
-      LOG.trace("removed edgeless vertex {}", v);
-    }
-    return removed;
+  /**
+   * Get streetIndex during graph build, both OSM street data and transit data must be loaded
+   * before calling this.
+   */
+  public StreetIndex getStreetIndexSafe(StopModel stopModel) {
+    indexIfNotIndexed(stopModel);
+    return this.streetIndex;
   }
 
   /**
-   * Calculates envelope out of all OSM coordinates
-   * <p>
-   * Transit stops are added to the envelope as they are added to the graph
+   * Get VertexLinker, safe to use while routing, but do not use during graph build.
+   * @see #getLinkerSafe(StopModel)
    */
-  public void calculateEnvelope() {
-    this.envelope = new WorldEnvelope();
+  public VertexLinker getLinker() {
+    return streetIndex.getVertexLinker();
+  }
 
-    for (Vertex v : this.getVertices()) {
-      Coordinate c = v.getCoordinate();
-      this.envelope.expandToInclude(c);
-    }
+  /**
+   * Get VertexLinker during graph build, both OSM street data and transit data must be loaded
+   * before calling this.
+   */
+  public VertexLinker getLinkerSafe(StopModel stopModel) {
+    indexIfNotIndexed(stopModel);
+    return streetIndex.getVertexLinker();
   }
 
   /**
    * Calculates convexHull of all the vertices during build time
    */
   public void calculateConvexHull() {
-    convexHull = GraphUtils.makeConvexHull(this);
+    convexHull = GeometryUtils.makeConvexHull(getVertices(), Vertex::getCoordinate);
   }
 
   /**
@@ -411,44 +330,14 @@ public class Graph implements Serializable {
     return convexHull;
   }
 
-  /**
-   * Expands envelope to include given point
-   * <p>
-   * If envelope is empty it creates it (This can happen with a graph without OSM data) Used when
-   * adding stops to OSM envelope
-   *
-   * @param x the value to lower the minimum x to or to raise the maximum x to
-   * @param y the value to lower the minimum y to or to raise the maximum y to
-   */
-  public void expandToInclude(double x, double y) {
-    //Envelope can be empty if graph building is run without OSM data
-    if (this.envelope == null) {
-      calculateEnvelope();
-    }
-    this.envelope.expandToInclude(x, y);
-  }
-
-  public void initEllipsoidToGeoidDifference() {
-    try {
-      WorldEnvelope env = getEnvelope();
-      double lat = (env.getLowerLeftLatitude() + env.getUpperRightLatitude()) / 2;
-      double lon = (env.getLowerLeftLongitude() + env.getUpperRightLongitude()) / 2;
-      this.ellipsoidToGeoidDifference = ElevationUtils.computeEllipsoidToGeoidDifference(lat, lon);
-      LOG.info(
-        "Computed ellipsoid/geoid offset at (" +
-        lat +
-        ", " +
-        lon +
-        ") as " +
-        this.ellipsoidToGeoidDifference
-      );
-    } catch (Exception e) {
-      LOG.error("Error computing ellipsoid/geoid difference");
-    }
-  }
-
-  public WorldEnvelope getEnvelope() {
-    return this.envelope;
+  public void initEllipsoidToGeoidDifference(double value, double lat, double lon) {
+    this.ellipsoidToGeoidDifference = value;
+    LOG.info(
+      "Computed ellipsoid/geoid offset at ({}, {}) as {}",
+      lat,
+      lon,
+      this.ellipsoidToGeoidDifference
+    );
   }
 
   public double getDistanceBetweenElevationSamples() {
@@ -467,69 +356,35 @@ public class Graph implements Serializable {
     return vehiclePositionService;
   }
 
-  public VehicleRentalStationService getVehicleRentalStationService() {
-    return getService(VehicleRentalStationService.class);
+  @Nonnull
+  public VehicleRentalService getVehicleRentalService() {
+    return vehicleRentalStationService;
   }
 
+  @Nonnull
   public VehicleParkingService getVehicleParkingService() {
-    return getService(VehicleParkingService.class);
+    return vehicleParkingService;
   }
 
-  /** Get all stops within a given bounding box. */
-  public Collection<StopLocation> getStopsByBoundingBox(
-    double minLat,
-    double minLon,
-    double maxLat,
-    double maxLon
-  ) {
-    Envelope envelope = new Envelope(
-      new Coordinate(minLon, minLat),
-      new Coordinate(maxLon, maxLat)
-    );
-    return streetIndex
-      .getTransitStopForEnvelope(envelope)
-      .stream()
-      .map(TransitStopVertex::getStop)
-      .collect(Collectors.toList());
+  public FareService getFareService() {
+    return fareService;
   }
 
-  /** Get all stops within a given radius. Unit: meters. */
-  public List<T2<Stop, Double>> getStopsInRadius(WgsCoordinate center, double radius) {
-    Coordinate coord = new Coordinate(center.longitude(), center.latitude());
-    return streetIndex
-      .getNearbyTransitStops(coord, radius)
-      .stream()
-      .map(v ->
-        new T2<>(v.getStop(), SphericalDistanceLibrary.fastDistance(v.getCoordinate(), coord))
-      )
-      .filter(t -> t.second < radius)
-      .collect(Collectors.toList());
+  public void setFareService(FareService fareService) {
+    this.fareService = fareService;
   }
 
-  public DrivingDirection getDrivingDirection() {
-    return drivingDirection;
+  public LuceneIndex getLuceneIndex() {
+    return luceneIndex;
   }
 
-  public void setDrivingDirection(DrivingDirection drivingDirection) {
-    this.drivingDirection = drivingDirection;
+  public void setLuceneIndex(LuceneIndex luceneIndex) {
+    this.luceneIndex = luceneIndex;
   }
 
-  public IntersectionTraversalCostModel getIntersectionTraversalModel() {
-    return intersectionTraversalCostModel;
-  }
-
-  public void setIntersectionTraversalCostModel(
-    IntersectionTraversalCostModel intersectionTraversalCostModel
-  ) {
-    this.intersectionTraversalCostModel = intersectionTraversalCostModel;
-  }
-
-  public StopModel getStopModel() {
-    return stopModel;
-  }
-
-  private void readObject(ObjectInputStream inputStream)
-    throws ClassNotFoundException, IOException {
-    inputStream.defaultReadObject();
+  private void indexIfNotIndexed(StopModel stopModel) {
+    if (streetIndex == null) {
+      index(stopModel);
+    }
   }
 }

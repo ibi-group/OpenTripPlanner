@@ -25,12 +25,12 @@ public class RemoveTransitIfStreetOnlyIsBetterFilter implements ItineraryDeletio
   }
 
   @Override
-  public List<Itinerary> getFlaggedItineraries(List<Itinerary> itineraries) {
+  public List<Itinerary> flagForRemoval(List<Itinerary> itineraries) {
     // Find the best walk-all-the-way option
     Optional<Itinerary> bestStreetOp = itineraries
       .stream()
       .filter(Itinerary::isOnStreetAllTheWay)
-      .min(Comparator.comparingInt(l -> l.getGeneralizedCost()));
+      .min(Comparator.comparingInt(Itinerary::getGeneralizedCost));
 
     if (bestStreetOp.isEmpty()) {
       return List.of();

@@ -8,19 +8,19 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import org.opentripplanner.graph_builder.linking.DisposableEdgeCollection;
-import org.opentripplanner.graph_builder.linking.LinkingDirection;
-import org.opentripplanner.graph_builder.linking.VertexLinker;
-import org.opentripplanner.routing.core.TraverseMode;
-import org.opentripplanner.routing.core.TraverseModeSet;
-import org.opentripplanner.routing.edgetype.StreetVehicleParkingLink;
-import org.opentripplanner.routing.edgetype.VehicleParkingEdge;
 import org.opentripplanner.routing.graph.Graph;
+import org.opentripplanner.routing.linking.DisposableEdgeCollection;
+import org.opentripplanner.routing.linking.LinkingDirection;
+import org.opentripplanner.routing.linking.VertexLinker;
 import org.opentripplanner.routing.vehicle_parking.VehicleParking;
 import org.opentripplanner.routing.vehicle_parking.VehicleParkingHelper;
 import org.opentripplanner.routing.vehicle_parking.VehicleParkingService;
 import org.opentripplanner.routing.vehicle_parking.VehicleParkingState;
-import org.opentripplanner.routing.vertextype.VehicleParkingEntranceVertex;
+import org.opentripplanner.street.model.edge.StreetVehicleParkingLink;
+import org.opentripplanner.street.model.edge.VehicleParkingEdge;
+import org.opentripplanner.street.model.vertex.VehicleParkingEntranceVertex;
+import org.opentripplanner.street.search.TraverseMode;
+import org.opentripplanner.street.search.TraverseModeSet;
 import org.opentripplanner.transit.model.framework.FeedScopedId;
 import org.opentripplanner.transit.service.TransitModel;
 import org.opentripplanner.updater.DataSource;
@@ -48,14 +48,20 @@ public class VehicleParkingUpdater extends PollingGraphUpdater {
 
   public VehicleParkingUpdater(
     VehicleParkingUpdaterParameters parameters,
-    DataSource<VehicleParking> source
+    DataSource<VehicleParking> source,
+    VertexLinker vertexLinker,
+    VehicleParkingService vehicleParkingService
   ) {
     super(parameters);
     this.source = source;
+    // Creation of network linker library will not modify the graph
+    this.linker = vertexLinker;
+    // Adding a vehicle parking station service needs a graph writer runnable
+    this.vehicleParkingService = vehicleParkingService;
 
     LOG.info(
       "Creating vehicle-parking updater running every {} seconds : {}",
-      pollingPeriodSeconds,
+      pollingPeriodSeconds(),
       source
     );
   }
@@ -66,19 +72,8 @@ public class VehicleParkingUpdater extends PollingGraphUpdater {
   }
 
   @Override
-  public void setup(Graph graph, TransitModel transitModel) {
-    // Creation of network linker library will not modify the graph
-    linker = graph.getLinker();
-    // Adding a vehicle parking station service needs a graph writer runnable
-    vehicleParkingService = graph.getService(VehicleParkingService.class, true);
-  }
-
-  @Override
-  public void teardown() {}
-
-  @Override
   protected void runPolling() throws Exception {
-    LOG.debug("Updating vehicle parkings from " + source);
+    LOG.debug("Updating vehicle parkings from {}", source);
     if (!source.update()) {
       LOG.debug("No updates");
       return;
@@ -135,8 +130,6 @@ public class VehicleParkingUpdater extends PollingGraphUpdater {
           continue;
         }
 
-        vehicleParkingService.removeVehicleParking(oldVehicleParking);
-
         if (verticesByPark.containsKey(oldVehicleParking)) {
           tempEdgesByPark.get(oldVehicleParking).forEach(DisposableEdgeCollection::disposeEdges);
           verticesByPark
@@ -164,9 +157,7 @@ public class VehicleParkingUpdater extends PollingGraphUpdater {
         tempEdgesByPark.put(updatedVehicleParking, disposableEdgeCollectionsForVertex);
       }
 
-      for (final VehicleParking vehicleParking : toAdd) {
-        vehicleParkingService.addVehicleParking(vehicleParking);
-      }
+      vehicleParkingService.updateVehicleParking(toAdd, toRemove);
 
       oldVehicleParkings.removeAll(toRemove);
       oldVehicleParkings.addAll(toAdd);

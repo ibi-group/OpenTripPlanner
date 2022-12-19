@@ -7,16 +7,20 @@ import static org.opentripplanner.routing.api.request.StreetMode.CAR_RENTAL;
 import static org.opentripplanner.routing.api.request.StreetMode.CAR_TO_PARK;
 import static org.opentripplanner.routing.api.request.StreetMode.SCOOTER_RENTAL;
 
+import java.util.Collection;
+import java.util.EnumSet;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.function.Function;
-import org.opentripplanner.routing.algorithm.astar.strategies.SkipEdgeStrategy;
+import org.opentripplanner.astar.spi.SkipEdgeStrategy;
 import org.opentripplanner.routing.api.request.StreetMode;
-import org.opentripplanner.routing.core.State;
-import org.opentripplanner.routing.graph.Edge;
-import org.opentripplanner.routing.vertextype.TransitStopVertex;
+import org.opentripplanner.street.model.edge.Edge;
+import org.opentripplanner.street.model.vertex.TransitStopVertex;
+import org.opentripplanner.street.search.state.State;
 import org.opentripplanner.transit.model.basic.TransitMode;
+import org.opentripplanner.transit.model.framework.FeedScopedId;
 import org.opentripplanner.transit.model.network.Route;
-import org.opentripplanner.transit.model.site.Stop;
+import org.opentripplanner.transit.model.site.RegularStop;
 
 /**
  * This strategy terminates when enough "important" stops are found.
@@ -33,7 +37,7 @@ import org.opentripplanner.transit.model.site.Stop;
  * <p>
  * {@see https://github.com/opentripplanner/OpenTripPlanner/pull/3906}
  */
-public class VehicleToStopSkipEdgeStrategy implements SkipEdgeStrategy {
+public class VehicleToStopSkipEdgeStrategy implements SkipEdgeStrategy<State, Edge> {
 
   public static final Set<StreetMode> applicableModes = Set.of(
     BIKE_TO_PARK,
@@ -43,11 +47,18 @@ public class VehicleToStopSkipEdgeStrategy implements SkipEdgeStrategy {
     CAR_RENTAL,
     SCOOTER_RENTAL
   );
-  private final Function<Stop, Set<Route>> getRoutesForStop;
+  private final Function<RegularStop, Set<Route>> getRoutesForStop;
   private final int maxScore;
+  private final EnumSet<TransitMode> allowedModes;
   private double sumOfScores;
 
-  public VehicleToStopSkipEdgeStrategy(Function<Stop, Set<Route>> getRoutesForStop) {
+  private final Set<FeedScopedId> stopsCounted = new HashSet<>();
+
+  public VehicleToStopSkipEdgeStrategy(
+    Function<RegularStop, Set<Route>> getRoutesForStop,
+    Collection<TransitMode> allowedModes
+  ) {
+    this.allowedModes = EnumSet.copyOf(allowedModes);
     this.maxScore = 300;
     this.getRoutesForStop = getRoutesForStop;
   }
@@ -55,13 +66,20 @@ public class VehicleToStopSkipEdgeStrategy implements SkipEdgeStrategy {
   @Override
   public boolean shouldSkipEdge(State current, Edge edge) {
     if (current.getNonTransitMode().isWalking()) {
-      if (current.getVertex() instanceof TransitStopVertex stopVertex) {
+      if (
+        current.getVertex() instanceof TransitStopVertex stopVertex &&
+        !stopsCounted.contains(stopVertex.getStop().getId())
+      ) {
+        var stop = stopVertex.getStop();
         var score = getRoutesForStop
-          .apply(stopVertex.getStop())
+          .apply(stop)
           .stream()
           .map(Route::getMode)
+          .filter(allowedModes::contains)
           .mapToInt(VehicleToStopSkipEdgeStrategy::score)
           .sum();
+
+        stopsCounted.add(stop.getId());
 
         sumOfScores = sumOfScores + score;
       }

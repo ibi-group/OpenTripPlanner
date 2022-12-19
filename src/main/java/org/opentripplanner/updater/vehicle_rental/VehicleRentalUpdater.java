@@ -9,25 +9,26 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import org.opentripplanner.graph_builder.linking.DisposableEdgeCollection;
-import org.opentripplanner.graph_builder.linking.LinkingDirection;
-import org.opentripplanner.graph_builder.linking.VertexLinker;
-import org.opentripplanner.routing.core.TraverseMode;
-import org.opentripplanner.routing.core.TraverseModeSet;
-import org.opentripplanner.routing.edgetype.StreetVehicleRentalLink;
-import org.opentripplanner.routing.edgetype.VehicleRentalEdge;
+import org.opentripplanner.framework.tostring.ToStringBuilder;
 import org.opentripplanner.routing.graph.Graph;
+import org.opentripplanner.routing.linking.DisposableEdgeCollection;
+import org.opentripplanner.routing.linking.LinkingDirection;
+import org.opentripplanner.routing.linking.VertexLinker;
 import org.opentripplanner.routing.vehicle_rental.RentalVehicleType.FormFactor;
 import org.opentripplanner.routing.vehicle_rental.VehicleRentalPlace;
-import org.opentripplanner.routing.vehicle_rental.VehicleRentalStationService;
-import org.opentripplanner.routing.vertextype.VehicleRentalPlaceVertex;
+import org.opentripplanner.routing.vehicle_rental.VehicleRentalService;
+import org.opentripplanner.street.model.edge.StreetVehicleRentalLink;
+import org.opentripplanner.street.model.edge.VehicleRentalEdge;
+import org.opentripplanner.street.model.vertex.VehicleRentalPlaceVertex;
+import org.opentripplanner.street.search.TraverseMode;
+import org.opentripplanner.street.search.TraverseModeSet;
 import org.opentripplanner.transit.model.framework.FeedScopedId;
 import org.opentripplanner.transit.service.TransitModel;
 import org.opentripplanner.updater.DataSource;
 import org.opentripplanner.updater.GraphWriterRunnable;
 import org.opentripplanner.updater.PollingGraphUpdater;
+import org.opentripplanner.updater.UpdaterConstructionException;
 import org.opentripplanner.updater.WriteToGraphCallback;
-import org.opentripplanner.util.lang.ToStringBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,23 +45,39 @@ public class VehicleRentalUpdater extends PollingGraphUpdater {
   Map<FeedScopedId, DisposableEdgeCollection> tempEdgesByStation = new HashMap<>();
   private VertexLinker linker;
 
-  private VehicleRentalStationService service;
+  private VehicleRentalService service;
 
   public VehicleRentalUpdater(
     VehicleRentalUpdaterParameters parameters,
-    DataSource<VehicleRentalPlace> source
+    DataSource<VehicleRentalPlace> source,
+    VertexLinker vertexLinker,
+    VehicleRentalService vehicleRentalStationService
   ) throws IllegalArgumentException {
     super(parameters);
     // Configure updater
     LOG.info("Setting up vehicle rental updater.");
 
     this.source = source;
-    if (pollingPeriodSeconds <= 0) {
+
+    // Creation of network linker library will not modify the graph
+    this.linker = vertexLinker;
+
+    // Adding a vehicle rental station service needs a graph writer runnable
+    this.service = vehicleRentalStationService;
+
+    try {
+      // Do any setup if needed
+      source.setup();
+    } catch (UpdaterConstructionException e) {
+      LOG.warn("Unable to setup updater: {}", parameters.configRef(), e);
+    }
+
+    if (pollingPeriodSeconds() <= 0) {
       LOG.info("Creating vehicle-rental updater running once only (non-polling): {}", source);
     } else {
       LOG.info(
         "Creating vehicle-rental updater running every {} seconds: {}",
-        pollingPeriodSeconds,
+        pollingPeriodSeconds(),
         source
       );
     }
@@ -70,19 +87,6 @@ public class VehicleRentalUpdater extends PollingGraphUpdater {
   public void setGraphUpdaterManager(WriteToGraphCallback saveResultOnGraph) {
     this.saveResultOnGraph = saveResultOnGraph;
   }
-
-  @Override
-  public void setup(Graph graph, TransitModel transitModel) {
-    // Creation of network linker library will not modify the graph
-    linker = graph.getLinker();
-    // Adding a vehicle rental station service needs a graph writer runnable
-    service = graph.getService(VehicleRentalStationService.class, true);
-    // Do any setup if needed
-    source.setup();
-  }
-
-  @Override
-  public void teardown() {}
 
   @Override
   public String toString() {
@@ -96,7 +100,7 @@ public class VehicleRentalUpdater extends PollingGraphUpdater {
 
   @Override
   protected void runPolling() {
-    LOG.debug("Updating vehicle rental stations from " + source);
+    LOG.debug("Updating vehicle rental stations from {}", source);
     if (!source.update()) {
       LOG.debug("No updates");
       return;

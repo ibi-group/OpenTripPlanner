@@ -5,16 +5,16 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.io.File;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
+import java.util.List;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
+import org.opentripplanner.graph_builder.issue.api.DataImportIssueStore;
 import org.opentripplanner.graph_builder.module.FakeGraph;
 import org.opentripplanner.openstreetmap.OpenStreetMapProvider;
-import org.opentripplanner.routing.edgetype.AreaEdge;
 import org.opentripplanner.routing.graph.Graph;
-import org.opentripplanner.routing.graph.Vertex;
-import org.opentripplanner.routing.trippattern.Deduplicator;
-import org.opentripplanner.transit.service.StopModel;
-import org.opentripplanner.transit.service.TransitModel;
+import org.opentripplanner.street.model.edge.AreaEdge;
+import org.opentripplanner.street.model.vertex.Vertex;
+import org.opentripplanner.transit.model.framework.Deduplicator;
 
 public class PlatformLinkerTest {
 
@@ -27,9 +27,7 @@ public class PlatformLinkerTest {
     String stairsEndpointLabel = "osm:node:1028861028";
 
     var deduplicator = new Deduplicator();
-    var stopModel = new StopModel();
-    var gg = new Graph(stopModel, deduplicator);
-    var transitModel = new TransitModel(stopModel, deduplicator);
+    var gg = new Graph(deduplicator);
 
     File file = new File(
       URLDecoder.decode(
@@ -40,12 +38,16 @@ public class PlatformLinkerTest {
 
     OpenStreetMapProvider provider = new OpenStreetMapProvider(file, false);
 
-    OpenStreetMapModule osmModule = new OpenStreetMapModule(provider);
+    OpenStreetMapModule osmModule = new OpenStreetMapModule(
+      List.of(provider),
+      Set.of(),
+      gg,
+      DataImportIssueStore.NOOP,
+      true
+    );
     osmModule.platformEntriesLinking = true;
-    osmModule.skipVisibility = false;
-    osmModule.setDefaultWayPropertySetSource(new DefaultWayPropertySetSource());
 
-    osmModule.buildGraph(gg, transitModel, new HashMap<>());
+    osmModule.buildGraph();
 
     Vertex stairsEndpoint = gg.getVertex(stairsEndpointLabel);
 

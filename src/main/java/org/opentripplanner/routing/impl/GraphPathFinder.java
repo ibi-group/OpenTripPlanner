@@ -5,14 +5,23 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 import javax.annotation.Nullable;
-import org.opentripplanner.routing.algorithm.astar.AStarBuilder;
-import org.opentripplanner.routing.algorithm.astar.TraverseVisitor;
-import org.opentripplanner.routing.api.request.RoutingRequest;
-import org.opentripplanner.routing.core.RoutingContext;
+import org.opentripplanner.astar.model.GraphPath;
+import org.opentripplanner.astar.spi.TraverseVisitor;
+import org.opentripplanner.astar.strategy.DurationSkipEdgeStrategy;
+import org.opentripplanner.astar.strategy.PathComparator;
+import org.opentripplanner.ext.dataoverlay.routing.DataOverlayContext;
+import org.opentripplanner.routing.api.request.RouteRequest;
+import org.opentripplanner.routing.api.request.preference.StreetPreferences;
 import org.opentripplanner.routing.error.PathNotFoundException;
-import org.opentripplanner.routing.spt.DominanceFunction;
-import org.opentripplanner.routing.spt.GraphPath;
+import org.opentripplanner.street.model.edge.Edge;
+import org.opentripplanner.street.model.vertex.Vertex;
+import org.opentripplanner.street.search.StreetSearchBuilder;
+import org.opentripplanner.street.search.TemporaryVerticesContainer;
+import org.opentripplanner.street.search.state.State;
+import org.opentripplanner.street.search.strategy.DominanceFunctions;
+import org.opentripplanner.street.search.strategy.EuclideanRemainingWeightHeuristic;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,7 +40,7 @@ import org.slf4j.LoggerFactory;
  * <p>
  * More information is available on the OTP wiki at: https://github.com/openplans/OpenTripPlanner/wiki/LargeGraphs
  * <p>
- * One instance of this class should be constructed per search (i.e. per RoutingRequest: it is
+ * One instance of this class should be constructed per search (i.e. per RouteRequest: it is
  * request-scoped). Its behavior is undefined if it is reused for more than one search.
  * <p>
  * It is very close to being an abstract library class with only static functions. However it turns
@@ -43,36 +52,55 @@ public class GraphPathFinder {
   private static final Logger LOG = LoggerFactory.getLogger(GraphPathFinder.class);
 
   @Nullable
-  private final TraverseVisitor traverseVisitor;
+  private final TraverseVisitor<State, Edge> traverseVisitor;
 
   private final Duration streetRoutingTimeout;
 
-  public GraphPathFinder(@Nullable TraverseVisitor traverseVisitor, Duration streetRoutingTimeout) {
+  private final DataOverlayContext dataOverlayContext;
+
+  public GraphPathFinder(
+    @Nullable TraverseVisitor<State, Edge> traverseVisitor,
+    Duration streetRoutingTimeout
+  ) {
+    this(traverseVisitor, streetRoutingTimeout, null);
+  }
+
+  public GraphPathFinder(
+    @Nullable TraverseVisitor<State, Edge> traverseVisitor,
+    Duration streetRoutingTimeout,
+    @Nullable DataOverlayContext dataOverlayContext
+  ) {
     this.traverseVisitor = traverseVisitor;
     this.streetRoutingTimeout = streetRoutingTimeout;
+    this.dataOverlayContext = dataOverlayContext;
   }
 
   /**
    * This no longer does "trip banning" to find multiple itineraries. It just searches once trying
    * to find a non-transit path.
    */
-  public List<GraphPath> getPaths(RoutingContext routingContext) {
-    if (routingContext == null) {
-      LOG.error("PathService was passed a null routing context.");
-      return null;
-    }
+  public List<GraphPath<State, Edge, Vertex>> getPaths(
+    RouteRequest request,
+    Set<Vertex> from,
+    Set<Vertex> to
+  ) {
+    StreetPreferences preferences = request.preferences().street();
 
-    RoutingRequest options = routingContext.opt;
-
-    if (options.streetSubRequestModes.isTransit()) {
-      throw new UnsupportedOperationException("Transit search not supported");
-    }
-
-    AStarBuilder aStar = AStarBuilder
-      .oneToOneMaxDuration(options.getMaxDirectStreetDuration(options.modes.directMode))
+    StreetSearchBuilder aStar = StreetSearchBuilder
+      .of()
+      .setHeuristic(new EuclideanRemainingWeightHeuristic())
+      .setSkipEdgeStrategy(
+        new DurationSkipEdgeStrategy(
+          preferences.maxDirectDuration().valueOf(request.journey().direct().mode())
+        )
+      )
       // FORCING the dominance function to weight only
-      .setDominanceFunction(new DominanceFunction.MinimumWeight())
-      .setContext(routingContext)
+      .setDominanceFunction(new DominanceFunctions.MinimumWeight())
+      .setRequest(request)
+      .setStreetRequest(request.journey().direct())
+      .setFrom(from)
+      .setTo(to)
+      .setDataOverlayContext(dataOverlayContext)
       .setTimeout(streetRoutingTimeout);
 
     // If the search has a traverseVisitor(GraphVisualizer) attached to it, set it as a callback
@@ -81,36 +109,50 @@ public class GraphPathFinder {
       aStar.setTraverseVisitor(traverseVisitor);
     }
 
-    LOG.debug("rreq={}", options);
+    LOG.debug("rreq={}", request);
 
     long searchBeginTime = System.currentTimeMillis();
     LOG.debug("BEGIN SEARCH");
 
-    List<GraphPath> paths = aStar.getPathsToTarget();
+    List<GraphPath<State, Edge, Vertex>> paths = aStar.getPathsToTarget();
 
     LOG.debug("we have {} paths", paths.size());
     LOG.debug("END SEARCH ({} msec)", System.currentTimeMillis() - searchBeginTime);
-    paths.sort(options.getPathComparator(options.arriveBy));
+    paths.sort(new PathComparator(request.arriveBy()));
     return paths;
   }
 
   /**
    * Try to find N paths through the Graph
    */
-  public List<GraphPath> graphPathFinderEntryPoint(RoutingContext routingContext) {
-    RoutingRequest request = routingContext.opt;
-    Instant reqTime = request.getDateTime().truncatedTo(ChronoUnit.SECONDS);
+  public List<GraphPath<State, Edge, Vertex>> graphPathFinderEntryPoint(
+    RouteRequest request,
+    TemporaryVerticesContainer vertexContainer
+  ) {
+    return graphPathFinderEntryPoint(
+      request,
+      vertexContainer.getFromVertices(),
+      vertexContainer.getToVertices()
+    );
+  }
 
-    List<GraphPath> paths = getPaths(routingContext);
+  public List<GraphPath<State, Edge, Vertex>> graphPathFinderEntryPoint(
+    RouteRequest request,
+    Set<Vertex> from,
+    Set<Vertex> to
+  ) {
+    Instant reqTime = request.dateTime().truncatedTo(ChronoUnit.SECONDS);
+
+    List<GraphPath<State, Edge, Vertex>> paths = getPaths(request, from, to);
 
     // Detect and report that most obnoxious of bugs: path reversal asymmetry.
     // Removing paths might result in an empty list, so do this check before the empty list check.
     if (paths != null) {
-      Iterator<GraphPath> gpi = paths.iterator();
+      Iterator<GraphPath<State, Edge, Vertex>> gpi = paths.iterator();
       while (gpi.hasNext()) {
-        GraphPath graphPath = gpi.next();
+        GraphPath<State, Edge, Vertex> graphPath = gpi.next();
         // TODO check, is it possible that arriveBy and time are modifed in-place by the search?
-        if (request.arriveBy) {
+        if (request.arriveBy()) {
           if (graphPath.states.getLast().getTime().isAfter(reqTime)) {
             LOG.error("A graph path arrives after the requested time. This implies a bug.");
             gpi.remove();
@@ -124,8 +166,8 @@ public class GraphPathFinder {
       }
     }
 
-    if (paths == null || paths.size() == 0) {
-      LOG.debug("Path not found: " + request.from + " : " + request.to);
+    if (paths == null || paths.isEmpty()) {
+      LOG.debug("Path not found: {} : {}", request.from(), request.to());
       throw new PathNotFoundException();
     }
 

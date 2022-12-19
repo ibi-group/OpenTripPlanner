@@ -5,7 +5,7 @@ import graphql.schema.DataFetchingEnvironment;
 import java.util.Map;
 import org.opentripplanner.ext.legacygraphqlapi.generated.LegacyGraphQLDataFetchers;
 import org.opentripplanner.routing.core.FareComponent;
-import org.opentripplanner.routing.core.Money;
+import org.opentripplanner.transit.model.basic.Money;
 
 public class LegacyGraphQLfareImpl implements LegacyGraphQLDataFetchers.LegacyGraphQLFare {
 
@@ -26,7 +26,7 @@ public class LegacyGraphQLfareImpl implements LegacyGraphQLDataFetchers.LegacyGr
 
   @Override
   public DataFetcher<String> type() {
-    return environment -> (String) getSource(environment).get("name");
+    return environment -> getSource(environment).get("name").toString();
   }
 
   private Map<String, Object> getSource(DataFetchingEnvironment environment) {

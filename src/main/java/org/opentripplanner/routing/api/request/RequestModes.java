@@ -6,8 +6,8 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import javax.annotation.Nonnull;
+import org.opentripplanner.framework.tostring.ToStringBuilder;
 import org.opentripplanner.transit.model.basic.MainAndSubMode;
-import org.opentripplanner.util.lang.ToStringBuilder;
 
 public class RequestModes {
 
@@ -61,14 +61,21 @@ public class RequestModes {
     );
   }
 
+  /**
+   * Return a mode builder with the defaults set.
+   */
   public static RequestModesBuilder of() {
-    return DEFAULTS.copy();
+    return DEFAULTS.copyOf();
   }
 
-  public RequestModesBuilder copy() {
+  public RequestModesBuilder copyOf() {
     return new RequestModesBuilder(this);
   }
 
+  /**
+   * Return the default set of modes with WALK for all street modes and all transit modes set.
+   * Tip: Use the {@link #of()} to change the defaults.
+   */
   public static RequestModes defaultRequestModes() {
     return DEFAULTS;
   }

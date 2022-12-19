@@ -2,15 +2,15 @@ package org.opentripplanner.model.plan.legreference;
 
 import java.time.LocalDate;
 import java.time.ZoneId;
+import org.opentripplanner.framework.time.ServiceDateUtils;
 import org.opentripplanner.model.Timetable;
-import org.opentripplanner.model.TimetableSnapshot;
-import org.opentripplanner.model.TripPattern;
 import org.opentripplanner.model.plan.ScheduledTransitLeg;
-import org.opentripplanner.routing.trippattern.TripTimes;
+import org.opentripplanner.routing.algorithm.mapping.AlertToLegMapper;
 import org.opentripplanner.transit.model.framework.FeedScopedId;
+import org.opentripplanner.transit.model.network.TripPattern;
 import org.opentripplanner.transit.model.timetable.Trip;
+import org.opentripplanner.transit.model.timetable.TripTimes;
 import org.opentripplanner.transit.service.TransitService;
-import org.opentripplanner.util.time.ServiceDateUtils;
 
 /**
  * A reference which can be used to rebuild an exact copy of a {@link ScheduledTransitLeg} using the
@@ -31,18 +31,7 @@ public record ScheduledTransitLegReference(
       return null;
     }
 
-    TripPattern tripPattern = null;
-    TimetableSnapshot timetableSnapshot = transitService.getTimetableSnapshot();
-
-    // Check if pattern is changed by real-time updater
-    if (timetableSnapshot != null) {
-      tripPattern = timetableSnapshot.getLastAddedTripPattern(tripId, serviceDate);
-    }
-
-    // Otherwise use scheduled pattern
-    if (tripPattern == null) {
-      tripPattern = transitService.getPatternForTrip(trip);
-    }
+    TripPattern tripPattern = transitService.getPatternForTrip(trip, serviceDate);
 
     // no matching pattern found anywhere
     if (tripPattern == null) {
@@ -59,7 +48,7 @@ public record ScheduledTransitLegReference(
     int boardingTime = tripTimes.getDepartureTime(fromStopPositionInPattern);
     int alightingTime = tripTimes.getArrivalTime(toStopPositionInPattern);
 
-    return new ScheduledTransitLeg(
+    ScheduledTransitLeg leg = new ScheduledTransitLeg(
       tripTimes,
       tripPattern,
       fromStopPositionInPattern,
@@ -73,5 +62,13 @@ public record ScheduledTransitLegReference(
       0, // TODO: What should we have here
       null
     );
+
+    new AlertToLegMapper(
+      transitService.getTransitAlertService(),
+      transitService::getMultiModalStationForStation
+    )
+      .addTransitAlertsToLeg(leg, false);
+
+    return leg;
   }
 }

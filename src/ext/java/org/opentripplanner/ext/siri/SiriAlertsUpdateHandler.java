@@ -9,20 +9,22 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.opentripplanner.framework.i18n.I18NString;
+import org.opentripplanner.framework.i18n.NonLocalizedString;
+import org.opentripplanner.framework.i18n.TranslatedString;
+import org.opentripplanner.framework.time.ServiceDateUtils;
 import org.opentripplanner.routing.alertpatch.AlertUrl;
 import org.opentripplanner.routing.alertpatch.EntitySelector;
 import org.opentripplanner.routing.alertpatch.StopCondition;
 import org.opentripplanner.routing.alertpatch.TimePeriod;
 import org.opentripplanner.routing.alertpatch.TransitAlert;
 import org.opentripplanner.routing.services.TransitAlertService;
-import org.opentripplanner.transit.model.basic.I18NString;
-import org.opentripplanner.transit.model.basic.NonLocalizedString;
-import org.opentripplanner.transit.model.basic.SubMode;
-import org.opentripplanner.transit.model.basic.TransitMode;
-import org.opentripplanner.transit.model.basic.TranslatedString;
 import org.opentripplanner.transit.model.framework.FeedScopedId;
+import org.opentripplanner.transit.model.timetable.Trip;
+import org.opentripplanner.transit.model.timetable.TripOnServiceDate;
+import org.opentripplanner.transit.service.DefaultTransitService;
 import org.opentripplanner.transit.service.TransitModel;
-import org.opentripplanner.util.time.ServiceDateUtils;
+import org.opentripplanner.transit.service.TransitService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import uk.org.ifopt.siri20.StopPlaceRef;
@@ -59,7 +61,7 @@ public class SiriAlertsUpdateHandler {
 
   private static final Logger LOG = LoggerFactory.getLogger(SiriAlertsUpdateHandler.class);
   private final String feedId;
-  private final TransitModel transitModel;
+  private final TransitService transitService;
   private final Set<TransitAlert> alerts = new HashSet<>();
   private TransitAlertService transitAlertService;
   /** How long before the posted start of an event it should be displayed to users */
@@ -68,7 +70,7 @@ public class SiriAlertsUpdateHandler {
 
   public SiriAlertsUpdateHandler(String feedId, TransitModel transitModel) {
     this.feedId = feedId;
-    this.transitModel = transitModel;
+    this.transitService = new DefaultTransitService(transitModel);
   }
 
   public void update(ServiceDelivery delivery) {
@@ -225,15 +227,18 @@ public class SiriAlertsUpdateHandler {
             continue;
           }
 
-          FeedScopedId stopId = siriFuzzyTripMatcher.getStop(stopPointRef.getValue());
+          FeedScopedId stopId = getStop(stopPointRef.getValue(), feedId, transitService);
 
           if (stopId == null) {
             stopId = new FeedScopedId(feedId, stopPointRef.getValue());
           }
 
-          alert.addEntity(new EntitySelector.Stop(stopId));
-          // TODO: is this correct? Should the stop conditions be in the entity selector?
-          updateStopConditions(alert, stopPoint.getStopConditions());
+          EntitySelector.Stop entitySelector = new EntitySelector.Stop(
+            stopId,
+            resolveStopConditions(stopPoint.getStopConditions())
+          );
+
+          alert.addEntity(entitySelector);
         }
       } else if (stopPlaces != null && isNotEmpty(stopPlaces.getAffectedStopPlaces())) {
         for (AffectedStopPlaceStructure stopPoint : stopPlaces.getAffectedStopPlaces()) {
@@ -242,7 +247,7 @@ public class SiriAlertsUpdateHandler {
             continue;
           }
 
-          FeedScopedId stopId = siriFuzzyTripMatcher.getStop(stopPlace.getValue());
+          FeedScopedId stopId = getStop(stopPlace.getValue(), feedId, transitService);
 
           if (stopId == null) {
             stopId = new FeedScopedId(feedId, stopPlace.getValue());
@@ -288,15 +293,20 @@ public class SiriAlertsUpdateHandler {
 
               if (!affectedStops.isEmpty()) {
                 for (AffectedStopPointStructure affectedStop : affectedStops) {
-                  FeedScopedId stop = siriFuzzyTripMatcher.getStop(
-                    affectedStop.getStopPointRef().getValue()
+                  FeedScopedId stop = getStop(
+                    affectedStop.getStopPointRef().getValue(),
+                    feedId,
+                    transitService
                   );
                   if (stop == null) {
                     stop = new FeedScopedId(feedId, affectedStop.getStopPointRef().getValue());
                   }
-                  alert.addEntity(new EntitySelector.StopAndRoute(stop, affectedRoute));
-                  // TODO: is this correct? Should the stop conditions be in the entity selector?
-                  updateStopConditions(alert, affectedStop.getStopConditions());
+                  EntitySelector.StopAndRoute entitySelector = new EntitySelector.StopAndRoute(
+                    stop,
+                    resolveStopConditions(affectedStop.getStopConditions()),
+                    affectedRoute
+                  );
+                  alert.addEntity(entitySelector);
                 }
               } else {
                 alert.addEntity(new EntitySelector.Route(affectedRoute));
@@ -342,9 +352,10 @@ public class SiriAlertsUpdateHandler {
             for (VehicleJourneyRef vehicleJourneyRef : vehicleJourneyReves) {
               List<FeedScopedId> tripIds = new ArrayList<>();
 
-              FeedScopedId tripIdFromVehicleJourney = siriFuzzyTripMatcher.getTripId(
+              FeedScopedId tripIdFromVehicleJourney = getTripId(
                 vehicleJourneyRef.getValue(),
-                feedId
+                feedId,
+                transitService
               );
 
               ZonedDateTime originAimedDepartureTime = affectedVehicleJourney.getOriginAimedDepartureTime() !=
@@ -360,30 +371,33 @@ public class SiriAlertsUpdateHandler {
 
               if (tripIdFromVehicleJourney != null) {
                 tripIds.add(tripIdFromVehicleJourney);
-              } else {
+              } else if (siriFuzzyTripMatcher != null) {
                 tripIds =
-                  siriFuzzyTripMatcher.getTripIdForInternalPlanningCodeServiceDateAndMode(
+                  siriFuzzyTripMatcher.getTripIdForInternalPlanningCodeServiceDate(
                     vehicleJourneyRef.getValue(),
-                    serviceDate,
-                    TransitMode.RAIL,
-                    SubMode.of("railReplacementBus")
+                    serviceDate
                   );
               }
 
               for (FeedScopedId tripId : tripIds) {
                 if (!affectedStops.isEmpty()) {
                   for (AffectedStopPointStructure affectedStop : affectedStops) {
-                    FeedScopedId stop = siriFuzzyTripMatcher.getStop(
-                      affectedStop.getStopPointRef().getValue()
+                    FeedScopedId stop = getStop(
+                      affectedStop.getStopPointRef().getValue(),
+                      feedId,
+                      transitService
                     );
                     if (stop == null) {
                       stop = new FeedScopedId(feedId, affectedStop.getStopPointRef().getValue());
                     }
                     // Creating unique, deterministic id for the alert
-                    alert.addEntity(new EntitySelector.StopAndTrip(stop, tripId, serviceDate));
-
-                    // TODO: is this correct? Should the stop conditions be in the entity selector?
-                    updateStopConditions(alert, affectedStop.getStopConditions());
+                    EntitySelector.StopAndTrip entitySelector = new EntitySelector.StopAndTrip(
+                      stop,
+                      tripId,
+                      serviceDate,
+                      resolveStopConditions(affectedStop.getStopConditions())
+                    );
+                    alert.addEntity(entitySelector);
                   }
                 } else {
                   alert.addEntity(new EntitySelector.Trip(tripId, serviceDate));
@@ -397,7 +411,7 @@ public class SiriAlertsUpdateHandler {
             final DataFrameRefStructure dataFrameRef = framedVehicleJourneyRef.getDataFrameRef();
             final String datedVehicleJourneyRef = framedVehicleJourneyRef.getDatedVehicleJourneyRef();
 
-            FeedScopedId tripId = siriFuzzyTripMatcher.getTripId(datedVehicleJourneyRef, feedId);
+            FeedScopedId tripId = getTripId(datedVehicleJourneyRef, feedId, transitService);
 
             if (tripId != null) {
               LocalDate serviceDate = null;
@@ -407,14 +421,23 @@ public class SiriAlertsUpdateHandler {
 
               if (!affectedStops.isEmpty()) {
                 for (AffectedStopPointStructure affectedStop : affectedStops) {
-                  FeedScopedId stop = siriFuzzyTripMatcher.getStop(
-                    affectedStop.getStopPointRef().getValue()
+                  FeedScopedId stop = getStop(
+                    affectedStop.getStopPointRef().getValue(),
+                    feedId,
+                    transitService
                   );
                   if (stop == null) {
                     stop = new FeedScopedId(feedId, affectedStop.getStopPointRef().getValue());
                   }
 
-                  alert.addEntity(new EntitySelector.StopAndTrip(stop, tripId, serviceDate));
+                  alert.addEntity(
+                    new EntitySelector.StopAndTrip(
+                      stop,
+                      tripId,
+                      serviceDate,
+                      resolveStopConditions(affectedStop.getStopConditions())
+                    )
+                  );
                 }
               } else {
                 alert.addEntity(new EntitySelector.Trip(tripId, serviceDate));
@@ -423,10 +446,6 @@ public class SiriAlertsUpdateHandler {
           }
         }
       }
-    }
-
-    if (alert.getStopConditions().isEmpty()) {
-      updateStopConditions(alert, null);
     }
 
     alert.alertType = situation.getReportType();
@@ -439,6 +458,40 @@ public class SiriAlertsUpdateHandler {
     }
 
     return alert;
+  }
+
+  private static FeedScopedId getStop(
+    String siriStopId,
+    String feedId,
+    TransitService transitService
+  ) {
+    FeedScopedId id = new FeedScopedId(feedId, siriStopId);
+    if (transitService.getRegularStop(id) != null) {
+      return id;
+    } else if (transitService.getStationById(id) != null) {
+      return id;
+    }
+
+    return null;
+  }
+
+  private static FeedScopedId getTripId(
+    String vehicleJourney,
+    String feedId,
+    TransitService transitService
+  ) {
+    Trip trip = transitService.getTripForId(new FeedScopedId(feedId, vehicleJourney));
+    if (trip != null) {
+      return trip.getId();
+    }
+    //Attempt to find trip using datedServiceJourneys
+    TripOnServiceDate tripOnServiceDate = transitService.getTripOnServiceDateById(
+      new FeedScopedId(feedId, vehicleJourney)
+    );
+    if (tripOnServiceDate != null) {
+      return tripOnServiceDate.getTrip().getId();
+    }
+    return null;
   }
 
   private long getEpochSecond(ZonedDateTime startTime) {
@@ -500,10 +553,7 @@ public class SiriAlertsUpdateHandler {
     return alertUrls;
   }
 
-  private void updateStopConditions(
-    TransitAlert alertPatch,
-    List<RoutePointTypeEnumeration> stopConditions
-  ) {
+  private Set<StopCondition> resolveStopConditions(List<RoutePointTypeEnumeration> stopConditions) {
     Set<StopCondition> alertStopConditions = new HashSet<>();
     if (stopConditions != null) {
       for (RoutePointTypeEnumeration stopCondition : stopConditions) {
@@ -531,7 +581,7 @@ public class SiriAlertsUpdateHandler {
       alertStopConditions.add(StopCondition.START_POINT);
       alertStopConditions.add(StopCondition.DESTINATION);
     }
-    alertPatch.getStopConditions().addAll(alertStopConditions);
+    return alertStopConditions;
   }
 
   /**
