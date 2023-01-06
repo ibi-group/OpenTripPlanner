@@ -79,6 +79,9 @@
         <argLine/>
         <plugin.prettier.version>0.18</plugin.prettier.version>
         <plugin.prettier.goal>write</plugin.prettier.goal>
+
+        <junit.tags.included></junit.tags.included>
+        <junit.tags.excluded>smoke-test</junit.tags.excluded>
     </properties>
 
     <distributionManagement>
@@ -151,6 +154,9 @@
                             <version>${google.dagger.version}</version>
                         </path>
                     </annotationProcessorPaths>
+                    <compilerArgs>
+                        <arg>-parameters</arg>
+                    </compilerArgs>
                 </configuration>
             </plugin>
             <plugin>
@@ -298,6 +304,8 @@
                     <!-- Jenkins needs XML test reports to determine whether the build is stable. -->
                     <disableXmlReport>true</disableXmlReport>
                     <trimStackTrace>false</trimStackTrace>
+                    <excludedGroups>${junit.tags.excluded}</excludedGroups>
+                    <groups>${junit.tags.included}</groups>
                 </configuration>
             </plugin>
             <!-- code coverage report -->
@@ -779,6 +787,12 @@
             <groupId>com.fasterxml.jackson.datatype</groupId>
             <artifactId>jackson-datatype-jsr310</artifactId>
             <version>${jackson.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.module</groupId>
+            <artifactId>jackson-module-parameter-names</artifactId>
+            <version>${jackson.version}</version>
+            <scope>test</scope>
         </dependency>
         <!--
             jersey pulls in older versions of this dependency which are binary-incompatible

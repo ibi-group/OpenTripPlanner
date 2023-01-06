@@ -1,0 +1,57 @@
+name: Smoke Tests
+
+on:
+  push:
+    branches:
+      - ibi-dev-2.x
+  pull_request:
+    branches:
+      - ibi-dev
+      - ibi-dev-2.x
+jobs:
+  smoke-tests:
+    runs-on: ubuntu-latest
+
+    env:
+      MAVEN_OPTS: -Xmx2g
+    steps:
+
+      - uses: actions/checkout@v2.3.2
+
+      - name: Set up Java
+        uses: actions/setup-java@v1
+        with:
+          java-version: 17
+
+      - name: Cache local Maven repository
+        uses: actions/cache@v2
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Cache OSM files
+        uses: actions/cache@v2
+        with:
+          path: smoke-tests/**/*.pbf
+          key: osm-2022-10-04
+          restore-keys: |
+            osm-
+
+      - name: Build jar file, compile tests
+        run: |
+          mvn --batch-mode clean package -Dmaven.test.skip -P prettierSkip
+          mvn org.apache.maven.plugins:maven-compiler-plugin:testCompile
+        
+      - name: "[Atlanta] Build graph, run OTP, run smoke tests"
+        run: scripts/smoke-tests.sh atlanta
+
+      - name: "[Houston] Build graph, run OTP, run smoke tests"
+        run: scripts/smoke-tests.sh houston
+
+      - name: "[Denver] Build graph, run OTP, run smoke tests"
+        run: scripts/smoke-tests.sh denver
+
+      - name: "[SEPTA] Build graph, run OTP, run smoke tests"
+        run: scripts/smoke-tests.sh septa
