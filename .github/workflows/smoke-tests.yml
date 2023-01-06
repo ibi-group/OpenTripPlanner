@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - ibi-dev-2.x
+      - ci-smoke-tests
   pull_request:
     branches:
       - ibi-dev
