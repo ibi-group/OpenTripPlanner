@@ -7,7 +7,7 @@ atlanta/osm.pbf:
 	${CURL} http://osm.ibi-transit.com/vex/33.654066160697056,-84.759521484375,33.994611584814606,-84.30976867675781.pbf -o $@
 
 atlanta/cobblinc.gtfs.zip:
-	${CURL} https://www.arcgis.com/sharing/rest/content/items/1ce8e370a12c41b5854d8baa21f8451c/data -o $@
+	${CURL} https://internal-test-gtfs-testing.s3.amazonaws.com/Cobblinc-static-extended-dates.zip -o $@
 
 atlanta/cobblinc-flex.gtfs.zip:
 	${CURL} https://internal-test-gtfs-testing.s3.amazonaws.com/cobblinc-gtfs-flex.zip -o $@
