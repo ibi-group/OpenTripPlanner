@@ -10,6 +10,7 @@ import org.opentripplanner.astar.spi.AStarState;
 import org.opentripplanner.ext.dataoverlay.routing.DataOverlayContext;
 import org.opentripplanner.framework.tostring.ToStringBuilder;
 import org.opentripplanner.routing.api.request.preference.RoutingPreferences;
+import org.opentripplanner.routing.vehicle_rental.RentalVehicleType;
 import org.opentripplanner.street.model.edge.Edge;
 import org.opentripplanner.street.model.edge.VehicleRentalEdge;
 import org.opentripplanner.street.model.vertex.VehicleRentalPlaceVertex;
@@ -179,7 +180,10 @@ public class State implements AStarState<State, Edge, Vertex>, Cloneable {
     boolean vehicleRentingOk;
     boolean vehicleParkAndRideOk;
     if (request.arriveBy()) {
-      vehicleRentingOk = !request.mode().includesRenting() || !isRentingVehicle();
+      vehicleRentingOk =
+        !request.mode().includesRenting() ||
+        !isRentingVehicle() &&
+        getVehicleRentalState() == VehicleRentalState.BEFORE_RENTING;
       vehicleParkAndRideOk = !parkAndRide || !isVehicleParked();
     } else {
       vehicleRentingOk =
@@ -188,6 +192,14 @@ public class State implements AStarState<State, Edge, Vertex>, Cloneable {
       vehicleParkAndRideOk = !parkAndRide || isVehicleParked();
     }
     return vehicleRentingOk && vehicleParkAndRideOk;
+  }
+
+  public RentalVehicleType.FormFactor vehicleRentalFormFactor() {
+    return stateData.rentalVehicleFormFactor;
+  }
+
+  private boolean startedInNoDropOffZone() {
+    return stateData.geofencingZonesAtStart.length > 0;
   }
 
   public double getWalkDistance() {
@@ -291,6 +303,16 @@ public class State implements AStarState<State, Edge, Vertex>, Cloneable {
   }
 
   /**
+   * Whether we know or don't know the rental network (yet).
+   * <p>
+   * When doing a arriveBy search it is possible to be in a renting state without knowing which
+   * network it is.
+   */
+  public boolean unknownRentalNetwork() {
+    return stateData.vehicleRentalNetwork == null;
+  }
+
+  /**
    * Reverse the path implicit in the given state, the path will be reversed but will have the same
    * duration. This is the result of combining the functions from GraphPath optimize and reverse.
    *
@@ -321,12 +343,19 @@ public class State implements AStarState<State, Edge, Vertex>, Cloneable {
       editor.setBackMode(orig.getBackMode());
 
       if (orig.isRentingVehicle() && !orig.getBackState().isRentingVehicle()) {
-        var stationVertex = ((VehicleRentalPlaceVertex) orig.vertex);
-        editor.dropOffRentedVehicleAtStation(
-          ((VehicleRentalEdge) edge).formFactor,
-          stationVertex.getStation().getNetwork(),
-          false
-        );
+        if (orig.vertex instanceof VehicleRentalPlaceVertex stationVertex) {
+          editor.dropOffRentedVehicleAtStation(
+            ((VehicleRentalEdge) edge).formFactor,
+            stationVertex.getStation().getNetwork(),
+            false
+          );
+        } else {
+          editor.dropFloatingVehicle(
+            orig.stateData.rentalVehicleFormFactor,
+            orig.getVehicleRentalNetwork(),
+            false
+          );
+        }
       } else if (!orig.isRentingVehicle() && orig.getBackState().isRentingVehicle()) {
         var stationVertex = ((VehicleRentalPlaceVertex) orig.vertex);
         if (orig.getBackState().isRentingVehicleFromStation()) {
@@ -427,7 +456,7 @@ public class State implements AStarState<State, Edge, Vertex>, Cloneable {
   }
 
   /**
-   * This exception is thrown when an edge has a negative weight. Dijkstra's algorithm (and A*) don't
+   * This exception is thrown when an edge has a negative weight. Dijkstra' algorithm (and A*) don't
    * work on graphs that have negative weights.  This exception almost always indicates a programming
    * error, but could be caused by bad GTFS data.
    */

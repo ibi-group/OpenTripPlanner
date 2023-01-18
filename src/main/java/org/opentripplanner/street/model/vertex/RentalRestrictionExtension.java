@@ -109,20 +109,28 @@ public sealed interface RentalRestrictionExtension {
 
     @Override
     public boolean traversalBanned(State state) {
-      if (state.isRentingVehicle()) {
-        return (
-          zone.traversalBanned() && zone.id().getFeedId().equals(state.getVehicleRentalNetwork())
-        );
-      } else {
-        return false;
-      }
+        if (state.isRentingVehicle()) {
+          return (
+            zone.traversalBanned() &&
+              (
+                state.unknownRentalNetwork() ||
+                  zone.id().getFeedId().equals(state.getVehicleRentalNetwork())
+              )
+          );
+        } else {
+          return false;
+        }
     }
 
     @Override
     public boolean dropOffBanned(State state) {
       if (state.isRentingVehicle()) {
         return (
-          zone.dropOffBanned() && zone.id().getFeedId().equals(state.getVehicleRentalNetwork())
+          zone.dropOffBanned() &&
+          (
+            state.unknownRentalNetwork() ||
+            zone.id().getFeedId().equals(state.getVehicleRentalNetwork())
+          )
         );
       } else {
         return false;
@@ -170,7 +178,11 @@ public sealed interface RentalRestrictionExtension {
 
     @Override
     public boolean traversalBanned(State state) {
-      return state.isRentingVehicle() && network.equals(state.getVehicleRentalNetwork());
+      if (state.getRequest().departAt()) {
+        return state.isRentingVehicle() && network.equals(state.getVehicleRentalNetwork());
+      } else {
+        return state.isRentingVehicle();
+      }
     }
 
     @Override

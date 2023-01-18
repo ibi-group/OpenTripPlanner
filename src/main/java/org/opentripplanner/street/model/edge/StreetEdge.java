@@ -31,10 +31,12 @@ import org.opentripplanner.street.model.vertex.IntersectionVertex;
 import org.opentripplanner.street.model.vertex.RentalRestrictionExtension;
 import org.opentripplanner.street.model.vertex.SplitterVertex;
 import org.opentripplanner.street.model.vertex.StreetVertex;
+import org.opentripplanner.street.model.vertex.Vertex;
 import org.opentripplanner.street.search.TraverseMode;
 import org.opentripplanner.street.search.TraverseModeSet;
 import org.opentripplanner.street.search.state.State;
 import org.opentripplanner.street.search.state.StateEditor;
+import org.opentripplanner.street.search.state.VehicleRentalState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -390,10 +392,29 @@ public class StreetEdge
 
     // if the traversal is banned for the current state because of a GBFS geofencing zone
     // we drop the vehicle and continue walking
-    if (s0.getRequest().mode().includesRenting() && tov.rentalTraversalBanned(s0)) {
-      editor = doTraverse(s0, TraverseMode.WALK, false);
+    if (currentState.getRequest().departAt() && tov.traversalBanned(currentState)) {
+      editor = doTraverse(currentState, TraverseMode.WALK, false);
       if (editor != null) {
-        editor.dropFloatingVehicle();
+        editor.dropFloatingVehicle(
+          currentState.vehicleRentalFormFactor(),
+          currentState.getVehicleRentalNetwork(),
+          currentState.getRequest().arriveBy()
+        );
+      }
+    } else if (currentState.getRequest().arriveBy() && fromv.traversalBanned(currentState)) {
+      return null;
+    } else if (
+      currentState.getRequest().arriveBy() &&
+      currentState.getVehicleRentalState() == VehicleRentalState.HAVE_RENTED &&
+      !fromv.traversalExtension().toList().isEmpty()
+    ) {
+      editor = doTraverse(currentState, TraverseMode.WALK, false);
+      if (editor != null) {
+        editor.dropFloatingVehicle(
+          currentState.vehicleRentalFormFactor(),
+          currentState.getVehicleRentalNetwork(),
+          currentState.getRequest().arriveBy()
+        );
       }
     }
     // If we are biking, or walking with a bike check if we may continue by biking or by walking
@@ -415,15 +436,30 @@ public class StreetEdge
 
     // we are transitioning into a no-drop-off zone therefore we add a second state for dropping
     // off the vehicle and walking
-    if (!fromv.rentalDropOffBanned(s0) && tov.rentalDropOffBanned(s0)) {
+    if (state != null && !fromv.rentalDropOffBanned(s0) && tov.rentalDropOffBanned(s0)) {
       StateEditor afterTraversal = doTraverse(s0, TraverseMode.WALK, false);
       if (afterTraversal != null) {
-        afterTraversal.dropFloatingVehicle();
+        afterTraversal.dropFloatingVehicle(
+          state.vehicleRentalFormFactor(),
+          state.getVehicleRentalNetwork(),
+          state.getRequest().arriveBy()
+        );
         afterTraversal.leaveNoRentalDropOffArea();
         var forkState = afterTraversal.makeState();
         forkState.addToExistingResultChain(state);
         return forkState;
       }
+    }
+    if (
+      state != null &&
+      currentState.getRequest().arriveBy() &&
+      currentState.getVehicleRentalState() == VehicleRentalState.HAVE_RENTED &&
+      !fromv.traversalExtension().toList().isEmpty()
+    ) {
+      StateEditor continueWAlking = doTraverse(currentState, TraverseMode.WALK, false);
+      var forkState = continueWAlking.makeState();
+      forkState.addToExistingResultChain(state);
+      return forkState;
     }
 
     if (canPickupAndDrive(s0) && canTraverse(TraverseMode.CAR)) {
@@ -453,6 +489,22 @@ public class StreetEdge
     }
 
     return state;
+  }
+
+  private Vertex end(State state) {
+    if (state.getRequest().departAt()) {
+      return tov;
+    } else {
+      return fromv;
+    }
+  }
+
+  private Vertex start(State state) {
+    if (state.getRequest().departAt()) {
+      return fromv;
+    } else {
+      return tov;
+    }
   }
 
   /**
