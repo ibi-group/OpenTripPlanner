@@ -140,7 +140,7 @@ public sealed interface RentalRestrictionExtension {
           )
         );
       } else {
-        return true;
+        return false;
       }
     }
 
@@ -310,7 +310,7 @@ public sealed interface RentalRestrictionExtension {
 
     @Override
     public boolean hasRestrictions() {
-      return exts.length >0;
+      return exts.length > 0;
     }
   }
 

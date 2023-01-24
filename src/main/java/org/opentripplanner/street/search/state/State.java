@@ -180,10 +180,7 @@ public class State implements AStarState<State, Edge, Vertex>, Cloneable {
     boolean vehicleRentingOk;
     boolean vehicleParkAndRideOk;
     if (request.arriveBy()) {
-      vehicleRentingOk =
-        !request.mode().includesRenting() ||
-        !isRentingVehicle() &&
-        getVehicleRentalState() == VehicleRentalState.BEFORE_RENTING;
+      vehicleRentingOk = !request.mode().includesRenting() || !isRentingVehicle();
       vehicleParkAndRideOk = !parkAndRide || !isVehicleParked();
     } else {
       vehicleRentingOk =
@@ -196,10 +193,6 @@ public class State implements AStarState<State, Edge, Vertex>, Cloneable {
 
   public RentalVehicleType.FormFactor vehicleRentalFormFactor() {
     return stateData.rentalVehicleFormFactor;
-  }
-
-  private boolean startedInNoDropOffZone() {
-    return stateData.geofencingZonesAtStart.length > 0;
   }
 
   public double getWalkDistance() {

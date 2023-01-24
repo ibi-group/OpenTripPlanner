@@ -499,14 +499,6 @@ public class StreetEdge
     }
   }
 
-  private Vertex start(State state) {
-    if (state.getRequest().departAt()) {
-      return fromv;
-    } else {
-      return tov;
-    }
-  }
-
   /**
    * Gets non-localized I18NString (Used when splitting edges)
    *
