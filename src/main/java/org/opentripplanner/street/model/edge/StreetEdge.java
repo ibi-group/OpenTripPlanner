@@ -406,7 +406,7 @@ public class StreetEdge
     } else if (
       currentState.getRequest().arriveBy() &&
       currentState.getVehicleRentalState() == VehicleRentalState.HAVE_RENTED &&
-      !fromv.traversalExtension().toList().isEmpty()
+      !fromv.rentalRestrictions().toList().isEmpty()
     ) {
       editor = doTraverse(currentState, TraverseMode.WALK, false);
       if (editor != null) {
@@ -454,7 +454,7 @@ public class StreetEdge
       state != null &&
       currentState.getRequest().arriveBy() &&
       currentState.getVehicleRentalState() == VehicleRentalState.HAVE_RENTED &&
-      !fromv.traversalExtension().toList().isEmpty()
+      !fromv.rentalRestrictions().toList().isEmpty()
     ) {
       StateEditor continueWAlking = doTraverse(currentState, TraverseMode.WALK, false);
       var forkState = continueWAlking.makeState();

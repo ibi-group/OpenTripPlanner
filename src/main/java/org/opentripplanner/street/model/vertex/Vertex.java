@@ -69,8 +69,8 @@ public abstract class Vertex implements AStarVertex<State, Edge, Vertex>, Serial
       sb.append(" lat,lng=").append(this.getCoordinate().y);
       sb.append(",").append(this.getCoordinate().x);
     }
-    if (!traversalExtension.toList().isEmpty()) {
-      sb.append(", traversalExtension=").append(traversalExtension);
+    if (!rentalRestrictions.toList().isEmpty()) {
+      sb.append(", traversalExtension=").append(rentalRestrictions);
     }
     sb.append("}");
     return sb.toString();
