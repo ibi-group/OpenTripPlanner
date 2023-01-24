@@ -401,12 +401,12 @@ public class StreetEdge
           currentState.getRequest().arriveBy()
         );
       }
-    } else if (currentState.getRequest().arriveBy() && fromv.traversalBanned(currentState)) {
+    } else if (currentState.getRequest().arriveBy() && tov.traversalBanned(currentState)) {
       return null;
     } else if (
       currentState.getRequest().arriveBy() &&
       currentState.getVehicleRentalState() == VehicleRentalState.HAVE_RENTED &&
-      !fromv.rentalRestrictions().toList().isEmpty()
+      tov.rentalRestrictions().hasRestrictions()
     ) {
       editor = doTraverse(currentState, TraverseMode.WALK, false);
       if (editor != null) {

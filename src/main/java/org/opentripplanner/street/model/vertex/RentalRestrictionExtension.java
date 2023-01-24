@@ -51,6 +51,8 @@ public sealed interface RentalRestrictionExtension {
    */
   List<RentalRestrictionExtension> toList();
 
+  boolean hasRestrictions();
+
   /**
    * List all networks that have a restriction in this extension.
    */
@@ -87,6 +89,11 @@ public sealed interface RentalRestrictionExtension {
     }
 
     @Override
+    public boolean hasRestrictions() {
+      return false;
+    }
+
+    @Override
     public List<String> networks() {
       return List.of();
     }
@@ -109,17 +116,17 @@ public sealed interface RentalRestrictionExtension {
 
     @Override
     public boolean traversalBanned(State state) {
-        if (state.isRentingVehicle()) {
-          return (
-            zone.traversalBanned() &&
-              (
-                state.unknownRentalNetwork() ||
-                  zone.id().getFeedId().equals(state.getVehicleRentalNetwork())
-              )
-          );
-        } else {
-          return false;
-        }
+      if (state.isRentingVehicle()) {
+        return (
+          zone.traversalBanned() &&
+          (
+            state.unknownRentalNetwork() ||
+            zone.id().getFeedId().equals(state.getVehicleRentalNetwork())
+          )
+        );
+      } else {
+        return false;
+      }
     }
 
     @Override
@@ -133,7 +140,7 @@ public sealed interface RentalRestrictionExtension {
           )
         );
       } else {
-        return false;
+        return true;
       }
     }
 
@@ -152,6 +159,11 @@ public sealed interface RentalRestrictionExtension {
     @Override
     public List<RentalRestrictionExtension> toList() {
       return List.of(this);
+    }
+
+    @Override
+    public boolean hasRestrictions() {
+      return true;
     }
 
     @Override
@@ -203,6 +215,11 @@ public sealed interface RentalRestrictionExtension {
     @Override
     public List<String> networks() {
       return List.of(network);
+    }
+
+    @Override
+    public boolean hasRestrictions() {
+      return true;
     }
   }
 
@@ -289,6 +306,11 @@ public sealed interface RentalRestrictionExtension {
     @Override
     public List<String> networks() {
       return Arrays.stream(exts).flatMap(e -> e.networks().stream()).toList();
+    }
+
+    @Override
+    public boolean hasRestrictions() {
+      return exts.length >0;
     }
   }
 
