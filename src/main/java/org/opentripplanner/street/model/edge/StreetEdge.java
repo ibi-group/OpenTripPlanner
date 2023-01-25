@@ -390,6 +390,22 @@ public class StreetEdge
   public State traverse(State s0) {
     final StateEditor editor;
 
+    if (
+      currentState.getRequest().arriveBy() &&
+      currentState.getBackState().getBackState() == null &&
+      tov.dropOffBanned(currentState)
+    ) {
+      currentState.stateData.startedReverseSearchInNoDropOffZone = true;
+    }
+
+    if (
+      currentState.getRequest().arriveBy() &&
+      fromv.dropOffBanned(currentState) &&
+      !tov.dropOffBanned(currentState) &&
+      currentState.stateData.startedReverseSearchInNoDropOffZone
+    ) {
+      return null;
+    }
     // if the traversal is banned for the current state because of a GBFS geofencing zone
     // we drop the vehicle and continue walking
     if (currentState.getRequest().departAt() && tov.traversalBanned(currentState)) {
@@ -406,7 +422,8 @@ public class StreetEdge
     } else if (
       currentState.getRequest().arriveBy() &&
       currentState.getVehicleRentalState() == VehicleRentalState.HAVE_RENTED &&
-      tov.rentalRestrictions().hasRestrictions()
+      fromv.rentalRestrictions().hasRestrictions() &&
+      !tov.rentalRestrictions().hasRestrictions()
     ) {
       editor = doTraverse(currentState, TraverseMode.WALK, false);
       if (editor != null) {

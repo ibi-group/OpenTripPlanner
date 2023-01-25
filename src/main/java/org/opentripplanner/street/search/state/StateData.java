@@ -46,6 +46,8 @@ public class StateData implements Cloneable {
   protected boolean enteredNoThroughTrafficArea;
 
   protected boolean insideNoRentalDropOffArea = false;
+  public boolean startedReverseSearchInNoDropOffZone;
+
   /** Private constructor, use static methods to get a set of initial states. */
   private StateData(StreetMode requestMode) {
     if (requestMode.includesDriving()) {
