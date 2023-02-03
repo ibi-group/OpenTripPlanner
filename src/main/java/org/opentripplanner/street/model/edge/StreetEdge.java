@@ -392,6 +392,7 @@ public class StreetEdge
 
     if (
       s0.getRequest().arriveBy() &&
+      s0.getBackState() != null &&
       s0.getBackState().getBackState() == null &&
       tov.rentalDropOffBanned(s0)
     ) {
