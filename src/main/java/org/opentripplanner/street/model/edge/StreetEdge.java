@@ -391,46 +391,46 @@ public class StreetEdge
     final StateEditor editor;
 
     if (
-      currentState.getRequest().arriveBy() &&
-      currentState.getBackState().getBackState() == null &&
-      tov.dropOffBanned(currentState)
+      s0.getRequest().arriveBy() &&
+      s0.getBackState().getBackState() == null &&
+      tov.rentalDropOffBanned(s0)
     ) {
-      currentState.stateData.startedReverseSearchInNoDropOffZone = true;
+      s0.stateData.startedReverseSearchInNoDropOffZone = true;
     }
 
     if (
-      currentState.getRequest().arriveBy() &&
-      fromv.dropOffBanned(currentState) &&
-      !tov.dropOffBanned(currentState) &&
-      currentState.stateData.startedReverseSearchInNoDropOffZone
+      s0.getRequest().arriveBy() &&
+      fromv.rentalDropOffBanned(s0) &&
+      !tov.rentalDropOffBanned(s0) &&
+      s0.stateData.startedReverseSearchInNoDropOffZone
     ) {
       return null;
     }
     // if the traversal is banned for the current state because of a GBFS geofencing zone
     // we drop the vehicle and continue walking
-    if (currentState.getRequest().departAt() && tov.traversalBanned(currentState)) {
-      editor = doTraverse(currentState, TraverseMode.WALK, false);
+    if (s0.getRequest().departAt() && tov.rentalTraversalBanned(s0)) {
+      editor = doTraverse(s0, TraverseMode.WALK, false);
       if (editor != null) {
         editor.dropFloatingVehicle(
-          currentState.vehicleRentalFormFactor(),
-          currentState.getVehicleRentalNetwork(),
-          currentState.getRequest().arriveBy()
+          s0.vehicleRentalFormFactor(),
+          s0.getVehicleRentalNetwork(),
+          s0.getRequest().arriveBy()
         );
       }
-    } else if (currentState.getRequest().arriveBy() && tov.traversalBanned(currentState)) {
+    } else if (s0.getRequest().arriveBy() && tov.rentalTraversalBanned(s0)) {
       return null;
     } else if (
-      currentState.getRequest().arriveBy() &&
-      currentState.getVehicleRentalState() == VehicleRentalState.HAVE_RENTED &&
+      s0.getRequest().arriveBy() &&
+      s0.getVehicleRentalState() == VehicleRentalState.HAVE_RENTED &&
       fromv.rentalRestrictions().hasRestrictions() &&
       !tov.rentalRestrictions().hasRestrictions()
     ) {
-      editor = doTraverse(currentState, TraverseMode.WALK, false);
+      editor = doTraverse(s0, TraverseMode.WALK, false);
       if (editor != null) {
         editor.dropFloatingVehicle(
-          currentState.vehicleRentalFormFactor(),
-          currentState.getVehicleRentalNetwork(),
-          currentState.getRequest().arriveBy()
+          s0.vehicleRentalFormFactor(),
+          s0.getVehicleRentalNetwork(),
+          s0.getRequest().arriveBy()
         );
       }
     }
@@ -469,11 +469,11 @@ public class StreetEdge
     }
     if (
       state != null &&
-      currentState.getRequest().arriveBy() &&
-      currentState.getVehicleRentalState() == VehicleRentalState.HAVE_RENTED &&
+      s0.getRequest().arriveBy() &&
+      s0.getVehicleRentalState() == VehicleRentalState.HAVE_RENTED &&
       !fromv.rentalRestrictions().toList().isEmpty()
     ) {
-      StateEditor continueWAlking = doTraverse(currentState, TraverseMode.WALK, false);
+      StateEditor continueWAlking = doTraverse(s0, TraverseMode.WALK, false);
       var forkState = continueWAlking.makeState();
       forkState.addToExistingResultChain(state);
       return forkState;
