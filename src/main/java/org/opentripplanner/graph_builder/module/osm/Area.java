@@ -222,7 +222,7 @@ class Area {
         waysByEndpoint.remove(otherEndpoint, firstWay);
       } else {
         // continue with this ring
-        if (waysByEndpoint.get(newFirstEndpoint) != null) {
+        if (waysByEndpoint.containsKey(newFirstEndpoint)) {
           if (constructRingsRecursive(waysByEndpoint, newRing, closedRings, newFirstEndpoint)) {
             return true;
           }

@@ -17,6 +17,6 @@ public class FloorNumberUnknownAssumedGroundLevel implements DataImportIssue {
 
   @Override
   public String getMessage() {
-    return String.format(FMT, layer, floorNumber);
+    return String.format(FMT, floorNumber);
   }
 }

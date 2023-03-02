@@ -135,7 +135,7 @@ public class UnmodifiableCollectionsSerializer extends Serializer<Object> {
         return Collections.unmodifiableSet((Set<?>) sourceCollection);
       }
     },
-    SORTED_SET(Collections.unmodifiableSortedSet(new TreeSet<Void>()).getClass()) {
+    SORTED_SET(Collections.unmodifiableSortedSet(new TreeSet<>()).getClass()) {
       @Override
       public Object create(Object sourceCollection) {
         return Collections.unmodifiableSortedSet((SortedSet<?>) sourceCollection);
@@ -147,7 +147,7 @@ public class UnmodifiableCollectionsSerializer extends Serializer<Object> {
         return Collections.unmodifiableMap((Map<?, ?>) sourceCollection);
       }
     },
-    SORTED_MAP(Collections.unmodifiableSortedMap(new TreeMap<Void, Void>()).getClass()) {
+    SORTED_MAP(Collections.unmodifiableSortedMap(new TreeMap<>()).getClass()) {
       @Override
       public Object create(Object sourceCollection) {
         return Collections.unmodifiableSortedMap((SortedMap<?, ?>) sourceCollection);
