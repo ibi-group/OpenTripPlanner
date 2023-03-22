@@ -11,6 +11,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
+import org.opentripplanner.ext.ridehailing.RideHailingService;
 import org.opentripplanner.framework.application.OTPFeature;
 import org.opentripplanner.framework.time.ServiceDateUtils;
 import org.opentripplanner.model.plan.Itinerary;
@@ -141,7 +142,8 @@ public class RoutingWorker {
       serverContext.graph().getFareService(),
       minBikeParkingDistance(request),
       serverContext.transitService().getTransitAlertService(),
-      serverContext.transitService()::getMultiModalStationForStation
+      serverContext.transitService()::getMultiModalStationForStation,
+      rideHailingServices()
     );
 
     List<Itinerary> filteredItineraries = filterChain.filter(itineraries);
@@ -176,6 +178,14 @@ public class RoutingWorker {
       debugTimingAggregator,
       serverContext.transitService()
     );
+  }
+
+  private List<RideHailingService> rideHailingServices() {
+    if (request.journey().modes().contains(StreetMode.CAR_HAILING)) {
+      return serverContext.rideHailingServices();
+    } else {
+      return List.of();
+    }
   }
 
   private static double minBikeParkingDistance(RouteRequest request) {

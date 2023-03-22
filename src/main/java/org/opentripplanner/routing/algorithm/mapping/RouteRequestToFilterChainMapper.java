@@ -1,8 +1,10 @@
 package org.opentripplanner.routing.algorithm.mapping;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import org.opentripplanner.ext.ridehailing.RideHailingService;
 import org.opentripplanner.model.plan.Itinerary;
 import org.opentripplanner.model.plan.SortOrder;
 import org.opentripplanner.routing.algorithm.filterchain.GroupBySimilarity;
@@ -36,7 +38,8 @@ public class RouteRequestToFilterChainMapper {
     FareService fareService,
     double minBikeParkingDistance,
     TransitAlertService transitAlertService,
-    Function<Station, MultiModalStation> getMultiModalStation
+    Function<Station, MultiModalStation> getMultiModalStation,
+    List<RideHailingService> rideHailingServices
   ) {
     var builder = new ItineraryListFilterChainBuilder(sortOrder);
 
@@ -83,6 +86,7 @@ public class RouteRequestToFilterChainMapper {
       .withLatestDepartureTimeLimit(filterOnLatestDepartureTime)
       .withMaxLimitReachedSubscriber(maxLimitReachedSubscriber)
       .withRemoveWalkAllTheWayResults(removeWalkAllTheWayResults)
+      .withRideHailingServices(rideHailingServices)
       .withDebugEnabled(params.debug());
 
     return builder.build();

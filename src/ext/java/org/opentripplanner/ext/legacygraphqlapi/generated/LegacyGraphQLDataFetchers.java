@@ -18,6 +18,7 @@ import org.opentripplanner.ext.legacygraphqlapi.generated.LegacyGraphQLTypes.Leg
 import org.opentripplanner.ext.legacygraphqlapi.generated.LegacyGraphQLTypes.LegacyGraphQLRelativeDirection;
 import org.opentripplanner.ext.legacygraphqlapi.generated.LegacyGraphQLTypes.LegacyGraphQLRoutingErrorCode;
 import org.opentripplanner.ext.legacygraphqlapi.generated.LegacyGraphQLTypes.LegacyGraphQLTransitMode;
+import org.opentripplanner.ext.ridehailing.model.RideEstimate;
 import org.opentripplanner.model.StopTimesInPattern;
 import org.opentripplanner.model.SystemNotice;
 import org.opentripplanner.model.TripTimeOnDate;
@@ -42,6 +43,7 @@ import org.opentripplanner.service.vehiclerental.model.VehicleRentalPlace;
 import org.opentripplanner.service.vehiclerental.model.VehicleRentalStation;
 import org.opentripplanner.service.vehiclerental.model.VehicleRentalStationUris;
 import org.opentripplanner.service.vehiclerental.model.VehicleRentalVehicle;
+import org.opentripplanner.transit.model.basic.Money;
 import org.opentripplanner.transit.model.network.Route;
 import org.opentripplanner.transit.model.network.TripPattern;
 import org.opentripplanner.transit.model.organization.Agency;
@@ -379,6 +381,8 @@ public class LegacyGraphQLDataFetchers {
 
     public DataFetcher<Boolean> rentedBike();
 
+    public DataFetcher<RideEstimate> rideHailingEstimate();
+
     public DataFetcher<Route> route();
 
     public DataFetcher<String> serviceDate();
@@ -408,6 +412,13 @@ public class LegacyGraphQLDataFetchers {
     public DataFetcher<String> date();
 
     public DataFetcher<Iterable<Object>> timeSpans();
+  }
+
+  /** An amount of money. */
+  public interface LegacyGraphQLMoney {
+    public DataFetcher<Integer> cents();
+
+    public DataFetcher<String> currency();
   }
 
   /** An object with an ID */
@@ -649,6 +660,16 @@ public class LegacyGraphQLDataFetchers {
     public DataFetcher<org.opentripplanner.ext.legacygraphqlapi.generated.LegacyGraphQLTypes.LegacyGraphQLFormFactor> formFactor();
 
     public DataFetcher<org.opentripplanner.ext.legacygraphqlapi.generated.LegacyGraphQLTypes.LegacyGraphQLPropulsionType> propulsionType();
+  }
+
+  public interface LegacyGraphQLRideHailingEstimate {
+    public DataFetcher<java.time.Duration> arrival();
+
+    public DataFetcher<Money> maxPrice();
+
+    public DataFetcher<Money> minPrice();
+
+    public DataFetcher<String> provider();
   }
 
   /**

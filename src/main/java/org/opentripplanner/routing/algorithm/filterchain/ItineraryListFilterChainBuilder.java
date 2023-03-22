@@ -10,6 +10,8 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import org.opentripplanner.ext.accessibilityscore.AccessibilityScoreFilter;
 import org.opentripplanner.ext.fares.FaresFilter;
+import org.opentripplanner.ext.ridehailing.RideHailingFilter;
+import org.opentripplanner.ext.ridehailing.RideHailingService;
 import org.opentripplanner.model.plan.Itinerary;
 import org.opentripplanner.model.plan.SortOrder;
 import org.opentripplanner.routing.algorithm.filterchain.api.TransitGeneralizedCostFilterParams;
@@ -69,6 +71,7 @@ public class ItineraryListFilterChainBuilder {
   private Function<Station, MultiModalStation> getMultiModalStation;
   private boolean removeItinerariesWithSameRoutesAndStops;
   private double minBikeParkingDistance;
+  private List<RideHailingService> rideHailingServices = List.of();
 
   public ItineraryListFilterChainBuilder(SortOrder sortOrder) {
     this.sortOrder = sortOrder;
@@ -275,6 +278,13 @@ public class ItineraryListFilterChainBuilder {
     return this;
   }
 
+  public ItineraryListFilterChainBuilder withRideHailingServices(
+    List<RideHailingService> services
+  ) {
+    this.rideHailingServices = services;
+    return this;
+  }
+
   @SuppressWarnings("CollectionAddAllCanBeReplacedWithConstructor")
   public ItineraryListFilterChain build() {
     List<ItineraryListFilter> filters = new ArrayList<>();
@@ -384,6 +394,10 @@ public class ItineraryListFilterChainBuilder {
 
     // Do the final itineraries sort
     filters.add(new SortingFilter(SortOrderComparator.comparator(sortOrder)));
+
+    if (!rideHailingServices.isEmpty()) {
+      filters.add(new RideHailingFilter(rideHailingServices));
+    }
 
     return new ItineraryListFilterChain(filters, debug);
   }

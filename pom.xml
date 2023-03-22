@@ -317,7 +317,6 @@
                     </argLine>
                     <!-- Jenkins needs XML test reports to determine whether the build is stable. -->
                     <disableXmlReport>true</disableXmlReport>
-                    <trimStackTrace>false</trimStackTrace>
                     <excludedGroups>${junit.tags.excluded}</excludedGroups>
                     <groups>${junit.tags.included}</groups>
                 </configuration>
