@@ -1,0 +1,15 @@
+{
+  "transitFeeds": [
+    {
+      "type": "gtfs",
+      "source": "https://www3.septa.org/developer/google_rail.zip",
+      "feedId": "septa-rail"
+    },
+    {
+      "type": "gtfs",
+      "source": "https://www3.septa.org/developer/google_bus.zip",
+      "feedId": "septa-bus"
+    }
+  ],
+  "fares": "combine-interlined-legs"
+}

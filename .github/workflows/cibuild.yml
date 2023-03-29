@@ -1,21 +1,15 @@
 name: OTP CI Build
-# On [push, pull_request] causes double-builds when creating PRs.
-# But triggering on push only will miss pull requests from outside authors.
-# The push event's ref is the name of the pushed branch;
-# The pull_request event's branch name is the merge target branch.
+
 on:
   push:
-    branches:
-      - master
-      - dev-1.x
-      - dev-2.x
   pull_request:
     branches:
-      - master
-      - dev-1.x
-      - dev-2.x
+      - ibi-dev
+      - ibi-dev-2.x
 jobs:
   build-linux:
+    env:
+      MAVEN_OPTS: -Xmx2g
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -45,7 +39,7 @@ jobs:
         # NAT drops them
         # https://github.com/actions/runner-images/issues/1499
         run: |
-          mvn --batch-mode jacoco:prepare-agent test jacoco:report -P prettierCheck -Dprettier.nodePath=node
+          mvn --batch-mode jacoco:prepare-agent test jacoco:report -P prettierCheck,unit-tests -Dprettier.nodePath=node
           mvn --batch-mode package -Dmaven.test.skip -P prettierSkip
 
       - name: Send coverage data to codecov.io
@@ -60,23 +54,54 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: mvn --batch-mode deploy --settings maven-settings.xml -DskipTests -DGITHUB_REPOSITORY=$GITHUB_REPOSITORY -P prettierSkip -P deployGitHub
 
-  build-windows:
-    timeout-minutes: 20
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Set up JDK 17
-        uses: actions/setup-java@v3
+      ## IBI start
+      # So that the branch name can be reference via $GITHUB_REF_SLUG.
+      - name: Inject slug/short variables
+        uses: rlespinasse/github-slug-action@v3.x
+      # Define AWS profile credentials for use by subsequent steps.
+      - name: Add profile credentials to ~/.aws/credentials
+        if: github.event_name == 'push'
+        run: ./scripts/add-aws-credentials.sh
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+      # Only prepare deploy files on push events to avoid duplicate pushes to s3 when a commit is
+      # pushed to a branch with an open pull request.
+      - name: Prepare build files for deployment to s3
+        if: github.event_name == 'push'
+        run: ./scripts/prep-build-for-deploy-from-github-actions.sh
+      # Copy build files to AWS.
+      - name: Copy build files to the otp-repo bucket
+        if: github.event_name == 'push'
+        run: |
+          aws s3 cp ./deploy s3://otp-repo --recursive --acl public-read
+      # Install mkdocs using pip for use by subsequent steps.
+      - name: Install mkdocs
+        if: github.event_name == 'push' && env.GITHUB_REF_SLUG == 'ibi-dev-2.x'
+        run: |
+          pip install mkdocs
+      # Using mkdocs produce docs for deployment.
+# FIXME: there is an error while trying to run enunciate to generate the docs
+#      - name: Prepare doc files for deployment to s3
+#        if: github.event_name == 'push' && env.GITHUB_REF_SLUG == 'ibi-dev-2.x'
+#        run: ./scripts/prep-docs-for-deploy-from-github-actions.sh
+#      # If on ibi-dev branch, then upload docs to IBI s3 buckets & cloudfront.
+# FIXME: figure out whether the same bucket should be used, or a different one should be used for 2.x docs
+#      - name: Upload docs to IBI s3 buckets & cloudfront
+#        if: github.event_name == 'push' && env.GITHUB_REF_SLUG == 'ibi-dev-2.x'
+#        run: |
+#          aws s3 cp ./target/mkdocs s3://otp-docs.ibi-transit.com --recursive --acl public-read
+      # Push notification to Teams.
+      - name: Notify us of the build status on MS Teams
+        # Release https://github.com/toko-bifrost/ms-teams-deploy-card/releases/tag/3.1.2 this matches
+        # the full length commit SHA below. This must not be changed without first reviewing the code of the newer
+        # version for potential security risks.
+        uses: toko-bifrost/ms-teams-deploy-card@dcc94e4ce4088b1e6b6de5c9a3cda4ddcbe97d2e
+        if: always()
         with:
-          java-version: 17
-          distribution: temurin
-          cache: maven
-      # on windows there are frequent failures caused by page files being too small
-      # https://github.com/actions/virtual-environments/issues/785
-      - name: Configure Windows Pagefile
-        uses: al-cheb/configure-pagefile-action@v1.3
-      - name: Run tests
-        run: mvn --batch-mode test -P prettierSkip
+          github-token: ${{ github.token }}
+          webhook-uri: ${{ secrets.MSTEAMS_WEBHOOK }}
 
   docs:
     if: github.repository_owner == 'opentripplanner'
@@ -164,7 +189,6 @@ jobs:
     if: github.repository_owner == 'opentripplanner' && github.event_name == 'push' && github.ref == 'refs/heads/dev-2.x'
     runs-on: ubuntu-latest
     needs:
-      - build-windows
       - build-linux
     steps:
       - uses: actions/checkout@v3.1.0
@@ -195,7 +219,7 @@ jobs:
 
       # March '23: we temporarily publish to both Dockerhub and Github Container Registry as the
       # Dockerhub free team registry is going away
-      - name: Build container image with Jib, push to Github Container Registry 
+      - name: Build container image with Jib, push to Github Container Registry
         env:
           CONTAINER_REPO: ghcr.io/opentripplanner/opentripplanner
           CONTAINER_REGISTRY_USER: ${{ github.repository_owner }}
