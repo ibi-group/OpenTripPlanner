@@ -6,6 +6,9 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Stream;
 import javax.annotation.Nullable;
 import org.apache.lucene.analysis.Analyzer;
@@ -46,6 +49,11 @@ import org.opentripplanner.transit.service.TransitService;
 
 public class LuceneIndex implements Serializable {
 
+  public static <T> Predicate<T> distinctByKey(Function<? super T, ?> keyExtractor) {
+    Set<Object> seen = ConcurrentHashMap.newKeySet();
+    return t -> seen.add(keyExtractor.apply(t));
+  }
+  
   private static final String TYPE = "type";
   private static final String ID = "id";
   private static final String SUGGEST = "suggest";
@@ -79,6 +87,7 @@ public class LuceneIndex implements Serializable {
       ) {
         transitService
           .listStopLocations()
+          .stream().filter(distinctByKey(StopLocation::getName))
           .forEach(stopLocation ->
             addToIndex(
               directoryWriter,
@@ -93,6 +102,7 @@ public class LuceneIndex implements Serializable {
 
         transitService
           .listStopLocationGroups()
+          .stream().filter(distinctByKey(StopLocationsGroup::getName))
           .forEach(stopLocationsGroup ->
             addToIndex(
               directoryWriter,
