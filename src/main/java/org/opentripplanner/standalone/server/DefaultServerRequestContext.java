@@ -1,7 +1,6 @@
 package org.opentripplanner.standalone.server;
 
 import io.micrometer.core.instrument.MeterRegistry;
-import java.time.Duration;
 import java.util.List;
 import java.util.Locale;
 import javax.annotation.Nullable;
@@ -36,7 +35,6 @@ public class DefaultServerRequestContext implements OtpServerRequestContext {
   private final Graph graph;
   private final TransitService transitService;
   private final TransitRoutingConfig transitRoutingConfig;
-  private final Duration streetRoutingTimeout;
   private final RouteRequest routeRequestDefaults;
   private final MeterRegistry meterRegistry;
   private final RaptorConfig<TripSchedule> raptorConfig;
@@ -56,7 +54,6 @@ public class DefaultServerRequestContext implements OtpServerRequestContext {
     Graph graph,
     TransitService transitService,
     TransitRoutingConfig transitRoutingConfig,
-    Duration streetRoutingTimeout,
     RouteRequest routeRequestDefaults,
     MeterRegistry meterRegistry,
     RaptorConfig<TripSchedule> raptorConfig,
@@ -73,7 +70,6 @@ public class DefaultServerRequestContext implements OtpServerRequestContext {
     this.graph = graph;
     this.transitService = transitService;
     this.transitRoutingConfig = transitRoutingConfig;
-    this.streetRoutingTimeout = streetRoutingTimeout;
     this.meterRegistry = meterRegistry;
     this.raptorConfig = raptorConfig;
     this.requestLogger = requestLogger;
@@ -94,7 +90,6 @@ public class DefaultServerRequestContext implements OtpServerRequestContext {
   public static DefaultServerRequestContext create(
     TransitRoutingConfig transitRoutingConfig,
     RouteRequest routeRequestDefaults,
-    Duration streetRoutingTimeout,
     RaptorConfig<TripSchedule> raptorConfig,
     Graph graph,
     TransitService transitService,
@@ -112,7 +107,6 @@ public class DefaultServerRequestContext implements OtpServerRequestContext {
       graph,
       transitService,
       transitRoutingConfig,
-      streetRoutingTimeout,
       routeRequestDefaults,
       meterRegistry,
       raptorConfig,
@@ -193,11 +187,6 @@ public class DefaultServerRequestContext implements OtpServerRequestContext {
   @Override
   public List<RideHailingService> rideHailingServices() {
     return rideHailingServices;
-  }
-
-  @Override
-  public Duration streetRoutingTimeout() {
-    return streetRoutingTimeout;
   }
 
   @Override

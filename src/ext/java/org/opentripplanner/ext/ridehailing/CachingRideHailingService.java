@@ -12,7 +12,7 @@ import org.opentripplanner.ext.ridehailing.model.RideEstimateRequest;
 import org.opentripplanner.framework.geometry.WgsCoordinate;
 
 /**
- * A base class for ride hailing services that want to cache their results.
+ * A base class for caching API responses from ride hailing services.
  */
 public abstract class CachingRideHailingService implements RideHailingService {
 
@@ -30,7 +30,9 @@ public abstract class CachingRideHailingService implements RideHailingService {
 
   protected String wheelchairAccessibleRideType;
 
-  // get the next arrivals for a specific location
+  /**
+   * Get the next arrivals for a specific location.
+   */
   @Override
   public List<ArrivalTime> arrivalTimes(WgsCoordinate coordinate) throws ExecutionException {
     return arrivalTimeCache.get(
@@ -42,7 +44,7 @@ public abstract class CachingRideHailingService implements RideHailingService {
   protected abstract List<ArrivalTime> queryArrivalTimes(WgsCoordinate position) throws IOException;
 
   /**
-   * Get the estimated trip time for a specific rideType
+   * Get the ride estimate for a specific start and end pair.
    */
   @Override
   public List<RideEstimate> rideEstimates(WgsCoordinate start, WgsCoordinate end)

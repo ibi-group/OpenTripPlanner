@@ -10,7 +10,6 @@ import com.fasterxml.jackson.databind.node.MissingNode;
 import java.io.Serializable;
 import java.time.Duration;
 import java.util.List;
-import org.opentripplanner.RideHailingServicesParameters;
 import org.opentripplanner.ext.ridehailing.RideHailingServiceParameters;
 import org.opentripplanner.ext.vectortiles.VectorTilesResource;
 import org.opentripplanner.routing.api.request.RouteRequest;
@@ -31,7 +30,6 @@ import org.slf4j.LoggerFactory;
  */
 public class RouterConfig implements Serializable {
 
-  private static final Duration DEFAULT_STREET_ROUTING_TIMEOUT = Duration.ofSeconds(5);
   private static final Logger LOG = LoggerFactory.getLogger(RouterConfig.class);
 
   public static final RouterConfig DEFAULT = new RouterConfig(
@@ -47,11 +45,10 @@ public class RouterConfig implements Serializable {
   private final String configVersion;
   private final String requestLogFile;
   private final TransmodelAPIConfig transmodelApi;
-  private final Duration streetRoutingTimeout;
   private final RouteRequest routingRequestDefaults;
   private final TransitRoutingConfig transitConfig;
   private final UpdatersParameters updatersParameters;
-  private final RideHailingServicesParameters rideHailingServiceParameters;
+  private final RideHailingServicesConfig rideHailingConfig;
   private final VectorTileConfig vectorTileLayers;
   private final FlexConfig flexConfig;
 
@@ -110,17 +107,22 @@ number of transit vehicles used in that itinerary.
           .summary("Configuration for the Transmodel GraphQL API.")
           .asObject()
       );
-    this.streetRoutingTimeout = parseStreetRoutingTimeout(root);
     this.transitConfig = new TransitRoutingConfig("transit", root);
     this.routingRequestDefaults =
       RouteRequestConfig.mapDefaultRouteRequest(root, "routingDefaults");
     this.updatersParameters = new UpdatersConfig(root);
-    this.rideHailingServiceParameters = new RideHailingServicesConfig(root);
+    this.rideHailingConfig = new RideHailingServicesConfig(root);
     this.vectorTileLayers = VectorTileConfig.mapVectorTilesParameters(root, "vectorTileLayers");
     this.flexConfig = new FlexConfig(root, "flex");
 
+    this.routingRequestDefaults.withPreferences(p ->
+        p.withStreet(s ->
+          s.withRoutingTimeout(parseStreetRoutingTimeout(root, s.original().routingTimeout()))
+        )
+      );
+
     if (logUnusedParams && LOG.isWarnEnabled()) {
-      root.logAllUnusedParameters(LOG::warn);
+      root.logAllWarnings(LOG::warn);
     }
   }
 
@@ -145,15 +147,6 @@ number of transit vehicles used in that itinerary.
     return requestLogFile;
   }
 
-  /**
-   * The preferred way to limit the search is to limit the distance for each street mode(WALK, BIKE,
-   * CAR). So the default timeout for a street search is set quite high. This is used to abort the
-   * search if the max distance is not reached within the timeout.
-   */
-  public Duration streetRoutingTimeout() {
-    return streetRoutingTimeout;
-  }
-
   public TransmodelAPIConfig transmodelApi() {
     return transmodelApi;
   }
@@ -171,7 +164,7 @@ number of transit vehicles used in that itinerary.
   }
 
   public List<RideHailingServiceParameters> rideHailingServiceParameters() {
-    return rideHailingServiceParameters.rideHailingServiceParameters();
+    return rideHailingConfig.rideHailingServiceParameters();
   }
 
   public VectorTilesResource.LayersParameters<VectorTilesResource.LayerType> vectorTileLayers() {
@@ -208,7 +201,7 @@ number of transit vehicles used in that itinerary.
    *
    * @since 2.2 - The support for the old format can be removed in version > 2.2.
    */
-  static Duration parseStreetRoutingTimeout(NodeAdapter adapter) {
+  static Duration parseStreetRoutingTimeout(NodeAdapter adapter, Duration defaultValue) {
     return adapter
       .of("streetRoutingTimeout")
       .since(V2_2)
@@ -229,6 +222,6 @@ search-window.
 The search aborts after this duration and any paths found are returned to the client.
 """
       )
-      .asDuration(DEFAULT_STREET_ROUTING_TIMEOUT);
+      .asDuration(defaultValue);
   }
 }
