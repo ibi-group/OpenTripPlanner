@@ -87,7 +87,8 @@ public class LuceneIndex implements Serializable {
       ) {
         transitService
           .listStopLocations()
-          .stream().filter(distinctByKey(StopLocation::getName))
+          .stream()
+          .filter(distinctByKey(StopLocation::getName))
           .forEach(stopLocation ->
             addToIndex(
               directoryWriter,
@@ -102,7 +103,8 @@ public class LuceneIndex implements Serializable {
 
         transitService
           .listStopLocationGroups()
-          .stream().filter(distinctByKey(StopLocationsGroup::getName))
+          .stream()
+          .filter(distinctByKey(StopLocationsGroup::getName))
           .forEach(stopLocationsGroup ->
             addToIndex(
               directoryWriter,
