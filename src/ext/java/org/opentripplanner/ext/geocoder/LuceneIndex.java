@@ -53,7 +53,7 @@ public class LuceneIndex implements Serializable {
     Set<Object> seen = ConcurrentHashMap.newKeySet();
     return t -> seen.add(keyExtractor.apply(t));
   }
-  
+
   private static final String TYPE = "type";
   private static final String ID = "id";
   private static final String SUGGEST = "suggest";
