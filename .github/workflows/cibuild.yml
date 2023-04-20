@@ -103,7 +103,7 @@ jobs:
 
       - name: Build GTFS GraphQL documentation
         run: |
-          npm install -g @magidoc/cli
+          npm install -g @magidoc/cli@3.6.4
           magidoc generate
 
       - name: Deploy docs to Github pages
