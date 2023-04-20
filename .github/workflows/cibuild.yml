@@ -9,7 +9,7 @@ on:
       - master
       - dev-1.x
       - dev-2.x
-      - graphq-docs
+      - graphql-docs
   pull_request:
     branches:
       - master
@@ -80,7 +80,6 @@ jobs:
         run: mvn --batch-mode test -P prettierSkip
 
   docs:
-    if: github.repository_owner == 'opentripplanner'
     runs-on: ubuntu-latest
     env:
       REMOTE: docs
@@ -90,17 +89,7 @@ jobs:
       MASTER_BRANCH_VERSION: 2.3.0
 
     steps:
-
       - uses: actions/checkout@v3.3.0
-        # this is necessary so that the correct credentials are put into the git configuration
-        # when we push to dev-2.x and push the HTML to the git repo
-        if: github.event_name == 'push' && (github.ref == 'refs/heads/dev-2.x' || github.ref == 'refs/heads/master')
-        with:
-          token: ${{ secrets.CHANGELOG_TOKEN }}
-
-      - uses: actions/checkout@v3.3.0
-        # for a simple PR where we don't push, we don't need any credentials
-        if: github.event_name == 'pull_request'
 
       - name: Install Python dependencies
         run: pip install -r docs/requirements.txt
@@ -110,7 +99,6 @@ jobs:
           node-version: 18
 
       - name: Build main documentation
-        if: github.event_name == 'pull_request'
         run: mkdocs build
 
       - name: Build GTFS GraphQL documentation
@@ -119,7 +107,6 @@ jobs:
           magidoc generate
 
       - name: Deploy docs to Github pages
-        if: github.event_name == 'push' && (github.ref == 'refs/heads/dev-2.x' || github.ref == 'refs/heads/master')
         run: |
           git config --global user.name 'OTP Bot'
           git config --global user.email 'bot@opentripplanner.org'
@@ -134,19 +121,15 @@ jobs:
           # mike has support for specifing the origin but then it tries to rebase the _local_ gh-pages
           # branch onto the remote which fails. that's the reason for this git hackery.
           
-          git remote add $REMOTE https://$TOKEN@github.com/opentripplanner/docs.git 
-          git fetch $REMOTE $REMOTE_BRANCH:$LOCAL_BRANCH
-
           # prefix is the root folder where to deploy the HTML, we use 'en' to emulate the URL
           # structure of readthedocs
           
           if [ ${{ github.ref }} = 'refs/heads/master' ]; 
           then
-            mike deploy --branch $LOCAL_BRANCH --prefix en --title=$MASTER_BRANCH_VERSION --update-aliases v$MASTER_BRANCH_VERSION latest
+            mike deploy --prefix en --title=$MASTER_BRANCH_VERSION --update-aliases v$MASTER_BRANCH_VERSION latest
           else
-            mike deploy --branch $LOCAL_BRANCH --prefix en dev-2.x
+            mike deploy --prefix en dev-2.x
           fi
-          git push $REMOTE $LOCAL_BRANCH:$REMOTE_BRANCH
 
   graphql-code-generation:
     if: github.repository_owner == 'opentripplanner'
