@@ -72,6 +72,18 @@ class LuceneIndexTest {
     .withCode("4456")
     .withCoordinate(52.52277, 13.41046)
     .build();
+
+  // This stop should not appear in results, as it has the same coordinates, even though it has a unique stop code
+  static RegularStop ARTS_CENTER_DUPE = stop("Arts Center")
+    .withCode("4459")
+    .withCoordinate(52.52277, 13.41046)
+    .build();
+  // This stop should also not appear in search results, although it has the same coordinates,
+  // as it is very near to the other one, has the same name, even though it has a unique stop code
+  static RegularStop ARTS_CENTER_NEARBY = stop("Arts Center")
+    .withCode("3460")
+    .withCoordinate(52.52287, 13.41056)
+    .build();
   static RegularStop ARTHUR = stop("Arthur Langford Jr Pl SW at 220")
     .withCoordinate(52.52277, 13.41046)
     .build();
@@ -90,6 +102,9 @@ class LuceneIndexTest {
         LICHTERFELDE_OST_1,
         LICHTERFELDE_OST_2,
         WESTHAFEN,
+        // The order of how these are inserted makes tests pass or fail... That's bad!
+        ARTS_CENTER_NEARBY,
+        ARTS_CENTER_DUPE,
         ARTS_CENTER,
         ARTHUR
       )
