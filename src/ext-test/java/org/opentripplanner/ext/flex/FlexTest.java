@@ -40,7 +40,7 @@ public abstract class FlexTest {
   );
 
   protected static TestOtpModel buildFlexGraph(String fileName) {
-    File file = null;
+    File file;
     try {
       file = FakeGraph.getFileForResource(fileName);
     } catch (URISyntaxException e) {

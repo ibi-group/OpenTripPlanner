@@ -8,18 +8,19 @@ import static org.opentripplanner.ext.flex.trip.UnscheduledTripTest.TestCase.tc;
 import static org.opentripplanner.model.StopTime.MISSING_VALUE;
 import static org.opentripplanner.transit.model._data.TransitModelForTest.id;
 
+import gnu.trove.set.hash.TIntHashSet;
+import java.time.LocalDate;
+import java.util.Collections;
 import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
+import java.util.Objects;
 import java.util.stream.Stream;
-import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.locationtech.jts.geom.Coordinate;
-import org.opentripplanner.TestOtpModel;
-import org.opentripplanner.ext.flex.FlexTest;
-import org.opentripplanner.framework.geometry.GeometryUtils;
+import org.opentripplanner._support.geometry.Polygons;
+import org.opentripplanner.ext.flex.FlexServiceDate;
+import org.opentripplanner.ext.flex.flexpathcalculator.DirectFlexPathCalculator;
 import org.opentripplanner.framework.time.DurationUtils;
 import org.opentripplanner.framework.time.TimeUtils;
 import org.opentripplanner.framework.tostring.ToStringBuilder;
@@ -27,24 +28,16 @@ import org.opentripplanner.model.PickDrop;
 import org.opentripplanner.model.StopTime;
 import org.opentripplanner.routing.graphfinder.NearbyStop;
 import org.opentripplanner.standalone.config.sandbox.FlexConfig;
+import org.opentripplanner.test.support.VariableSource;
 import org.opentripplanner.transit.model._data.TransitModelForTest;
-import org.opentripplanner.transit.model.framework.FeedScopedId;
 import org.opentripplanner.transit.model.site.RegularStop;
 import org.opentripplanner.transit.model.site.StopLocation;
-import org.opentripplanner.transit.service.TransitModel;
 
-/**
- * This test makes sure that one of the example feeds in the GTFS-Flex repo works. It's the City of
- * Aspen Downtown taxi service which is a completely unscheduled trip that takes you door-to-door in
- * the city.
- * <p>
- * It only contains a single stop time which in GTFS static would not work but is valid in GTFS
- * Flex.
- */
-public class UnscheduledTripTest extends FlexTest {
+public class UnscheduledTripTest {
 
   private static final int STOP_A = 0;
   private static final int STOP_B = 1;
+  private static final int STOP_C = 2;
   private static final int T10_00 = TimeUtils.hm2time(10, 0);
   private static final int T11_00 = TimeUtils.hm2time(11, 0);
   private static final int T14_00 = TimeUtils.hm2time(14, 0);
@@ -53,120 +46,50 @@ public class UnscheduledTripTest extends FlexTest {
 
   private static final StopLocation AREA_STOP = TransitModelForTest.areaStopForTest(
     "area",
-    GeometryUtils
-      .getGeometryFactory()
-      .createPolygon(
-        new Coordinate[] {
-          new Coordinate(11.0, 63.0),
-          new Coordinate(11.5, 63.0),
-          new Coordinate(11.5, 63.5),
-          new Coordinate(11.0, 63.5),
-          new Coordinate(11.0, 63.0),
-        }
-      )
+    Polygons.BERLIN
   );
-  static TransitModel transitModel;
 
-  @BeforeAll
-  static void setup() {
-    TestOtpModel model = FlexTest.buildFlexGraph(ASPEN_GTFS);
-    transitModel = model.transitModel();
-  }
+  @Nested
+  class IsUnscheduledTrip {
 
-  @Test
-  void testIsUnscheduledTrip() {
-    var scheduledStop = new StopTime();
-    scheduledStop.setArrivalTime(30);
-    scheduledStop.setDepartureTime(60);
+    private static final StopTime SCHEDULED_STOP = new StopTime();
+    private static final StopTime UNSCHEDULED_STOP = new StopTime();
 
-    var unscheduledStop = new StopTime();
-    unscheduledStop.setFlexWindowStart(30);
-    unscheduledStop.setFlexWindowEnd(300);
+    static {
+      SCHEDULED_STOP.setArrivalTime(30);
+      SCHEDULED_STOP.setDepartureTime(60);
 
-    assertFalse(isUnscheduledTrip(List.of()), "Empty stop times is not a unscheduled trip");
-    assertFalse(
-      isUnscheduledTrip(List.of(scheduledStop)),
-      "Single scheduled stop time is not unscheduled"
-    );
-    assertTrue(
-      isUnscheduledTrip(List.of(unscheduledStop)),
-      "Single unscheduled stop time is unscheduled"
-    );
-    assertTrue(
-      isUnscheduledTrip(List.of(unscheduledStop, unscheduledStop)),
-      "Two unscheduled stop times is unscheduled"
-    );
-    assertTrue(
-      isUnscheduledTrip(List.of(unscheduledStop, scheduledStop)),
-      "Unscheduled + scheduled stop times is unscheduled"
-    );
-    assertTrue(
-      isUnscheduledTrip(List.of(scheduledStop, unscheduledStop)),
-      "Scheduled + unscheduled stop times is unscheduled"
-    );
-    assertFalse(
-      isUnscheduledTrip(List.of(scheduledStop, scheduledStop)),
-      "Two scheduled stop times is not unscheduled"
-    );
-    assertFalse(
-      isUnscheduledTrip(List.of(unscheduledStop, unscheduledStop, unscheduledStop)),
-      "Three unscheduled stop times is not unscheduled"
-    );
-    assertFalse(
-      isUnscheduledTrip(List.of(scheduledStop, scheduledStop, scheduledStop)),
-      "Three scheduled stop times is not unscheduled"
-    );
-  }
+      UNSCHEDULED_STOP.setFlexWindowStart(30);
+      UNSCHEDULED_STOP.setFlexWindowEnd(300);
+    }
 
-  @Test
-  void parseAspenTaxiAsUnscheduledTrip() {
-    var flexTrips = transitModel.getAllFlexTrips();
-    assertFalse(flexTrips.isEmpty());
-    assertEquals(
-      Set.of("t_1289262_b_29084_tn_0", "t_1289257_b_28352_tn_0"),
-      flexTrips.stream().map(FlexTrip::getId).map(FeedScopedId::getId).collect(Collectors.toSet())
+    static final List<List<StopTime>> notUnscheduled = List.of(
+      List.of(),
+      List.of(SCHEDULED_STOP),
+      List.of(SCHEDULED_STOP, SCHEDULED_STOP),
+      List.of(SCHEDULED_STOP, SCHEDULED_STOP, SCHEDULED_STOP)
     );
 
-    assertEquals(
-      Set.of(UnscheduledTrip.class),
-      flexTrips.stream().map(FlexTrip::getClass).collect(Collectors.toSet())
+    @ParameterizedTest
+    @VariableSource("notUnscheduled")
+    void isNotUnscheduled(List<StopTime> stopTimes) {
+      assertFalse(isUnscheduledTrip(stopTimes));
+    }
+
+    static final List<List<StopTime>> unscheduled = List.of(
+      List.of(UNSCHEDULED_STOP),
+      List.of(UNSCHEDULED_STOP, SCHEDULED_STOP),
+      List.of(SCHEDULED_STOP, UNSCHEDULED_STOP),
+      List.of(UNSCHEDULED_STOP, UNSCHEDULED_STOP),
+      List.of(UNSCHEDULED_STOP, UNSCHEDULED_STOP, UNSCHEDULED_STOP),
+      Collections.nCopies(10, UNSCHEDULED_STOP)
     );
-  }
 
-  @Test
-  void calculateAccessTemplate() {
-    var trip = getFlexTrip();
-    var nearbyStop = getNearbyStop(trip);
-
-    var accesses = trip
-      .getFlexAccessTemplates(nearbyStop, flexDate, calculator, FlexConfig.DEFAULT)
-      .toList();
-
-    assertEquals(1, accesses.size());
-
-    var access = accesses.get(0);
-    assertEquals(0, access.fromStopIndex);
-    assertEquals(0, access.toStopIndex);
-  }
-
-  @Test
-  void calculateEgressTemplate() {
-    var trip = getFlexTrip();
-    var nearbyStop = getNearbyStop(trip);
-    var egresses = trip
-      .getFlexEgressTemplates(nearbyStop, flexDate, calculator, FlexConfig.DEFAULT)
-      .toList();
-
-    assertEquals(1, egresses.size());
-
-    var egress = egresses.get(0);
-    assertEquals(0, egress.fromStopIndex);
-    assertEquals(0, egress.toStopIndex);
-  }
-
-  @Test
-  void shouldGeneratePatternForFlexTripWithSingleStop() {
-    assertFalse(transitModel.getAllTripPatterns().isEmpty());
+    @ParameterizedTest
+    @VariableSource("unscheduled")
+    void isUnscheduled(List<StopTime> stopTimes) {
+      assertTrue(isUnscheduledTrip(stopTimes));
+    }
   }
 
   @Test
@@ -191,8 +114,8 @@ public class UnscheduledTripTest extends FlexTest {
     assertEquals(T11_00, trip.earliestDepartureTime(STOP_B));
     assertEquals(T15_00, trip.latestArrivalTime(STOP_B));
 
-    assertEquals(PickDrop.SCHEDULED, trip.getPickupType(STOP_A));
-    assertEquals(PickDrop.SCHEDULED, trip.getDropOffType(STOP_B));
+    assertEquals(PickDrop.SCHEDULED, trip.getBoardRule(STOP_A));
+    assertEquals(PickDrop.SCHEDULED, trip.getAlightRule(STOP_B));
   }
 
   @Test
@@ -216,8 +139,8 @@ public class UnscheduledTripTest extends FlexTest {
     assertEquals(T10_00, trip.earliestDepartureTime(STOP_B));
     assertEquals(T14_00, trip.latestArrivalTime(STOP_B));
 
-    assertEquals(PickDrop.SCHEDULED, trip.getPickupType(STOP_A));
-    assertEquals(PickDrop.SCHEDULED, trip.getDropOffType(STOP_B));
+    assertEquals(PickDrop.SCHEDULED, trip.getBoardRule(STOP_A));
+    assertEquals(PickDrop.SCHEDULED, trip.getAlightRule(STOP_B));
   }
 
   @Test
@@ -236,8 +159,8 @@ public class UnscheduledTripTest extends FlexTest {
       .withStopTimes(List.of(fromStopTime, toStopTime))
       .build();
 
-    assertEquals(PickDrop.SCHEDULED, trip.getPickupType(STOP_A));
-    assertEquals(PickDrop.SCHEDULED, trip.getDropOffType(STOP_B));
+    assertEquals(PickDrop.SCHEDULED, trip.getBoardRule(STOP_A));
+    assertEquals(PickDrop.SCHEDULED, trip.getAlightRule(STOP_B));
   }
 
   static Stream<TestCase> testRegularStopToAreaEarliestDepartureTimeTestCases() {
@@ -554,19 +477,83 @@ public class UnscheduledTripTest extends FlexTest {
     );
   }
 
+  static Stream<TestCase> multipleAreasEarliestDepartureTimeTestCases() {
+    var from = area("10:00", "10:05");
+    var middle = area("10:10", "10:15");
+    var to = area("10:20", "10:25");
+
+    var tc = new TestCase.Builder(from, to).withStopTimes(List.of(from, middle, to));
+
+    return Stream.of(
+      tc
+        .expected(
+          "Requested departure time is after flex service departure window start, duration 21m",
+          "10:01"
+        )
+        .request("10:01", "21m")
+        .build(),
+      tc
+        .expected(
+          "Requested departure time is before flex service departure window start, duration 1h",
+          "10:00"
+        )
+        .request("09:50", "24m")
+        .build()
+    );
+  }
+
+  @ParameterizedTest
+  @MethodSource("multipleAreasEarliestDepartureTimeTestCases")
+  void testMultipleAreasEarliestDepartureTime(TestCase tc) {
+    assertEquals(
+      timeToString(tc.expectedTime),
+      timeToString(
+        tc.trip().earliestDepartureTime(tc.requestedTime, STOP_A, STOP_C, tc.tripDuration)
+      )
+    );
+  }
+
+  @Nested
+  class FlexTemplates {
+
+    private static final DirectFlexPathCalculator CALCULATOR = new DirectFlexPathCalculator();
+
+    @Test
+    void templates() {
+      var from = area("10:00", "10:05");
+      var middle = area("10:10", "10:15");
+      var to = area("10:20", "10:25");
+
+      var trip = new TestCase.Builder(from, to)
+        .withStopTimes(List.of(from, middle, to))
+        .build()
+        .trip();
+
+      var nearbyStop = new NearbyStop(to.getStop(), 100, List.of(), null);
+      var flexServiceDate = new FlexServiceDate(
+        LocalDate.of(2023, 9, 16),
+        to.getFlexWindowStart(),
+        new TIntHashSet()
+      );
+
+      var templates = trip
+        .getFlexAccessTemplates(nearbyStop, flexServiceDate, CALCULATOR, FlexConfig.DEFAULT)
+        .toList();
+
+      assertEquals(2, templates.size());
+
+      var first = templates.get(0);
+      assertEquals(first.fromStopIndex, 0);
+      assertEquals(first.toStopIndex, 1);
+
+      var second = templates.get(1);
+      assertEquals(second.fromStopIndex, 0);
+      assertEquals(second.toStopIndex, 2);
+    }
+  }
+
   private static String timeToString(int time) {
     return TimeUtils.timeToStrCompact(time, MISSING_VALUE, "MISSING_VALUE");
-  }
-
-  private static NearbyStop getNearbyStop(FlexTrip<?, ?> trip) {
-    assertEquals(1, trip.getStops().size());
-    var stopLocation = trip.getStops().iterator().next();
-    return new NearbyStop(stopLocation, 0, List.of(), null);
-  }
-
-  private static FlexTrip<?, ?> getFlexTrip() {
-    var flexTrips = transitModel.getAllFlexTrips();
-    return flexTrips.iterator().next();
   }
 
   private static StopTime area(String startTime, String endTime) {
@@ -596,6 +583,7 @@ public class UnscheduledTripTest extends FlexTest {
   record TestCase(
     StopTime from,
     StopTime to,
+    List<StopTime> stopTimes,
     String expectedDescription,
     int expectedTime,
     int requestedTime,
@@ -606,7 +594,7 @@ public class UnscheduledTripTest extends FlexTest {
     }
 
     UnscheduledTrip trip() {
-      return UnscheduledTrip.of(id("UNSCHEDULED")).withStopTimes(List.of(from, to)).build();
+      return UnscheduledTrip.of(id("UNSCHEDULED")).withStopTimes(stopTimes).build();
     }
 
     @Override
@@ -645,6 +633,7 @@ public class UnscheduledTripTest extends FlexTest {
       private final StopTime from;
       private final StopTime to;
       private String expectedDescription;
+      private List<StopTime> stopTimes;
       private int expectedTime;
       private int requestedTime;
       private int tripDuration;
@@ -652,6 +641,11 @@ public class UnscheduledTripTest extends FlexTest {
       public Builder(StopTime from, StopTime to) {
         this.from = from;
         this.to = to;
+      }
+
+      public Builder withStopTimes(List<StopTime> stopTimes) {
+        this.stopTimes = stopTimes;
+        return this;
       }
 
       Builder expected(String expectedDescription, String expectedTime) {
@@ -676,6 +670,7 @@ public class UnscheduledTripTest extends FlexTest {
         return new TestCase(
           from,
           to,
+          Objects.requireNonNullElse(stopTimes, List.of(from, to)),
           expectedDescription,
           expectedTime,
           requestedTime,
