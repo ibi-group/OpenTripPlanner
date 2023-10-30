@@ -263,9 +263,7 @@ public class TransitRouter {
         temporaryVerticesContainer,
         serverContext,
         additionalSearchDays,
-        serverContext.flexConfig(),
-        serverContext.dataOverlayContext(accessRequest),
-        type.isEgress()
+        type
       );
 
       results.addAll(AccessEgressMapper.mapFlexAccessEgresses(flexAccessList, type.isEgress()));
