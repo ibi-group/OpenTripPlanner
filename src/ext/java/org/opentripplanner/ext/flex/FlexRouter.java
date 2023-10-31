@@ -213,12 +213,12 @@ public class FlexRouter {
         .toList();
   }
 
-  private Stream<AccessEgressAndNearbyStop> getClosestFlexTrips(
+  private Stream<TripAtNearbyStop> getClosestFlexTrips(
     Collection<NearbyStop> nearbyStops,
     boolean pickup
   ) {
     // Find all trips reachable from the nearbyStops
-    Stream<AccessEgressAndNearbyStop> flexTripsReachableFromNearbyStops = nearbyStops
+    Stream<TripAtNearbyStop> flexTripsReachableFromNearbyStops = nearbyStops
       .stream()
       .flatMap(accessEgress ->
         flexIndex
@@ -229,12 +229,12 @@ public class FlexRouter {
               ? flexTrip.isBoardingPossible(accessEgress)
               : flexTrip.isAlightingPossible(accessEgress)
           )
-          .map(flexTrip -> new AccessEgressAndNearbyStop(accessEgress, flexTrip))
+          .map(flexTrip -> new TripAtNearbyStop(accessEgress, flexTrip))
       );
 
     // Group all (NearbyStop, FlexTrip) tuples by flexTrip
-    Collection<List<AccessEgressAndNearbyStop>> groupedReachableFlexTrips = flexTripsReachableFromNearbyStops
-      .collect(Collectors.groupingBy(AccessEgressAndNearbyStop::flexTrip))
+    Collection<List<TripAtNearbyStop>> groupedReachableFlexTrips = flexTripsReachableFromNearbyStops
+      .collect(Collectors.groupingBy(TripAtNearbyStop::flexTrip))
       .values();
 
     // Get the tuple with least walking time from each group
@@ -248,5 +248,5 @@ public class FlexRouter {
       .flatMap(Optional::stream);
   }
 
-  private record AccessEgressAndNearbyStop(NearbyStop accessEgress, FlexTrip<?, ?> flexTrip) {}
+  private record TripAtNearbyStop(NearbyStop accessEgress, FlexTrip<?, ?> flexTrip) {}
 }
