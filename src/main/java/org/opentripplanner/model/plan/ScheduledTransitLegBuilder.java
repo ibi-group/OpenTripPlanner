@@ -40,6 +40,7 @@ public class ScheduledTransitLegBuilder<B extends ScheduledTransitLegBuilder<B>>
     transferToNextLeg = original.getTransferToNextLeg();
     generalizedCost = original.getGeneralizedCost();
     accessibilityScore = original.accessibilityScore();
+    zoneId = original.getZoneId();
   }
 
   public B withTripTimes(TripTimes tripTimes) {
