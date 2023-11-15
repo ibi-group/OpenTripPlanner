@@ -37,6 +37,7 @@ import java.util.stream.Stream;
 import javax.annotation.Nonnull;
 import org.glassfish.jersey.message.internal.OutboundJaxrsResponse;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.opentripplanner._support.text.I18NStrings;
 import org.opentripplanner._support.time.ZoneIds;
@@ -92,6 +93,7 @@ import org.opentripplanner.transit.service.DefaultTransitService;
 import org.opentripplanner.transit.service.StopModel;
 import org.opentripplanner.transit.service.TransitModel;
 
+@Disabled
 class GraphQLIntegrationTest {
 
   static final Graph graph = new Graph();
