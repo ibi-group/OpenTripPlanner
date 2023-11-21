@@ -15,6 +15,7 @@ import org.opentripplanner.ext.accessibilityscore.AccessibilityScoreFilter;
 import org.opentripplanner.framework.lang.Sandbox;
 import org.opentripplanner.model.plan.Itinerary;
 import org.opentripplanner.model.plan.SortOrder;
+import org.opentripplanner.model.plan.pagecursor.ItineraryPageCut;
 import org.opentripplanner.routing.algorithm.filterchain.api.TransitGeneralizedCostFilterParams;
 import org.opentripplanner.routing.algorithm.filterchain.comparator.SortOrderComparator;
 import org.opentripplanner.routing.algorithm.filterchain.deletionflagger.MaxLimitFilter;
@@ -23,6 +24,7 @@ import org.opentripplanner.routing.algorithm.filterchain.deletionflagger.NumItin
 import org.opentripplanner.routing.algorithm.filterchain.deletionflagger.NumItinerariesFilterResults;
 import org.opentripplanner.routing.algorithm.filterchain.deletionflagger.OtherThanSameLegsMaxGeneralizedCostFilter;
 import org.opentripplanner.routing.algorithm.filterchain.deletionflagger.OutsideSearchWindowFilter;
+import org.opentripplanner.routing.algorithm.filterchain.deletionflagger.PagingDuplicateFilter;
 import org.opentripplanner.routing.algorithm.filterchain.deletionflagger.RemoveBikerentalWithMostlyWalkingFilter;
 import org.opentripplanner.routing.algorithm.filterchain.deletionflagger.RemoveItinerariesWithShortStreetLeg;
 import org.opentripplanner.routing.algorithm.filterchain.deletionflagger.RemoveParkAndRideWithMostlyWalkingFilter;
@@ -52,8 +54,6 @@ import org.opentripplanner.transit.model.site.Station;
 public class ItineraryListFilterChainBuilder {
 
   private static final int NOT_SET = -1;
-  public static final String MAX_NUMBER_OF_ITINERARIES_TAG = "number-of-itineraries-filter";
-
   private final SortOrder sortOrder;
   private final List<GroupBySimilarity> groupBySimilarity = new ArrayList<>();
 
@@ -77,6 +77,7 @@ public class ItineraryListFilterChainBuilder {
   private boolean removeItinerariesWithSameRoutesAndStops;
   private double minBikeParkingDistance;
   private boolean removeTransitIfWalkingIsBetter = true;
+  private ItineraryPageCut itineraryPageCut;
 
   /**
    * Sandbox filters which decorate the itineraries with extra information.
@@ -272,6 +273,19 @@ public class ItineraryListFilterChainBuilder {
   }
 
   /**
+   * If the search is done with a page cursor that contains encoded deduplication parameters, then
+   * this function adds the filter that removes duplicates.
+   *
+   * @param itineraryPageCut contains the parameters to use for deduplication.
+   */
+  public ItineraryListFilterChainBuilder withPagingDeduplicationFilter(
+    ItineraryPageCut itineraryPageCut
+  ) {
+    this.itineraryPageCut = itineraryPageCut;
+    return this;
+  }
+
+  /**
    * If set, walk-all-the-way itineraries are removed. This happens AFTER e.g. the group-by and
    * remove-transit-with-higher-cost-than-best-on-street-only filter. This make sure that poor
    * transit itineraries are filtered away before the walk-all-the-way itinerary is removed.
@@ -336,6 +350,10 @@ public class ItineraryListFilterChainBuilder {
   @SuppressWarnings("CollectionAddAllCanBeReplacedWithConstructor")
   public ItineraryListFilterChain build() {
     List<ItineraryListFilter> filters = new ArrayList<>();
+
+    if (itineraryPageCut != null) {
+      filters.add(new DeletionFlaggingFilter(new PagingDuplicateFilter(itineraryPageCut)));
+    }
 
     filters.addAll(buildGroupByTripIdAndDistanceFilters());
 
@@ -519,6 +537,8 @@ public class ItineraryListFilterChainBuilder {
    * The filter name is dynamically created: similar-legs-filter-68p-1
    */
   private List<ItineraryListFilter> buildGroupByTripIdAndDistanceFilters() {
+    var sysTags = new ArrayList<String>();
+
     List<GroupBySimilarity> groupBy = groupBySimilarity
       .stream()
       .sorted(Comparator.comparingDouble(o -> o.groupByP))
@@ -527,16 +547,18 @@ public class ItineraryListFilterChainBuilder {
     List<ItineraryListFilter> groupByFilters = new ArrayList<>();
 
     for (GroupBySimilarity group : groupBy) {
-      String name =
+      String tag =
         "similar-legs-filter-%.0fp-%dx".formatted(
             100d * group.groupByP,
             group.maxNumOfItinerariesPerGroup
           );
+      sysTags.add(tag);
 
       List<ItineraryListFilter> nested = new ArrayList<>();
 
       if (group.nestedGroupingByAllSameStations) {
-        final String innerGroupName = name + "-group-by-all-same-stations";
+        final String innerGroupName = tag + "-group-by-all-same-stations";
+        sysTags.add(tag);
         nested.add(
           new GroupByFilter<>(
             GroupByAllSameStations::new,
@@ -549,19 +571,17 @@ public class ItineraryListFilterChainBuilder {
       }
 
       if (group.maxCostOtherLegsFactor > 1.0) {
-        nested.add(
-          new DeletionFlaggingFilter(
-            new OtherThanSameLegsMaxGeneralizedCostFilter(group.maxCostOtherLegsFactor)
-          )
-        );
+        var flagger = new OtherThanSameLegsMaxGeneralizedCostFilter(group.maxCostOtherLegsFactor);
+        sysTags.add(flagger.name());
+        nested.add(new DeletionFlaggingFilter(flagger));
       }
 
       nested.add(new SortingFilter(generalizedCostComparator()));
       nested.add(
-        new DeletionFlaggingFilter(new MaxLimitFilter(name, group.maxNumOfItinerariesPerGroup))
+        new DeletionFlaggingFilter(new MaxLimitFilter(tag, group.maxNumOfItinerariesPerGroup))
       );
 
-      nested.add(new RemoveDeletionFlagForLeastTransfersItinerary());
+      nested.add(new RemoveDeletionFlagForLeastTransfersItinerary(sysTags));
 
       groupByFilters.add(
         new GroupByFilter<>(it -> new GroupByDistance(it, group.groupByP), nested)
