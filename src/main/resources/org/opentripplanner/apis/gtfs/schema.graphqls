@@ -2446,6 +2446,12 @@ enum Qualifier {
     HAIL
 }
 
+enum MobilityProfile {
+    Wheelchair,
+    Blind,
+    ZimmerFrame
+}
+
 type QueryType {
     """Fetches an object given its ID"""
     node(
@@ -3134,6 +3140,8 @@ type QueryType {
 
         "Preferences for vehicle parking"
         parking: VehicleParkingInput
+
+        mobilityProfile: MobilityProfile
 
         ## Deprecated fields, none of these have any effect on the routing anymore
 

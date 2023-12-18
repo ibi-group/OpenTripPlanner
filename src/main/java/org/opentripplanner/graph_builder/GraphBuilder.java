@@ -5,6 +5,7 @@ import static org.opentripplanner.datastore.api.FileType.NETEX;
 import static org.opentripplanner.datastore.api.FileType.OSM;
 
 import jakarta.inject.Inject;
+import java.nio.file.Files;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -96,7 +97,8 @@ public class GraphBuilder implements Runnable {
     graphBuilder.hasTransitData = hasTransitData;
 
     if (hasOsm) {
-      graphBuilder.addModule(factory.osmModule());
+      var profileData = Files.readString("mobility-profile.csv");
+      graphBuilder.addModule(factory.osmModule(profileData));
     }
 
     if (hasGtfs) {

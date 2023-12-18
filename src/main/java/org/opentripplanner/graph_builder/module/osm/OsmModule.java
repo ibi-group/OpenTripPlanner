@@ -33,6 +33,7 @@ import org.opentripplanner.street.model.edge.StreetEdgeBuilder;
 import org.opentripplanner.street.model.vertex.BarrierVertex;
 import org.opentripplanner.street.model.vertex.IntersectionVertex;
 import org.opentripplanner.street.model.vertex.Vertex;
+import org.opentripplanner.street.model.vertex.VertexLabel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -522,6 +523,10 @@ public class OsmModule implements GraphBuilderModule {
     I18NString name = params.edgeNamer().getNameForWay(way, label);
     float carSpeed = way.getOsmProvider().getOsmTagMapper().getCarSpeedForWay(way, back);
 
+
+    // do the cost lookup from the CSV input
+    var isWhatWeWant = startEndpoint.getLabel().equals(VertexLabel.osm(891723987129313l));
+
     StreetEdgeBuilder<?> seb = new StreetEdgeBuilder<>()
       .withFromVertex(startEndpoint)
       .withToVertex(endEndpoint)
@@ -535,7 +540,8 @@ public class OsmModule implements GraphBuilderModule {
       .withRoundabout(way.isRoundabout())
       .withSlopeOverride(way.getOsmProvider().getWayPropertySet().getSlopeOverride(way))
       .withStairs(way.isSteps())
-      .withWheelchairAccessible(way.isWheelchairAccessible());
+      .withWheelchairAccessible(way.isWheelchairAccessible())
+      .withProfileCosts(Map.of(StreetEdge.MobilityProfile.Blind, 2f));
 
     if (!way.hasTag("name") && !way.hasTag("ref")) {
       seb.withBogusName(true);

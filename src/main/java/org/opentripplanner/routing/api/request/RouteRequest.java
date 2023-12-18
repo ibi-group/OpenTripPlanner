@@ -25,6 +25,7 @@ import org.opentripplanner.routing.api.response.InputField;
 import org.opentripplanner.routing.api.response.RoutingError;
 import org.opentripplanner.routing.api.response.RoutingErrorCode;
 import org.opentripplanner.routing.error.RoutingValidationException;
+import org.opentripplanner.street.model.edge.StreetEdge;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -80,6 +81,7 @@ public class RouteRequest implements Cloneable, Serializable {
   private JourneyRequest journey = new JourneyRequest();
 
   private boolean wheelchair = false;
+  private StreetEdge.MobilityProfile mobilityProfile;
 
   /* CONSTRUCTORS */
 
@@ -125,6 +127,9 @@ public class RouteRequest implements Cloneable, Serializable {
 
   public void setWheelchair(boolean wheelchair) {
     this.wheelchair = wheelchair;
+  }
+  public void setMobilityProfile(StreetEdge.MobilityProfile profile) {
+    this.mobilityProfile = mobilityProfile;
   }
 
   /**

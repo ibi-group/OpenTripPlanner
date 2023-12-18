@@ -11,6 +11,7 @@ import static org.opentripplanner.street.model.edge.StreetEdge.STAIRS_FLAG_INDEX
 import static org.opentripplanner.street.model.edge.StreetEdge.WALK_NOTHRUTRAFFIC;
 import static org.opentripplanner.street.model.edge.StreetEdge.WHEELCHAIR_ACCESSIBLE_FLAG_INDEX;
 
+import java.util.Map;
 import org.locationtech.jts.geom.LineString;
 import org.opentripplanner.framework.i18n.I18NString;
 import org.opentripplanner.framework.i18n.NonLocalizedString;
@@ -38,6 +39,7 @@ public class StreetEdgeBuilder<B extends StreetEdgeBuilder<B>> {
   private float bicycleSafetyFactor;
   private short flags;
   private StreetElevationExtension streetElevationExtension;
+  private Map<StreetEdge.MobilityProfile, Float> profileCosts;
 
   public StreetEdgeBuilder() {
     this.defaultLength = true;
@@ -59,6 +61,7 @@ public class StreetEdgeBuilder<B extends StreetEdgeBuilder<B>> {
     this.walkSafetyFactor = original.getWalkSafetyFactor();
     this.bicycleSafetyFactor = original.getBicycleSafetyFactor();
     this.flags = original.getFlags();
+    this.profileCosts = original.profileCost;
   }
 
   public StreetEdge buildAndConnect() {
@@ -246,6 +249,15 @@ public class StreetEdgeBuilder<B extends StreetEdgeBuilder<B>> {
 
   public StreetElevationExtension streetElevationExtension() {
     return streetElevationExtension;
+  }
+
+  public B withProfileCosts(Map<StreetEdge.MobilityProfile, Float> costs) {
+    this.profileCosts= costs;
+    return instance();
+  }
+
+  public Map<StreetEdge.MobilityProfile, Float> profileCosts() {
+    return profileCosts;
   }
 
   @SuppressWarnings("unchecked")

@@ -58,6 +58,7 @@ public class RouteRequestMapper {
     );
 
     callWith.argument("wheelchair", request::setWheelchair);
+    callWith.argument("wheelchair", request::setWheelchair);
     callWith.argument("numItineraries", request::setNumItineraries);
     callWith.argument("searchWindow", (Long m) -> request.setSearchWindow(Duration.ofSeconds(m)));
     callWith.argument("pageCursor", request::setPageCursorFromEncoded);

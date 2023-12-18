@@ -13,6 +13,7 @@ import org.opentripplanner.routing.api.request.RouteRequest;
 import org.opentripplanner.routing.api.request.StreetMode;
 import org.opentripplanner.routing.api.request.preference.RoutingPreferences;
 import org.opentripplanner.routing.api.request.request.VehicleRentalRequest;
+import org.opentripplanner.street.model.edge.StreetEdge;
 import org.opentripplanner.street.model.vertex.Vertex;
 import org.opentripplanner.street.search.intersection_model.IntersectionTraversalCalculator;
 import org.opentripplanner.street.search.state.State;
@@ -168,6 +169,10 @@ public class StreetSearchRequest implements AStarRequest {
       (fromEnvelope != null && fromEnvelope.intersects(vertex.getCoordinate())) ||
       (toEnvelope != null && toEnvelope.intersects(vertex.getCoordinate()))
     );
+  }
+
+  public StreetEdge.MobilityProfile mobilityProfile() {
+    return StreetEdge.MobilityProfile.Wheelchair;
   }
 
   @Nullable

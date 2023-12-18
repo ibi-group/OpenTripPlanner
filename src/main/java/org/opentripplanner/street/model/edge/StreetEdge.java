@@ -4,8 +4,10 @@ import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Stream;
@@ -85,6 +87,14 @@ public class StreetEdge
    */
   private float bicycleSafetyFactor;
 
+  public enum MobilityProfile {
+    Wheelchair,
+    Blind,
+    ZimmerFrame
+  }
+
+  public Map<MobilityProfile, Float> profileCost = new HashMap<>();
+
   /**
    * walkSafetyFactor = length * walkSafetyFactor. For example, a 100m street with a safety
    * factor of 2.0 will be considered in term of safety cost as the same as a 200m street with a
@@ -146,6 +156,7 @@ public class StreetEdge
     inAngle = lineStringInOutAngles.inAngle();
     outAngle = lineStringInOutAngles.outAngle();
     elevationExtension = builder.streetElevationExtension();
+    profileCost = builder.profileCosts();
   }
 
   public StreetEdgeBuilder<?> toBuilder() {
@@ -1102,7 +1113,8 @@ public class StreetEdge
           traverseMode,
           speed,
           walkingBike,
-          s0.getRequest().wheelchair()
+          s0.getRequest().wheelchair(),
+          s0.getRequest().mobilityProfile()
         );
         default -> otherTraversalCosts(preferences, traverseMode, walkingBike, speed);
       };
@@ -1257,8 +1269,8 @@ public class StreetEdge
     TraverseMode traverseMode,
     double speed,
     boolean walkingBike,
-    boolean wheelchair
-  ) {
+    boolean wheelchair,
+    MobilityProfile mobilityProfile) {
     double time, weight;
     if (wheelchair) {
       time = getEffectiveWalkDistance() / speed;
@@ -1297,7 +1309,8 @@ public class StreetEdge
           isStairs()
         );
     }
-
+    var profileMultiplier = profileCost.getOrDefault(mobilityProfile, 1f);
+    weight = weight * profileMultiplier;
     return new TraversalCosts(time, weight);
   }
 
