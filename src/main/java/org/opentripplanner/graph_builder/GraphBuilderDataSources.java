@@ -196,6 +196,18 @@ public class GraphBuilderDataSources {
   }
 
   /**
+   * Returns the optional data source for the mobility profile routing costs.
+   */
+  public Optional<DataSource> mobilityProfileDataSource() {
+    return Optional
+      .ofNullable(buildConfig.mobilityProfileFile)
+      .map(fileName -> {
+        var f = baseDirectory.toPath().resolve(fileName).toFile();
+        return new FileDataSource(f, FileType.CONFIG);
+      });
+  }
+
+  /**
    * Match the URI provided in the configuration with the URI of a datasource,
    * either by comparing directly the two URIs or by first prepending the OTP base directory
    * to the URI provided in the configuration.

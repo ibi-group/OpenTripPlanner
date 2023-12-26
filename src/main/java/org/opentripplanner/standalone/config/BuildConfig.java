@@ -183,6 +183,7 @@ public class BuildConfig implements OtpDataStoreConfig {
   public final ZoneId transitModelTimeZone;
 
   public final String stopConsolidationFile;
+  public final String mobilityProfileFile;
 
   /**
    * Set all parameters from the given Jackson JSON tree, applying defaults. Supplying
@@ -608,6 +609,15 @@ Netex data is also often supplied in a ZIP file.
         .since(V2_5)
         .summary(
           "Name of the CSV-formatted file in the build directory which contains the configuration for stop consolidation."
+        )
+        .asString(null);
+
+    mobilityProfileFile =
+      root
+        .of("mobilityProfileFile")
+        .since(V2_5)
+        .summary(
+          "Name of the CSV-formatted file in the build directory which contains the routing costs by mobility profile."
         )
         .asString(null);
 
