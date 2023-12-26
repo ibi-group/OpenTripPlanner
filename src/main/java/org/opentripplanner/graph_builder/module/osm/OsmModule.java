@@ -1,5 +1,6 @@
 package org.opentripplanner.graph_builder.module.osm;
 
+import com.google.common.collect.ImmutableTable;
 import com.google.common.collect.Iterables;
 import gnu.trove.iterator.TLongIterator;
 import java.util.ArrayList;
@@ -56,6 +57,7 @@ public class OsmModule implements GraphBuilderModule {
   private final SafetyValueNormalizer normalizer;
   private final VertexGenerator vertexGenerator;
   private final OsmDatabase osmdb;
+  private Map<String, ImmutableTable<String, String, Double>> mobilityProfileData;
 
   OsmModule(
     Collection<OsmProvider> providers,
@@ -106,6 +108,10 @@ public class OsmModule implements GraphBuilderModule {
 
   public Map<Vertex, Double> elevationDataOutput() {
     return elevationData;
+  }
+
+  public void setMobilityProfileData(Map<String, ImmutableTable<String, String, Double>> mobilityProfileData) {
+    this.mobilityProfileData = mobilityProfileData;
   }
 
   private record StreetEdgePair(StreetEdge main, StreetEdge back) {}
