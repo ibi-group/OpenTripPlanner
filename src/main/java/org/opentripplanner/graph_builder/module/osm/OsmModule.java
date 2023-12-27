@@ -58,6 +58,7 @@ public class OsmModule implements GraphBuilderModule {
   private final VertexGenerator vertexGenerator;
   private final OsmDatabase osmdb;
   private ImmutableTable<String, String, Map<MobilityProfile, Float>> mobilityProfileData;
+  private HashMap<String, Boolean> mappedMobilityProfileEntries;
 
   OsmModule(
     Collection<OsmProvider> providers,
@@ -149,6 +150,8 @@ public class OsmModule implements GraphBuilderModule {
     // figure out which nodes that are actually intersections
     vertexGenerator.initIntersectionNodes();
 
+    mappedMobilityProfileEntries = new HashMap<>();
+
     buildBasicGraph();
     buildWalkableAreas(!params.areaVisibility());
     validateBarriers();
@@ -178,6 +181,31 @@ public class OsmModule implements GraphBuilderModule {
     params.edgeNamer().postprocess();
 
     normalizer.applySafetyFactors();
+
+    listUnusedMobilityCosts();
+  }
+
+  /**
+   * Lists unused entries from the mobility profile data.
+   */
+  private void listUnusedMobilityCosts() {
+    var unusedEntries = new ArrayList<String>();
+
+    for (var cell : mobilityProfileData.cellSet()) {
+      String key = getNodeKey(cell.getRowKey(), cell.getColumnKey());
+      Boolean exists = mappedMobilityProfileEntries.get(key);
+      if (exists == null || !exists) {
+        unusedEntries.add(key);
+      }
+    }
+
+    if (!unusedEntries.isEmpty()) {
+      StringBuilder sb = new StringBuilder();
+      for (var entry : unusedEntries) {
+        sb.append(String.format("%n- %s", entry));
+      }
+      LOG.warn("The following mobility profile entries were not used:{}", sb);
+    }
   }
 
   /**
@@ -529,14 +557,6 @@ public class OsmModule implements GraphBuilderModule {
     I18NString name = params.edgeNamer().getNameForWay(way, label);
     float carSpeed = way.getOsmProvider().getOsmTagMapper().getCarSpeedForWay(way, back);
 
-
-    // do the cost lookup from the CSV input
-    var edgeMobilityCostMap = mobilityProfileData.get(
-      startEndpoint.getLabel().toString(),
-      endEndpoint.getLabel().toString()
-    );
-
-
     StreetEdgeBuilder<?> seb = new StreetEdgeBuilder<>()
       .withFromVertex(startEndpoint)
       .withToVertex(endEndpoint)
@@ -552,8 +572,22 @@ public class OsmModule implements GraphBuilderModule {
       .withStairs(way.isSteps())
       .withWheelchairAccessible(way.isWheelchairAccessible());
 
+    // Lookup costs by mobility profile, if any were defined.
+    String startId = startEndpoint.getLabel().toString();
+    String endId = endEndpoint.getLabel().toString();
+    var edgeMobilityCostMap = mobilityProfileData.get(
+      startId,
+      endId
+    );
     if (edgeMobilityCostMap != null) {
       seb.withProfileCosts(edgeMobilityCostMap);
+      LOG.info(
+        "Applied mobility profile costs between nodes {}-{}",
+        startId,
+        endId
+      );
+      // Keep tab of node pairs that have been mapped.
+      mappedMobilityProfileEntries.put(getNodeKey(startId, endId), true);
     }
 
     if (!way.hasTag("name") && !way.hasTag("ref")) {
@@ -569,5 +603,9 @@ public class OsmModule implements GraphBuilderModule {
     params.edgeNamer().recordEdge(way, street);
 
     return street;
+  }
+
+  private static String getNodeKey(String startId, String endId) {
+    return String.format("%s=>%s", startId, endId);
   }
 }
