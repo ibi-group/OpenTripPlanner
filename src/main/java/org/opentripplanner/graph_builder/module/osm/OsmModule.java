@@ -11,6 +11,7 @@ import java.util.Map;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.LineString;
+import org.opentripplanner.ext.mobilityprofile.MobilityProfile;
 import org.opentripplanner.framework.geometry.GeometryUtils;
 import org.opentripplanner.framework.geometry.SphericalDistanceLibrary;
 import org.opentripplanner.framework.i18n.I18NString;
@@ -34,7 +35,6 @@ import org.opentripplanner.street.model.edge.StreetEdgeBuilder;
 import org.opentripplanner.street.model.vertex.BarrierVertex;
 import org.opentripplanner.street.model.vertex.IntersectionVertex;
 import org.opentripplanner.street.model.vertex.Vertex;
-import org.opentripplanner.street.model.vertex.VertexLabel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,7 +57,7 @@ public class OsmModule implements GraphBuilderModule {
   private final SafetyValueNormalizer normalizer;
   private final VertexGenerator vertexGenerator;
   private final OsmDatabase osmdb;
-  private Map<String, ImmutableTable<String, String, Double>> mobilityProfileData;
+  private ImmutableTable<String, String, Map<MobilityProfile, Float>> mobilityProfileData;
 
   OsmModule(
     Collection<OsmProvider> providers,
@@ -110,7 +110,7 @@ public class OsmModule implements GraphBuilderModule {
     return elevationData;
   }
 
-  public void setMobilityProfileData(Map<String, ImmutableTable<String, String, Double>> mobilityProfileData) {
+  public void setMobilityProfileData(ImmutableTable<String, String, Map<MobilityProfile, Float>> mobilityProfileData) {
     this.mobilityProfileData = mobilityProfileData;
   }
 
@@ -531,7 +531,11 @@ public class OsmModule implements GraphBuilderModule {
 
 
     // do the cost lookup from the CSV input
-    var isWhatWeWant = startEndpoint.getLabel().equals(VertexLabel.osm(891723987129313l));
+    var edgeMobilityCostMap = mobilityProfileData.get(
+      startEndpoint.getLabel().toString(),
+      endEndpoint.getLabel().toString()
+    );
+
 
     StreetEdgeBuilder<?> seb = new StreetEdgeBuilder<>()
       .withFromVertex(startEndpoint)
@@ -546,8 +550,11 @@ public class OsmModule implements GraphBuilderModule {
       .withRoundabout(way.isRoundabout())
       .withSlopeOverride(way.getOsmProvider().getWayPropertySet().getSlopeOverride(way))
       .withStairs(way.isSteps())
-      .withWheelchairAccessible(way.isWheelchairAccessible())
-      .withProfileCosts(Map.of(StreetEdge.MobilityProfile.Blind, 2f));
+      .withWheelchairAccessible(way.isWheelchairAccessible());
+
+    if (edgeMobilityCostMap != null) {
+      seb.withProfileCosts(edgeMobilityCostMap);
+    }
 
     if (!way.hasTag("name") && !way.hasTag("ref")) {
       seb.withBogusName(true);

@@ -14,6 +14,7 @@ import java.util.stream.Stream;
 import javax.annotation.Nonnull;
 import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.geom.impl.PackedCoordinateSequence;
+import org.opentripplanner.ext.mobilityprofile.MobilityProfile;
 import org.opentripplanner.framework.geometry.CompactLineStringUtils;
 import org.opentripplanner.framework.geometry.DirectionUtils;
 import org.opentripplanner.framework.geometry.GeometryUtils;
@@ -86,12 +87,6 @@ public class StreetEdge
    * safety factor of 1.0.
    */
   private float bicycleSafetyFactor;
-
-  public enum MobilityProfile {
-    Wheelchair,
-    Blind,
-    ZimmerFrame
-  }
 
   public Map<MobilityProfile, Float> profileCost = new HashMap<>();
 
@@ -1270,7 +1265,8 @@ public class StreetEdge
     double speed,
     boolean walkingBike,
     boolean wheelchair,
-    MobilityProfile mobilityProfile) {
+    MobilityProfile mobilityProfile
+  ) {
     double time, weight;
     if (wheelchair) {
       time = getEffectiveWalkDistance() / speed;

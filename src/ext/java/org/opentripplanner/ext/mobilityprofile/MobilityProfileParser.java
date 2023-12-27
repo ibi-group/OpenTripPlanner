@@ -5,82 +5,55 @@ import com.google.common.collect.ImmutableTable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.opentripplanner.street.model.vertex.VertexLabel;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class MobilityProfileParser {
 
-  private record MobilityProfileEntry(
-    String timestamp, // Not actively used, so processed as text for reference.
-    String fromNode,
-    String toNode,
-    double link,
-    Map<String, Double> weightByProfile
-  ) {}
+  private static final Logger LOG = LoggerFactory.getLogger(MobilityProfileParser.class);
 
-  public static Map<String, ImmutableTable<String, String, Double>> parseData(InputStream is) {
-    List<String> profileNames = List.of(
-      "None",
-      "Some",
-      "Device",
-      "WChairM",
-      "WChairE",
-      "MScooter",
-      "Vision",
-      "Vision+",
-      "Some-Vision",
-      "Device-Vision",
-      "WChairM-Vision",
-      "WChairE-Vision",
-      "MScooter-Vision",
-      "Some-Vision+",
-      "Device-Vision+",
-      "WChairM-Vision+",
-      "WChairE-Vision+",
-      "MScooter-Vision+"
-    );
+  private MobilityProfileParser() {}
 
+  public static ImmutableTable<String, String, Map<MobilityProfile, Float>> parseData(InputStream is) {
     try {
       var reader = new CsvReader(is, StandardCharsets.UTF_8);
       reader.setDelimiter(',');
 
       reader.readHeaders();
 
-      // Process rows from the CSV file first.
-      var entries = new ArrayList<MobilityProfileEntry>();
+      // Process rows from the CSV file and build a table indexed by both the up/downstream nodes,
+      // where each value is a map of costs by mobility profile.
+      ImmutableTable.Builder<String, String, Map<MobilityProfile, Float>> tableBuilder = ImmutableTable.builder();
+      int lineNumber = 1;
       while (reader.readRecord()) {
-        String timestamp = reader.get("Timestamp");
-        String fromNode = reader.get("Upstream Node");
-        String toNode = reader.get("Downstream Node");
-        double linkWeight = Double.parseDouble(reader.get("Link"));
-        var weightMap = new HashMap<String, Double>();
-        for (var profile : profileNames) {
-          weightMap.put(profile, Double.parseDouble(reader.get(profile)));
+        try {
+          long fromNode = Long.parseLong(reader.get("Upstream Node"), 10);
+          long toNode = Long.parseLong(reader.get("Downstream Node"), 10);
+
+          var weightMap = new HashMap<MobilityProfile, Float>();
+          for (var profile : MobilityProfile.values()) {
+            weightMap.put(profile, Float.parseFloat(reader.get(profile.getText())));
+          }
+
+          tableBuilder.put(
+            VertexLabel.osm(fromNode).toString(),
+            VertexLabel.osm(toNode).toString(),
+            weightMap
+          );
+        } catch (NumberFormatException | NullPointerException e) {
+          LOG.warn(
+            "Skipping mobility profile data at line {}: missing/invalid data",
+            lineNumber
+          );
         }
-        var entry = new MobilityProfileEntry(
-          timestamp,
-          fromNode,
-          toNode,
-          linkWeight,
-          weightMap
-        );
-        entries.add(entry);
+        lineNumber++;
       }
 
-      // Build a map indexed by profile, where each value for a given profile is
-      // a table of weights indexed by both the from and the to node.
-      var processedMobilityData = new HashMap<String, ImmutableTable<String, String, Double>>();
-      for (var profile : profileNames) {
-        ImmutableTable.Builder<String, String, Double> tableBuilder = ImmutableTable.builder();
-        for (var entry : entries) {
-          tableBuilder.put(entry.fromNode, entry.toNode, entry.weightByProfile.get(profile));
-        }
-        processedMobilityData.put(profile, tableBuilder.build());
-      }
-
-      return processedMobilityData;
+      return tableBuilder.build();
     } catch (IOException e) {
       throw new RuntimeException(e);
     }

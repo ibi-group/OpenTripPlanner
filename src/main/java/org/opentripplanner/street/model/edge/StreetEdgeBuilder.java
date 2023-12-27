@@ -13,6 +13,7 @@ import static org.opentripplanner.street.model.edge.StreetEdge.WHEELCHAIR_ACCESS
 
 import java.util.Map;
 import org.locationtech.jts.geom.LineString;
+import org.opentripplanner.ext.mobilityprofile.MobilityProfile;
 import org.opentripplanner.framework.i18n.I18NString;
 import org.opentripplanner.framework.i18n.NonLocalizedString;
 import org.opentripplanner.framework.lang.BitSetUtils;
@@ -39,7 +40,7 @@ public class StreetEdgeBuilder<B extends StreetEdgeBuilder<B>> {
   private float bicycleSafetyFactor;
   private short flags;
   private StreetElevationExtension streetElevationExtension;
-  private Map<StreetEdge.MobilityProfile, Float> profileCosts;
+  private Map<MobilityProfile, Float> profileCosts;
 
   public StreetEdgeBuilder() {
     this.defaultLength = true;
@@ -251,12 +252,12 @@ public class StreetEdgeBuilder<B extends StreetEdgeBuilder<B>> {
     return streetElevationExtension;
   }
 
-  public B withProfileCosts(Map<StreetEdge.MobilityProfile, Float> costs) {
-    this.profileCosts= costs;
+  public B withProfileCosts(Map<MobilityProfile, Float> costs) {
+    this.profileCosts = costs;
     return instance();
   }
 
-  public Map<StreetEdge.MobilityProfile, Float> profileCosts() {
+  public Map<MobilityProfile, Float> profileCosts() {
     return profileCosts;
   }
 
