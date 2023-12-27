@@ -106,8 +106,7 @@ public class GraphBuilder implements Runnable {
       if (mobilityDataSource.isPresent()) {
         // Parse stuff from the mobility profile CSV
         try (var inputStream = mobilityDataSource.get().asInputStream()) {
-          var mobilityProfileData = MobilityProfileParser.parseData(inputStream);
-          osmModule.setMobilityProfileData(mobilityProfileData);
+          osmModule.setMobilityProfileData(MobilityProfileParser.parseData(inputStream));
         } catch (IOException e) {
           throw new RuntimeException(e);
         }

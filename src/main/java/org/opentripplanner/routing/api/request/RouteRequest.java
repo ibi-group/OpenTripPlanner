@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.function.Consumer;
 import javax.annotation.Nullable;
+import org.opentripplanner.ext.mobilityprofile.MobilityProfile;
 import org.opentripplanner.framework.collection.ListSection;
 import org.opentripplanner.framework.time.DateUtils;
 import org.opentripplanner.framework.tostring.ToStringBuilder;
@@ -25,7 +26,6 @@ import org.opentripplanner.routing.api.response.InputField;
 import org.opentripplanner.routing.api.response.RoutingError;
 import org.opentripplanner.routing.api.response.RoutingErrorCode;
 import org.opentripplanner.routing.error.RoutingValidationException;
-import org.opentripplanner.street.model.edge.StreetEdge;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -81,7 +81,8 @@ public class RouteRequest implements Cloneable, Serializable {
   private JourneyRequest journey = new JourneyRequest();
 
   private boolean wheelchair = false;
-  private StreetEdge.MobilityProfile mobilityProfile;
+
+  private MobilityProfile mobilityProfile;
 
   /* CONSTRUCTORS */
 
@@ -128,8 +129,16 @@ public class RouteRequest implements Cloneable, Serializable {
   public void setWheelchair(boolean wheelchair) {
     this.wheelchair = wheelchair;
   }
-  public void setMobilityProfile(StreetEdge.MobilityProfile profile) {
-    this.mobilityProfile = mobilityProfile;
+
+  /**
+   * Applicable mobility profile for street routing
+   */
+  public MobilityProfile mobilityProfile() {
+    return mobilityProfile;
+  }
+
+  public void setMobilityProfile(MobilityProfile profile) {
+    this.mobilityProfile = profile;
   }
 
   /**
