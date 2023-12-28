@@ -29,7 +29,6 @@ import org.opentripplanner.street.model.RentalFormFactor;
 import org.opentripplanner.street.model.RentalRestrictionExtension;
 import org.opentripplanner.street.model.edge.StreetEdge;
 import org.opentripplanner.street.model.vertex.VertexFactory;
-import org.opentripplanner.street.model.vertex.VertexLabel;
 import org.opentripplanner.street.search.TraverseMode;
 import org.opentripplanner.street.search.TraverseModeSet;
 import org.opentripplanner.transit.model.framework.FeedScopedId;
@@ -231,10 +230,6 @@ public class VehicleRentalUpdater extends PollingGraphUpdater {
         tempEdgesByStation.get(station).disposeEdges();
         tempEdgesByStation.remove(station);
       }
-
-      var vertex = graph.getVertex(VertexLabel.osm(139204728343L));
-
-      vertex.getOutgoingStreetEdges().stream().filter(e -> e.getToVertex().)
 
       // this check relies on the generated equals for the record which also recursively checks that
       // the JTS geometries are equal
