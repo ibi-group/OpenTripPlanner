@@ -204,7 +204,7 @@ public class OsmModule implements GraphBuilderModule {
       for (var entry : unusedEntries) {
         sb.append(String.format("%n- %s", entry));
       }
-      LOG.warn("The following mobility profile entries were not used:{}", sb);
+      LOG.warn("{} mobility profile entries were not used:{}", unusedEntries.size(), sb);
     }
   }
 
