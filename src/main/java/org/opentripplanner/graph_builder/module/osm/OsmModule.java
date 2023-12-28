@@ -586,7 +586,7 @@ public class OsmModule implements GraphBuilderModule {
         startId,
         endId
       );
-      // Keep tab of node pairs that have been mapped.
+      // Keep tab of node pairs for which mobility profile costs have been mapped.
       mappedMobilityProfileEntries.put(getNodeKey(startId, endId), true);
     }
 

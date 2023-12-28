@@ -1,5 +1,8 @@
 package org.opentripplanner.ext.mobilityprofile;
 
+/**
+ * Enumeration for the mobility profiles, and their associated column names for CSV parsing.
+ */
 public enum MobilityProfile {
   NONE("None"),
   SOME("Some"),
