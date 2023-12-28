@@ -2,6 +2,7 @@ package org.opentripplanner.street.search.request;
 
 import java.time.Instant;
 import java.util.function.Consumer;
+import org.opentripplanner.ext.mobilityprofile.MobilityProfile;
 import org.opentripplanner.model.GenericLocation;
 import org.opentripplanner.routing.api.request.StreetMode;
 import org.opentripplanner.routing.api.request.preference.RoutingPreferences;
@@ -18,6 +19,8 @@ public class StreetSearchRequestBuilder {
   GenericLocation from;
   GenericLocation to;
 
+  MobilityProfile mobilityProfile;
+
   StreetSearchRequestBuilder(StreetSearchRequest original) {
     this.startTime = original.startTime();
     this.mode = original.mode();
@@ -27,6 +30,7 @@ public class StreetSearchRequestBuilder {
     this.rental = original.rental();
     this.from = original.from();
     this.to = original.to();
+    this.mobilityProfile = original.mobilityProfile();
   }
 
   public StreetSearchRequestBuilder withStartTime(Instant startTime) {
@@ -55,6 +59,11 @@ public class StreetSearchRequestBuilder {
 
   public StreetSearchRequestBuilder withWheelchair(boolean wheelchair) {
     this.wheelchair = wheelchair;
+    return this;
+  }
+
+  public StreetSearchRequestBuilder withMobilityProfile(MobilityProfile profile) {
+    this.mobilityProfile = profile;
     return this;
   }
 

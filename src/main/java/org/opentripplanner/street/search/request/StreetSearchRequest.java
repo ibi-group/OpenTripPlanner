@@ -52,6 +52,8 @@ public class StreetSearchRequest implements AStarRequest {
 
   private DataOverlayContext dataOverlayContext;
 
+  private MobilityProfile mobilityProfile;
+
   /**
    * Constructor only used for creating a default instance.
    */
@@ -79,6 +81,7 @@ public class StreetSearchRequest implements AStarRequest {
     this.fromEnvelope = createEnvelope(from);
     this.to = builder.to;
     this.toEnvelope = createEnvelope(to);
+    this.mobilityProfile = builder.mobilityProfile;
   }
 
   @Nonnull
@@ -172,7 +175,7 @@ public class StreetSearchRequest implements AStarRequest {
   }
 
   public MobilityProfile mobilityProfile() {
-    return MobilityProfile.WCHAIRM;
+    return mobilityProfile;
   }
 
   @Nullable

@@ -252,6 +252,7 @@ public class RouteRequestMapper {
       "locale",
       (String v) -> request.setLocale(GraphQLUtils.getLocale(environment, v))
     );
+    callWith.argument("mobilityProfile", request::setMobilityProfileFromString);
     return request;
   }
 

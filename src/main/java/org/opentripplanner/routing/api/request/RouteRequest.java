@@ -141,6 +141,10 @@ public class RouteRequest implements Cloneable, Serializable {
     this.mobilityProfile = profile;
   }
 
+  public void setMobilityProfileFromString(String profile) {
+    this.mobilityProfile = MobilityProfile.fromString(profile);
+  }
+
   /**
    * The epoch date/time in seconds that the trip should depart (or arrive, for requests where
    * arriveBy is true)

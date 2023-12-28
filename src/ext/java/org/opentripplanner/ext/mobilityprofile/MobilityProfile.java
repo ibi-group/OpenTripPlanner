@@ -32,4 +32,18 @@ public enum MobilityProfile {
   public String getText() {
     return text;
   }
+
+  @Override
+  public String toString() {
+    return text;
+  }
+
+  public static MobilityProfile fromString(String value) {
+    for (MobilityProfile p : MobilityProfile.values()) {
+      if (p.text.equals(value)) {
+        return p;
+      }
+    }
+    throw new RuntimeException(String.format("Invalid mobility profile '%s'", value));
+  }
 }
