@@ -11,6 +11,7 @@ import com.google.transit.realtime.GtfsRealtime.Alert.SeverityLevel;
 import com.google.transit.realtime.GtfsRealtime.TranslatedString.Translation;
 import com.google.transit.realtime.GtfsRealtime.TripDescriptor;
 import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map.Entry;
@@ -32,6 +33,8 @@ public class AlertsUpdateHandlerTest {
   private AlertsUpdateHandler handler;
 
   private final TransitAlertService service = new TransitAlertServiceImpl(new TransitModel());
+
+  Instant INSTANT = OffsetDateTime.parse("2024-01-10T17:31:00+01:00").toInstant();
 
   @BeforeEach
   void setUp() {
@@ -523,6 +526,21 @@ public class AlertsUpdateHandlerTest {
       .filter(entitySelector -> entitySelector instanceof EntitySelector.RouteTypeAndAgency)
       .count();
     assertEquals(1l, RouteTypeAndAgencySelectorCount);
+  }
+
+  @Test
+  void testNoEndDate() {
+    var alert = Alert
+      .newBuilder()
+      .addInformedEntity(
+        GtfsRealtime.EntitySelector.newBuilder().setRouteType(1).setAgencyId("1").build()
+      )
+      .addActivePeriod(GtfsRealtime.TimeRange.newBuilder().setStart(INSTANT.getEpochSecond()).build())
+      .build();
+    var transitAlert = processOneAlert(alert);
+    assertNull(transitAlert.getEffectiveEndDate());
+    // not sure what deducts 5 seconds
+    assertEquals(INSTANT.minusSeconds(5), transitAlert.getEffectiveStartDate());
   }
 
   private TransitAlert processOneAlert(Alert alert) {

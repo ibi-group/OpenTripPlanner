@@ -6,6 +6,8 @@
         "alertHeaderText" : "",
         "alertDescriptionText" : "",
         "alertUrl" : null,
+        "effectiveEndDate" : null,
+        "effectiveStartDate" : null,
         "alertDescriptionTextTranslations" : [ ],
         "alertHeaderTextTranslations" : [ ]
       },
@@ -14,6 +16,8 @@
         "alertHeaderText" : "Second string",
         "alertDescriptionText" : "Second string",
         "alertUrl" : null,
+        "effectiveEndDate" : null,
+        "effectiveStartDate" : null,
         "alertDescriptionTextTranslations" : [
           {
             "language" : null,
@@ -35,6 +39,8 @@
         "alertHeaderText" : "A header",
         "alertDescriptionText" : "A description",
         "alertUrl" : "https://example.com",
+        "effectiveEndDate" : 1676545408,
+        "effectiveStartDate" : 1676459008,
         "alertDescriptionTextTranslations" : [ ],
         "alertHeaderTextTranslations" : [ ]
       },
@@ -43,6 +49,8 @@
         "alertHeaderText" : "First string",
         "alertDescriptionText" : "First string",
         "alertUrl" : null,
+        "effectiveEndDate" : null,
+        "effectiveStartDate" : null,
         "alertDescriptionTextTranslations" : [ ],
         "alertHeaderTextTranslations" : [
           {
