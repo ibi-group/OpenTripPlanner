@@ -10,7 +10,6 @@ import com.google.transit.realtime.GtfsRealtime.FeedMessage;
 import com.google.transit.realtime.GtfsRealtime.TimeRange;
 import com.google.transit.realtime.GtfsRealtime.TripDescriptor;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import org.opentripplanner.framework.i18n.I18NString;
@@ -27,8 +26,6 @@ import org.opentripplanner.updater.GtfsRealtimeFuzzyTripMatcher;
 
 /**
  * This updater only includes GTFS-Realtime Service Alert feeds.
- *
- * @author novalis
  */
 public class AlertsUpdateHandler {
 
@@ -46,15 +43,16 @@ public class AlertsUpdateHandler {
   private final DirectionMapper directionMapper = new DirectionMapper(DataImportIssueStore.NOOP);
 
   public void update(FeedMessage message) {
-    Collection<TransitAlert> alerts = new ArrayList<>();
-    for (FeedEntity entity : message.getEntityList()) {
-      if (!entity.hasAlert()) {
-        continue;
-      }
-      GtfsRealtime.Alert alert = entity.getAlert();
-      String id = entity.getId();
-      alerts.add(mapAlert(id, alert));
-    }
+    var alerts = message
+      .getEntityList()
+      .stream()
+      .filter(FeedEntity::hasAlert)
+      .map(e -> {
+        var alert = e.getAlert();
+        var id = e.getId();
+        return mapAlert(id, alert);
+      })
+      .toList();
     transitAlertService.setAlerts(alerts);
   }
 

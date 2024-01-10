@@ -34,7 +34,7 @@ public class AlertsUpdateHandlerTest {
   private final TransitAlertService service = new TransitAlertServiceImpl(new TransitModel());
 
   @BeforeEach
-  public void setUp() {
+  void setUp() {
     handler = new AlertsUpdateHandler();
     handler.setFeedId("1");
     handler.setEarlyStart(5);
@@ -42,8 +42,8 @@ public class AlertsUpdateHandlerTest {
   }
 
   @Test
-  public void testAlertWithTimePeriodConsideringEarlyStart() {
-    GtfsRealtime.Alert alert = GtfsRealtime.Alert
+  void testAlertWithTimePeriodConsideringEarlyStart() {
+    var alert = GtfsRealtime.Alert
       .newBuilder()
       .addActivePeriod(GtfsRealtime.TimeRange.newBuilder().setStart(10).setEnd(20).build())
       .addInformedEntity(GtfsRealtime.EntitySelector.newBuilder().setAgencyId("1"))
@@ -54,8 +54,8 @@ public class AlertsUpdateHandlerTest {
   }
 
   @Test
-  public void testAlertStartConsideringEarlyStart() {
-    GtfsRealtime.Alert alert = GtfsRealtime.Alert
+  void testAlertStartConsideringEarlyStart() {
+    var alert = GtfsRealtime.Alert
       .newBuilder()
       .addActivePeriod(GtfsRealtime.TimeRange.newBuilder().setStart(10).build())
       .addInformedEntity(GtfsRealtime.EntitySelector.newBuilder().setAgencyId("1"))
@@ -66,8 +66,8 @@ public class AlertsUpdateHandlerTest {
   }
 
   @Test
-  public void testAlertEnd() {
-    GtfsRealtime.Alert alert = GtfsRealtime.Alert
+  void testAlertEnd() {
+    var alert = GtfsRealtime.Alert
       .newBuilder()
       .addActivePeriod(GtfsRealtime.TimeRange.newBuilder().setEnd(20).build())
       .addInformedEntity(GtfsRealtime.EntitySelector.newBuilder().setAgencyId("1"))
@@ -78,8 +78,8 @@ public class AlertsUpdateHandlerTest {
   }
 
   @Test
-  public void testWithoutUrl() {
-    GtfsRealtime.Alert alert = GtfsRealtime.Alert
+  void testWithoutUrl() {
+    var alert = GtfsRealtime.Alert
       .newBuilder()
       .addInformedEntity(GtfsRealtime.EntitySelector.newBuilder().setAgencyId("1"))
       .build();
@@ -88,8 +88,8 @@ public class AlertsUpdateHandlerTest {
   }
 
   @Test
-  public void testWithoutUrlTranslations() {
-    GtfsRealtime.Alert alert = Alert
+  void testWithoutUrlTranslations() {
+    var alert = Alert
       .newBuilder()
       .addInformedEntity(GtfsRealtime.EntitySelector.newBuilder().setAgencyId("1"))
       .setUrl(
@@ -107,8 +107,8 @@ public class AlertsUpdateHandlerTest {
   }
 
   @Test
-  public void testWithUrlTranslations() {
-    GtfsRealtime.Alert alert = Alert
+  void testWithUrlTranslations() {
+    var alert = Alert
       .newBuilder()
       .addInformedEntity(GtfsRealtime.EntitySelector.newBuilder().setAgencyId("1"))
       .setUrl(
@@ -145,8 +145,8 @@ public class AlertsUpdateHandlerTest {
   }
 
   @Test
-  public void testWithoutHeaderTranslations() {
-    GtfsRealtime.Alert alert = Alert
+  void testWithoutHeaderTranslations() {
+    var alert = Alert
       .newBuilder()
       .addInformedEntity(GtfsRealtime.EntitySelector.newBuilder().setAgencyId("1"))
       .setHeaderText(
@@ -161,8 +161,8 @@ public class AlertsUpdateHandlerTest {
   }
 
   @Test
-  public void testWithHeaderTranslations() {
-    GtfsRealtime.Alert alert = Alert
+  void testWithHeaderTranslations() {
+    var alert = Alert
       .newBuilder()
       .addInformedEntity(GtfsRealtime.EntitySelector.newBuilder().setAgencyId("1"))
       .setHeaderText(
@@ -185,8 +185,8 @@ public class AlertsUpdateHandlerTest {
   }
 
   @Test
-  public void testWithoutDescriptionTranslations() {
-    GtfsRealtime.Alert alert = Alert
+  void testWithoutDescriptionTranslations() {
+    var alert = Alert
       .newBuilder()
       .addInformedEntity(GtfsRealtime.EntitySelector.newBuilder().setAgencyId("1"))
       .setDescriptionText(
@@ -201,8 +201,8 @@ public class AlertsUpdateHandlerTest {
   }
 
   @Test
-  public void testWithDescriptionTranslations() {
-    GtfsRealtime.Alert alert = Alert
+  void testWithDescriptionTranslations() {
+    var alert = Alert
       .newBuilder()
       .addInformedEntity(GtfsRealtime.EntitySelector.newBuilder().setAgencyId("1"))
       .setDescriptionText(
@@ -231,8 +231,8 @@ public class AlertsUpdateHandlerTest {
   }
 
   @Test
-  public void testMissingAlertSeverity() {
-    GtfsRealtime.Alert alert = GtfsRealtime.Alert
+  void testMissingAlertSeverity() {
+    var alert = GtfsRealtime.Alert
       .newBuilder()
       .addInformedEntity(GtfsRealtime.EntitySelector.newBuilder().setAgencyId("1"))
       .build();
@@ -241,8 +241,8 @@ public class AlertsUpdateHandlerTest {
   }
 
   @Test
-  public void testSetAlertSeverity() {
-    GtfsRealtime.Alert alert = GtfsRealtime.Alert
+  void testSetAlertSeverity() {
+    var alert = GtfsRealtime.Alert
       .newBuilder()
       .addInformedEntity(GtfsRealtime.EntitySelector.newBuilder().setAgencyId("1"))
       .setSeverityLevel(SeverityLevel.SEVERE)
@@ -252,8 +252,8 @@ public class AlertsUpdateHandlerTest {
   }
 
   @Test
-  public void testMissingAlertCause() {
-    GtfsRealtime.Alert alert = GtfsRealtime.Alert
+  void testMissingAlertCause() {
+    var alert = GtfsRealtime.Alert
       .newBuilder()
       .addInformedEntity(GtfsRealtime.EntitySelector.newBuilder().setAgencyId("1"))
       .build();
@@ -262,8 +262,8 @@ public class AlertsUpdateHandlerTest {
   }
 
   @Test
-  public void testSetAlertCause() {
-    GtfsRealtime.Alert alert = GtfsRealtime.Alert
+  void testSetAlertCause() {
+    var alert = GtfsRealtime.Alert
       .newBuilder()
       .addInformedEntity(GtfsRealtime.EntitySelector.newBuilder().setAgencyId("1"))
       .setCause(Cause.MAINTENANCE)
@@ -273,8 +273,8 @@ public class AlertsUpdateHandlerTest {
   }
 
   @Test
-  public void testMissingAlertEffect() {
-    GtfsRealtime.Alert alert = GtfsRealtime.Alert
+  void testMissingAlertEffect() {
+    var alert = GtfsRealtime.Alert
       .newBuilder()
       .addInformedEntity(GtfsRealtime.EntitySelector.newBuilder().setAgencyId("1"))
       .build();
@@ -283,8 +283,8 @@ public class AlertsUpdateHandlerTest {
   }
 
   @Test
-  public void testSetAlertEffect() {
-    GtfsRealtime.Alert alert = GtfsRealtime.Alert
+  void testSetAlertEffect() {
+    var alert = GtfsRealtime.Alert
       .newBuilder()
       .addInformedEntity(GtfsRealtime.EntitySelector.newBuilder().setAgencyId("1"))
       .setEffect(Effect.MODIFIED_SERVICE)
@@ -294,8 +294,8 @@ public class AlertsUpdateHandlerTest {
   }
 
   @Test
-  public void testAgencySelector() {
-    GtfsRealtime.Alert alert = GtfsRealtime.Alert
+  void testAgencySelector() {
+    var alert = GtfsRealtime.Alert
       .newBuilder()
       .addInformedEntity(GtfsRealtime.EntitySelector.newBuilder().setAgencyId("1"))
       .build();
@@ -311,8 +311,8 @@ public class AlertsUpdateHandlerTest {
   }
 
   @Test
-  public void testRouteSelector() {
-    GtfsRealtime.Alert alert = GtfsRealtime.Alert
+  void testRouteSelector() {
+    var alert = GtfsRealtime.Alert
       .newBuilder()
       .addInformedEntity(GtfsRealtime.EntitySelector.newBuilder().setRouteId("1"))
       .build();
@@ -328,8 +328,8 @@ public class AlertsUpdateHandlerTest {
   }
 
   @Test
-  public void testTripSelectorWithTripId() {
-    GtfsRealtime.Alert alert = Alert
+  void testTripSelectorWithTripId() {
+    var alert = Alert
       .newBuilder()
       .addInformedEntity(
         GtfsRealtime.EntitySelector
@@ -349,8 +349,8 @@ public class AlertsUpdateHandlerTest {
   }
 
   @Test
-  public void testStopSelector() {
-    GtfsRealtime.Alert alert = Alert
+  void testStopSelector() {
+    var alert = Alert
       .newBuilder()
       .addInformedEntity(GtfsRealtime.EntitySelector.newBuilder().setStopId("1"))
       .build();
@@ -366,8 +366,8 @@ public class AlertsUpdateHandlerTest {
   }
 
   @Test
-  public void testStopAndRouteSelector() {
-    GtfsRealtime.Alert alert = Alert
+  void testStopAndRouteSelector() {
+    var alert = Alert
       .newBuilder()
       .addInformedEntity(0, GtfsRealtime.EntitySelector.newBuilder().setStopId("1").setRouteId("1"))
       .build();
@@ -383,8 +383,8 @@ public class AlertsUpdateHandlerTest {
   }
 
   @Test
-  public void testStopAndTripSelector() {
-    GtfsRealtime.Alert alert = Alert
+  void testStopAndTripSelector() {
+    var alert = Alert
       .newBuilder()
       .addInformedEntity(
         0,
@@ -406,8 +406,8 @@ public class AlertsUpdateHandlerTest {
   }
 
   @Test
-  public void testMultipleSelectors() {
-    GtfsRealtime.Alert alert = Alert
+  void testMultipleSelectors() {
+    var alert = Alert
       .newBuilder()
       .addInformedEntity(GtfsRealtime.EntitySelector.newBuilder().setAgencyId("1"))
       .addInformedEntity(GtfsRealtime.EntitySelector.newBuilder().setAgencyId("2"))
@@ -431,8 +431,8 @@ public class AlertsUpdateHandlerTest {
   }
 
   @Test
-  public void testMissingSelector() {
-    GtfsRealtime.Alert alert = Alert.newBuilder().build();
+  void testMissingSelector() {
+    var alert = Alert.newBuilder().build();
     TransitAlert transitAlert = processOneAlert(alert);
     long totalSelectorCount = transitAlert.entities().size();
     assertEquals(1l, totalSelectorCount);
@@ -449,9 +449,9 @@ public class AlertsUpdateHandlerTest {
   }
 
   @Test
-  public void testUnknownSelector() {
+  void testUnknownSelector() {
     // Setting just direction is not supported and should result in entity not being handled
-    GtfsRealtime.Alert alert = Alert
+    var alert = Alert
       .newBuilder()
       .addInformedEntity(GtfsRealtime.EntitySelector.newBuilder().setDirectionId(1).build())
       .build();
@@ -471,8 +471,8 @@ public class AlertsUpdateHandlerTest {
   }
 
   @Test
-  public void testDirectionAndRouteSelector() {
-    GtfsRealtime.Alert alert = Alert
+  void testDirectionAndRouteSelector() {
+    var alert = Alert
       .newBuilder()
       .addInformedEntity(
         GtfsRealtime.EntitySelector.newBuilder().setDirectionId(1).setRouteId("1").build()
@@ -490,8 +490,8 @@ public class AlertsUpdateHandlerTest {
   }
 
   @Test
-  public void testRouteTypeSelector() {
-    GtfsRealtime.Alert alert = Alert
+  void testRouteTypeSelector() {
+    var alert = Alert
       .newBuilder()
       .addInformedEntity(GtfsRealtime.EntitySelector.newBuilder().setRouteType(1).build())
       .build();
@@ -507,8 +507,8 @@ public class AlertsUpdateHandlerTest {
   }
 
   @Test
-  public void testRouteTypeAndAgencySelector() {
-    GtfsRealtime.Alert alert = Alert
+  void testRouteTypeAndAgencySelector() {
+    var alert = Alert
       .newBuilder()
       .addInformedEntity(
         GtfsRealtime.EntitySelector.newBuilder().setRouteType(1).setAgencyId("1").build()
@@ -525,7 +525,7 @@ public class AlertsUpdateHandlerTest {
     assertEquals(1l, RouteTypeAndAgencySelectorCount);
   }
 
-  private TransitAlert processOneAlert(GtfsRealtime.Alert alert) {
+  private TransitAlert processOneAlert(Alert alert) {
     GtfsRealtime.FeedMessage message = GtfsRealtime.FeedMessage
       .newBuilder()
       .setHeader(GtfsRealtime.FeedHeader.newBuilder().setGtfsRealtimeVersion("2.0"))
