@@ -6,6 +6,7 @@ import gnu.trove.iterator.TLongIterator;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import org.locationtech.jts.geom.Coordinate;
@@ -58,7 +59,7 @@ public class OsmModule implements GraphBuilderModule {
   private final VertexGenerator vertexGenerator;
   private final OsmDatabase osmdb;
   private ImmutableTable<String, String, Map<MobilityProfile, Float>> mobilityProfileData;
-  private HashMap<String, Boolean> mappedMobilityProfileEntries;
+  private HashSet<String> mappedMobilityProfileEntries;
 
   OsmModule(
     Collection<OsmProvider> providers,
@@ -150,7 +151,7 @@ public class OsmModule implements GraphBuilderModule {
     // figure out which nodes that are actually intersections
     vertexGenerator.initIntersectionNodes();
 
-    mappedMobilityProfileEntries = new HashMap<>();
+    mappedMobilityProfileEntries = new HashSet<>();
 
     buildBasicGraph();
     buildWalkableAreas(!params.areaVisibility());
@@ -193,8 +194,7 @@ public class OsmModule implements GraphBuilderModule {
 
     for (var cell : mobilityProfileData.cellSet()) {
       String key = getNodeKey(cell.getRowKey(), cell.getColumnKey());
-      Boolean exists = mappedMobilityProfileEntries.get(key);
-      if (exists == null || !exists) {
+      if (!mappedMobilityProfileEntries.contains(key)) {
         unusedEntries.add(key);
       }
     }
@@ -587,7 +587,7 @@ public class OsmModule implements GraphBuilderModule {
         endId
       );
       // Keep tab of node pairs for which mobility profile costs have been mapped.
-      mappedMobilityProfileEntries.put(getNodeKey(startId, endId), true);
+      mappedMobilityProfileEntries.add(getNodeKey(startId, endId));
     }
 
     if (!way.hasTag("name") && !way.hasTag("ref")) {
