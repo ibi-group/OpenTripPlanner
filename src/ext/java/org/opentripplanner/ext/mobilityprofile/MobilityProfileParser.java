@@ -24,7 +24,9 @@ public class MobilityProfileParser {
    * Process rows from the given CSV stream and build a table indexed by both the
    * upstream/downstream nodes, where each value is a map of costs by mobility profile.
    */
-  public static ImmutableTable<String, String, Map<MobilityProfile, Float>> parseData(InputStream is) {
+  public static ImmutableTable<String, String, Map<MobilityProfile, Float>> parseData(
+    InputStream is
+  ) {
     try {
       var reader = new CsvReader(is, StandardCharsets.UTF_8);
       reader.setDelimiter(',');
@@ -63,10 +65,7 @@ public class MobilityProfileParser {
         weightMap
       );
     } catch (NumberFormatException | NullPointerException e) {
-      LOG.warn(
-        "Skipping mobility profile data at line {}: missing/invalid data",
-        lineNumber
-      );
+      LOG.warn("Skipping mobility profile data at line {}: missing/invalid data", lineNumber);
     }
   }
 }

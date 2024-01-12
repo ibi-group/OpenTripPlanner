@@ -112,7 +112,9 @@ public class OsmModule implements GraphBuilderModule {
     return elevationData;
   }
 
-  public void setMobilityProfileData(ImmutableTable<String, String, Map<MobilityProfile, Float>> mobilityProfileData) {
+  public void setMobilityProfileData(
+    ImmutableTable<String, String, Map<MobilityProfile, Float>> mobilityProfileData
+  ) {
     this.mobilityProfileData = mobilityProfileData;
   }
 
@@ -575,17 +577,10 @@ public class OsmModule implements GraphBuilderModule {
     // Lookup costs by mobility profile, if any were defined.
     String startId = startEndpoint.getLabel().toString();
     String endId = endEndpoint.getLabel().toString();
-    var edgeMobilityCostMap = mobilityProfileData.get(
-      startId,
-      endId
-    );
+    var edgeMobilityCostMap = mobilityProfileData.get(startId, endId);
     if (edgeMobilityCostMap != null) {
       seb.withProfileCosts(edgeMobilityCostMap);
-      LOG.info(
-        "Applied mobility profile costs between nodes {}-{}",
-        startId,
-        endId
-      );
+      LOG.info("Applied mobility profile costs between nodes {}-{}", startId, endId);
       // Keep tab of node pairs for which mobility profile costs have been mapped.
       mappedMobilityProfileEntries.add(getNodeKey(startId, endId));
     }
