@@ -2459,27 +2459,6 @@ enum Qualifier {
     HAIL
 }
 
-enum MobilityProfile {
-  NONE,
-  SOME,
-  DEVICE,
-  WCHAIRM,
-  WCHAIRE,
-  MSCOOTER,
-  VISION,
-  VISIONPLUS,
-  SOME_VISION,
-  DEVICE_VISION,
-  WCHAIRM_VISION,
-  WCHAIRE_VISION,
-  MSCOOTER_VISION,
-  SOME_VISIONPLUS,
-  DEVICE_VISIONPLUS,
-  WCHAIRM_VISIONPLUS,
-  WCHAIRE_VISIONPLUS,
-  MSCOOTER_VISIONPLUS
-}
-
 type QueryType {
     """Fetches an object given its ID"""
     node(
