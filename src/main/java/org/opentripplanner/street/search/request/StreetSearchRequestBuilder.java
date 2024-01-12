@@ -6,7 +6,6 @@ import org.opentripplanner.ext.mobilityprofile.MobilityProfile;
 import org.opentripplanner.model.GenericLocation;
 import org.opentripplanner.routing.api.request.StreetMode;
 import org.opentripplanner.routing.api.request.preference.RoutingPreferences;
-import org.opentripplanner.routing.api.request.request.VehicleRentalRequest;
 
 public class StreetSearchRequestBuilder {
 
@@ -15,7 +14,6 @@ public class StreetSearchRequestBuilder {
   RoutingPreferences preferences;
   boolean arriveBy;
   boolean wheelchair;
-  VehicleRentalRequest rental;
   GenericLocation from;
   GenericLocation to;
 
@@ -27,7 +25,6 @@ public class StreetSearchRequestBuilder {
     this.preferences = original.preferences();
     this.arriveBy = original.arriveBy();
     this.wheelchair = original.wheelchair();
-    this.rental = original.rental();
     this.from = original.from();
     this.to = original.to();
     this.mobilityProfile = original.mobilityProfile();
@@ -64,11 +61,6 @@ public class StreetSearchRequestBuilder {
 
   public StreetSearchRequestBuilder withMobilityProfile(MobilityProfile profile) {
     this.mobilityProfile = profile;
-    return this;
-  }
-
-  public StreetSearchRequestBuilder withRental(VehicleRentalRequest rental) {
-    this.rental = rental;
     return this;
   }
 
