@@ -69,7 +69,7 @@ public record SubMode(String name, int index) implements Serializable {
   }
 
   /**
-   * Return all SubModes besed on the BitSet of SubMode indexes.
+   * Return all SubModes based on the BitSet of SubMode indexes.
    */
   public static Set<SubMode> getByIndex(BitSet subModes) {
     var set = new HashSet<SubMode>();

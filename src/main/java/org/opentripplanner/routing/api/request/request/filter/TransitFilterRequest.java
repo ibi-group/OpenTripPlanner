@@ -7,6 +7,7 @@ import java.util.Collections;
 import java.util.List;
 import org.opentripplanner.framework.tostring.ToStringBuilder;
 import org.opentripplanner.transit.model.network.TripPattern;
+import org.opentripplanner.transit.model.timetable.Filterable;
 import org.opentripplanner.transit.model.timetable.TripTimes;
 
 public class TransitFilterRequest implements Serializable, TransitFilter {
@@ -58,7 +59,7 @@ public class TransitFilterRequest implements Serializable, TransitFilter {
   }
 
   @Override
-  public boolean matchTripPattern(TripPattern tripPattern) {
+  public boolean matchFilterable(Filterable tripPattern) {
     if (select.length != 0) {
       var anyMatch = false;
       for (SelectRequest s : select) {

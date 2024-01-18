@@ -12,6 +12,7 @@ import org.opentripplanner.ext.flex.template.FlexEgressTemplate;
 import org.opentripplanner.model.BookingInfo;
 import org.opentripplanner.model.PickDrop;
 import org.opentripplanner.model.StopTime;
+import org.opentripplanner.routing.api.request.request.filter.TransitFilter;
 import org.opentripplanner.routing.graphfinder.NearbyStop;
 import org.opentripplanner.standalone.config.sandbox.FlexConfig;
 import org.opentripplanner.transit.model.framework.AbstractTransitEntity;
@@ -109,6 +110,10 @@ public abstract class FlexTrip<T extends FlexTrip<T, B>, B extends FlexTripBuild
 
   public Trip getTrip() {
     return trip;
+  }
+
+  public boolean matches(TransitFilter f) {
+    return f.matchFilterable(trip);
   }
 
   public abstract BookingInfo getDropOffBookingInfo(int i);

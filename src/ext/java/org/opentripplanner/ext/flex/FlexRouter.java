@@ -24,6 +24,7 @@ import org.opentripplanner.framework.application.OTPRequestTimeoutException;
 import org.opentripplanner.framework.time.ServiceDateUtils;
 import org.opentripplanner.model.plan.Itinerary;
 import org.opentripplanner.routing.algorithm.mapping.GraphPathToItineraryMapper;
+import org.opentripplanner.routing.api.request.request.filter.TransitFilter;
 import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.routing.graphfinder.NearbyStop;
 import org.opentripplanner.standalone.config.sandbox.FlexConfig;
@@ -215,6 +216,7 @@ public class FlexRouter {
 
   private Stream<AccessEgressAndNearbyStop> getClosestFlexTrips(
     Collection<NearbyStop> nearbyStops,
+    List<TransitFilter> filters,
     boolean pickup
   ) {
     // Find all trips reachable from the nearbyStops
@@ -224,6 +226,7 @@ public class FlexRouter {
         flexIndex
           .getFlexTripsByStop(accessEgress.stop)
           .stream()
+          .filter(flexTrip -> flexTrip.matches())
           .filter(flexTrip ->
             pickup
               ? flexTrip.isBoardingPossible(accessEgress)

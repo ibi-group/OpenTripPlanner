@@ -28,6 +28,7 @@ import org.opentripplanner.transit.model.framework.LogInfo;
 import org.opentripplanner.transit.model.site.Station;
 import org.opentripplanner.transit.model.site.StopLocation;
 import org.opentripplanner.transit.model.timetable.Direction;
+import org.opentripplanner.transit.model.timetable.Filterable;
 import org.opentripplanner.transit.model.timetable.FrequencyEntry;
 import org.opentripplanner.transit.model.timetable.Trip;
 import org.opentripplanner.transit.model.timetable.TripTimes;
@@ -51,7 +52,7 @@ import org.slf4j.LoggerFactory;
  */
 public final class TripPattern
   extends AbstractTransitEntity<TripPattern, TripPatternBuilder>
-  implements Cloneable, LogInfo {
+  implements Cloneable, LogInfo, Filterable {
 
   private static final Logger LOG = LoggerFactory.getLogger(TripPattern.class);
 

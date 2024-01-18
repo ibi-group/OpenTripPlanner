@@ -86,7 +86,7 @@ public class RouteRequestTransitDataProviderFilter implements TransitDataProvide
   @Override
   public boolean tripPatternPredicate(TripPatternForDate tripPatternForDate) {
     for (TransitFilter filter : filters) {
-      if (filter.matchTripPattern(tripPatternForDate.getTripPattern().getPattern())) {
+      if (filter.matchFilterable(tripPatternForDate.getTripPattern().getPattern())) {
         return true;
       }
     }

@@ -20,7 +20,9 @@ import org.opentripplanner.transit.model.network.BikeAccess;
 import org.opentripplanner.transit.model.network.Route;
 import org.opentripplanner.transit.model.organization.Operator;
 
-public final class Trip extends AbstractTransitEntity<Trip, TripBuilder> implements LogInfo {
+public final class Trip
+  extends AbstractTransitEntity<Trip, TripBuilder>
+  implements LogInfo, Filterable {
 
   private final Operator operator;
   private final Route route;
@@ -109,6 +111,16 @@ public final class Trip extends AbstractTransitEntity<Trip, TripBuilder> impleme
   @Nonnull
   public TransitMode getMode() {
     return mode;
+  }
+
+  @Override
+  public SubMode getNetexSubmode() {
+    return route.getNetexSubmode();
+  }
+
+  @Override
+  public boolean getContainsMultipleModes() {
+    return false;
   }
 
   @Nonnull
