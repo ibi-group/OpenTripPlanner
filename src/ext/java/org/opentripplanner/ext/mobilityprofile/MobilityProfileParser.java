@@ -5,7 +5,7 @@ import com.google.common.collect.ImmutableTable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.Map;
 import org.opentripplanner.street.model.vertex.VertexLabel;
 import org.slf4j.Logger;
@@ -54,7 +54,7 @@ public class MobilityProfileParser {
       long fromNode = Long.parseLong(reader.get("Upstream Node"), 10);
       long toNode = Long.parseLong(reader.get("Downstream Node"), 10);
 
-      var weightMap = new EnumMap<MobilityProfile, Float>(MobilityProfile.class);
+      var weightMap = new HashMap<MobilityProfile, Float>();
       for (var profile : MobilityProfile.values()) {
         weightMap.put(profile, Float.parseFloat(reader.get(profile.getText())));
       }
