@@ -4,8 +4,10 @@ import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.EnumMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Stream;
@@ -66,6 +68,8 @@ public class StreetEdge
   static final int CLASS_LINK = 9;
 
   private StreetEdgeCostExtension costExtension;
+
+  private Map<TraverseMode, Float> enumMapTest = new EnumMap<>(TraverseMode.class);
 
   /** back, roundabout, stairs, ... */
   private short flags;
@@ -146,6 +150,8 @@ public class StreetEdge
     inAngle = lineStringInOutAngles.inAngle();
     outAngle = lineStringInOutAngles.outAngle();
     elevationExtension = builder.streetElevationExtension();
+    enumMapTest.put(TraverseMode.WALK, 20438f);
+    enumMapTest.put(TraverseMode.SCOOTER, 23438f);
   }
 
   public StreetEdgeBuilder<?> toBuilder() {

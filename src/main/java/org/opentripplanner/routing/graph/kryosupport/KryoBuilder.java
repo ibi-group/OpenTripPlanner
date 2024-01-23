@@ -3,6 +3,7 @@ package org.opentripplanner.routing.graph.kryosupport;
 import com.conveyal.kryo.TIntArrayListSerializer;
 import com.conveyal.kryo.TIntIntHashMapSerializer;
 import com.esotericsoftware.kryo.Kryo;
+import com.esotericsoftware.kryo.serializers.EnumMapSerializer;
 import com.esotericsoftware.kryo.serializers.ExternalizableSerializer;
 import com.esotericsoftware.kryo.util.DefaultInstantiatorStrategy;
 import com.google.common.collect.ArrayListMultimap;
@@ -12,6 +13,7 @@ import de.javakaffee.kryoserializers.guava.HashMultimapSerializer;
 import gnu.trove.impl.hash.TPrimitiveHash;
 import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.hash.TIntIntHashMap;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -22,6 +24,7 @@ import org.opentripplanner.kryo.RouterConfigSerializer;
 import org.opentripplanner.kryo.UnmodifiableCollectionsSerializer;
 import org.opentripplanner.standalone.config.BuildConfig;
 import org.opentripplanner.standalone.config.RouterConfig;
+import org.opentripplanner.street.search.TraverseMode;
 
 public final class KryoBuilder {
 
@@ -57,6 +60,7 @@ public final class KryoBuilder {
     kryo.register(Set.of(1).getClass(), new JavaImmutableSetSerializer());
     kryo.register(Map.of().getClass(), new JavaImmutableMapSerializer());
     kryo.register(Map.of(1, 1).getClass(), new JavaImmutableMapSerializer());
+    kryo.register(EnumMap.class, new EnumMapSerializer(TraverseMode.class));
 
     kryo.register(HashMultimap.class, new HashMultimapSerializer());
     kryo.register(ArrayListMultimap.class, new ArrayListMultimapSerializer());
