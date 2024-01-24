@@ -50,13 +50,15 @@ public class MobilityProfileParser {
     CsvReader reader,
     ImmutableTable.Builder<String, String, Map<MobilityProfile, Float>> tableBuilder
   ) throws IOException {
+    String currentColumnHeader = "";
     try {
       long fromNode = Long.parseLong(reader.get("Upstream Node"), 10);
       long toNode = Long.parseLong(reader.get("Downstream Node"), 10);
 
       var weightMap = new HashMap<MobilityProfile, Float>();
       for (var profile : MobilityProfile.values()) {
-        weightMap.put(profile, Float.parseFloat(reader.get(profile.getText())));
+        currentColumnHeader = profile.getText();
+        weightMap.put(profile, Float.parseFloat(reader.get(currentColumnHeader)));
       }
 
       tableBuilder.put(
@@ -65,7 +67,11 @@ public class MobilityProfileParser {
         weightMap
       );
     } catch (NumberFormatException | NullPointerException e) {
-      LOG.warn("Skipping mobility profile data at line {}: missing/invalid data", lineNumber);
+      LOG.warn(
+        "Skipping mobility profile data at line {}: missing/invalid data in column {}.",
+        lineNumber,
+        currentColumnHeader
+      );
     }
   }
 }

@@ -10,18 +10,18 @@ public enum MobilityProfile {
   WCHAIRM("WChairM"),
   WCHAIRE("WChairE"),
   MSCOOTER("MScooter"),
-  VISION("Vision"),
-  VISIONPLUS("Vision+"),
-  SOME_VISION("Some-Vision"),
-  DEVICE_VISION("Device-Vision"),
-  WCHAIRM_VISION("WChairM-Vision"),
-  WCHAIRE_VISION("WChairE-Vision"),
-  MSCOOTER_VISION("MScooter-Vision"),
-  SOME_VISIONPLUS("Some-Vision+"),
-  DEVICE_VISIONPLUS("Device-Vision+"),
-  WCHAIRM_VISIONPLUS("WChairM-Vision+"),
-  WCHAIRE_VISIONPLUS("WChairE-Vision+"),
-  MSCOOTER_VISIONPLUS("MScooter-Vision+");
+  LOW_VISION("LowVision"),
+  BLIND("Blind"),
+  SOME_LOW_VISION("Some-LowVision"),
+  DEVICE_LOW_VISION("Device-LowVision"),
+  WCHAIRM_LOW_VISION("WChairM-LowVIsion"), // Typo in CSV header
+  WCHAIRE_LOW_VISION("WChairE-LowVision"),
+  MSCOOTER_LOW_VISION("Mscooter-LowVision"), // Typo in the CSV header
+  SOME_BLIND("Some-Blind"),
+  DEVICE_BLIND("Device-Blind"),
+  WCHAIRM_BLIND("WChairM-Blind"),
+  WCHAIRE_BLIND("WChairE-Blind"),
+  MSCOOTER_BLIND("Mscooter-Blind"); // Typo in the CSV header
 
   private final String text;
 

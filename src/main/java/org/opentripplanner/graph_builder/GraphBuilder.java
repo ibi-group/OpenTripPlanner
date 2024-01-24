@@ -4,16 +4,19 @@ import static org.opentripplanner.datastore.api.FileType.GTFS;
 import static org.opentripplanner.datastore.api.FileType.NETEX;
 import static org.opentripplanner.datastore.api.FileType.OSM;
 
+import com.google.common.collect.ImmutableTable;
 import jakarta.inject.Inject;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import org.opentripplanner.datastore.api.DataSource;
 import org.opentripplanner.ext.emissions.EmissionsDataModel;
+import org.opentripplanner.ext.mobilityprofile.MobilityProfile;
 import org.opentripplanner.ext.mobilityprofile.MobilityProfileParser;
 import org.opentripplanner.ext.stopconsolidation.StopConsolidationRepository;
 import org.opentripplanner.framework.application.OTPFeature;
@@ -106,7 +109,10 @@ public class GraphBuilder implements Runnable {
       if (mobilityDataSource.isPresent()) {
         // Parse stuff from the mobility profile CSV
         try (var inputStream = mobilityDataSource.get().asInputStream()) {
-          osmModule.setMobilityProfileData(MobilityProfileParser.parseData(inputStream));
+          ImmutableTable<String, String, Map<MobilityProfile, Float>> mobilityProfileData =
+            MobilityProfileParser.parseData(inputStream);
+          LOG.info("Imported {} rows from mobility-profile.csv", mobilityProfileData.rowKeySet().size());
+          osmModule.setMobilityProfileData(mobilityProfileData);
         } catch (IOException e) {
           throw new RuntimeException(e);
         }
