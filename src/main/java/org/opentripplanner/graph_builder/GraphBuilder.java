@@ -109,10 +109,7 @@ public class GraphBuilder implements Runnable {
       if (mobilityDataSource.isPresent()) {
         // Parse stuff from the mobility profile CSV
         try (var inputStream = mobilityDataSource.get().asInputStream()) {
-          ImmutableTable<String, String, Map<MobilityProfile, Float>> mobilityProfileData =
-            MobilityProfileParser.parseData(inputStream);
-          LOG.info("Imported {} rows from mobility-profile.csv", mobilityProfileData.rowKeySet().size());
-          osmModule.setMobilityProfileData(mobilityProfileData);
+          osmModule.setMobilityProfileData(MobilityProfileParser.parseData(inputStream));
         } catch (IOException e) {
           throw new RuntimeException(e);
         }

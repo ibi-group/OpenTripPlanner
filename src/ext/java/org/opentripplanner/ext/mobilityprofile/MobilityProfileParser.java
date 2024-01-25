@@ -39,7 +39,9 @@ public class MobilityProfileParser {
         lineNumber++;
       }
 
-      return tableBuilder.build();
+      var result = tableBuilder.build();
+      LOG.info("Imported {} rows from mobility-profile.csv", result.size());
+      return result;
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
