@@ -196,7 +196,8 @@ public class OsmModule implements GraphBuilderModule {
 
     for (var cell : mobilityProfileData.cellSet()) {
       String key = getNodeKey(cell.getRowKey(), cell.getColumnKey());
-      if (!mappedMobilityProfileEntries.contains(key)) {
+      String reverseKey = getNodeKey(cell.getColumnKey(), cell.getRowKey());
+      if (!mappedMobilityProfileEntries.contains(key) && !mappedMobilityProfileEntries.contains(reverseKey)) {
         unusedEntries.add(key);
       }
     }
@@ -575,9 +576,13 @@ public class OsmModule implements GraphBuilderModule {
       .withWheelchairAccessible(way.isWheelchairAccessible());
 
     // Lookup costs by mobility profile, if any were defined.
+    // Note that edges are bidirectional, so we check both directions if mobility data exist.
     String startId = startEndpoint.getLabel().toString();
     String endId = endEndpoint.getLabel().toString();
     var edgeMobilityCostMap = mobilityProfileData.get(startId, endId);
+    if (edgeMobilityCostMap == null) {
+      edgeMobilityCostMap = mobilityProfileData.get(endId, startId);
+    }
     if (edgeMobilityCostMap != null) {
       seb.withProfileCosts(edgeMobilityCostMap);
       LOG.info("Applied mobility profile costs between nodes {}-{}", startId, endId);
