@@ -31,15 +31,11 @@ public class Itinerary implements ItinerarySortKey {
   public static final int UNKNOWN = -1;
 
   /* final primitive properties */
-  private final Duration duration;
-  private final Duration transitDuration;
+  private final ItinerariesCalculateLegTotals.ItineraryDurations durations;
   private final int numberOfTransfers;
-  private final Duration waitingDuration;
   private final double nonTransitDistanceMeters;
   private final boolean walkOnly;
   private final boolean streetOnly;
-  private final Duration nonTransitDuration;
-  private final Duration walkDuration;
   private final double walkDistanceMeters;
 
   /* mutable primitive properties */
@@ -72,14 +68,10 @@ public class Itinerary implements ItinerarySortKey {
 
     // Set aggregated data
     ItinerariesCalculateLegTotals totals = new ItinerariesCalculateLegTotals(legs);
-    this.duration = totals.totalDuration;
+    this.durations = totals.durations();
     this.numberOfTransfers = totals.transfers();
-    this.transitDuration = totals.transitDuration;
-    this.nonTransitDuration = totals.nonTransitDuration;
     this.nonTransitDistanceMeters = DoubleUtils.roundTo2Decimals(totals.nonTransitDistanceMeters);
-    this.walkDuration = totals.walkDuration;
     this.walkDistanceMeters = totals.walkDistanceMeters;
-    this.waitingDuration = totals.waitingDuration;
     this.walkOnly = totals.walkOnly;
     this.streetOnly = totals.streetOnly;
     this.setElevationGained(totals.totalElevationGained);
@@ -261,10 +253,7 @@ public class Itinerary implements ItinerarySortKey {
       .addTime("start", firstLeg().getStartTime())
       .addTime("end", lastLeg().getEndTime())
       .addNum("nTransfers", numberOfTransfers)
-      .addDuration("duration", duration)
-      .addDuration("nonTransitTime", nonTransitDuration)
-      .addDuration("transitTime", transitDuration)
-      .addDuration("waitingTime", waitingDuration)
+      .addObj("durations", durations)
       .addNum("generalizedCost", generalizedCost, UNKNOWN)
       .addNum("generalizedCost2", generalizedCost2)
       .addNum("waitTimeOptimizedCost", waitTimeOptimizedCost, UNKNOWN)
@@ -325,14 +314,14 @@ public class Itinerary implements ItinerarySortKey {
 
   /** Total duration of the itinerary in seconds */
   public Duration getDuration() {
-    return duration;
+    return durations.total();
   }
 
   /**
    * How much time is spent on transit, in seconds.
    */
   public Duration getTransitDuration() {
-    return transitDuration;
+    return durations.transit();
   }
 
   /**
@@ -346,7 +335,7 @@ public class Itinerary implements ItinerarySortKey {
    * How much time is spent waiting for transit to arrive, in seconds.
    */
   public Duration getWaitingDuration() {
-    return waitingDuration;
+    return durations.waiting();
   }
 
   /**
@@ -463,7 +452,7 @@ public class Itinerary implements ItinerarySortKey {
    * How much time is spent walking/biking/driving, in seconds.
    */
   public Duration getNonTransitDuration() {
-    return nonTransitDuration;
+    return durations.nonTransit();
   }
 
   /**
@@ -679,6 +668,6 @@ public class Itinerary implements ItinerarySortKey {
    * How long the walking is contained in this itinerary.
    */
   public Duration walkDuration() {
-    return walkDuration;
+    return durations.walk();
   }
 }

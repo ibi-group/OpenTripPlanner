@@ -1,25 +1,30 @@
 package org.opentripplanner.model.plan;
 
+import static org.opentripplanner.street.search.TraverseMode.BICYCLE;
+import static org.opentripplanner.street.search.TraverseMode.CAR;
+import static org.opentripplanner.street.search.TraverseMode.SCOOTER;
+import static org.opentripplanner.street.search.TraverseMode.WALK;
+
+import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.Multimap;
 import java.time.Duration;
+import java.util.Collection;
 import java.util.List;
+import org.opentripplanner.street.search.TraverseMode;
 
 /**
  * Calculate derived itinerary fields
  */
 class ItinerariesCalculateLegTotals {
 
-  Duration totalDuration = Duration.ZERO;
-  Duration transitDuration = Duration.ZERO;
   int nTransitLegs = 0;
-  Duration nonTransitDuration = Duration.ZERO;
   double nonTransitDistanceMeters = 0.0;
-  Duration walkDuration = Duration.ZERO;
   double walkDistanceMeters = 0.0;
-  Duration waitingDuration = Duration.ZERO;
   boolean walkOnly = true;
   boolean streetOnly = true;
   double totalElevationGained = 0.0;
   double totalElevationLost = 0.0;
+  private ItineraryDurations durations;
 
   public ItinerariesCalculateLegTotals(List<Leg> legs) {
     if (legs.isEmpty()) {
@@ -33,7 +38,12 @@ class ItinerariesCalculateLegTotals {
   }
 
   private void calculate(List<Leg> legs) {
-    totalDuration = Duration.between(legs.getFirst().getStartTime(), legs.getLast().getEndTime());
+    var totalDuration = Duration.between(
+      legs.getFirst().getStartTime(),
+      legs.getLast().getEndTime()
+    );
+    Multimap<TraverseMode, Duration> nonTransitDurations = ArrayListMultimap.create();
+    Duration transitDuration = Duration.ZERO;
 
     for (Leg leg : legs) {
       Duration dt = leg.getDuration();
@@ -44,11 +54,10 @@ class ItinerariesCalculateLegTotals {
           ++nTransitLegs;
         }
       } else if (leg instanceof StreetLeg streetLeg) {
-        nonTransitDuration = nonTransitDuration.plus(dt);
+        nonTransitDurations.put(streetLeg.getMode(), streetLeg.getDuration());
         nonTransitDistanceMeters += leg.getDistanceMeters();
 
         if (streetLeg.isWalkingLeg()) {
-          walkDuration = walkDuration.plus(streetLeg.getDuration());
           walkDistanceMeters = walkDistanceMeters + streetLeg.getDistanceMeters();
         }
       } else if (leg instanceof UnknownTransitPathLeg unknownTransitPathLeg) {
@@ -69,6 +78,38 @@ class ItinerariesCalculateLegTotals {
         this.totalElevationLost += p.elevationLost();
       }
     }
-    this.waitingDuration = totalDuration.minus(transitDuration).minus(nonTransitDuration);
+    var nonTransitDuration = sum(nonTransitDurations.values());
+    var waitingDuration = totalDuration.minus(transitDuration).minus(nonTransitDuration);
+
+    this.durations =
+      new ItineraryDurations(
+        sum(nonTransitDurations.get(WALK)),
+        sum(nonTransitDurations.get(BICYCLE)),
+        sum(nonTransitDurations.get(SCOOTER)),
+        sum(nonTransitDurations.get(CAR)),
+        waitingDuration,
+        nonTransitDuration,
+        transitDuration,
+        totalDuration
+      );
   }
+
+  ItineraryDurations durations() {
+    return durations;
+  }
+
+  private Duration sum(Collection<Duration> values) {
+    return values.stream().reduce(Duration.ZERO, Duration::plus);
+  }
+
+  record ItineraryDurations(
+    Duration walk,
+    Duration bicycle,
+    Duration scooter,
+    Duration car,
+    Duration waiting,
+    Duration nonTransit,
+    Duration transit,
+    Duration total
+  ) {}
 }
