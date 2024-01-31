@@ -585,6 +585,8 @@ public class OsmModule implements GraphBuilderModule {
     }
     if (edgeMobilityCostMap != null) {
       seb.withProfileCosts(edgeMobilityCostMap);
+      // Append an indication that this edge uses a profile cost.
+      seb.withName(String.format("%s ☑", name));
       LOG.info("Applied mobility profile costs between nodes {}-{}", startId, endId);
       // Keep tab of node pairs for which mobility profile costs have been mapped.
       mappedMobilityProfileEntries.add(getNodeKey(startId, endId));
