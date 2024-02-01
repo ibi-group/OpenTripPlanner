@@ -575,10 +575,17 @@ public class OsmModule implements GraphBuilderModule {
       .withStairs(way.isSteps())
       .withWheelchairAccessible(way.isWheelchairAccessible());
 
-    // Lookup costs by mobility profile, if any were defined.
-    // Note that edges are bidirectional, so we check both directions if mobility data exist.
     String startId = startEndpoint.getLabel().toString();
     String endId = endEndpoint.getLabel().toString();
+
+    // For testing, indicate the OSM node ids (remove prefixes).
+    String startShortId = startId.replace("osm:node:", "");
+    String endShortId = endId.replace("osm:node:", "");
+    String nameWithNodeIds = String.format("%s (%s→%s)", name, startShortId, endShortId);
+    seb.withName(nameWithNodeIds);
+
+    // Lookup costs by mobility profile, if any were defined.
+    // Note that edges are bidirectional, so we check for mobility data exist in both directions.
     var edgeMobilityCostMap = mobilityProfileData.get(startId, endId);
     if (edgeMobilityCostMap == null) {
       edgeMobilityCostMap = mobilityProfileData.get(endId, startId);
@@ -586,8 +593,8 @@ public class OsmModule implements GraphBuilderModule {
     if (edgeMobilityCostMap != null) {
       seb.withProfileCosts(edgeMobilityCostMap);
       // Append an indication that this edge uses a profile cost.
-      seb.withName(String.format("%s ☑", name));
-      LOG.info("Applied mobility profile costs between nodes {}-{}", startId, endId);
+      seb.withName(String.format("%s ☑", nameWithNodeIds));
+      LOG.info("Applied mobility profile costs between nodes {}-{}", startShortId, endShortId);
       // Keep tab of node pairs for which mobility profile costs have been mapped.
       mappedMobilityProfileEntries.add(getNodeKey(startId, endId));
     }
