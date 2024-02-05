@@ -589,17 +589,19 @@ public class OsmModule implements GraphBuilderModule {
 
     // Lookup costs by mobility profile, if any were defined.
     // Note that edges are bidirectional, so we check for mobility data exist in both directions.
-    var edgeMobilityCostMap = mobilityProfileData.get(startId, endId);
-    if (edgeMobilityCostMap == null) {
-      edgeMobilityCostMap = mobilityProfileData.get(endId, startId);
-    }
-    if (edgeMobilityCostMap != null) {
-      seb.withProfileCosts(edgeMobilityCostMap);
-      // Append an indication that this edge uses a profile cost.
-      seb.withName(String.format("%s ☑", nameWithNodeIds));
-      LOG.info("Applied mobility profile costs between nodes {}-{}", startShortId, endShortId);
-      // Keep tab of node pairs for which mobility profile costs have been mapped.
-      mappedMobilityProfileEntries.add(getNodeKey(startId, endId));
+    if (mobilityProfileData != null) {
+      var edgeMobilityCostMap = mobilityProfileData.get(startId, endId);
+      if (edgeMobilityCostMap == null) {
+        edgeMobilityCostMap = mobilityProfileData.get(endId, startId);
+      }
+      if (edgeMobilityCostMap != null) {
+        seb.withProfileCosts(edgeMobilityCostMap);
+        // Append an indication that this edge uses a profile cost.
+        seb.withName(String.format("%s ☑", nameWithNodeIds));
+        LOG.info("Applied mobility profile costs between nodes {}-{}", startShortId, endShortId);
+        // Keep tab of node pairs for which mobility profile costs have been mapped.
+        mappedMobilityProfileEntries.add(getNodeKey(startId, endId));
+      }
     }
 
     if (!way.hasTag("name") && !way.hasTag("ref")) {
