@@ -200,7 +200,7 @@ public class OsmModule implements GraphBuilderModule {
         String reverseKey = getNodeKey(cell.getColumnKey(), cell.getRowKey());
         if (
           !mappedMobilityProfileEntries.contains(key) &&
-            !mappedMobilityProfileEntries.contains(reverseKey)
+          !mappedMobilityProfileEntries.contains(reverseKey)
         ) {
           unusedEntries.add(key);
         }
