@@ -1272,7 +1272,6 @@ public class StreetEdge
   ) {
     double time, weight;
     if (wheelchair) {
-      time = getEffectiveWalkDistance() / speed;
       weight =
         (getEffectiveBikeDistance() / speed) *
         StreetEdgeReluctanceCalculator.computeWheelchairReluctance(
@@ -1284,14 +1283,13 @@ public class StreetEdge
     } else {
       if (walkingBike) {
         // take slopes into account when walking bikes
-        time = weight = (getEffectiveBikeDistance() / speed);
+        weight = (getEffectiveBikeDistance() / speed);
         if (isStairs()) {
           // we do allow walking the bike across a stairs but there is a very high default penalty
           weight *= preferences.bike().walking().stairsReluctance();
         }
       } else {
         // take slopes into account when walking
-        time = getEffectiveWalkDistance() / speed;
         weight =
           getEffectiveWalkSafetyDistance() *
           preferences.walk().safetyFactor() +
@@ -1309,15 +1307,20 @@ public class StreetEdge
         );
     }
 
+    // G-MAP-specific: Tabulated travel times are provided through profileCost
+    // (assuming a pre-determined travel speed for each profile)
+    // and are used to overwrite the time calculated above (convert from hours to seconds).
+    // If no tabulated times are available for the edge, compute them using the
+    // travel speeds for the given mobility profile.
+    var defaultTravelHours = MobilityProfileRouting.computeTravelHours(
+      getEffectiveWalkDistance(),
+      mobilityProfile
+    );
     if (profileCost != null) {
-      // G-MAP-specific: Travel time on select street edges are provided through profileCost
-      // (assuming a pre-determined travel speed for each profile)
-      // and are used to overwrite the time calculated above (convert from hours to seconds).
-      var travelTimeHours = profileCost.getOrDefault(
-        mobilityProfile,
-        MobilityProfileRouting.computeTravelHours(getEffectiveWalkDistance(), mobilityProfile)
-      );
+      var travelTimeHours = profileCost.getOrDefault(mobilityProfile, defaultTravelHours);
       time = travelTimeHours * 3600;
+    } else {
+      time = defaultTravelHours * 3600;
     }
     return new TraversalCosts(time, weight);
   }
