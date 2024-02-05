@@ -194,14 +194,16 @@ public class OsmModule implements GraphBuilderModule {
   private void listUnusedMobilityCosts() {
     var unusedEntries = new ArrayList<String>();
 
-    for (var cell : mobilityProfileData.cellSet()) {
-      String key = getNodeKey(cell.getRowKey(), cell.getColumnKey());
-      String reverseKey = getNodeKey(cell.getColumnKey(), cell.getRowKey());
-      if (
-        !mappedMobilityProfileEntries.contains(key) &&
-        !mappedMobilityProfileEntries.contains(reverseKey)
-      ) {
-        unusedEntries.add(key);
+    if (mobilityProfileData != null) {
+      for (var cell : mobilityProfileData.cellSet()) {
+        String key = getNodeKey(cell.getRowKey(), cell.getColumnKey());
+        String reverseKey = getNodeKey(cell.getColumnKey(), cell.getRowKey());
+        if (
+          !mappedMobilityProfileEntries.contains(key) &&
+            !mappedMobilityProfileEntries.contains(reverseKey)
+        ) {
+          unusedEntries.add(key);
+        }
       }
     }
 
