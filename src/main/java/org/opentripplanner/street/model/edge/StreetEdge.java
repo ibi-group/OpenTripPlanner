@@ -1313,7 +1313,10 @@ public class StreetEdge
       // G-MAP-specific: Travel time on select street edges are provided through profileCost
       // (assuming a pre-determined travel speed for each profile)
       // and are used to overwrite the time calculated above (convert from hours to seconds).
-      var travelTimeHours = profileCost.getOrDefault(mobilityProfile, MobilityProfileRouting.computeTravelHours(getEffectiveWalkDistance(), mobilityProfile));
+      var travelTimeHours = profileCost.getOrDefault(
+        mobilityProfile,
+        MobilityProfileRouting.computeTravelHours(getEffectiveWalkDistance(), mobilityProfile)
+      );
       time = travelTimeHours * 3600;
     }
     return new TraversalCosts(time, weight);
