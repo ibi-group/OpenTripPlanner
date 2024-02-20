@@ -14,14 +14,14 @@ public enum MobilityProfile {
   BLIND("Blind"),
   SOME_LOW_VISION("Some-LowVision"),
   DEVICE_LOW_VISION("Device-LowVision"),
-  WCHAIRM_LOW_VISION("WChairM-LowVIsion"), // Typo in CSV header
+  WCHAIRM_LOW_VISION("WChairM-LowVision"),
   WCHAIRE_LOW_VISION("WChairE-LowVision"),
-  MSCOOTER_LOW_VISION("Mscooter-LowVision"), // Typo in the CSV header
+  MSCOOTER_LOW_VISION("MScooter-LowVision"),
   SOME_BLIND("Some-Blind"),
   DEVICE_BLIND("Device-Blind"),
   WCHAIRM_BLIND("WChairM-Blind"),
   WCHAIRE_BLIND("WChairE-Blind"),
-  MSCOOTER_BLIND("Mscooter-Blind"); // Typo in the CSV header
+  MSCOOTER_BLIND("MScooter-Blind");
 
   private final String text;
 
