@@ -60,7 +60,15 @@ public class MobilityProfileParser {
       var weightMap = new HashMap<MobilityProfile, Float>();
       for (var profile : MobilityProfile.values()) {
         currentColumnHeader = profile.getText();
-        weightMap.put(profile, Float.parseFloat(reader.get(currentColumnHeader)));
+        try {
+          weightMap.put(profile, Float.parseFloat(reader.get(currentColumnHeader)));
+        } catch (NumberFormatException | NullPointerException e) {
+          LOG.warn(
+            "Ignoring missing/invalid data at line {}, column {}.",
+            lineNumber,
+            currentColumnHeader
+          );
+        }
       }
 
       tableBuilder.put(
