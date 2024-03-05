@@ -1316,9 +1316,17 @@ public class StreetEdge
       getEffectiveWalkDistance(),
       mobilityProfile
     );
-    if (profileCost != null) {
-      var travelTimeHours = profileCost.getOrDefault(mobilityProfile, defaultTravelHours);
-      time = travelTimeHours * 3600;
+
+    if (traverseMode.isWalking()) {
+      if (profileCost != null) {
+        var travelTimeHours = profileCost.getOrDefault(mobilityProfile, defaultTravelHours);
+        time = travelTimeHours * 3600;
+        weight /= 20;
+      } else {
+        // Assign a high travel time (x1000) to non-tabulated ways.
+        time = 360000;
+        weight *= 10000;
+      }
     } else {
       time = defaultTravelHours * 3600;
     }
