@@ -4,19 +4,16 @@ import static org.opentripplanner.datastore.api.FileType.GTFS;
 import static org.opentripplanner.datastore.api.FileType.NETEX;
 import static org.opentripplanner.datastore.api.FileType.OSM;
 
-import com.google.common.collect.ImmutableTable;
 import jakarta.inject.Inject;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import org.opentripplanner.datastore.api.DataSource;
 import org.opentripplanner.ext.emissions.EmissionsDataModel;
-import org.opentripplanner.ext.mobilityprofile.MobilityProfile;
 import org.opentripplanner.ext.mobilityprofile.MobilityProfileParser;
 import org.opentripplanner.ext.stopconsolidation.StopConsolidationRepository;
 import org.opentripplanner.framework.application.OTPFeature;
@@ -104,6 +101,7 @@ public class GraphBuilder implements Runnable {
     graphBuilder.hasTransitData = hasTransitData;
 
     if (hasOsm) {
+      // TODO: Use the OTP-built-in data source mechanism (see #5677).
       Optional<DataSource> mobilityDataSource = dataSources.mobilityProfileDataSource();
       OsmModule osmModule = factory.osmModule();
       if (mobilityDataSource.isPresent()) {
