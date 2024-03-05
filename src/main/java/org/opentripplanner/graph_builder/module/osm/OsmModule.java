@@ -13,6 +13,7 @@ import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.LineString;
 import org.opentripplanner.ext.mobilityprofile.MobilityProfile;
+import org.opentripplanner.ext.mobilityprofile.MobilityProfileRouting;
 import org.opentripplanner.framework.geometry.GeometryUtils;
 import org.opentripplanner.framework.geometry.SphericalDistanceLibrary;
 import org.opentripplanner.framework.i18n.I18NString;
@@ -564,6 +565,7 @@ public class OsmModule implements GraphBuilderModule {
     label = label.intern();
     I18NString name = params.edgeNamer().getNameForWay(way, label);
     float carSpeed = way.getOsmProvider().getOsmTagMapper().getCarSpeedForWay(way, back);
+    StreetTraversalPermission perms = MobilityProfileRouting.adjustPedestrianPermissions(way, permissions);
 
     StreetEdgeBuilder<?> seb = new StreetEdgeBuilder<>()
       .withFromVertex(startEndpoint)
@@ -571,7 +573,7 @@ public class OsmModule implements GraphBuilderModule {
       .withGeometry(geometry)
       .withName(name)
       .withMeterLength(length)
-      .withPermission(permissions)
+      .withPermission(MobilityProfileRouting.adjustPedestrianPermissions(way, permissions))
       .withBack(back)
       .withCarSpeed(carSpeed)
       .withLink(way.isLink())
@@ -586,7 +588,7 @@ public class OsmModule implements GraphBuilderModule {
     // For testing, indicate the OSM node ids (remove prefixes).
     String startShortId = startId.replace("osm:node:", "");
     String endShortId = endId.replace("osm:node:", "");
-    String nameWithNodeIds = String.format("%s (%s→%s)", name, startShortId, endShortId);
+    String nameWithNodeIds = String.format("%s (%s, %s→%s)", name, way.getId(), startShortId, endShortId);
     seb.withName(nameWithNodeIds);
 
     // Lookup costs by mobility profile, if any were defined.
@@ -599,12 +601,14 @@ public class OsmModule implements GraphBuilderModule {
       if (edgeMobilityCostMap != null) {
         seb.withProfileCosts(edgeMobilityCostMap);
         // Append an indication that this edge uses a profile cost.
-        seb.withName(String.format("%s ☑", nameWithNodeIds));
-        LOG.info("Applied mobility profile costs between nodes {}-{}", startShortId, endShortId);
+        nameWithNodeIds = String.format("%s ☑", nameWithNodeIds);
+        seb.withName(nameWithNodeIds);
+        // LOG.info("Applied mobility profile costs between nodes {}-{}", startShortId, endShortId);
         // Keep tab of node pairs for which mobility profile costs have been mapped.
         mappedMobilityProfileEntries.add(getNodeKey(startId, endId));
       }
     }
+    System.out.printf("Way: %s - %s%n", nameWithNodeIds, perms.name());
 
     if (!way.hasTag("name") && !way.hasTag("ref")) {
       seb.withBogusName(true);

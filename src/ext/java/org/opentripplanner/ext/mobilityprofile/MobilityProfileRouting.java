@@ -4,8 +4,14 @@ import static java.util.Map.entry;
 
 import java.util.EnumMap;
 import java.util.Map;
+import org.opentripplanner.openstreetmap.model.OSMWay;
+import org.opentripplanner.street.model.StreetTraversalPermission;
 
 public class MobilityProfileRouting {
+
+  public static final String HIGHWAY_TAG = "highway";
+
+  public static final String FOOTWAY_TAG_VALUE = "footway";
 
   private static final Map<MobilityProfile, Float> TRAVEL_SPEED_MPH_BY_PROFILE = new EnumMap<>(
     Map.ofEntries(
@@ -47,5 +53,16 @@ public class MobilityProfileRouting {
         TRAVEL_SPEED_MPH_BY_PROFILE.get(MobilityProfile.NONE)
       )
     );
+  }
+
+  public static boolean isHighwayFootway(OSMWay way) {
+    return way.hasTag(HIGHWAY_TAG) && FOOTWAY_TAG_VALUE.equals(way.getTag(HIGHWAY_TAG));
+  }
+
+  public static StreetTraversalPermission adjustPedestrianPermissions(
+    OSMWay way,
+    StreetTraversalPermission permissions
+  ) {
+    return isHighwayFootway(way) ? permissions : permissions.remove(StreetTraversalPermission.PEDESTRIAN);
   }
 }
