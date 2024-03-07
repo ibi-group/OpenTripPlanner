@@ -1319,13 +1319,13 @@ public class StreetEdge
 
     if (traverseMode.isWalking()) {
       if (profileCost != null) {
-        var travelTimeHours = profileCost.getOrDefault(mobilityProfile, defaultTravelHours);
-        time = travelTimeHours * 3600;
-        weight /= 20;
+        var travelTimeHours = profileCost.getOrDefault(mobilityProfile, 10000f);
+        time = defaultTravelHours * 3600;
+        weight = travelTimeHours;
       } else {
-        // Assign a high travel time (x1000) to non-tabulated ways.
+        // Assign a high travel time and weight to non-tabulated ways.
         time = 360000;
-        weight *= 10000;
+        weight = 100000;
       }
     } else {
       time = defaultTravelHours * 3600;
