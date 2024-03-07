@@ -1317,18 +1317,14 @@ public class StreetEdge
       mobilityProfile
     );
 
-    if (traverseMode.isWalking()) {
-      if (profileCost != null) {
-        var travelTimeHours = profileCost.getOrDefault(mobilityProfile, 10000f);
-        time = defaultTravelHours * 3600;
-        weight = travelTimeHours;
-      } else {
-        // Assign a high travel time and weight to non-tabulated ways.
-        time = 360000;
-        weight = 100000;
-      }
-    } else {
+    if (profileCost != null) {
+      var travelTimeHours = profileCost.getOrDefault(mobilityProfile, 10000f);
       time = defaultTravelHours * 3600;
+      weight = travelTimeHours;
+    } else {
+      // Assign a high travel time and weight to non-tabulated ways.
+      time = 360000;
+      weight = 100000;
     }
     return new TraversalCosts(time, weight);
   }
