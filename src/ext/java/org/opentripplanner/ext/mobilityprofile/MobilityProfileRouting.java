@@ -6,6 +6,8 @@ import java.util.EnumMap;
 import java.util.Map;
 import org.opentripplanner.openstreetmap.model.OSMWay;
 import org.opentripplanner.street.model.StreetTraversalPermission;
+import org.opentripplanner.street.model.edge.StreetEdge;
+import org.opentripplanner.street.model.edge.TemporaryPartialStreetEdge;
 
 public class MobilityProfileRouting {
 
@@ -64,5 +66,15 @@ public class MobilityProfileRouting {
     StreetTraversalPermission permissions
   ) {
     return isHighwayFootway(way) ? permissions : permissions.remove(StreetTraversalPermission.PEDESTRIAN);
+  }
+
+  /** Multiplies profile costs by the distance ratio between the given edge and its parent. */
+  public static Map<MobilityProfile, Float> getProRatedProfileCosts(TemporaryPartialStreetEdge tmpEdge) {
+    StreetEdge parentEdge = tmpEdge.getParentEdge();
+    float ratio = (float)(tmpEdge.getDistanceMeters() / parentEdge.getDistanceMeters());
+
+    Map<MobilityProfile, Float> result = new EnumMap<>(MobilityProfile.class);
+    parentEdge.profileCost.forEach((k, v) -> result.put(k, v * ratio));
+    return result;
   }
 }
