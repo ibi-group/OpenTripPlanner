@@ -1,6 +1,5 @@
 package org.opentripplanner.graph_builder.module.osm;
 
-import com.google.common.collect.ImmutableTable;
 import com.google.common.collect.Iterables;
 import gnu.trove.iterator.TLongIterator;
 import java.util.ArrayList;
@@ -12,7 +11,8 @@ import java.util.Map;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.LineString;
-import org.opentripplanner.ext.mobilityprofile.MobilityProfile;
+import org.opentripplanner.ext.mobilityprofile.MobilityProfileData;
+import org.opentripplanner.ext.mobilityprofile.MobilityProfileParser;
 import org.opentripplanner.ext.mobilityprofile.MobilityProfileRouting;
 import org.opentripplanner.framework.geometry.GeometryUtils;
 import org.opentripplanner.framework.geometry.SphericalDistanceLibrary;
@@ -59,8 +59,10 @@ public class OsmModule implements GraphBuilderModule {
   private final SafetyValueNormalizer normalizer;
   private final VertexGenerator vertexGenerator;
   private final OsmDatabase osmdb;
-  private ImmutableTable<String, String, Map<MobilityProfile, Float>> mobilityProfileData;
+  private Map<String, MobilityProfileData> mobilityProfileData;
   private HashSet<String> mappedMobilityProfileEntries;
+
+  private Map<String, List<String[]>> mappedWays;
 
   OsmModule(
     Collection<OsmProvider> providers,
@@ -114,7 +116,7 @@ public class OsmModule implements GraphBuilderModule {
   }
 
   public void setMobilityProfileData(
-    ImmutableTable<String, String, Map<MobilityProfile, Float>> mobilityProfileData
+    Map<String, MobilityProfileData> mobilityProfileData
   ) {
     this.mobilityProfileData = mobilityProfileData;
   }
@@ -155,6 +157,7 @@ public class OsmModule implements GraphBuilderModule {
     vertexGenerator.initIntersectionNodes();
 
     mappedMobilityProfileEntries = new HashSet<>();
+    mappedWays = new HashMap<>();
 
     buildBasicGraph();
     buildWalkableAreas(!params.areaVisibility());
@@ -196,12 +199,10 @@ public class OsmModule implements GraphBuilderModule {
     var unusedEntries = new ArrayList<String>();
 
     if (mobilityProfileData != null) {
-      for (var cell : mobilityProfileData.cellSet()) {
-        String key = getNodeKey(cell.getRowKey(), cell.getColumnKey());
-        String reverseKey = getNodeKey(cell.getColumnKey(), cell.getRowKey());
+      for (var cell : mobilityProfileData.entrySet()) {
+        String key = cell.getKey();
         if (
-          !mappedMobilityProfileEntries.contains(key) &&
-          !mappedMobilityProfileEntries.contains(reverseKey)
+          !mappedMobilityProfileEntries.contains(key)
         ) {
           unusedEntries.add(key);
         }
@@ -592,23 +593,29 @@ public class OsmModule implements GraphBuilderModule {
     seb.withName(nameWithNodeIds);
 
     // Lookup costs by mobility profile, if any were defined.
-    // Note that edges are bidirectional, so we check for mobility data exist in both directions.
+    // Note that edges are bidirectional, so we check that mobility data exist in both directions.
+    String keyForWay = null;
     if (mobilityProfileData != null) {
-      var edgeMobilityCostMap = mobilityProfileData.get(startId, endId);
+      keyForWay = MobilityProfileParser.getKey(Long.toString(way.getId(), 10), startId, endId);
+      var edgeMobilityCostMap = mobilityProfileData.get(keyForWay);
       if (edgeMobilityCostMap == null) {
-        edgeMobilityCostMap = mobilityProfileData.get(endId, startId);
+        keyForWay = MobilityProfileParser.getKey(Long.toString(way.getId(), 10), endId, startId);
+        edgeMobilityCostMap = mobilityProfileData.get(keyForWay);
       }
-      if (edgeMobilityCostMap != null) {
-        seb.withProfileCosts(edgeMobilityCostMap);
+      if (keyForWay != null && edgeMobilityCostMap != null) {
+        seb.withProfileCosts(edgeMobilityCostMap.costs());
         // Append an indication that this edge uses a profile cost.
         nameWithNodeIds = String.format("%s ☑", nameWithNodeIds);
         seb.withName(nameWithNodeIds);
         // LOG.info("Applied mobility profile costs between nodes {}-{}", startShortId, endShortId);
         // Keep tab of node pairs for which mobility profile costs have been mapped.
-        mappedMobilityProfileEntries.add(getNodeKey(startId, endId));
+        mappedMobilityProfileEntries.add(keyForWay);
       }
     }
     System.out.printf("Way: %s - %s%n", nameWithNodeIds, perms.name());
+    // Update list of mapped ways
+
+
 
     if (!way.hasTag("name") && !way.hasTag("ref")) {
       seb.withBogusName(true);
@@ -623,9 +630,5 @@ public class OsmModule implements GraphBuilderModule {
     params.edgeNamer().recordEdge(way, street);
 
     return street;
-  }
-
-  private static String getNodeKey(String startId, String endId) {
-    return String.format("%s=>%s", startId, endId);
   }
 }

@@ -1,7 +1,6 @@
 package org.opentripplanner.ext.mobilityprofile;
 
 import com.csvreader.CsvReader;
-import com.google.common.collect.ImmutableTable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -24,7 +23,7 @@ public class MobilityProfileParser {
    * Process rows from the given CSV stream and build a table indexed by both the
    * upstream/downstream nodes, where each value is a map of costs by mobility profile.
    */
-  public static ImmutableTable<String, String, Map<MobilityProfile, Float>> parseData(
+  public static Map<String, MobilityProfileData> parseData(
     InputStream is
   ) {
     try {
@@ -32,31 +31,39 @@ public class MobilityProfileParser {
       reader.setDelimiter(',');
       reader.readHeaders();
 
-      ImmutableTable.Builder<String, String, Map<MobilityProfile, Float>> tableBuilder = ImmutableTable.builder();
+      Map<String, MobilityProfileData> map = new HashMap<>();
       int lineNumber = 1;
       while (reader.readRecord()) {
-        parseRow(lineNumber, reader, tableBuilder);
+        parseRow(lineNumber, reader, map);
         lineNumber++;
       }
 
-      var result = tableBuilder.build();
-      LOG.info("Imported {} rows from mobility-profile.csv", result.size());
-      return result;
+      LOG.info("Imported {} rows from mobility-profile.csv", map.size());
+      return map;
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
   }
 
+  /** Helper to build a key of the form "id:from=>to" for an OSM way. */
+  public static String getKey(String id, String from, String to) {
+    return String.format("%s:%s=>%s", id, from, to);
+  }
+
   private static void parseRow(
     int lineNumber,
     CsvReader reader,
-    ImmutableTable.Builder<String, String, Map<MobilityProfile, Float>> tableBuilder
+    Map<String, MobilityProfileData> map
   ) throws IOException {
     String currentColumnHeader = "";
     try {
       long fromNode = Long.parseLong(reader.get("Upstream Node"), 10);
       long toNode = Long.parseLong(reader.get("Downstream Node"), 10);
+      String id = reader.get("Way Id");
+      float length = Float.parseFloat(reader.get("Link Length"));
 
+      // The weight map has to be a HashMap instead of an EnumMap so that it is correctly
+      // persisted in the graph.
       var weightMap = new HashMap<MobilityProfile, Float>();
       for (var profile : MobilityProfile.values()) {
         currentColumnHeader = profile.getText();
@@ -71,10 +78,13 @@ public class MobilityProfileParser {
         }
       }
 
-      tableBuilder.put(
-        VertexLabel.osm(fromNode).toString(),
-        VertexLabel.osm(toNode).toString(),
-        weightMap
+      map.put(
+        getKey(
+          id,
+          VertexLabel.osm(fromNode).toString(),
+          VertexLabel.osm(toNode).toString()
+        ),
+        new MobilityProfileData(length, weightMap)
       );
     } catch (NumberFormatException | NullPointerException e) {
       LOG.warn(
