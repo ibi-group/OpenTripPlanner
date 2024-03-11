@@ -84,7 +84,7 @@ public class MobilityProfileParser {
           VertexLabel.osm(fromNode).toString(),
           VertexLabel.osm(toNode).toString()
         ),
-        new MobilityProfileData(length, weightMap)
+        new MobilityProfileData(length, fromNode, toNode, weightMap)
       );
     } catch (NumberFormatException | NullPointerException e) {
       LOG.warn(
