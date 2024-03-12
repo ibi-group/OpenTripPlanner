@@ -12,7 +12,6 @@ import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.LineString;
 import org.opentripplanner.ext.mobilityprofile.MobilityProfileData;
-import org.opentripplanner.ext.mobilityprofile.MobilityProfileParser;
 import org.opentripplanner.ext.mobilityprofile.MobilityProfileRouting;
 import org.opentripplanner.framework.geometry.GeometryUtils;
 import org.opentripplanner.framework.geometry.SphericalDistanceLibrary;
@@ -61,8 +60,6 @@ public class OsmModule implements GraphBuilderModule {
   private final OsmDatabase osmdb;
   private Map<String, MobilityProfileData> mobilityProfileData;
   private HashSet<String> mappedMobilityProfileEntries;
-
-  private Map<String, List<String[]>> mappedWays;
 
   OsmModule(
     Collection<OsmProvider> providers,
@@ -157,7 +154,6 @@ public class OsmModule implements GraphBuilderModule {
     vertexGenerator.initIntersectionNodes();
 
     mappedMobilityProfileEntries = new HashSet<>();
-    mappedWays = new HashMap<>();
 
     buildBasicGraph();
     buildWalkableAreas(!params.areaVisibility());
@@ -196,25 +192,18 @@ public class OsmModule implements GraphBuilderModule {
    * Lists unused entries from the mobility profile data.
    */
   private void listUnusedMobilityCosts() {
-    var unusedEntries = new ArrayList<String>();
-
     if (mobilityProfileData != null) {
-      for (var cell : mobilityProfileData.entrySet()) {
-        String key = cell.getKey();
-        if (
-          !mappedMobilityProfileEntries.contains(key)
-        ) {
-          unusedEntries.add(key);
-        }
-      }
-    }
+      List<String> unusedEntries = mobilityProfileData.keySet().stream()
+        .filter(key -> !mappedMobilityProfileEntries.contains(key))
+        .toList();
 
-    if (!unusedEntries.isEmpty()) {
-      StringBuilder sb = new StringBuilder();
-      for (var entry : unusedEntries) {
-        sb.append(String.format("%n- %s", entry));
+      if (!unusedEntries.isEmpty()) {
+        StringBuilder sb = new StringBuilder();
+        for (var entry : unusedEntries) {
+          sb.append(String.format("%n- %s", entry));
+        }
+        LOG.warn("{} mobility profile entries were not used:{}", unusedEntries.size(), sb);
       }
-      LOG.warn("{} mobility profile entries were not used:{}", unusedEntries.size(), sb);
     }
   }
 
@@ -594,28 +583,42 @@ public class OsmModule implements GraphBuilderModule {
 
     // Lookup costs by mobility profile, if any were defined.
     // Note that edges are bidirectional, so we check that mobility data exist in both directions.
-    String keyForWay = null;
     if (mobilityProfileData != null) {
-      keyForWay = MobilityProfileParser.getKey(Long.toString(way.getId(), 10), startId, endId);
-      var edgeMobilityCostMap = mobilityProfileData.get(keyForWay);
-      if (edgeMobilityCostMap == null) {
-        keyForWay = MobilityProfileParser.getKey(Long.toString(way.getId(), 10), endId, startId);
-        edgeMobilityCostMap = mobilityProfileData.get(keyForWay);
-      }
-      if (keyForWay != null && edgeMobilityCostMap != null) {
-        seb.withProfileCosts(edgeMobilityCostMap.costs());
-        // Append an indication that this edge uses a profile cost.
-        nameWithNodeIds = String.format("%s ☑", nameWithNodeIds);
+      String wayId = Long.toString(way.getId(), 10);
+      var edgeMobilityCostMap = mobilityProfileData.get(wayId);
+      if (edgeMobilityCostMap != null) {
+        // Check whether the nodes for this way match the nodes from mobility profile data.
+        if (
+          startShortId.equals(Long.toString(edgeMobilityCostMap.fromNode(), 10)) &&
+          endShortId.equals(Long.toString(edgeMobilityCostMap.toNode(), 10)) ||
+          startShortId.equals(Long.toString(edgeMobilityCostMap.toNode(), 10)) &&
+          endShortId.equals(Long.toString(edgeMobilityCostMap.fromNode(), 10))
+        ) {
+          // If the from/to nodes match, then assign the cost directly
+          seb.withProfileCosts(edgeMobilityCostMap.costs());
+
+          // Append an indication that this edge uses a full profile cost.
+          nameWithNodeIds = String.format("%s ☑", nameWithNodeIds);
+          System.out.printf("Way (full length): %s%n", nameWithNodeIds);
+        } else {
+          // Otherwise, pro-rate the cost to the length of the edge.
+          float ratio = (float)length / edgeMobilityCostMap.lengthInMeters();
+          seb.withProfileCosts(MobilityProfileRouting.getProRatedProfileCosts(
+            edgeMobilityCostMap.costs(),
+            ratio
+          ));
+
+          // Append an indication that this edge uses a partial profile cost.
+          nameWithNodeIds = String.format("%s r%4.3f", nameWithNodeIds, ratio);
+          System.out.printf("Way (partial): %s%n", nameWithNodeIds);
+        }
+
         seb.withName(nameWithNodeIds);
         // LOG.info("Applied mobility profile costs between nodes {}-{}", startShortId, endShortId);
         // Keep tab of node pairs for which mobility profile costs have been mapped.
-        mappedMobilityProfileEntries.add(keyForWay);
+        mappedMobilityProfileEntries.add(wayId);
       }
     }
-    System.out.printf("Way: %s - %s%n", nameWithNodeIds, perms.name());
-    // Update list of mapped ways
-
-
 
     if (!way.hasTag("name") && !way.hasTag("ref")) {
       seb.withBogusName(true);

@@ -6,7 +6,6 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
-import org.opentripplanner.street.model.vertex.VertexLabel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,6 +15,8 @@ import org.slf4j.LoggerFactory;
 public class MobilityProfileParser {
 
   private static final Logger LOG = LoggerFactory.getLogger(MobilityProfileParser.class);
+
+  private static final int ONE_MILE_IN_METERS = 1609;
 
   private MobilityProfileParser() {}
 
@@ -60,7 +61,7 @@ public class MobilityProfileParser {
       long fromNode = Long.parseLong(reader.get("Upstream Node"), 10);
       long toNode = Long.parseLong(reader.get("Downstream Node"), 10);
       String id = reader.get("Way Id");
-      float length = Float.parseFloat(reader.get("Link Length"));
+      float lengthMeters = ONE_MILE_IN_METERS * Float.parseFloat(reader.get("Link Length"));
 
       // The weight map has to be a HashMap instead of an EnumMap so that it is correctly
       // persisted in the graph.
@@ -79,12 +80,8 @@ public class MobilityProfileParser {
       }
 
       map.put(
-        getKey(
-          id,
-          VertexLabel.osm(fromNode).toString(),
-          VertexLabel.osm(toNode).toString()
-        ),
-        new MobilityProfileData(length, fromNode, toNode, weightMap)
+        id,
+        new MobilityProfileData(lengthMeters, fromNode, toNode, weightMap)
       );
     } catch (NumberFormatException | NullPointerException e) {
       LOG.warn(
