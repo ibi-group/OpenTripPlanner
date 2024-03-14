@@ -695,6 +695,9 @@ public class StreetEdge
     seb1.withMilliMeterLength(l1);
     seb2.withMilliMeterLength(l2);
 
+    seb1.withProfileCosts(MobilityProfileRouting.getProRatedProfileCosts(profileCost, (float)l1 / length_mm));
+    seb2.withProfileCosts(MobilityProfileRouting.getProRatedProfileCosts(profileCost, (float)l2 / length_mm));
+
     copyPropertiesToSplitEdge(seb1, 0, l1 / 1000.0);
     copyPropertiesToSplitEdge(seb2, l1 / 1000.0, getDistanceMeters());
 
