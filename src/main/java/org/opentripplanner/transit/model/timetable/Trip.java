@@ -22,7 +22,7 @@ import org.opentripplanner.transit.model.organization.Operator;
 
 public final class Trip
   extends AbstractTransitEntity<Trip, TripBuilder>
-  implements LogInfo, Filterable {
+  implements LogInfo, TransitFilterable {
 
   private final Operator operator;
   private final Route route;

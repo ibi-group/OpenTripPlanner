@@ -86,8 +86,7 @@ public class TestBanning {
   ) {
     return patterns
       .stream()
-      .filter(pattern ->
-        filterRequest.stream().noneMatch(filter -> filter.matchFilterable(pattern))
+      .filter(pattern -> filterRequest.stream().noneMatch(filter -> filter.matchFilterable(pattern))
       )
       .map(TripPattern::getId)
       .toList();

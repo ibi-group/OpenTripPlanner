@@ -51,6 +51,7 @@ public class FlexRouter {
   private final boolean arriveBy;
 
   private final FlexServiceDate[] dates;
+  private final Collection<TransitFilter> filters;
 
   /* State */
   private List<FlexAccessTemplate> flexAccessTemplates = null;
@@ -65,7 +66,8 @@ public class FlexRouter {
     int additionalPastSearchDays,
     int additionalFutureSearchDays,
     Collection<NearbyStop> streetAccesses,
-    Collection<NearbyStop> egressTransfers
+    Collection<NearbyStop> egressTransfers,
+    Collection<TransitFilter> filters
   ) {
     this.graph = graph;
     this.transitService = transitService;
@@ -73,6 +75,7 @@ public class FlexRouter {
     this.streetAccesses = streetAccesses;
     this.streetEgresses = egressTransfers;
     this.flexIndex = transitService.getFlexIndex();
+    this.filters = filters;
     this.graphPathToItineraryMapper =
       new GraphPathToItineraryMapper(
         transitService.getTimeZone(),
@@ -216,7 +219,6 @@ public class FlexRouter {
 
   private Stream<AccessEgressAndNearbyStop> getClosestFlexTrips(
     Collection<NearbyStop> nearbyStops,
-    List<TransitFilter> filters,
     boolean pickup
   ) {
     // Find all trips reachable from the nearbyStops
@@ -226,7 +228,8 @@ public class FlexRouter {
         flexIndex
           .getFlexTripsByStop(accessEgress.stop)
           .stream()
-          .filter(flexTrip -> flexTrip.matches())
+          // should this flex trip be included according to the transit filters
+          .filter(flexTrip -> flexTrip.matches(filters))
           .filter(flexTrip ->
             pickup
               ? flexTrip.isBoardingPossible(accessEgress)

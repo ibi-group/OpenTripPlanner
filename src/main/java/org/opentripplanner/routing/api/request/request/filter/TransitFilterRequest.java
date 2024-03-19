@@ -5,9 +5,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.function.Predicate;
 import org.opentripplanner.framework.tostring.ToStringBuilder;
-import org.opentripplanner.transit.model.network.TripPattern;
-import org.opentripplanner.transit.model.timetable.Filterable;
+import org.opentripplanner.model.modes.AllowTransitModeFilter;
+import org.opentripplanner.transit.model.timetable.TransitFilterable;
 import org.opentripplanner.transit.model.timetable.TripTimes;
 
 public class TransitFilterRequest implements Serializable, TransitFilter {
@@ -38,28 +39,16 @@ public class TransitFilterRequest implements Serializable, TransitFilter {
 
   @Override
   public boolean isSubModePredicate() {
-    for (var selectRequest : select) {
-      if (
-        selectRequest.transportModeFilter() != null &&
-        selectRequest.transportModeFilter().isSubMode()
-      ) {
-        return true;
-      }
-    }
-
-    for (var selectRequest : not) {
-      if (
-        selectRequest.transportModeFilter() != null &&
-        selectRequest.transportModeFilter().isSubMode()
-      ) {
-        return true;
-      }
-    }
-    return false;
+    return checkFilterPredicate(AllowTransitModeFilter::isSubMode);
   }
 
   @Override
-  public boolean matchFilterable(Filterable tripPattern) {
+  public boolean isModePredicate() {
+    return checkFilterPredicate(AllowTransitModeFilter::isMode);
+  }
+
+  @Override
+  public boolean matchFilterable(TransitFilterable tripPattern) {
     if (select.length != 0) {
       var anyMatch = false;
       for (SelectRequest s : select) {
@@ -113,6 +102,27 @@ public class TransitFilterRequest implements Serializable, TransitFilter {
       .addCol("select", Arrays.asList(select))
       .addCol("not", Arrays.asList(not))
       .toString();
+  }
+
+  private boolean checkFilterPredicate(Predicate<AllowTransitModeFilter> predicate) {
+    for (var selectRequest : select) {
+      if (
+        selectRequest.transportModeFilter() != null &&
+          predicate.test(selectRequest.transportModeFilter())
+      ) {
+        return true;
+      }
+    }
+
+    for (var selectRequest : not) {
+      if (
+        selectRequest.transportModeFilter() != null &&
+          predicate.test(selectRequest.transportModeFilter())
+      ) {
+        return true;
+      }
+    }
+    return false;
   }
 
   public static class Builder {

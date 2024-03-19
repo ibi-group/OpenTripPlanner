@@ -1,7 +1,7 @@
 package org.opentripplanner.routing.api.request.request.filter;
 
 import java.io.Serializable;
-import org.opentripplanner.transit.model.timetable.Filterable;
+import org.opentripplanner.transit.model.timetable.TransitFilterable;
 import org.opentripplanner.transit.model.timetable.TripTimes;
 
 /**
@@ -18,7 +18,7 @@ public class AllowAllTransitFilter implements Serializable, TransitFilter {
   }
 
   @Override
-  public boolean matchFilterable(Filterable ignored) {
+  public boolean matchFilterable(TransitFilterable ignored) {
     return true;
   }
 

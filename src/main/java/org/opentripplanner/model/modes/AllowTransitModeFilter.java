@@ -22,4 +22,8 @@ public interface AllowTransitModeFilter extends Serializable {
   default boolean isSubMode() {
     return false;
   }
+
+  default boolean isMode() {
+    return true;
+  }
 }

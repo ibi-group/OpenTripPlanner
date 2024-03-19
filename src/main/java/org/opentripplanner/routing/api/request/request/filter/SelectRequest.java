@@ -8,9 +8,7 @@ import org.opentripplanner.framework.tostring.ToStringBuilder;
 import org.opentripplanner.model.modes.AllowTransitModeFilter;
 import org.opentripplanner.transit.model.basic.MainAndSubMode;
 import org.opentripplanner.transit.model.framework.FeedScopedId;
-import org.opentripplanner.transit.model.network.TripPattern;
-import org.opentripplanner.transit.model.timetable.Filterable;
-import org.opentripplanner.transit.model.timetable.Trip;
+import org.opentripplanner.transit.model.timetable.TransitFilterable;
 import org.opentripplanner.transit.model.timetable.TripTimes;
 
 public class SelectRequest implements Serializable {
@@ -40,7 +38,7 @@ public class SelectRequest implements Serializable {
     this.routes = builder.routes;
   }
 
-  public boolean matches(Filterable tripPattern) {
+  public boolean matches(TransitFilterable tripPattern) {
     if (
       // If the pattern contains multiple modes, we will do the filtering in
       // SelectRequest.matches(TripTimes)

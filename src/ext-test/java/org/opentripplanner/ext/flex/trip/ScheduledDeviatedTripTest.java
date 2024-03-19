@@ -139,7 +139,8 @@ public class ScheduledDeviatedTripTest extends FlexTest {
       1,
       1,
       List.of(from),
-      List.of(to)
+      List.of(to),
+      List.of(AllowAllTransitFilter.of())
     );
 
     var filter = new DecorateWithFare(graph.getFareService());

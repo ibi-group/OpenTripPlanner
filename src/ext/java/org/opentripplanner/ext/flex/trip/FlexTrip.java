@@ -1,5 +1,6 @@
 package org.opentripplanner.ext.flex.trip;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -112,8 +113,20 @@ public abstract class FlexTrip<T extends FlexTrip<T, B>, B extends FlexTripBuild
     return trip;
   }
 
-  public boolean matches(TransitFilter f) {
-    return f.matchFilterable(trip);
+  /**
+   * Should the passed in filters allow the routing engine to include this flex trip?
+   */
+  public boolean matches(Collection<TransitFilter> filters) {
+    if (filters.isEmpty()) {
+      return true;
+    }
+    for (TransitFilter filter : filters) {
+      // because we don't want to support mode predicates for flex we skip those
+      if (!filter.isModePredicate() && !filter.isSubModePredicate() && filter.matchFilterable(trip)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   public abstract BookingInfo getDropOffBookingInfo(int i);
