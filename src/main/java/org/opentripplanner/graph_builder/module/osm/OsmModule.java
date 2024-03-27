@@ -11,6 +11,7 @@ import java.util.Map;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.LineString;
+import org.opentripplanner.ext.mobilityprofile.MobilityProfile;
 import org.opentripplanner.ext.mobilityprofile.MobilityProfileData;
 import org.opentripplanner.ext.mobilityprofile.MobilityProfileRouting;
 import org.opentripplanner.framework.geometry.GeometryUtils;
@@ -599,18 +600,22 @@ public class OsmModule implements GraphBuilderModule {
 
           // Append an indication that this edge uses a full profile cost.
           nameWithNodeIds = String.format("%s ☑", nameWithNodeIds);
-          System.out.printf("Way (full length): %s%n", nameWithNodeIds);
+          // System.out.printf("Way (full length): %s size %d%n", nameWithNodeIds, edgeMobilityCostMap.costs().size());
+          System.out.printf("%s %f%n", nameWithNodeIds,  edgeMobilityCostMap.costs().get(MobilityProfile.WCHAIRE));
         } else {
           // Otherwise, pro-rate the cost to the length of the edge.
-          float ratio = (float)length / edgeMobilityCostMap.lengthInMeters();
-          seb.withProfileCosts(MobilityProfileRouting.getProRatedProfileCosts(
+          float ratio = (float)(length / edgeMobilityCostMap.lengthInMeters());
+
+          Map<MobilityProfile, Float> proRatedProfileCosts = MobilityProfileRouting.getProRatedProfileCosts(
             edgeMobilityCostMap.costs(),
             ratio
-          ));
+          );
+          seb.withProfileCosts(proRatedProfileCosts);
 
           // Append an indication that this edge uses a partial profile cost.
-          nameWithNodeIds = String.format("%s r%4.3f", nameWithNodeIds, ratio);
-          System.out.printf("Way (partial): %s%n", nameWithNodeIds);
+          nameWithNodeIds = String.format("%s r%4.3f l%4.3f", nameWithNodeIds, ratio, length);
+          // System.out.printf("Way (partial): %s size %d%n", nameWithNodeIds, proRatedProfileCosts.size());
+          System.out.printf("%s %f%n", nameWithNodeIds,  proRatedProfileCosts.get(MobilityProfile.WCHAIRE));
         }
 
         seb.withName(nameWithNodeIds);

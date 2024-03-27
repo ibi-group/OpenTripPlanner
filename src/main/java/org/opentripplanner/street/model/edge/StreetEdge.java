@@ -695,8 +695,15 @@ public class StreetEdge
     seb1.withMilliMeterLength(l1);
     seb2.withMilliMeterLength(l2);
 
-    seb1.withProfileCosts(MobilityProfileRouting.getProRatedProfileCosts(profileCost, (float)l1 / length_mm));
-    seb2.withProfileCosts(MobilityProfileRouting.getProRatedProfileCosts(profileCost, (float)l2 / length_mm));
+    if (!profileCost.isEmpty()) {
+      float ratio1 = (float) l1 / length_mm;
+      float ratio2 = (float) l2 / length_mm;
+      seb1.withProfileCosts(MobilityProfileRouting.getProRatedProfileCosts(profileCost, ratio1));
+      seb2.withProfileCosts(MobilityProfileRouting.getProRatedProfileCosts(profileCost, ratio2));
+
+      seb1.withName(String.format("%s split r%4.3f l%4.3f", name, ratio1, l1 / 1000.0));
+      seb2.withName(String.format("%s split r%4.3f l%4.3f", name, ratio2, l2 / 1000.0));
+    }
 
     copyPropertiesToSplitEdge(seb1, 0, l1 / 1000.0);
     copyPropertiesToSplitEdge(seb2, l1 / 1000.0, getDistanceMeters());
