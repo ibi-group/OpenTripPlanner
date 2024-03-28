@@ -16,7 +16,7 @@ jobs:
     steps:
 
       - name: Checkout
-        uses: actions/checkout@v3.1.0
+        uses: actions/checkout@v4
         with:
           token: ${{ secrets.CHANGELOG_TOKEN }}
 
@@ -54,6 +54,7 @@ jobs:
 
       - name: Install xmllint
         run: |
+          sudo apt-get update
           sudo apt-get install -y libxml2-utils
 
       - name: Configure git user
@@ -62,7 +63,7 @@ jobs:
           git config --global user.email 'serialization-version-bot@opentripplanner.org'
 
       - name: Checkout
-        uses: actions/checkout@v3.1.0
+        uses: actions/checkout@v4
         with:
           token: ${{ secrets.CHANGELOG_TOKEN }}
 

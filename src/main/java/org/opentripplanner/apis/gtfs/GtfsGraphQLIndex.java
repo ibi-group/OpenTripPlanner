@@ -77,8 +77,6 @@ import org.opentripplanner.apis.gtfs.datafetchers.VehiclePositionImpl;
 import org.opentripplanner.apis.gtfs.datafetchers.VehicleRentalStationImpl;
 import org.opentripplanner.apis.gtfs.datafetchers.debugOutputImpl;
 import org.opentripplanner.apis.gtfs.datafetchers.elevationProfileComponentImpl;
-import org.opentripplanner.apis.gtfs.datafetchers.fareComponentImpl;
-import org.opentripplanner.apis.gtfs.datafetchers.fareImpl;
 import org.opentripplanner.apis.gtfs.datafetchers.placeAtDistanceImpl;
 import org.opentripplanner.apis.gtfs.datafetchers.serviceTimeRangeImpl;
 import org.opentripplanner.apis.gtfs.datafetchers.stepImpl;
@@ -108,11 +106,12 @@ class GtfsGraphQLIndex {
       IntrospectionTypeWiring typeWiring = new IntrospectionTypeWiring(typeRegistry);
       RuntimeWiring runtimeWiring = RuntimeWiring
         .newRuntimeWiring()
-        .scalar(GraphQLScalars.durationScalar)
-        .scalar(GraphQLScalars.polylineScalar)
-        .scalar(GraphQLScalars.geoJsonScalar)
-        .scalar(GraphQLScalars.graphQLIDScalar)
-        .scalar(GraphQLScalars.gramsScalar)
+        .scalar(GraphQLScalars.DURATION_SCALAR)
+        .scalar(GraphQLScalars.POLYLINE_SCALAR)
+        .scalar(GraphQLScalars.GEOJSON_SCALAR)
+        .scalar(GraphQLScalars.GRAPHQL_ID_SCALAR)
+        .scalar(GraphQLScalars.GRAMS_SCALAR)
+        .scalar(GraphQLScalars.OFFSET_DATETIME_SCALAR)
         .scalar(ExtendedScalars.GraphQLLong)
         .type("Node", type -> type.typeResolver(new NodeTypeResolver()))
         .type("PlaceInterface", type -> type.typeResolver(new PlaceInterfaceTypeResolver()))
@@ -129,8 +128,6 @@ class GtfsGraphQLIndex {
         .type(typeWiring.build(debugOutputImpl.class))
         .type(typeWiring.build(DepartureRowImpl.class))
         .type(typeWiring.build(elevationProfileComponentImpl.class))
-        .type(typeWiring.build(fareComponentImpl.class))
-        .type(typeWiring.build(fareImpl.class))
         .type(typeWiring.build(FeedImpl.class))
         .type(typeWiring.build(FeedImpl.class))
         .type(typeWiring.build(GeometryImpl.class))

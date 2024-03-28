@@ -28,6 +28,7 @@ import org.opentripplanner.graph_builder.module.osm.OsmModule;
 import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.service.worldenvelope.WorldEnvelopeRepository;
 import org.opentripplanner.standalone.config.BuildConfig;
+import org.opentripplanner.street.model.StreetLimitationParameters;
 import org.opentripplanner.transit.service.TransitModel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -70,6 +71,7 @@ public class GraphBuilder implements Runnable {
     WorldEnvelopeRepository worldEnvelopeRepository,
     @Nullable EmissionsDataModel emissionsDataModel,
     @Nullable StopConsolidationRepository stopConsolidationRepository,
+    StreetLimitationParameters streetLimitationParameters,
     boolean loadStreetGraph,
     boolean saveStreetGraph
   ) {
@@ -87,6 +89,7 @@ public class GraphBuilder implements Runnable {
       .transitModel(transitModel)
       .worldEnvelopeRepository(worldEnvelopeRepository)
       .stopConsolidationRepository(stopConsolidationRepository)
+      .streetLimitationParameters(streetLimitationParameters)
       .dataSources(dataSources)
       .timeZoneId(transitModel.getTimeZone());
 

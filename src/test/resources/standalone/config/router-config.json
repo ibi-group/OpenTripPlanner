@@ -43,7 +43,6 @@
       }
     },
     "car": {
-      "speed": 40,
       "reluctance": 10,
       "decelerationSpeed": 2.9,
       "accelerationSpeed": 2.9,
@@ -55,6 +54,20 @@
       "parking": {
         "time": "5m",
         "cost": 600
+      }
+    },
+    "scooter": {
+      "speed": 5,
+      "reluctance": 5.0,
+      "rental": {
+        "pickupCost": 120,
+        "dropOffTime": "30s",
+        "dropOffCost": 30
+      },
+      "triangle": {
+        "safety": 0.4,
+        "flatness": 0.3,
+        "time": 0.3
       }
     },
     "walk": {
@@ -80,11 +93,14 @@
     "accessEgress": {
       "maxDuration": "45m",
       "maxDurationForMode": {
-	"BIKE_RENTAL": "20m"
+        "BIKE_RENTAL": "20m"
       },
       "maxStopCount": 500,
       "penalty": {
-        "FLEXIBLE" : { "timePenalty": "2m + 1.1t", "costFactor": 1.7 }
+        "FLEXIBLE": {
+          "timePenalty": "2m + 1.1t",
+          "costFactor": 1.7
+        }
       }
     },
     "itineraryFilters": {
@@ -103,8 +119,12 @@
     "geoidElevation": false,
     "maxJourneyDuration": "36h",
     "unpreferred": {
-      "agencies": ["HSL:123"],
-      "routes": ["HSL:456"]
+      "agencies": [
+        "HSL:123"
+      ],
+      "routes": [
+        "HSL:456"
+      ]
     },
     "unpreferredCost": "10m + 2.0 x",
     "streetRoutingTimeout": "5s",
@@ -158,8 +178,15 @@
       "PREFERRED": 0
     },
     "transferCacheRequests": [
-      { "modes": "WALK"                                                     },
-      { "modes": "WALK",    "wheelchairAccessibility": { "enabled": true  } }
+      {
+        "modes": "WALK"
+      },
+      {
+        "modes": "WALK",
+        "wheelchairAccessibility": {
+          "enabled": true
+        }
+      }
     ]
   },
   "vehicleRentalServiceDirectory": {
@@ -174,61 +201,72 @@
   "transmodelApi": {
     "hideFeedId": true
   },
-  "vectorTileLayers": [
-    {
-      "name": "stops",
-      "type": "Stop",
-      "mapper": "Digitransit",
-      "maxZoom": 20,
-      "minZoom": 14,
-      "cacheMaxSeconds": 600
-    },
-    {
-      "name": "stations",
-      "type": "Station",
-      "mapper": "Digitransit",
-      "maxZoom": 20,
-      "minZoom": 12,
-      "cacheMaxSeconds": 600
-    },
-    {
-      "name": "rentalPlaces",
-      // all rental places: stations and free-floating vehicles
-      "type": "VehicleRental",
-      "mapper": "Digitransit",
-      "maxZoom": 20,
-      "minZoom": 14,
-      "cacheMaxSeconds": 60,
-      "expansionFactor": 0.25
-    },
-    {
-      "name": "rentalVehicle",
-      // just free-floating vehicles
-      "type": "VehicleRentalVehicle",
-      "mapper": "Digitransit",
-      "maxZoom": 20,
-      "minZoom": 14,
-      "cacheMaxSeconds": 60
-    },
-    {
-      "name": "rentalStation",
-      // just rental stations
-      "type": "VehicleRentalStation",
-      "mapper": "Digitransit",
-      "maxZoom": 20,
-      "minZoom": 14,
-      "cacheMaxSeconds": 600
-    },
-    {
-      "name": "vehicleParking",
-      "type": "VehicleParking",
-      "mapper": "Digitransit",
-      "maxZoom": 20,
-      "minZoom": 14,
-      "cacheMaxSeconds": 60,
-      "expansionFactor": 0.25
-    }
-  ],
+  "vectorTiles": {
+    "basePath": "/otp_ct/vectorTiles",
+    "layers": [
+      {
+        "name": "stops",
+        "type": "Stop",
+        "mapper": "Digitransit",
+        "maxZoom": 20,
+        "minZoom": 14,
+        "cacheMaxSeconds": 600
+      },
+      {
+        "name": "areaStops",
+        "type": "AreaStop",
+        "mapper": "OTPRR",
+        "maxZoom": 20,
+        "minZoom": 14,
+        "cacheMaxSeconds": 600
+      },
+      {
+        "name": "stations",
+        "type": "Station",
+        "mapper": "Digitransit",
+        "maxZoom": 20,
+        "minZoom": 12,
+        "cacheMaxSeconds": 600
+      },
+      {
+        "name": "rentalPlaces",
+        // all rental places: stations and free-floating vehicles
+        "type": "VehicleRental",
+        "mapper": "Digitransit",
+        "maxZoom": 20,
+        "minZoom": 14,
+        "cacheMaxSeconds": 60,
+        "expansionFactor": 0.25
+      },
+      {
+        "name": "rentalVehicle",
+        // just free-floating vehicles
+        "type": "VehicleRentalVehicle",
+        "mapper": "Digitransit",
+        "maxZoom": 20,
+        "minZoom": 14,
+        "cacheMaxSeconds": 60
+      },
+      {
+        "name": "rentalStation",
+        // just rental stations
+        "type": "VehicleRentalStation",
+        "mapper": "Digitransit",
+        "maxZoom": 20,
+        "minZoom": 14,
+        "cacheMaxSeconds": 600
+      },
+      {
+        "name": "vehicleParking",
+        "type": "VehicleParking",
+        "mapper": "Digitransit",
+        "maxZoom": 20,
+        "minZoom": 14,
+        "cacheMaxSeconds": 60,
+        "expansionFactor": 0.25
+      }
+    ]
+  },
   "timetableUpdates": {
     "purgeExpiredData": false,
     "maxSnapshotFrequency": "2s"
@@ -324,7 +362,9 @@
         "Header-Name": "Header-Value"
       },
       "fuzzyTripMatching": false,
-      "features": ["position"]
+      "features": [
+        "position"
+      ]
     },
     // Siri-ET over HTTP
     {
@@ -359,6 +399,21 @@
         "toDateTime": "P1D",
         "timeout": 300000
       }
+    },
+    // SIRI ET updater for Azure Service Bus
+    {
+      "type": "siri-azure-et-updater",
+      "topic": "some_topic",
+      "authenticationType":  "SharedAccessKey",
+      "fullyQualifiedNamespace":  "fully_qualified_namespace",
+      "servicebus-url": "service_bus_url",
+      "feedId": "feed_id",
+      "customMidnight": 4,
+      "history": {
+        "url": "endpoint_url",
+        "fromDateTime": "-P1D",
+        "timeout": 300000
+      }
     }
   ],
   "rideHailingServices": [
@@ -368,8 +423,10 @@
       "clientSecret": "very-secret",
       "wheelchairAccessibleProductId": "545de0c4-659f-49c6-be65-0d5e448dffd5",
       "bannedProductIds": [
-        "1196d0dd-423b-4a81-a1d8-615367d3a365", "f58761e5-8dd5-4940-a472-872f1236c596"
+        "1196d0dd-423b-4a81-a1d8-615367d3a365",
+        "f58761e5-8dd5-4940-a472-872f1236c596"
       ]
     }
   ]
 }
+

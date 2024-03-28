@@ -8,6 +8,8 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import javax.annotation.Nonnull;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.LineString;
@@ -19,7 +21,6 @@ import org.opentripplanner.framework.geometry.SphericalDistanceLibrary;
 import org.opentripplanner.framework.i18n.I18NString;
 import org.opentripplanner.framework.logging.ProgressTracker;
 import org.opentripplanner.graph_builder.issue.api.DataImportIssueStore;
-import org.opentripplanner.graph_builder.issues.StreetCarSpeedZero;
 import org.opentripplanner.graph_builder.model.GraphBuilderModule;
 import org.opentripplanner.graph_builder.module.osm.parameters.OsmProcessingParameters;
 import org.opentripplanner.openstreetmap.OsmProvider;
@@ -31,6 +32,7 @@ import org.opentripplanner.openstreetmap.wayproperty.WayProperties;
 import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.routing.util.ElevationUtils;
 import org.opentripplanner.routing.vehicle_parking.VehicleParking;
+import org.opentripplanner.street.model.StreetLimitationParameters;
 import org.opentripplanner.street.model.StreetTraversalPermission;
 import org.opentripplanner.street.model.edge.StreetEdge;
 import org.opentripplanner.street.model.edge.StreetEdgeBuilder;
@@ -61,11 +63,13 @@ public class OsmModule implements GraphBuilderModule {
   private final OsmDatabase osmdb;
   private Map<String, MobilityProfileData> mobilityProfileData;
   private HashSet<String> mappedMobilityProfileEntries;
+  private final StreetLimitationParameters streetLimitationParameters;
 
   OsmModule(
     Collection<OsmProvider> providers,
     Graph graph,
     DataImportIssueStore issueStore,
+    @Nonnull StreetLimitationParameters streetLimitationParameters,
     OsmProcessingParameters params
   ) {
     this.providers = List.copyOf(providers);
@@ -75,6 +79,7 @@ public class OsmModule implements GraphBuilderModule {
     this.osmdb = new OsmDatabase(issueStore);
     this.vertexGenerator = new VertexGenerator(osmdb, graph, params.boardingAreaRefTags());
     this.normalizer = new SafetyValueNormalizer(graph, issueStore);
+    this.streetLimitationParameters = Objects.requireNonNull(streetLimitationParameters);
   }
 
   public static OsmModuleBuilder of(Collection<OsmProvider> providers, Graph graph) {
@@ -100,6 +105,7 @@ public class OsmModule implements GraphBuilderModule {
     LOG.info("Building street graph from OSM");
     build();
     graph.hasStreets = true;
+    streetLimitationParameters.initMaxCarSpeed(getMaxCarSpeed());
   }
 
   @Override
@@ -629,14 +635,20 @@ public class OsmModule implements GraphBuilderModule {
       seb.withBogusName(true);
     }
 
-    // < 0.04: account for
-    if (carSpeed < 0.04) {
-      issueStore.add(new StreetCarSpeedZero(way));
-    }
-
     StreetEdge street = seb.buildAndConnect();
     params.edgeNamer().recordEdge(way, street);
 
     return street;
+  }
+
+  private float getMaxCarSpeed() {
+    float maxSpeed = 0f;
+    for (OsmProvider provider : providers) {
+      var carSpeed = provider.getOsmTagMapper().getMaxUsedCarSpeed(provider.getWayPropertySet());
+      if (carSpeed > maxSpeed) {
+        maxSpeed = carSpeed;
+      }
+    }
+    return maxSpeed;
   }
 }

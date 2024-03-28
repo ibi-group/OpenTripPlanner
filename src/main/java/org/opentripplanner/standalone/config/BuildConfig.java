@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import org.opentripplanner.datastore.api.OtpDataStoreConfig;
 import org.opentripplanner.ext.dataoverlay.configuration.DataOverlayConfig;
 import org.opentripplanner.ext.emissions.EmissionsConfig;
@@ -182,7 +183,7 @@ public class BuildConfig implements OtpDataStoreConfig {
   public final LocalDate transitServiceEnd;
   public final ZoneId transitModelTimeZone;
 
-  public final String stopConsolidationFile;
+  public final URI stopConsolidation;
   public final String mobilityProfileFile;
 
   /**
@@ -603,14 +604,14 @@ Netex data is also often supplied in a ZIP file.
         )
         .asUri(null);
 
-    stopConsolidationFile =
+    stopConsolidation =
       root
         .of("stopConsolidationFile")
         .since(V2_5)
         .summary(
           "Name of the CSV-formatted file in the build directory which contains the configuration for stop consolidation."
         )
-        .asString(null);
+        .asUri(null);
 
     mobilityProfileFile =
       root
@@ -684,6 +685,12 @@ Netex data is also often supplied in a ZIP file.
   @Override
   public URI streetGraph() {
     return streetGraph;
+  }
+
+  @Override
+  @Nullable
+  public URI stopConsolidation() {
+    return stopConsolidation;
   }
 
   @Override

@@ -155,8 +155,8 @@ you can run the following bash command:
 - `head -c 29 Graph.obj ==>  OpenTripPlannerGraph;0000007;` (file header)
 - `head -c 28 Graph.obj | tail -c 7 ==>  0000007`  (version id)
 
-The Maven _pom.xml_, the _META-INF/MANIFEST.MF_, the OTP command line(`--serVerId`), log start-up
-messages and all OTP APIs can be used to get the OTP Serialization Version Id.
+The Maven _pom.xml_, the _META-INF/MANIFEST.MF_, the OTP command line(`--serializationVersionId`), 
+log start-up messages and all OTP APIs can be used to get the OTP Serialization Version Id.
 
 ## Include file directive
 
@@ -173,7 +173,7 @@ text inserted is valid JSON (starts with `{` and ends with `}`).
 Variable substitution is performed on configuration file after the include file directive; Hence
 variable substitution is also performed on the text in the injected file.
 
-Here is an example including variable substitution, assuming version 2.4.0 of OTP:
+Here is an example including variable substitution, assuming version 2.5.0 of OTP:
 
 ```JSON
 // build-config.json
@@ -197,7 +197,7 @@ The result will look like this:
 {
       "transitFeeds": [
         {
-          "source": "netex-v2.4.0.obj"
+          "source": "netex-v2.5.0.obj"
         }
       ]
 } 
@@ -250,7 +250,6 @@ Here is a list of all features which can be toggled on/off and their default val
 | `SandboxAPIParkAndRideApi`                 | Enable park-and-ride endpoint.                                                                                                                                                                                                                                                                                   |                    |    ✓️   |
 | `SandboxAPITravelTime`                     | Enable the isochrone/travel time surface API.                                                                                                                                                                                                                                                                    |                    |    ✓️   |
 | `TransferAnalyzer`                         | Analyze transfers during graph build.                                                                                                                                                                                                                                                                            |                    |    ✓️   |
-| `VehicleToStopHeuristics`                  | Enable improved heuristic for park-and-ride queries.                                                                                                                                                                                                                                                             |                    |    ✓️   |
 
 <!-- OTP-FEATURE-TABLE END -->
 
