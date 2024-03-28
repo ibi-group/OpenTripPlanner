@@ -82,7 +82,7 @@ public class RouteRequest implements Cloneable, Serializable {
 
   private boolean wheelchair = false;
 
-  private MobilityProfile mobilityProfile = MobilityProfile.NONE;
+  private MobilityProfile mobilityProfile = null;
 
   /* CONSTRUCTORS */
 

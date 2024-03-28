@@ -1,5 +1,7 @@
 package org.opentripplanner.ext.mobilityprofile;
 
+import static org.apache.commons.lang3.StringUtils.isBlank;
+
 /**
  * Enumeration for the mobility profiles, and their associated column names for CSV parsing.
  */
@@ -39,11 +41,14 @@ public enum MobilityProfile {
   }
 
   public static MobilityProfile fromString(String value) {
+    if (isBlank(value)) return null;
+
     for (MobilityProfile p : MobilityProfile.values()) {
       if (p.text.equals(value)) {
         return p;
       }
     }
+
     throw new RuntimeException(String.format("Invalid mobility profile '%s'", value));
   }
 }
