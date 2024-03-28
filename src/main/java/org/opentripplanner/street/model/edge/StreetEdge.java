@@ -1288,6 +1288,7 @@ public class StreetEdge
   ) {
     double time, weight;
     if (wheelchair) {
+      time = getEffectiveWalkDistance() / speed;
       weight =
         (getEffectiveBikeDistance() / speed) *
         StreetEdgeReluctanceCalculator.computeWheelchairReluctance(
@@ -1299,13 +1300,14 @@ public class StreetEdge
     } else {
       if (walkingBike) {
         // take slopes into account when walking bikes
-        weight = (getEffectiveBikeDistance() / speed);
+        time = weight = (getEffectiveBikeDistance() / speed);
         if (isStairs()) {
           // we do allow walking the bike across a stairs but there is a very high default penalty
           weight *= preferences.bike().walking().stairsReluctance();
         }
       } else {
         // take slopes into account when walking
+        time = getEffectiveWalkDistance() / speed;
         weight =
           getEffectiveWalkSafetyDistance() *
           preferences.walk().safetyFactor() +
@@ -1328,19 +1330,21 @@ public class StreetEdge
     // and are used to overwrite the time calculated above (convert from hours to seconds).
     // If no tabulated times are available for the edge, compute them using the
     // travel speeds for the given mobility profile.
-    var defaultTravelHours = MobilityProfileRouting.computeTravelHours(
-      getEffectiveWalkDistance(),
-      mobilityProfile
-    );
+    if (mobilityProfile != null) {
+      var defaultTravelHours = MobilityProfileRouting.computeTravelHours(
+        getEffectiveWalkDistance(),
+        mobilityProfile
+      );
 
-    if (profileCost != null) {
-      var travelTimeHours = profileCost.getOrDefault(mobilityProfile, (float) DEFAULT_LARGE_COST);
-      time = defaultTravelHours * 3600;
-      weight = travelTimeHours;
-    } else {
-      // Assign a high travel time and weight to non-tabulated ways.
-      time = 360000;
-      weight = DEFAULT_LARGE_COST * 10.0;
+      if (profileCost != null) {
+        var travelTimeHours = profileCost.getOrDefault(mobilityProfile, (float) DEFAULT_LARGE_COST);
+        time = defaultTravelHours * 3600;
+        weight = travelTimeHours;
+      } else {
+        // Assign a high travel time and weight to non-tabulated ways.
+        time = 360000;
+        weight = DEFAULT_LARGE_COST * 10.0;
+      }
     }
     return new TraversalCosts(time, weight);
   }
