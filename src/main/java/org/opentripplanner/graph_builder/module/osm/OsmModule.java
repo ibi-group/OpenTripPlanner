@@ -562,10 +562,10 @@ public class OsmModule implements GraphBuilderModule {
     label = label.intern();
     I18NString name = params.edgeNamer().getNameForWay(way, label);
     float carSpeed = way.getOsmProvider().getOsmTagMapper().getCarSpeedForWay(way, back);
-    StreetTraversalPermission perms = MobilityProfileRouting.adjustPedestrianPermissions(
-      way,
-      permissions
-    );
+
+    StreetTraversalPermission perms = mobilityProfileData != null
+      ? MobilityProfileRouting.adjustPedestrianPermissions(way, permissions)
+      : permissions;
 
     StreetEdgeBuilder<?> seb = new StreetEdgeBuilder<>()
       .withFromVertex(startEndpoint)
@@ -573,7 +573,7 @@ public class OsmModule implements GraphBuilderModule {
       .withGeometry(geometry)
       .withName(name)
       .withMeterLength(length)
-      .withPermission(MobilityProfileRouting.adjustPedestrianPermissions(way, permissions))
+      .withPermission(perms)
       .withBack(back)
       .withCarSpeed(carSpeed)
       .withLink(way.isLink())
@@ -582,24 +582,24 @@ public class OsmModule implements GraphBuilderModule {
       .withStairs(way.isSteps())
       .withWheelchairAccessible(way.isWheelchairAccessible());
 
-    String startId = startEndpoint.getLabel().toString();
-    String endId = endEndpoint.getLabel().toString();
-
-    // For testing, indicate the OSM node ids (remove prefixes).
-    String startShortId = startId.replace("osm:node:", "");
-    String endShortId = endId.replace("osm:node:", "");
-    String nameWithNodeIds = String.format(
-      "%s (%s, %s→%s)",
-      name,
-      way.getId(),
-      startShortId,
-      endShortId
-    );
-    seb.withName(nameWithNodeIds);
-
     // Lookup costs by mobility profile, if any were defined.
     // Note that edges are bidirectional, so we check that mobility data exist in both directions.
     if (mobilityProfileData != null) {
+      String startId = startEndpoint.getLabel().toString();
+      String endId = endEndpoint.getLabel().toString();
+
+      // For testing, indicate the OSM node ids (remove prefixes).
+      String startShortId = startId.replace("osm:node:", "");
+      String endShortId = endId.replace("osm:node:", "");
+      String nameWithNodeIds = String.format(
+        "%s (%s, %s→%s)",
+        name,
+        way.getId(),
+        startShortId,
+        endShortId
+      );
+      seb.withName(nameWithNodeIds);
+
       String wayId = Long.toString(way.getId(), 10);
       var edgeMobilityCostMap = mobilityProfileData.get(wayId);
       if (edgeMobilityCostMap != null) {
