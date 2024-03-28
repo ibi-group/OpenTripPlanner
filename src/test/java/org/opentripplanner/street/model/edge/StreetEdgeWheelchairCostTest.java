@@ -3,7 +3,6 @@ package org.opentripplanner.street.model.edge;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.opentripplanner.street.model._data.StreetModelForTest.intersectionVertex;
-import static org.opentripplanner.street.model.edge.StreetEdge.DEFAULT_LARGE_COST;
 
 import java.util.stream.Stream;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -104,8 +103,7 @@ class StreetEdgeWheelchairCostTest {
     );
     State result = traverse(edge, req.build());
     assertNotNull(result);
-    // G-MAP specific: The cost for un-tabulated paths is the large default cost.
-    assertEquals(DEFAULT_LARGE_COST, (long) result.weight);
+    assertEquals(expectedCost, (long) result.weight);
   }
 
   static Stream<Arguments> wheelchairStairsCases() {
@@ -148,13 +146,11 @@ class StreetEdgeWheelchairCostTest {
     req.withPreferences(pref -> pref.withWalk(w -> w.withReluctance(1.0)));
 
     var result = traverse(stairEdge, req.build());
-    // G-MAP-specific: inaccessible paths have the default high cost.
-    assertEquals(DEFAULT_LARGE_COST, (long) result.weight);
+    assertEquals(expectedCost, (long) result.weight);
 
     StreetEdge noStairsEdge = stairEdge.toBuilder().withStairs(false).buildAndConnect();
     var notStairsResult = traverse(noStairsEdge, req.build());
-    // G-MAP-specific: inaccessible paths have the default high cost.
-    assertEquals(DEFAULT_LARGE_COST, (long) notStairsResult.weight);
+    assertEquals(7, (long) notStairsResult.weight);
   }
 
   static Stream<Arguments> inaccessibleStreetCases() {
@@ -195,14 +191,12 @@ class StreetEdgeWheelchairCostTest {
     );
 
     var result = traverse(edge, req.build());
-    // G-MAP-specific: Wheelchair costs on un-tabulated paths are set to high value.
-    assertEquals(DEFAULT_LARGE_COST, (long) result.weight);
+    assertEquals(expectedCost, (long) result.weight);
 
     // reluctance should have no effect when the edge is accessible
     StreetEdge accessibleEdge = edge.toBuilder().withWheelchairAccessible(true).buildAndConnect();
     var accessibleResult = traverse(accessibleEdge, req.build());
-    // G-MAP-specific: Wheelchair costs on un-tabulated paths are set to high value.
-    assertEquals(DEFAULT_LARGE_COST, (long) accessibleResult.weight);
+    assertEquals(15, (long) accessibleResult.weight);
   }
 
   static Stream<Arguments> walkReluctanceCases() {
@@ -234,8 +228,7 @@ class StreetEdgeWheelchairCostTest {
     req.withWheelchair(true);
 
     var result = traverse(edge, req.build());
-    // G-MAP-specific: Walking on un-tabulated paths has a high cost.
-    assertEquals(DEFAULT_LARGE_COST, (long) result.weight);
+    assertEquals(expectedCost, (long) result.weight);
 
     assertEquals(8, result.getElapsedTimeSeconds());
   }
