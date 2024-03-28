@@ -68,6 +68,7 @@ public class StreetEdge
   static final int BICYCLE_NOTHRUTRAFFIC = 7;
   static final int WALK_NOTHRUTRAFFIC = 8;
   static final int CLASS_LINK = 9;
+  public static final float DEFAULT_LARGE_COST = 10000f;
 
   private StreetEdgeCostExtension costExtension;
 
@@ -1333,13 +1334,13 @@ public class StreetEdge
     );
 
     if (profileCost != null) {
-      var travelTimeHours = profileCost.getOrDefault(mobilityProfile, 10000f);
+      var travelTimeHours = profileCost.getOrDefault(mobilityProfile, DEFAULT_LARGE_COST);
       time = defaultTravelHours * 3600;
       weight = travelTimeHours;
     } else {
       // Assign a high travel time and weight to non-tabulated ways.
       time = 360000;
-      weight = 100000;
+      weight = DEFAULT_LARGE_COST * 10;
     }
     return new TraversalCosts(time, weight);
   }

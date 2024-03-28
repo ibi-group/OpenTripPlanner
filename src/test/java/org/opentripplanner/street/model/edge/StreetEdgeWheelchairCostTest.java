@@ -17,6 +17,7 @@ import org.opentripplanner.street.search.request.StreetSearchRequest;
 import org.opentripplanner.street.search.state.State;
 
 class StreetEdgeWheelchairCostTest {
+  private static final long DEFAULT_LARGE_COST = 10000;
 
   StreetVertex V1;
   StreetVertex V2;
@@ -103,7 +104,8 @@ class StreetEdgeWheelchairCostTest {
     );
     State result = traverse(edge, req.build());
     assertNotNull(result);
-    assertEquals(expectedCost, (long) result.weight);
+    // G-MAP specific: The cost for un-tabulated paths is the large default cost.
+    assertEquals(DEFAULT_LARGE_COST, (long) result.weight);
   }
 
   static Stream<Arguments> wheelchairStairsCases() {
@@ -146,7 +148,8 @@ class StreetEdgeWheelchairCostTest {
     req.withPreferences(pref -> pref.withWalk(w -> w.withReluctance(1.0)));
 
     var result = traverse(stairEdge, req.build());
-    assertEquals(expectedCost, (long) result.weight);
+    // G-MAP-specific: inaccessible paths have the default high cost.
+    assertEquals(DEFAULT_LARGE_COST, (long) result.weight);
 
     StreetEdge noStairsEdge = stairEdge.toBuilder().withStairs(false).buildAndConnect();
     var notStairsResult = traverse(noStairsEdge, req.build());
@@ -191,7 +194,8 @@ class StreetEdgeWheelchairCostTest {
     );
 
     var result = traverse(edge, req.build());
-    assertEquals(expectedCost, (long) result.weight);
+    // G-MAP-specific: Wheelchair costs on un-tabulated paths are set to high value.
+    assertEquals(DEFAULT_LARGE_COST, (long) result.weight);
 
     // reluctance should have no effect when the edge is accessible
     StreetEdge accessibleEdge = edge.toBuilder().withWheelchairAccessible(true).buildAndConnect();
@@ -228,7 +232,8 @@ class StreetEdgeWheelchairCostTest {
     req.withWheelchair(true);
 
     var result = traverse(edge, req.build());
-    assertEquals(expectedCost, (long) result.weight);
+    // G-MAP-specific: Walking on un-tabulated paths has a high cost.
+    assertEquals(DEFAULT_LARGE_COST, (long) result.weight);
 
     assertEquals(8, result.getElapsedTimeSeconds());
   }
