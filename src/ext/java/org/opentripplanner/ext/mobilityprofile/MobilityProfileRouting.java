@@ -66,17 +66,24 @@ public class MobilityProfileRouting {
     OSMWay way,
     StreetTraversalPermission permissions
   ) {
-    return isHighwayFootway(way) ? permissions : permissions.remove(StreetTraversalPermission.PEDESTRIAN);
+    return isHighwayFootway(way)
+      ? permissions
+      : permissions.remove(StreetTraversalPermission.PEDESTRIAN);
   }
 
   /** Multiplies profile costs by the distance ratio between the given edge and its parent. */
-  public static Map<MobilityProfile, Float> getProRatedProfileCosts(TemporaryPartialStreetEdge tmpEdge) {
+  public static Map<MobilityProfile, Float> getProRatedProfileCosts(
+    TemporaryPartialStreetEdge tmpEdge
+  ) {
     StreetEdge parentEdge = tmpEdge.getParentEdge();
-    float ratio = (float)(tmpEdge.getDistanceMeters() / parentEdge.getDistanceMeters());
+    float ratio = (float) (tmpEdge.getDistanceMeters() / parentEdge.getDistanceMeters());
     return getProRatedProfileCosts(parentEdge.profileCost, ratio);
   }
 
-  public static Map<MobilityProfile, Float> getProRatedProfileCosts(Map<MobilityProfile, Float> cost, float ratio) {
+  public static Map<MobilityProfile, Float> getProRatedProfileCosts(
+    Map<MobilityProfile, Float> cost,
+    float ratio
+  ) {
     // Has to be a HashMap for graph serialization
     Map<MobilityProfile, Float> result = new HashMap<>();
     cost.forEach((k, v) -> result.put(k, v * ratio));

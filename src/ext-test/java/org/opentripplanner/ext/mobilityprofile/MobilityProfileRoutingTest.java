@@ -88,7 +88,9 @@ class MobilityProfileRoutingTest {
       .withMeterLength(40)
       .buildAndConnect();
 
-    Map<MobilityProfile, Float> proRatedProfileCost = MobilityProfileRouting.getProRatedProfileCosts(tmpEdge);
+    Map<MobilityProfile, Float> proRatedProfileCost = MobilityProfileRouting.getProRatedProfileCosts(
+      tmpEdge
+    );
     assertEquals(4.0f, proRatedProfileCost.get(MobilityProfile.NONE), 1e-6);
     assertEquals(40.0f, proRatedProfileCost.get(MobilityProfile.DEVICE), 1e-6);
   }

@@ -32,8 +32,17 @@ public final class TemporaryPartialStreetEdge extends StreetEdge implements Temp
     this.parentEdge = builder.parentEdge();
     this.geometry = super.getGeometry();
     this.profileCost = MobilityProfileRouting.getProRatedProfileCosts(this);
-    float ratio = (float)(getDistanceMeters() / getParentEdge().getDistanceMeters());
-    this.setName(new LocalizedString(String.format("%s tmp r%4.3f l%4.3f", builder.parentEdge().getName(), ratio, getDistanceMeters())));
+    float ratio = (float) (getDistanceMeters() / getParentEdge().getDistanceMeters());
+    this.setName(
+        new LocalizedString(
+          String.format(
+            "%s tmp r%4.3f l%4.3f",
+            builder.parentEdge().getName(),
+            ratio,
+            getDistanceMeters()
+          )
+        )
+      );
   }
 
   /**

@@ -119,9 +119,7 @@ public class OsmModule implements GraphBuilderModule {
     return elevationData;
   }
 
-  public void setMobilityProfileData(
-    Map<String, MobilityProfileData> mobilityProfileData
-  ) {
+  public void setMobilityProfileData(Map<String, MobilityProfileData> mobilityProfileData) {
     this.mobilityProfileData = mobilityProfileData;
   }
 
@@ -200,7 +198,9 @@ public class OsmModule implements GraphBuilderModule {
    */
   private void listUnusedMobilityCosts() {
     if (mobilityProfileData != null) {
-      List<String> unusedEntries = mobilityProfileData.keySet().stream()
+      List<String> unusedEntries = mobilityProfileData
+        .keySet()
+        .stream()
         .filter(key -> !mappedMobilityProfileEntries.contains(key))
         .toList();
 
@@ -562,7 +562,10 @@ public class OsmModule implements GraphBuilderModule {
     label = label.intern();
     I18NString name = params.edgeNamer().getNameForWay(way, label);
     float carSpeed = way.getOsmProvider().getOsmTagMapper().getCarSpeedForWay(way, back);
-    StreetTraversalPermission perms = MobilityProfileRouting.adjustPedestrianPermissions(way, permissions);
+    StreetTraversalPermission perms = MobilityProfileRouting.adjustPedestrianPermissions(
+      way,
+      permissions
+    );
 
     StreetEdgeBuilder<?> seb = new StreetEdgeBuilder<>()
       .withFromVertex(startEndpoint)
@@ -585,7 +588,13 @@ public class OsmModule implements GraphBuilderModule {
     // For testing, indicate the OSM node ids (remove prefixes).
     String startShortId = startId.replace("osm:node:", "");
     String endShortId = endId.replace("osm:node:", "");
-    String nameWithNodeIds = String.format("%s (%s, %s→%s)", name, way.getId(), startShortId, endShortId);
+    String nameWithNodeIds = String.format(
+      "%s (%s, %s→%s)",
+      name,
+      way.getId(),
+      startShortId,
+      endShortId
+    );
     seb.withName(nameWithNodeIds);
 
     // Lookup costs by mobility profile, if any were defined.
@@ -607,10 +616,14 @@ public class OsmModule implements GraphBuilderModule {
           // Append an indication that this edge uses a full profile cost.
           nameWithNodeIds = String.format("%s ☑", nameWithNodeIds);
           // System.out.printf("Way (full length): %s size %d%n", nameWithNodeIds, edgeMobilityCostMap.costs().size());
-          System.out.printf("%s %f%n", nameWithNodeIds,  edgeMobilityCostMap.costs().get(MobilityProfile.WCHAIRE));
+          System.out.printf(
+            "%s %f%n",
+            nameWithNodeIds,
+            edgeMobilityCostMap.costs().get(MobilityProfile.WCHAIRE)
+          );
         } else {
           // Otherwise, pro-rate the cost to the length of the edge.
-          float ratio = (float)(length / edgeMobilityCostMap.lengthInMeters());
+          float ratio = (float) (length / edgeMobilityCostMap.lengthInMeters());
 
           Map<MobilityProfile, Float> proRatedProfileCosts = MobilityProfileRouting.getProRatedProfileCosts(
             edgeMobilityCostMap.costs(),
@@ -621,7 +634,11 @@ public class OsmModule implements GraphBuilderModule {
           // Append an indication that this edge uses a partial profile cost.
           nameWithNodeIds = String.format("%s r%4.3f l%4.3f", nameWithNodeIds, ratio, length);
           // System.out.printf("Way (partial): %s size %d%n", nameWithNodeIds, proRatedProfileCosts.size());
-          System.out.printf("%s %f%n", nameWithNodeIds,  proRatedProfileCosts.get(MobilityProfile.WCHAIRE));
+          System.out.printf(
+            "%s %f%n",
+            nameWithNodeIds,
+            proRatedProfileCosts.get(MobilityProfile.WCHAIRE)
+          );
         }
 
         seb.withName(nameWithNodeIds);
