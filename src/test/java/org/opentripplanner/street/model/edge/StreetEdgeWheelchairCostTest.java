@@ -3,6 +3,7 @@ package org.opentripplanner.street.model.edge;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.opentripplanner.street.model._data.StreetModelForTest.intersectionVertex;
+import static org.opentripplanner.street.model.edge.StreetEdge.DEFAULT_LARGE_COST;
 
 import java.util.stream.Stream;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -17,7 +18,6 @@ import org.opentripplanner.street.search.request.StreetSearchRequest;
 import org.opentripplanner.street.search.state.State;
 
 class StreetEdgeWheelchairCostTest {
-  private static final long DEFAULT_LARGE_COST = 10000;
 
   StreetVertex V1;
   StreetVertex V2;
@@ -153,7 +153,8 @@ class StreetEdgeWheelchairCostTest {
 
     StreetEdge noStairsEdge = stairEdge.toBuilder().withStairs(false).buildAndConnect();
     var notStairsResult = traverse(noStairsEdge, req.build());
-    assertEquals(7, (long) notStairsResult.weight);
+    // G-MAP-specific: inaccessible paths have the default high cost.
+    assertEquals(DEFAULT_LARGE_COST, (long) notStairsResult.weight);
   }
 
   static Stream<Arguments> inaccessibleStreetCases() {
@@ -200,7 +201,8 @@ class StreetEdgeWheelchairCostTest {
     // reluctance should have no effect when the edge is accessible
     StreetEdge accessibleEdge = edge.toBuilder().withWheelchairAccessible(true).buildAndConnect();
     var accessibleResult = traverse(accessibleEdge, req.build());
-    assertEquals(15, (long) accessibleResult.weight);
+    // G-MAP-specific: Wheelchair costs on un-tabulated paths are set to high value.
+    assertEquals(DEFAULT_LARGE_COST, (long) accessibleResult.weight);
   }
 
   static Stream<Arguments> walkReluctanceCases() {

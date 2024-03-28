@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.opentripplanner.street.model._data.StreetModelForTest.V1;
 import static org.opentripplanner.street.model._data.StreetModelForTest.V2;
+import static org.opentripplanner.street.model.edge.StreetEdge.DEFAULT_LARGE_COST;
 
 import java.util.stream.Stream;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -42,7 +43,8 @@ class StreetEdgeCostTest {
     req.withPreferences(p -> p.withWalk(w -> w.withReluctance(walkReluctance)));
     State result = traverse(edge, req.withMode(StreetMode.WALK).build());
     assertNotNull(result);
-    assertEquals(expectedCost, (long) result.weight);
+    // G-MAP-specific: Walking along untabulated paths has a high cost.
+    assertEquals(DEFAULT_LARGE_COST, (long) result.weight);
 
     assertEquals(76, result.getElapsedTimeSeconds());
   }
@@ -133,7 +135,8 @@ class StreetEdgeCostTest {
     req.withPreferences(p -> p.withWalk(w -> w.withStairsReluctance(stairsReluctance)));
     req.withMode(StreetMode.WALK);
     var result = traverse(stairsEdge, req.build());
-    assertEquals(expectedCost, (long) result.weight);
+    // G-MAP-specific: Walking along untabulated paths has a high cost.
+    assertEquals(DEFAULT_LARGE_COST, (long) result.weight);
 
     assertEquals(23, result.getElapsedTimeSeconds());
 
@@ -166,7 +169,8 @@ class StreetEdgeCostTest {
     );
     req.withMode(StreetMode.BIKE);
     var result = traverse(stairsEdge, req.build());
-    assertEquals(expectedCost, (long) result.weight);
+    // G-MAP-specific: Walking along untabulated paths has a high cost.
+    assertEquals(DEFAULT_LARGE_COST, (long) result.weight);
 
     assertEquals(23, result.getElapsedTimeSeconds());
 
@@ -197,7 +201,8 @@ class StreetEdgeCostTest {
     req.withPreferences(p -> p.withWalk(w -> w.withSafetyFactor(walkSafetyFactor)));
     req.withMode(StreetMode.WALK);
     var result = traverse(safeEdge, req.build());
-    assertEquals(expectedCost, (long) result.weight);
+    // G-MAP-specific: Walking along untabulated paths has a high cost.
+    assertEquals(DEFAULT_LARGE_COST, (long) result.weight);
 
     assertEquals(8, result.getElapsedTimeSeconds());
 
