@@ -1,0 +1,16 @@
+{
+  "fares": {
+    "type": "highest-fare-in-free-transfer-window",
+    "analyzeInterlinedTransfers": "true"
+  },
+  "osmDefaults": {
+    "osmTagMapping": "houston"
+  },
+  "transitFeeds": [
+    {
+      "type": "gtfs",
+      "feedId": "ridemetro",
+      "source": "https://ridemetro-api.ibi-transit.com/download/liveGTFS.zip"
+    }
+  ]
+}

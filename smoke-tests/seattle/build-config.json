@@ -1,0 +1,68 @@
+{
+  "transitModelTimeZone": "America/Los_Angeles",
+  "fares": "orca",
+  "transitFeeds" : [
+    {
+      "type" : "gtfs",
+      "feedId" : "hydeshuttle",
+      "source" : "https://data.trilliumtransit.com/gtfs/soundgenerations-wa-us/soundgenerations-wa-us-hyde--flex-v2.zip"
+    },
+    {
+      "type" : "gtfs",
+      "feedId" : "volunteer",
+      "source" : "https://data.trilliumtransit.com/gtfs/soundgenerations-wa-us/soundgenerations-wa-us-volunteer--flex-v2.zip"
+    },
+    {
+      "type" : "gtfs",
+      "feedId" : "ccsww-nw",
+      "source" : "https://data.trilliumtransit.com/gtfs/catholiccommunity-wa-us/catholiccommunity-wa-us-northwest--flex-v2.zip"
+    },
+    {
+      "type" : "gtfs",
+      "feedId" : "payyourpal",
+      "source" : "https://data.trilliumtransit.com/gtfs/homage-wa-us/homage-wa-us-payyourpal--flex-v2.zip"
+    },
+    {
+      "type" : "gtfs",
+      "feedId" : "tap",
+      "source" : "https://data.trilliumtransit.com/gtfs/homage-wa-us/homage-wa-us-tap--flex-v2.zip"
+    },
+    {
+      "type" : "gtfs",
+      "feedId" : "kcm",
+      "source" : "https://metro.kingcounty.gov/GTFS/google_transit.zip"
+    },
+    {
+      "type" : "gtfs",
+      "feedId" : "pierce",
+      "source" : "https://gtfs.sound.obaweb.org/prod/3_gtfs.zip"
+    },
+    {
+      "type" : "gtfs",
+      "feedId" : "soundtransit",
+      "source" : "https://gtfs.sound.obaweb.org/prod/40_gtfs.zip"
+    },
+    {
+      "type" : "gtfs",
+      "feedId" : "commtrans",
+      "source" : "https://picsapi.commtrans.org/download/liveGTFS.zip"
+    },
+    {
+      "type" : "gtfs",
+      "feedId" : "monorail",
+      "source" : "https://gtfs.sound.obaweb.org/prod/96_gtfs.zip"
+    }
+  ],
+  "transferRequests": [
+    {
+      "modes": "WALK"
+    },
+    {
+      "modes": "WALK",
+      "wheelchairAccessibility": {
+        "enabled": true
+      }
+    }
+  ],
+  "stopConsolidationFile":"consolidated-stops.csv"
+}

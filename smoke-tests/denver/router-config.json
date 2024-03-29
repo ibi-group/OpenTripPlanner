@@ -1,0 +1,9 @@
+{
+  "updaters": [
+    {
+      "type": "vehicle-positions",
+      "url": "https://www.rtd-denver.com/files/gtfs-rt/VehiclePosition.pb",
+      "feedId": "denver"
+    }
+  ]
+}

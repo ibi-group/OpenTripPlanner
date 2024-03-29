@@ -81,6 +81,8 @@
         <plugin.prettier.version>0.22</plugin.prettier.version>
         <plugin.prettier.goal>write</plugin.prettier.goal>
 
+        <junit.tags.included></junit.tags.included>
+        <junit.tags.excluded>smoke-test</junit.tags.excluded>
     </properties>
 
     <distributionManagement>
@@ -153,6 +155,9 @@
                             <version>${google.dagger.version}</version>
                         </path>
                     </annotationProcessorPaths>
+                    <compilerArgs>
+                        <arg>-parameters</arg>
+                    </compilerArgs>
                 </configuration>
             </plugin>
             <plugin>
@@ -306,6 +311,8 @@
                         <printStderrOnFailure>true</printStderrOnFailure>
                         <printStderrOnSuccess>false</printStderrOnSuccess>
                     </statelessTestsetInfoReporter>
+                    <excludedGroups>${junit.tags.excluded}</excludedGroups>
+                    <groups>${junit.tags.included}</groups>
                 </configuration>
             </plugin>
             <!-- code coverage report -->
@@ -804,6 +811,13 @@
             <version>${jackson.version}</version>
         </dependency>
 
+        <dependency>
+            <groupId>com.fasterxml.jackson.module</groupId>
+            <artifactId>jackson-module-parameter-names</artifactId>
+            <version>${jackson.version}</version>
+            <scope>test</scope>
+        </dependency>
+
         <!--
           Google library imports
           The version is imported using google libraries-bom, see dep.management
@@ -931,6 +945,12 @@
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-compress</artifactId>
             <version>1.26.1</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.opentripplanner</groupId>
+            <artifactId>otp-client</artifactId>
+            <version>0.0.27</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

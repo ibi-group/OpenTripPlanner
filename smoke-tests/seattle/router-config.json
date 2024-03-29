@@ -1,0 +1,39 @@
+{
+  "routingDefaults": {
+    "itineraryFilters": {
+      "accessibilityScore": true
+    },
+    "wheelchairAccessibility": {
+      "trip": {
+        "onlyConsiderAccessible": false,
+        "unknownCost": 600,
+        "inaccessibleCost": 3600
+      },
+      "stop": {
+        "onlyConsiderAccessible": false,
+        "unknownCost": 600,
+        "inaccessibleCost": 3600
+      }
+    }
+  },
+  "updaters": [
+    {
+      "type": "stop-time-updater",
+      "frequency": "30s",
+      "url": "https://s3.amazonaws.com/kcm-alerts-realtime-prod/tripupdates.pb",
+      "feedId": "kcm"
+    },
+    {
+      "type": "real-time-alerts",
+      "frequency": "30s",
+      "url": "https://s3.amazonaws.com/kcm-alerts-realtime-prod/alerts.pb",
+      "feedId": "kcm"
+    },
+    {
+      "type": "vehicle-positions",
+      "frequency": "30s",
+      "url": "https://s3.amazonaws.com/kcm-alerts-realtime-prod/vehiclepositions.pb",
+      "feedId": "kcm"
+    }
+  ]
+}
