@@ -39,17 +39,17 @@ public class SeattleSmokeTest {
 
   static final Coordinate RONALD_BOG_PARK = new Coordinate(47.75601664, -122.33141);
 
-  static final Coordinate ESPERANCE = new Coordinate(47.7957, -122.3470);
+  static final Coordinate ESPERANCE = new Coordinate(47.797330, -122.351560592);
   static final Coordinate SHORELINE = new Coordinate(47.7568, -122.3483);
-  static final Coordinate MOUNTAINLAKE_TERRACE = new Coordinate(47.78682093, -122.315694093);
+  static final Coordinate MOUNTAINLAKE_TERRACE = new Coordinate(47.7900, -122.30379581);
   static final Coordinate OLIVE_WAY = new Coordinate(47.61309420, -122.336314916);
 
   @Test
-  public void acrossTheCity() {
+  public void busWithFares() {
     var modes = Set.of(TRANSIT, WALK);
     var plan = SmokeTest.basicRouteTest(
-      new SmokeTestRequest(SODO, CLYDE_HILL, modes),
-      List.of("WALK", "BUS", "WALK", "BUS", "WALK")
+      new SmokeTestRequest(OLIVE_WAY, SHORELINE, modes),
+      List.of("WALK", "BUS", "WALK")
     );
 
     SmokeTest.assertThatAllTransitLegsHaveFareProducts(plan);
@@ -160,8 +160,8 @@ public class SeattleSmokeTest {
 
     var first = itineraries.getFirst();
     var leg = first.transitLegs().getFirst();
-    assertEquals("510", leg.route().shortName().get());
-    assertEquals("Sound Transit", leg.route().agency().name());
+    assertEquals("415", leg.route().shortName().get());
+    assertEquals("Community Transit", leg.route().agency().name());
 
     var stop = leg.from().stop().get();
     assertEquals("Olive Way & 6th Ave", stop.name());
