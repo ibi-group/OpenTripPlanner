@@ -1,6 +1,6 @@
 ## IBI Group OTP Smoke Tests
 
-As of 2023 upstream OTP has over 3000 unit tests but is intentionally light on integration tests
+As of 2024 upstream OTP has over 4500 unit tests but is intentionally light on integration tests
 as these tend to be brittle and hard to maintain over time. They also don't supply the desired
 granularity to figure out a problem during development.
 
