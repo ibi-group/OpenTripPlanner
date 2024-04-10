@@ -49,6 +49,11 @@ public class MobilityProfileParser {
     return String.format("%s:%s=>%s", id, from, to);
   }
 
+  /** Helper to build a key of the form "id:from=>to" for an OSM way. */
+  public static String getKey(String id, long from, long to) {
+    return String.format("%s:%d=>%d", id, from, to);
+  }
+
   private static void parseRow(
     int lineNumber,
     CsvReader reader,
@@ -59,6 +64,7 @@ public class MobilityProfileParser {
       long fromNode = Long.parseLong(reader.get("Upstream Node"), 10);
       long toNode = Long.parseLong(reader.get("Downstream Node"), 10);
       String id = reader.get("Way Id");
+      String key = getKey(id, fromNode, toNode);
       float lengthMeters = ONE_MILE_IN_METERS * Float.parseFloat(reader.get("Link Length"));
 
       // The weight map has to be a HashMap instead of an EnumMap so that it is correctly
@@ -77,7 +83,7 @@ public class MobilityProfileParser {
         }
       }
 
-      map.put(id, new MobilityProfileData(lengthMeters, fromNode, toNode, weightMap));
+      map.put(key, new MobilityProfileData(lengthMeters, fromNode, toNode, weightMap));
     } catch (NumberFormatException | NullPointerException e) {
       LOG.warn(
         "Skipping mobility profile data at line {}: missing/invalid data in column {}.",

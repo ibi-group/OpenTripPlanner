@@ -2,6 +2,7 @@ package org.opentripplanner.graph_builder.module.osm;
 
 import com.google.common.collect.Iterables;
 import gnu.trove.iterator.TLongIterator;
+import gnu.trove.list.TLongList;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -15,6 +16,7 @@ import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.LineString;
 import org.opentripplanner.ext.mobilityprofile.MobilityProfile;
 import org.opentripplanner.ext.mobilityprofile.MobilityProfileData;
+import org.opentripplanner.ext.mobilityprofile.MobilityProfileParser;
 import org.opentripplanner.ext.mobilityprofile.MobilityProfileRouting;
 import org.opentripplanner.framework.geometry.GeometryUtils;
 import org.opentripplanner.framework.geometry.SphericalDistanceLibrary;
@@ -588,63 +590,81 @@ public class OsmModule implements GraphBuilderModule {
       String startId = startEndpoint.getLabel().toString();
       String endId = endEndpoint.getLabel().toString();
 
-      // For testing, indicate the OSM node ids (remove prefixes).
-      String startShortId = startId.replace("osm:node:", "");
-      String endShortId = endId.replace("osm:node:", "");
-      String nameWithNodeIds = String.format(
-        "%s (%s, %s→%s)",
-        name,
-        way.getId(),
-        startShortId,
-        endShortId
-      );
-      seb.withName(nameWithNodeIds);
+      try {
+        long startShortId = Long.parseLong(startId.replace("osm:node:", ""), 10);
+        long endShortId = Long.parseLong(endId.replace("osm:node:", ""), 10);
 
-      String wayId = Long.toString(way.getId(), 10);
-      var edgeMobilityCostMap = mobilityProfileData.get(wayId);
-      if (edgeMobilityCostMap != null) {
-        // Check whether the nodes for this way match the nodes from mobility profile data.
-        if (
-          startShortId.equals(Long.toString(edgeMobilityCostMap.fromNode(), 10)) &&
-          endShortId.equals(Long.toString(edgeMobilityCostMap.toNode(), 10)) ||
-          startShortId.equals(Long.toString(edgeMobilityCostMap.toNode(), 10)) &&
-          endShortId.equals(Long.toString(edgeMobilityCostMap.fromNode(), 10))
-        ) {
-          // If the from/to nodes match, then assign the cost directly
-          seb.withProfileCosts(edgeMobilityCostMap.costs());
-
-          // Append an indication that this edge uses a full profile cost.
-          nameWithNodeIds = String.format("%s ☑", nameWithNodeIds);
-          // System.out.printf("Way (full length): %s size %d%n", nameWithNodeIds, edgeMobilityCostMap.costs().size());
-          System.out.printf(
-            "%s %f%n",
-            nameWithNodeIds,
-            edgeMobilityCostMap.costs().get(MobilityProfile.WCHAIRE)
-          );
-        } else {
-          // Otherwise, pro-rate the cost to the length of the edge.
-          float ratio = (float) (length / edgeMobilityCostMap.lengthInMeters());
-
-          Map<MobilityProfile, Float> proRatedProfileCosts = MobilityProfileRouting.getProRatedProfileCosts(
-            edgeMobilityCostMap.costs(),
-            ratio
-          );
-          seb.withProfileCosts(proRatedProfileCosts);
-
-          // Append an indication that this edge uses a partial profile cost.
-          nameWithNodeIds = String.format("%s r%4.3f l%4.3f", nameWithNodeIds, ratio, length);
-          // System.out.printf("Way (partial): %s size %d%n", nameWithNodeIds, proRatedProfileCosts.size());
-          System.out.printf(
-            "%s %f%n",
-            nameWithNodeIds,
-            proRatedProfileCosts.get(MobilityProfile.WCHAIRE)
-          );
-        }
-
+        // For testing, indicate the OSM node ids (remove prefixes).
+        String nameWithNodeIds = String.format(
+          "%s (%s, %s→%s)",
+          name,
+          way.getId(),
+          startShortId,
+          endShortId
+        );
         seb.withName(nameWithNodeIds);
-        // LOG.info("Applied mobility profile costs between nodes {}-{}", startShortId, endShortId);
-        // Keep tab of node pairs for which mobility profile costs have been mapped.
-        mappedMobilityProfileEntries.add(wayId);
+
+        String wayId = Long.toString(way.getId(), 10);
+        TLongList nodeRefs = way.getNodeRefs();
+        int startIndex = nodeRefs.indexOf(startShortId);
+        int endIndex = nodeRefs.indexOf(endShortId);
+        boolean isReverse = endIndex < startIndex;
+
+        // Use the start and end nodes of the OSM way per the OSM data to lookup the mobility costs.
+        long wayFromId = nodeRefs.get(0);
+        long wayToId = nodeRefs.get(nodeRefs.size() - 1);
+        String key = isReverse
+          ? MobilityProfileParser.getKey(wayId, wayToId, wayFromId)
+          : MobilityProfileParser.getKey(wayId, wayFromId, wayToId);
+
+        var edgeMobilityCostMap = mobilityProfileData.get(key);
+        if (edgeMobilityCostMap != null) {
+          // Check whether the nodes for this way match the nodes from mobility profile data.
+          if (
+            startShortId == edgeMobilityCostMap.fromNode() &&
+            endShortId == edgeMobilityCostMap.toNode() ||
+            startShortId == edgeMobilityCostMap.toNode() &&
+            endShortId == edgeMobilityCostMap.fromNode()
+          ) {
+            // If the from/to nodes match, then assign the cost directly
+            seb.withProfileCosts(edgeMobilityCostMap.costs());
+
+            // Append an indication that this edge uses a full profile cost.
+            nameWithNodeIds = String.format("%s ☑", nameWithNodeIds);
+            // System.out.printf("Way (full length): %s size %d%n", nameWithNodeIds, edgeMobilityCostMap.costs().size());
+            System.out.printf(
+              "%s %f%n",
+              nameWithNodeIds,
+              edgeMobilityCostMap.costs().get(MobilityProfile.WCHAIRE)
+            );
+          } else {
+            // Otherwise, pro-rate the cost to the length of the edge.
+            float ratio = (float) (length / edgeMobilityCostMap.lengthInMeters());
+
+            Map<MobilityProfile, Float> proRatedProfileCosts = MobilityProfileRouting.getProRatedProfileCosts(
+              edgeMobilityCostMap.costs(),
+              ratio
+            );
+            seb.withProfileCosts(proRatedProfileCosts);
+
+            // Append an indication that this edge uses a partial profile cost.
+            nameWithNodeIds = String.format("%s r%4.3f l%4.3f", nameWithNodeIds, ratio, length);
+            // System.out.printf("Way (partial): %s size %d%n", nameWithNodeIds, proRatedProfileCosts.size());
+            System.out.printf(
+              "%s %f%n",
+              nameWithNodeIds,
+              proRatedProfileCosts.get(MobilityProfile.WCHAIRE)
+            );
+          }
+
+          seb.withName(nameWithNodeIds);
+          // LOG.info("Applied mobility profile costs between nodes {}-{}", startShortId, endShortId);
+          // Keep tab of node pairs for which mobility profile costs have been mapped.
+          mappedMobilityProfileEntries.add(key);
+        }
+      } catch (NumberFormatException nfe) {
+        // Don't do anything related to mobility profiles if node ids are non-numerical.
+        LOG.info("Not applying mobility costs for link {}:{}→{}", way.getId(), startEndpoint.getLabel(), endEndpoint.getLabel());
       }
     }
 
