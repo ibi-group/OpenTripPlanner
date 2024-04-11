@@ -664,7 +664,12 @@ public class OsmModule implements GraphBuilderModule {
         }
       } catch (NumberFormatException nfe) {
         // Don't do anything related to mobility profiles if node ids are non-numerical.
-        LOG.info("Not applying mobility costs for link {}:{}→{}", way.getId(), startEndpoint.getLabel(), endEndpoint.getLabel());
+        LOG.info(
+          "Not applying mobility costs for link {}:{}→{}",
+          way.getId(),
+          startEndpoint.getLabel(),
+          endEndpoint.getLabel()
+        );
       }
     }
 
