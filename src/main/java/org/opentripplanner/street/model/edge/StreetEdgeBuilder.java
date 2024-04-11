@@ -42,7 +42,7 @@ public class StreetEdgeBuilder<B extends StreetEdgeBuilder<B>> {
   private float bicycleSafetyFactor;
   private short flags;
   private StreetElevationExtension streetElevationExtension;
-  private Map<MobilityProfile, Float> profileCosts = new HashMap<>(); // new EnumMap<>(MobilityProfile.class);
+  private Map<MobilityProfile, Float> profileCosts = new EnumMap<>(MobilityProfile.class);
 
   public StreetEdgeBuilder() {
     this.defaultLength = true;

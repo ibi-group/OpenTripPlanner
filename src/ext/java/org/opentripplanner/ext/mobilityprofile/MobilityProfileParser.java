@@ -4,6 +4,7 @@ import com.csvreader.CsvReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.Map;
 import org.slf4j.Logger;
@@ -67,9 +68,7 @@ public class MobilityProfileParser {
       String key = getKey(id, fromNode, toNode);
       float lengthMeters = ONE_MILE_IN_METERS * Float.parseFloat(reader.get("Link Length"));
 
-      // The weight map has to be a HashMap instead of an EnumMap so that it is correctly
-      // persisted in the graph.
-      var weightMap = new HashMap<MobilityProfile, Float>();
+      var weightMap = new EnumMap<MobilityProfile, Float>(MobilityProfile.class);
       for (var profile : MobilityProfile.values()) {
         currentColumnHeader = profile.getText();
         try {

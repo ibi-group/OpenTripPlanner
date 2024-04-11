@@ -3,7 +3,6 @@ package org.opentripplanner.ext.mobilityprofile;
 import static java.util.Map.entry;
 
 import java.util.EnumMap;
-import java.util.HashMap;
 import java.util.Map;
 import org.opentripplanner.openstreetmap.model.OSMWay;
 import org.opentripplanner.street.model.StreetTraversalPermission;
@@ -85,7 +84,7 @@ public class MobilityProfileRouting {
     float ratio
   ) {
     // Has to be a HashMap for graph serialization
-    Map<MobilityProfile, Float> result = new HashMap<>();
+    Map<MobilityProfile, Float> result = new EnumMap<>(MobilityProfile.class);
     cost.forEach((k, v) -> result.put(k, v * ratio));
     return result;
   }

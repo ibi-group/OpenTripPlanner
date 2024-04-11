@@ -4,7 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.util.HashMap;
+import java.util.EnumMap;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.opentripplanner.openstreetmap.model.OSMWay;
@@ -67,7 +67,7 @@ class MobilityProfileRoutingTest {
 
   @Test
   void canProRateProfileCosts() {
-    Map<MobilityProfile, Float> profileCost = new HashMap<>();
+    Map<MobilityProfile, Float> profileCost = new EnumMap<>(MobilityProfile.class);
     profileCost.put(MobilityProfile.NONE, 10.0f);
     profileCost.put(MobilityProfile.DEVICE, 100.0f);
 
