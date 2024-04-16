@@ -1325,27 +1325,27 @@ public class StreetEdge
         );
     }
 
-    // G-MAP-specific: Tabulated travel times are provided through profileCost
+    // G-MAP-specific: Tabulated weights for known paths are provided through profileCost
     // (assuming a pre-determined travel speed for each profile)
-    // and are used to overwrite the time calculated above (convert from hours to seconds).
-    // If no tabulated times are available for the edge, compute them using the
-    // travel speeds for the given mobility profile.
+    // and the travel speed for that profile is used to overwrite the time calculated above.
     if (mobilityProfile != null) {
-      var defaultTravelHours = MobilityProfileRouting.computeTravelHours(
-        getEffectiveWalkDistance(),
-        mobilityProfile
-      );
-
       if (profileCost != null) {
         var travelTimeHours = profileCost.getOrDefault(mobilityProfile, (float) DEFAULT_LARGE_COST);
+        var defaultTravelHours = MobilityProfileRouting.computeTravelHours(
+          getEffectiveWalkDistance(),
+          mobilityProfile
+        );
         time = defaultTravelHours * 3600;
-        weight = travelTimeHours;
+        // Convert the impedance of the path to seconds to match with other OTP weights,
+        // to make impedances compatible with street/transit transitions.
+        var travelImpedanceHours = profileCost.getOrDefault(mobilityProfile, (float)(weight / 3600));
+        weight = travelImpedanceHours * 3600;
       } else {
-        // Assign a high travel time and weight to non-tabulated ways.
-        time = 360000;
+        // For non-tabulated ways, use the calculated travel time above but assign a high weight.
         weight = DEFAULT_LARGE_COST * 10.0;
       }
     }
+
     return new TraversalCosts(time, weight);
   }
 
