@@ -44,7 +44,7 @@ public class MobilityProfileRouting {
     // Np public constructor.
   }
 
-  /** Computes the travel time, in minutes, for the given distance and mobility profile. */
+  /** Computes the travel time, in hours, for the given distance and mobility profile. */
   public static float computeTravelHours(double meters, MobilityProfile mobilityProfile) {
     return (float) (
       meters /
@@ -65,6 +65,7 @@ public class MobilityProfileRouting {
     OSMWay way,
     StreetTraversalPermission permissions
   ) {
+    //System.out.println("Way %s%n", way.);
     return isHighwayFootway(way)
       ? permissions
       : permissions.remove(StreetTraversalPermission.PEDESTRIAN);
