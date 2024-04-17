@@ -1330,7 +1330,6 @@ public class StreetEdge
     // and the travel speed for that profile is used to overwrite the time calculated above.
     if (mobilityProfile != null) {
       if (profileCost != null) {
-        var travelTimeHours = profileCost.getOrDefault(mobilityProfile, (float) DEFAULT_LARGE_COST);
         var defaultTravelHours = MobilityProfileRouting.computeTravelHours(
           getEffectiveWalkDistance(),
           mobilityProfile
@@ -1338,7 +1337,10 @@ public class StreetEdge
         time = defaultTravelHours * 3600;
         // Convert the impedance of the path to seconds to match with other OTP weights,
         // to make impedances compatible with street/transit transitions.
-        var travelImpedanceHours = profileCost.getOrDefault(mobilityProfile, (float)(weight / 3600));
+        var travelImpedanceHours = profileCost.getOrDefault(
+          mobilityProfile,
+          (float) (weight / 3600)
+        );
         weight = travelImpedanceHours * 3600;
       } else {
         // For non-tabulated ways, use the calculated travel time above but assign a high weight.
