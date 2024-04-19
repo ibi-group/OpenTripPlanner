@@ -12,7 +12,6 @@ import static org.opentripplanner.street.model.edge.StreetEdge.WALK_NOTHRUTRAFFI
 import static org.opentripplanner.street.model.edge.StreetEdge.WHEELCHAIR_ACCESSIBLE_FLAG_INDEX;
 
 import java.util.EnumMap;
-import java.util.HashMap;
 import java.util.Map;
 import org.locationtech.jts.geom.LineString;
 import org.opentripplanner.ext.mobilityprofile.MobilityProfile;
