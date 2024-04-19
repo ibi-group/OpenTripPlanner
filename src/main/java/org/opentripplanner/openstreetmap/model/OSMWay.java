@@ -155,6 +155,11 @@ public class OSMWay extends OSMWithTags {
     return "footway".equals(getTag("highway"));
   }
 
+  public boolean isMarkedCrossing() {
+    return "crossing".equals(getTag("footway")) &&
+      "yes".equals(getTag("crossing:markings"));
+  }
+
   /**
    * Given a set of {@code permissions} check if it can really be applied to both directions
    * of the way and return the permissions for both cases.

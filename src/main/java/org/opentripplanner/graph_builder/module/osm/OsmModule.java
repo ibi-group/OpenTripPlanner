@@ -4,12 +4,14 @@ import com.google.common.collect.Iterables;
 import gnu.trove.iterator.TLongIterator;
 import gnu.trove.list.TLongList;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import javax.annotation.Nonnull;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
@@ -65,6 +67,7 @@ public class OsmModule implements GraphBuilderModule {
   private final OsmDatabase osmdb;
   private Map<String, MobilityProfileData> mobilityProfileData;
   private HashSet<String> mappedMobilityProfileEntries;
+  private List<OSMWay> osmStreets;
   private final StreetLimitationParameters streetLimitationParameters;
 
   OsmModule(
@@ -560,7 +563,8 @@ public class OsmModule implements GraphBuilderModule {
     LineString geometry,
     boolean back
   ) {
-    String label = "way " + way.getId() + " from " + index;
+    long wayId = way.getId();
+    String label = "way " + wayId + " from " + index;
     label = label.intern();
     I18NString name = params.edgeNamer().getNameForWay(way, label);
     float carSpeed = way.getOsmProvider().getOsmTagMapper().getCarSpeedForWay(way, back);
@@ -584,6 +588,25 @@ public class OsmModule implements GraphBuilderModule {
       .withStairs(way.isSteps())
       .withWheelchairAccessible(way.isWheelchairAccessible());
 
+    boolean hasBogusName = !way.hasTag("name") && !way.hasTag("ref");
+
+    // If this is a street crossing (denoted with the tag "footway:crossing"),
+    // add a crossing indication in the edge name.
+    String editedName = name.toString();
+    if (way.isMarkedCrossing()) {
+      editedName = "crosswalk";
+
+      // Scan the nodes of this way to find the intersecting street,
+      // i.e. a named way that is not a "highway: footway".
+      var otherWay = getIntersectingStreet(way);
+      if (otherWay.isPresent()) {
+        editedName = String.format("crosswalk over %s", otherWay.get().getTag("name"));
+      }
+
+      seb.withName(editedName);
+      hasBogusName = false;
+    }
+
     // Lookup costs by mobility profile, if any were defined.
     // Note that edges are bidirectional, so we check that mobility data exist in both directions.
     if (mobilityProfileData != null) {
@@ -597,14 +620,15 @@ public class OsmModule implements GraphBuilderModule {
         // For testing, indicate the OSM node ids (remove prefixes).
         String nameWithNodeIds = String.format(
           "%s (%s, %s→%s)",
-          name,
-          way.getId(),
+          editedName,
+          wayId,
           startShortId,
           endShortId
         );
+
         seb.withName(nameWithNodeIds);
 
-        String wayId = Long.toString(way.getId(), 10);
+        String wayIdStr = Long.toString(wayId, 10);
         TLongList nodeRefs = way.getNodeRefs();
         int startIndex = nodeRefs.indexOf(startShortId);
         int endIndex = nodeRefs.indexOf(endShortId);
@@ -614,8 +638,8 @@ public class OsmModule implements GraphBuilderModule {
         long wayFromId = nodeRefs.get(0);
         long wayToId = nodeRefs.get(nodeRefs.size() - 1);
         String key = isReverse
-          ? MobilityProfileParser.getKey(wayId, wayToId, wayFromId)
-          : MobilityProfileParser.getKey(wayId, wayFromId, wayToId);
+          ? MobilityProfileParser.getKey(wayIdStr, wayToId, wayFromId)
+          : MobilityProfileParser.getKey(wayIdStr, wayFromId, wayToId);
 
         var edgeMobilityCostMap = mobilityProfileData.get(key);
         if (edgeMobilityCostMap != null) {
@@ -666,21 +690,38 @@ public class OsmModule implements GraphBuilderModule {
         // Don't do anything related to mobility profiles if node ids are non-numerical.
         LOG.info(
           "Not applying mobility costs for link {}:{}→{}",
-          way.getId(),
+          wayId,
           startEndpoint.getLabel(),
           endEndpoint.getLabel()
         );
       }
     }
 
-    if (!way.hasTag("name") && !way.hasTag("ref")) {
-      seb.withBogusName(true);
-    }
+    seb.withBogusName(hasBogusName);
 
     StreetEdge street = seb.buildAndConnect();
     params.edgeNamer().recordEdge(way, street);
 
     return street;
+  }
+
+  private Optional<OSMWay> getIntersectingStreet(OSMWay way) {
+    if (osmStreets == null) {
+      osmStreets = osmdb
+        .getWays()
+        .stream()
+        .filter(w -> !w.isFootway())
+        .filter(w -> w.hasTag("name"))
+        .toList();
+    }
+
+    long[] wayNodeRefs = way.getNodeRefs().toArray();
+    long wayId = way.getId();
+    return osmStreets
+      .stream()
+      .filter(w -> w.getId() != wayId)
+      .filter(w -> Arrays.stream(wayNodeRefs).anyMatch(nid -> w.getNodeRefs().contains(nid)))
+      .findFirst();
   }
 
   private float getMaxCarSpeed() {
