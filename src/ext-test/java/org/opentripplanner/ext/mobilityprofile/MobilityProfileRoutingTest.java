@@ -29,8 +29,8 @@ class MobilityProfileRoutingTest {
 
   @Test
   void canDetectHighwayFootwayTag() {
-    assertTrue(MobilityProfileRouting.isHighwayFootway(createFootway()));
-    assertFalse(MobilityProfileRouting.isHighwayFootway(createServiceWay()));
+    assertTrue(createFootway().isFootway());
+    assertFalse(createServiceWay().isFootway());
   }
 
   private static OSMWay createServiceWay() {

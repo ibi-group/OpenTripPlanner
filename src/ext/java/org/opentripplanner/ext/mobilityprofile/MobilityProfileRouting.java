@@ -11,10 +11,6 @@ import org.opentripplanner.street.model.edge.TemporaryPartialStreetEdge;
 
 public class MobilityProfileRouting {
 
-  public static final String HIGHWAY_TAG = "highway";
-
-  public static final String FOOTWAY_TAG_VALUE = "footway";
-
   private static final Map<MobilityProfile, Float> TRAVEL_SPEED_MPH_BY_PROFILE = new EnumMap<>(
     Map.ofEntries(
       entry(MobilityProfile.NONE, 2.5f),
@@ -57,16 +53,11 @@ public class MobilityProfileRouting {
     );
   }
 
-  public static boolean isHighwayFootway(OSMWay way) {
-    return way.hasTag(HIGHWAY_TAG) && FOOTWAY_TAG_VALUE.equals(way.getTag(HIGHWAY_TAG));
-  }
-
   public static StreetTraversalPermission adjustPedestrianPermissions(
     OSMWay way,
     StreetTraversalPermission permissions
   ) {
-    //System.out.println("Way %s%n", way.);
-    return isHighwayFootway(way)
+    return way.isFootway()
       ? permissions
       : permissions.remove(StreetTraversalPermission.PEDESTRIAN);
   }
