@@ -594,17 +594,17 @@ public class OsmModule implements GraphBuilderModule {
     // add a crossing indication in the edge name.
     String editedName = name.toString();
     if (way.isMarkedCrossing()) {
-      editedName = "crosswalk";
-
       // Scan the nodes of this way to find the intersecting street,
       // i.e. a named way that is not a "highway: footway".
       var otherWay = getIntersectingStreet(way);
-      if (otherWay.isPresent()) {
-        editedName = String.format("crosswalk over %s", otherWay.get().getTag("name"));
-      }
+      editedName = otherWay.isPresent()
+        ? String.format("crosswalk over %s", otherWay.get().getTag("name"))
+        : String.format("crosswalk %s", wayId);
 
       seb.withName(editedName);
       hasBogusName = false;
+    } else if ("sidewalk".equals(editedName) || "path".equals(editedName)) {
+      editedName = String.format("%s %s", editedName, wayId);
     }
 
     // Lookup costs by mobility profile, if any were defined.
