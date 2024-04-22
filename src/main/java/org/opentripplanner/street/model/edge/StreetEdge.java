@@ -1335,13 +1335,12 @@ public class StreetEdge
           mobilityProfile
         );
         time = defaultTravelHours * 3600;
-        // Convert the impedance of the path to seconds to match with other OTP weights,
-        // to make impedances compatible with street/transit transitions.
-        var travelImpedanceHours = profileCost.getOrDefault(
+        // Impedance of the path is in seconds, so it already matches other OTP weights
+        // for compatibility with street/transit transitions.
+        weight = profileCost.getOrDefault(
           mobilityProfile,
-          (float) (weight / 3600)
+          (float) weight
         );
-        weight = travelImpedanceHours * 3600;
       } else {
         // For non-tabulated ways, use the calculated travel time above but assign a high weight.
         weight = DEFAULT_LARGE_COST * 10.0;
