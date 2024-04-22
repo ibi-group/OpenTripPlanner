@@ -1,9 +1,14 @@
 package org.opentripplanner.openstreetmap.model;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.opentripplanner.openstreetmap.wayproperty.specifier.WayTestData;
 
 public class OSMWayTest {
@@ -139,5 +144,56 @@ public class OSMWayTest {
 
     escalator.addTag("conveying", "whoknows?");
     assertFalse(escalator.isEscalator());
+  }
+
+  private static OSMWay createGenericHighway() {
+    var osm = new OSMWay();
+    osm.addTag("highway", "primary");
+    return osm;
+  }
+
+  private static OSMWay createGenericFootway() {
+    var osm = new OSMWay();
+    osm.addTag("highway", "footway");
+    return osm;
+  }
+
+  private static OSMWay createFootway(String footwayValue, String crossingTag, String crossingValue) {
+    var osm = createGenericFootway();
+    osm.addTag("footway", footwayValue);
+    osm.addTag(crossingTag, crossingValue);
+    return osm;
+  }
+
+  @Test
+  void footway() {
+    assertFalse(createGenericHighway().isFootway());
+    assertTrue(createGenericFootway().isFootway());
+  }
+
+  @Test
+  void serviceRoad() {
+    assertFalse(createGenericHighway().isServiceRoad());
+
+    var osm2 = new OSMWay();
+    osm2.addTag("highway", "service");
+    assertTrue(osm2.isServiceRoad());
+  }
+
+  @ParameterizedTest
+  @MethodSource("createCrossingCases")
+  void markedCrossing(OSMWay way, boolean result) {
+    assertEquals(result, way.isMarkedCrossing());
+  }
+
+  static Stream<Arguments> createCrossingCases() {
+    return Stream.of(
+      Arguments.of(createGenericFootway(), false),
+      Arguments.of(createFootway("whatever", "unused", "unused"), false),
+      Arguments.of(createFootway("crossing", "crossing", "marked"), true),
+      Arguments.of(createFootway("crossing", "crossing", "other"), false),
+      Arguments.of(createFootway("crossing", "crossing:markings", "yes"), true),
+      Arguments.of(createFootway("crossing", "crossing:markings", "no"), false)
+    );
   }
 }

@@ -157,7 +157,11 @@ public class OSMWay extends OSMWithTags {
 
   public boolean isMarkedCrossing() {
     return "crossing".equals(getTag("footway")) &&
-      "yes".equals(getTag("crossing:markings"));
+      "yes".equals(getTag("crossing:markings")) || "marked".equals(getTag("crossing"));
+  }
+
+  public boolean isServiceRoad() {
+    return "service".equals(getTag("highway"));
   }
 
   /**
