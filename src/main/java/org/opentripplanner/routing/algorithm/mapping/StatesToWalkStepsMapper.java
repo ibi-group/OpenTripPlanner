@@ -198,15 +198,15 @@ public class StatesToWalkStepsMapper {
         edge.isRoundabout()
       );
 
-      // HACK: If the instruction is "continue", the current street name is bogus and its length is very short (< 10 meters)
-      // but not the next edge one, use the next street name and don't start a new step.
       if (shouldOverwriteCurrentDirectionText(edge, direction)) {
+        // HACK: If the instruction is "continue", the current street name is bogus and its length is very short (< 10 meters)
+        // but not the next edge one, use the next street name and don't start a new step.
         current.withDirectionText(I18NString.of(streetNameNoParens));
         current.withBogusName(false);
       }
-      // HACK: Similar hack if the next edge name is bogus and its length is very short (< 10 meters)
-      // but not the current step. In this case, continue using the current street name and don't start a new step.
       if (edge instanceof StreetEdge streetEdge && shouldOverwriteEdgeDirectionText(edge, direction)) {
+        // HACK: Similar hack if the next edge name is bogus and its length is very short (< 10 meters)
+        // but not the current step. In this case, continue using the current street name and don't start a new step.
         streetNameNoParens = current.directionTextNoParens();
         streetEdge.setName(current.directionText());
         streetEdge.setBogusName(false);
