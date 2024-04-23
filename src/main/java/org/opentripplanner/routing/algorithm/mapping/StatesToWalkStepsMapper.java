@@ -198,20 +198,22 @@ public class StatesToWalkStepsMapper {
         edge.isRoundabout()
       );
 
-      if (shouldOverwriteCurrentDirectionText(edge, direction)) {
-        // HACK: If the instruction is "continue", the current street name is bogus and its length is very short (< 10 meters)
-        // but not the next edge one, use the next street name and don't start a new step.
-        current.withDirectionText(I18NString.of(streetNameNoParens));
-        current.withBogusName(false);
-      }
-      if (
-        edge instanceof StreetEdge streetEdge && shouldOverwriteEdgeDirectionText(edge, direction)
-      ) {
-        // HACK: Similar hack if the next edge name is bogus and its length is very short (< 10 meters)
-        // but not the current step. In this case, continue using the current street name and don't start a new step.
-        streetNameNoParens = current.directionTextNoParens();
-        streetEdge.setName(current.directionText());
-        streetEdge.setBogusName(false);
+      // G-MAP-specific: Overwrite the name on short street edges so they are merged with longer street
+      // sections to clean up turn-by-turn instructions.
+      if (edge instanceof StreetEdge streetEdge && !streetEdge.profileCost.isEmpty()) {
+        if (shouldOverwriteCurrentDirectionText(edge, direction)) {
+          // HACK: If the instruction is "continue", the current street name is bogus and its length is very short (< 10 meters)
+          // but not the next edge one, use the next street name and don't start a new step.
+          current.withDirectionText(I18NString.of(streetNameNoParens));
+          current.withBogusName(false);
+        }
+        if (shouldOverwriteEdgeDirectionText(edge, direction)) {
+          // HACK: Similar hack if the next edge name is bogus and its length is very short (< 10 meters)
+          // but not the current step. In this case, continue using the current street name and don't start a new step.
+          streetNameNoParens = current.directionTextNoParens();
+          streetEdge.setName(current.directionText());
+          streetEdge.setBogusName(false);
+        }
       }
 
       if (
