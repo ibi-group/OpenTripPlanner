@@ -204,7 +204,9 @@ public class StatesToWalkStepsMapper {
         current.withDirectionText(I18NString.of(streetNameNoParens));
         current.withBogusName(false);
       }
-      if (edge instanceof StreetEdge streetEdge && shouldOverwriteEdgeDirectionText(edge, direction)) {
+      if (
+        edge instanceof StreetEdge streetEdge && shouldOverwriteEdgeDirectionText(edge, direction)
+      ) {
         // HACK: Similar hack if the next edge name is bogus and its length is very short (< 10 meters)
         // but not the current step. In this case, continue using the current street name and don't start a new step.
         streetNameNoParens = current.directionTextNoParens();
@@ -214,12 +216,12 @@ public class StatesToWalkStepsMapper {
 
       if (
         modeTransition ||
-          !continueOnSameStreet(edge, streetNameNoParens) ||
-          // went on to or off of a roundabout
-          edge.isRoundabout() !=
-            (roundaboutExit > 0) ||
-          isLink(edge) &&
-            !isLink(backState.getBackEdge())
+        !continueOnSameStreet(edge, streetNameNoParens) ||
+        // went on to or off of a roundabout
+        edge.isRoundabout() !=
+        (roundaboutExit > 0) ||
+        isLink(edge) &&
+        !isLink(backState.getBackEdge())
       ) {
         // Street name has changed, or we've gone on to or off of a roundabout.
 
@@ -241,7 +243,8 @@ public class StatesToWalkStepsMapper {
         // indicate that we are now on a roundabout and use one-based exit numbering
         if (edge.isRoundabout()) {
           roundaboutExit = 1;
-          roundaboutPreviousStreet = getNormalizedName(backState.getBackEdge().getName().toString());
+          roundaboutPreviousStreet =
+            getNormalizedName(backState.getBackEdge().getName().toString());
         }
 
         current.withDirections(lastAngle, thisAngle, edge.isRoundabout());
@@ -282,9 +285,9 @@ public class StatesToWalkStepsMapper {
         WalkStepBuilder threeBack = steps.get(lastIndex - 2);
         WalkStepBuilder twoBack = steps.get(lastIndex - 1);
         WalkStepBuilder lastStep = steps.get(lastIndex);
-        boolean isOnSameStreet = lastStep
-          .directionTextNoParens()
-          .equals(threeBack.directionTextNoParens());
+        boolean isOnSameStreet =
+          !lastStep.directionTextNoParens().startsWith("crosswalk") &&
+          lastStep.directionTextNoParens().equals(threeBack.directionTextNoParens());
         if (twoBack.distance() < MAX_ZAG_DISTANCE && isOnSameStreet) {
           if (isUTurn(twoBack, lastStep)) {
             steps.remove(lastIndex - 1);
@@ -446,19 +449,16 @@ public class StatesToWalkStepsMapper {
   }
 
   private boolean shouldOverwriteCurrentDirectionText(Edge edge, RelativeDirection direction) {
-    return
-      direction == CONTINUE &&
-        distance < 10 &&
-        current.bogusName()
-        && !edge.hasBogusName();
+    return direction == CONTINUE && distance < 10 && current.bogusName() && !edge.hasBogusName();
   }
 
   private boolean shouldOverwriteEdgeDirectionText(Edge edge, RelativeDirection direction) {
-    return
+    return (
       direction == CONTINUE &&
-        edge.getDistanceMeters() < 10 &&
-        !current.bogusName()
-        && edge.hasBogusName();
+      edge.getDistanceMeters() < 10 &&
+      !current.bogusName() &&
+      edge.hasBogusName()
+    );
   }
 
   private boolean continueOnSameStreet(Edge edge, String streetNameNoParens) {
