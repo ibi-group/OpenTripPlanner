@@ -594,12 +594,20 @@ public class OsmModule implements GraphBuilderModule {
     // add a crossing indication in the edge name.
     String editedName = name.toString();
     if (way.isMarkedCrossing()) {
-      // Scan the nodes of this way to find the intersecting street,
-      // i.e. a named way that is not a "highway: footway".
-      var otherWay = getIntersectingStreet(way);
-      editedName = otherWay.isPresent()
-        ? String.format("crosswalk over %s", otherWay.get().getTag("name"))
-        : String.format("crosswalk %s", wayId);
+      // Scan the nodes of this way to find the intersecting street.
+      var otherWayOpt = getIntersectingStreet(way);
+      if (otherWayOpt.isPresent()) {
+        OSMWay otherWay = otherWayOpt.get();
+        if (otherWay.hasTag("name")) {
+          editedName = String.format("crosswalk over %s", otherWay.getTag("name"));
+        } else if (otherWay.isServiceRoad()) {
+          editedName = "crosswalk over service road";
+        } else if (otherWay.isOneWayForwardDriving()) {
+          editedName = "crosswalk over turn lane";
+        } else {
+          editedName = String.format("crosswalk %s", wayId);
+        }
+      }
 
       seb.withName(editedName);
       hasBogusName = false;
@@ -682,7 +690,7 @@ public class OsmModule implements GraphBuilderModule {
           }
 
           seb.withName(nameWithNodeIds);
-          // LOG.info("Applied mobility profile costs between nodes {}-{}", startShortId, endShortId);
+
           // Keep tab of node pairs for which mobility profile costs have been mapped.
           mappedMobilityProfileEntries.add(key);
         }
@@ -707,21 +715,26 @@ public class OsmModule implements GraphBuilderModule {
 
   private Optional<OSMWay> getIntersectingStreet(OSMWay way) {
     if (osmStreets == null) {
-      osmStreets = osmdb
-        .getWays()
-        .stream()
-        .filter(w -> !w.isFootway())
-        .filter(w -> w.hasTag("name"))
-        .toList();
+      osmStreets =
+        osmdb
+          .getWays()
+          .stream()
+          .filter(w -> !w.isFootway())
+          // Keep named streets, service roads, and slip/turn lanes.
+          .filter(w -> w.hasTag("name") || w.isServiceRoad() || w.isOneWayForwardDriving())
+          .toList();
     }
 
-    long[] wayNodeRefs = way.getNodeRefs().toArray();
-    long wayId = way.getId();
-    return osmStreets
-      .stream()
-      .filter(w -> w.getId() != wayId)
-      .filter(w -> Arrays.stream(wayNodeRefs).anyMatch(nid -> w.getNodeRefs().contains(nid)))
-      .findFirst();
+    TLongList nodeRefs = way.getNodeRefs();
+    if (nodeRefs.size() >= 3) {
+      // Exclude the first and last node which are on the sidewalk.
+      long[] nodeRefsArray = nodeRefs.toArray(1, nodeRefs.size() - 2);
+      return osmStreets
+        .stream()
+        .filter(w -> Arrays.stream(nodeRefsArray).anyMatch(nid -> w.getNodeRefs().contains(nid)))
+        .findFirst();
+    }
+    return Optional.empty();
   }
 
   private float getMaxCarSpeed() {
