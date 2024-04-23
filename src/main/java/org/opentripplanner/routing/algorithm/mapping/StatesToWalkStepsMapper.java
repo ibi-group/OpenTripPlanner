@@ -1,5 +1,6 @@
 package org.opentripplanner.routing.algorithm.mapping;
 
+import static org.opentripplanner.model.plan.RelativeDirection.CONTINUE;
 import static org.opentripplanner.model.plan.RelativeDirection.ENTER_STATION;
 import static org.opentripplanner.model.plan.RelativeDirection.EXIT_STATION;
 import static org.opentripplanner.model.plan.RelativeDirection.FOLLOW_SIGNS;
@@ -189,69 +190,85 @@ public class StatesToWalkStepsMapper {
     if (current == null) {
       createFirstStep(backState, forwardState);
       createdNewStep = true;
-    } else if (
-      modeTransition ||
-      !continueOnSameStreet(edge, streetNameNoParens) ||
-      // went on to or off of a roundabout
-      edge.isRoundabout() !=
-      (roundaboutExit > 0) ||
-      isLink(edge) &&
-      !isLink(backState.getBackEdge())
-    ) {
-      // Street name has changed, or we've gone on to or off of a roundabout.
-
-      // if we were just on a roundabout, make note of which exit was taken in the existing step
-      if (roundaboutExit > 0) {
-        // ordinal numbers from
-        current.withExit(Integer.toString(roundaboutExit));
-        if (streetNameNoParens.equals(roundaboutPreviousStreet)) {
-          current.withStayOn(true);
-        }
-        roundaboutExit = 0;
-      }
-
-      // start a new step
-      current = createWalkStep(forwardState, backState);
-      createdNewStep = true;
-      steps.add(current);
-
-      // indicate that we are now on a roundabout and use one-based exit numbering
-      if (edge.isRoundabout()) {
-        roundaboutExit = 1;
-        roundaboutPreviousStreet = getNormalizedName(backState.getBackEdge().getName().toString());
-      }
-
-      double thisAngle = DirectionUtils.getFirstAngle(geom);
-      current.withDirections(lastAngle, thisAngle, edge.isRoundabout());
-      // new step, set distance to length of first edge
-      distance = edge.getDistanceMeters();
     } else {
-      // street name has not changed
       double thisAngle = DirectionUtils.getFirstAngle(geom);
       RelativeDirection direction = RelativeDirection.calculate(
         lastAngle,
         thisAngle,
         edge.isRoundabout()
       );
-      if (edge.isRoundabout()) {
-        // we are on a roundabout, and have already traversed at least one edge of it.
-        if (multipleTurnOptionsInPreviousState(backState)) {
-          // increment exit count if we passed one.
-          roundaboutExit += 1;
+
+      // HACK: If the instruction is "continue", the current street name is bogus and its length is very short (< 10 meters)
+      // but not the next edge one, use the next street name and don't start a new step.
+      if (shouldOverwriteCurrentDirectionText(edge, direction)) {
+        current.withDirectionText(I18NString.of(streetNameNoParens));
+        current.withBogusName(false);
+      }
+      // HACK: Similar hack if the next edge name is bogus and its length is very short (< 10 meters)
+      // but not the current step. In this case, continue using the current street name and don't start a new step.
+      if (edge instanceof StreetEdge streetEdge && shouldOverwriteEdgeDirectionText(edge, direction)) {
+        streetNameNoParens = current.directionTextNoParens();
+        streetEdge.setName(current.directionText());
+        streetEdge.setBogusName(false);
+      }
+
+      if (
+        modeTransition ||
+          !continueOnSameStreet(edge, streetNameNoParens) ||
+          // went on to or off of a roundabout
+          edge.isRoundabout() !=
+            (roundaboutExit > 0) ||
+          isLink(edge) &&
+            !isLink(backState.getBackEdge())
+      ) {
+        // Street name has changed, or we've gone on to or off of a roundabout.
+
+        // if we were just on a roundabout, make note of which exit was taken in the existing step
+        if (roundaboutExit > 0) {
+          // ordinal numbers from
+          current.withExit(Integer.toString(roundaboutExit));
+          if (streetNameNoParens.equals(roundaboutPreviousStreet)) {
+            current.withStayOn(true);
+          }
+          roundaboutExit = 0;
         }
-      } else if (direction != RelativeDirection.CONTINUE) {
-        // we are not on a roundabout, and not continuing straight through.
-        // figure out if there were other plausible turn options at the last intersection
-        // to see if we should generate a "left to continue" instruction.
-        if (isPossibleToTurnToOtherStreet(backState, edge, streetName, thisAngle)) {
-          // turn to stay on same-named street
-          current = createWalkStep(forwardState, backState);
-          createdNewStep = true;
-          current.withDirections(lastAngle, thisAngle, false);
-          current.withStayOn(true);
-          steps.add(current);
-          // new step, set distance to length of first edge
-          distance = edge.getDistanceMeters();
+
+        // start a new step
+        current = createWalkStep(forwardState, backState);
+        createdNewStep = true;
+        steps.add(current);
+
+        // indicate that we are now on a roundabout and use one-based exit numbering
+        if (edge.isRoundabout()) {
+          roundaboutExit = 1;
+          roundaboutPreviousStreet = getNormalizedName(backState.getBackEdge().getName().toString());
+        }
+
+        current.withDirections(lastAngle, thisAngle, edge.isRoundabout());
+        // new step, set distance to length of first edge
+        distance = edge.getDistanceMeters();
+      } else {
+        // street name has not changed
+        if (edge.isRoundabout()) {
+          // we are on a roundabout, and have already traversed at least one edge of it.
+          if (multipleTurnOptionsInPreviousState(backState)) {
+            // increment exit count if we passed one.
+            roundaboutExit += 1;
+          }
+        } else if (direction != RelativeDirection.CONTINUE) {
+          // we are not on a roundabout, and not continuing straight through.
+          // figure out if there were other plausible turn options at the last intersection
+          // to see if we should generate a "left to continue" instruction.
+          if (isPossibleToTurnToOtherStreet(backState, edge, streetName, thisAngle)) {
+            // turn to stay on same-named street
+            current = createWalkStep(forwardState, backState);
+            createdNewStep = true;
+            current.withDirections(lastAngle, thisAngle, false);
+            current.withStayOn(true);
+            steps.add(current);
+            // new step, set distance to length of first edge
+            distance = edge.getDistanceMeters();
+          }
         }
       }
     }
@@ -426,6 +443,22 @@ public class StatesToWalkStepsMapper {
     double altAngle = DirectionUtils.getFirstAngle(alternative.getGeometry());
     double altAngleDiff = getAbsoluteAngleDiff(altAngle, lastAngle);
     return angleDiff > Math.PI / 4 || altAngleDiff - angleDiff < Math.PI / 16;
+  }
+
+  private boolean shouldOverwriteCurrentDirectionText(Edge edge, RelativeDirection direction) {
+    return
+      direction == CONTINUE &&
+        distance < 10 &&
+        current.bogusName()
+        && !edge.hasBogusName();
+  }
+
+  private boolean shouldOverwriteEdgeDirectionText(Edge edge, RelativeDirection direction) {
+    return
+      direction == CONTINUE &&
+        edge.getDistanceMeters() < 10 &&
+        !current.bogusName()
+        && edge.hasBogusName();
   }
 
   private boolean continueOnSameStreet(Edge edge, String streetNameNoParens) {

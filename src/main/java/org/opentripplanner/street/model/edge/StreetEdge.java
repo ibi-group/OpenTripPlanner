@@ -460,8 +460,13 @@ public class StreetEdge
     this.name = name;
   }
 
+  @Override
   public boolean hasBogusName() {
     return BitSetUtils.get(flags, HASBOGUSNAME_FLAG_INDEX);
+  }
+
+  public void setBogusName(boolean bogusName) {
+    flags = BitSetUtils.set(flags, HASBOGUSNAME_FLAG_INDEX, bogusName);
   }
 
   public LineString getGeometry() {
