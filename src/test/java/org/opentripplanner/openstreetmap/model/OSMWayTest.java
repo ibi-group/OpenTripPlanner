@@ -158,7 +158,11 @@ public class OSMWayTest {
     return osm;
   }
 
-  private static OSMWay createFootway(String footwayValue, String crossingTag, String crossingValue) {
+  private static OSMWay createFootway(
+    String footwayValue,
+    String crossingTag,
+    String crossingValue
+  ) {
     var osm = createGenericFootway();
     osm.addTag("footway", footwayValue);
     osm.addTag(crossingTag, crossingValue);
