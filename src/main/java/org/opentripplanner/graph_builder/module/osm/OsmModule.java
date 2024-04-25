@@ -599,13 +599,13 @@ public class OsmModule implements GraphBuilderModule {
       if (otherWayOpt.isPresent()) {
         OSMWay otherWay = otherWayOpt.get();
         if (otherWay.hasTag("name")) {
-          editedName = String.format("crosswalk over %s", otherWay.getTag("name"));
+          editedName = String.format("crossing over %s", otherWay.getTag("name"));
         } else if (otherWay.isServiceRoad()) {
-          editedName = "crosswalk over service road";
+          editedName = "crossing over service road";
         } else if (otherWay.isOneWayForwardDriving()) {
-          editedName = "crosswalk over turn lane";
+          editedName = "crossing over turn lane";
         } else {
-          editedName = String.format("crosswalk %s", wayId);
+          editedName = String.format("crossing %s", wayId);
         }
       }
 

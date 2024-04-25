@@ -288,7 +288,7 @@ public class StatesToWalkStepsMapper {
         WalkStepBuilder twoBack = steps.get(lastIndex - 1);
         WalkStepBuilder lastStep = steps.get(lastIndex);
         boolean isOnSameStreet =
-          !lastStep.directionTextNoParens().startsWith("crosswalk") &&
+          !lastStep.directionTextNoParens().startsWith("crossing") &&
           lastStep.directionTextNoParens().equals(threeBack.directionTextNoParens());
         if (twoBack.distance() < MAX_ZAG_DISTANCE && isOnSameStreet) {
           if (isUTurn(twoBack, lastStep)) {
