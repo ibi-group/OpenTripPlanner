@@ -128,8 +128,6 @@ public class OsmModule implements GraphBuilderModule {
     this.mobilityProfileData = mobilityProfileData;
   }
 
-  private record StreetEdgePair(StreetEdge main, StreetEdge back) {}
-
   private void build() {
     var parkingProcessor = new ParkingProcessor(
       graph,
@@ -430,8 +428,10 @@ public class OsmModule implements GraphBuilderModule {
             geometry
           );
 
-          StreetEdge street = streets.main;
-          StreetEdge backStreet = streets.back;
+          params.edgeNamer().recordEdges(way, streets);
+
+          StreetEdge street = streets.main();
+          StreetEdge backStreet = streets.back();
           normalizer.applyWayProperties(street, backStreet, wayData, way);
 
           applyEdgesToTurnRestrictions(way, startNode, endNode, street, backStreet);
@@ -586,9 +586,8 @@ public class OsmModule implements GraphBuilderModule {
       .withRoundabout(way.isRoundabout())
       .withSlopeOverride(way.getOsmProvider().getWayPropertySet().getSlopeOverride(way))
       .withStairs(way.isSteps())
-      .withWheelchairAccessible(way.isWheelchairAccessible());
-
-    boolean hasBogusName = !way.hasTag("name") && !way.hasTag("ref");
+      .withWheelchairAccessible(way.isWheelchairAccessible())
+      .withBogusName(way.hasNoName());
 
     // If this is a street crossing (denoted with the tag "footway:crossing"),
     // add a crossing indication in the edge name.
@@ -610,7 +609,7 @@ public class OsmModule implements GraphBuilderModule {
       }
 
       seb.withName(editedName);
-      hasBogusName = false;
+      seb.withBogusName(false);
     } else if ("sidewalk".equals(editedName) || "path".equals(editedName)) {
       editedName = String.format("%s %s", editedName, wayId);
     }
@@ -705,12 +704,7 @@ public class OsmModule implements GraphBuilderModule {
       }
     }
 
-    seb.withBogusName(hasBogusName);
-
-    StreetEdge street = seb.buildAndConnect();
-    params.edgeNamer().recordEdge(way, street);
-
-    return street;
+    return seb.buildAndConnect();
   }
 
   private Optional<OSMWay> getIntersectingStreet(OSMWay way) {

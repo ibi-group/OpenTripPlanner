@@ -98,21 +98,6 @@ public class OSMWayTest {
   }
 
   @Test
-  void testIsOneDirectionSidepath() {
-    OSMWay way = new OSMWay();
-    assertFalse(way.isForwardDirectionSidepath());
-    assertFalse(way.isReverseDirectionSidepath());
-
-    way.addTag("bicycle:forward", "use_sidepath");
-    assertTrue(way.isForwardDirectionSidepath());
-    assertFalse(way.isReverseDirectionSidepath());
-
-    way.addTag("bicycle:backward", "use_sidepath");
-    assertTrue(way.isForwardDirectionSidepath());
-    assertTrue(way.isReverseDirectionSidepath());
-  }
-
-  @Test
   void testIsOpposableCycleway() {
     OSMWay way = new OSMWay();
     assertFalse(way.isOpposableCycleway());
