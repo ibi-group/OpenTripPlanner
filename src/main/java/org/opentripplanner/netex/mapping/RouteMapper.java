@@ -1,15 +1,16 @@
 package org.opentripplanner.netex.mapping;
 
 import com.google.common.collect.Multimap;
+import jakarta.xml.bind.annotation.adapters.HexBinaryAdapter;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
 import javax.annotation.Nullable;
-import javax.xml.bind.annotation.adapters.HexBinaryAdapter;
-import org.opentripplanner.graph_builder.DataImportIssueStore;
+import org.opentripplanner.framework.i18n.NonLocalizedString;
+import org.opentripplanner.graph_builder.issue.api.DataImportIssueStore;
 import org.opentripplanner.netex.index.api.NetexEntityIndexReadOnlyView;
 import org.opentripplanner.netex.mapping.support.FeedScopedIdFactory;
-import org.opentripplanner.netex.mapping.support.MainAndSubMode;
+import org.opentripplanner.netex.mapping.support.NetexMainAndSubMode;
 import org.opentripplanner.transit.model.framework.EntityById;
 import org.opentripplanner.transit.model.framework.FeedScopedId;
 import org.opentripplanner.transit.model.network.BikeAccess;
@@ -22,6 +23,7 @@ import org.opentripplanner.transit.model.organization.Operator;
 import org.rutebanken.netex.model.AllVehicleModesOfTransportEnumeration;
 import org.rutebanken.netex.model.BrandingRefStructure;
 import org.rutebanken.netex.model.FlexibleLine_VersionStructure;
+import org.rutebanken.netex.model.GroupOfLinesRefStructure;
 import org.rutebanken.netex.model.Line_VersionStructure;
 import org.rutebanken.netex.model.Network;
 import org.rutebanken.netex.model.OperatorRefStructure;
@@ -77,10 +79,11 @@ class RouteMapper {
     builder.withAgency(findOrCreateAuthority(line));
     builder.withOperator(findOperator(line));
     builder.withBranding(findBranding(line));
-    builder.withLongName(line.getName().getValue());
+    NonLocalizedString longName = NonLocalizedString.ofNullable(line.getName().getValue());
+    builder.withLongName(longName);
     builder.withShortName(line.getPublicCode());
 
-    MainAndSubMode mode;
+    NetexMainAndSubMode mode;
     try {
       mode = transportModeMapper.map(line.getTransportMode(), line.getTransportSubmode());
     } catch (TransportModeMapper.UnsupportedModeException e) {
@@ -140,9 +143,13 @@ class RouteMapper {
     // Use set in case ref is set on both sides
     Set<GroupOfRoutes> groupsOfRoutes = new HashSet<>(groupsOfLinesByRouteId.get(lineId));
 
-    FeedScopedId groupOfRoutesId = idFactory.createId(line.getRepresentedByGroupRef().getRef());
-    if (this.groupOfRoutesById.containsKey(groupOfRoutesId)) {
-      groupsOfRoutes.add(groupOfRoutesById.get(groupOfRoutesId));
+    GroupOfLinesRefStructure representedByGroupRef = line.getRepresentedByGroupRef();
+
+    if (representedByGroupRef != null) {
+      FeedScopedId groupOfRoutesId = idFactory.createId(representedByGroupRef.getRef());
+      if (this.groupOfRoutesById.containsKey(groupOfRoutesId)) {
+        groupsOfRoutes.add(groupOfRoutesById.get(groupOfRoutesId));
+      }
     }
 
     return groupsOfRoutes;
@@ -153,19 +160,24 @@ class RouteMapper {
    * agency is created and returned.
    */
   private Agency findOrCreateAuthority(Line_VersionStructure line) {
-    String groupRef = line.getRepresentedByGroupRef().getRef();
+    GroupOfLinesRefStructure representedByGroupRef = line.getRepresentedByGroupRef();
+    Agency agency = null;
+    if (representedByGroupRef != null) {
+      String groupRef = representedByGroupRef.getRef();
 
-    // Find authority, first in *GroupOfLines* and then if not found look in *Network*
-    Network network = netexIndex.lookupNetworkForLine(groupRef);
+      // Find authority, first in *GroupOfLines* and then if not found look in *Network*
+      Network network = netexIndex.lookupNetworkForLine(groupRef);
 
-    if (network != null) {
-      String orgRef = network.getTransportOrganisationRef().getValue().getRef();
-      Agency agency = agenciesById.get(idFactory.createId(orgRef));
-      if (agency != null) return agency;
+      if (network != null) {
+        String orgRef = network.getTransportOrganisationRef().getValue().getRef();
+        agency = agenciesById.get(idFactory.createId(orgRef));
+      }
+    } else if (line.getAuthorityRef() != null) {
+      agency = agenciesById.get(idFactory.createId(line.getAuthorityRef().getRef()));
     }
     // No authority found in Network or GroupOfLines.
     // Use the dummy agency, create if necessary
-    return createOrGetDummyAgency(line);
+    return agency != null ? agency : createOrGetDummyAgency(line);
   }
 
   private Agency createOrGetDummyAgency(Line_VersionStructure line) {

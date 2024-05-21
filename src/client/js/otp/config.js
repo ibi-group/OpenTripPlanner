@@ -50,6 +50,7 @@ otp.config = {
      * The OTP web service locations
      */
     hostname : "",
+    //hostname : "http://localhost:8080",
     //municoderHostname : "http://localhost:8080",
     //datastoreUrl : 'http://localhost:9000',
     // In the 0.10.x API the base path is "otp-rest-servlet/ws"
@@ -348,5 +349,16 @@ otp.config.modes = {
     //TRANSLATORS: Travel by: mode of transport (Used in selection in Travel Options widgets)
     "FLEX_ACCESS,FLEX_EGRESS,TRANSIT" : _tr('Transit with flex access and egress'),
     //TRANSLATORS: Travel by: mode of transport (Used in selection in Travel Options widgets)
-    "FLEX_DIRECT"              : _tr('Direct flex search')
+    "FLEX_DIRECT"              : _tr('Direct flex search'),
+    "CARPOOL,WALK"             : _tr("Carpool"),
+    "CAR_HAIL,TRANSIT,WALK"    : _tr("Car hailing and transit")
+};
+
+let limitTo = _tr("Limit to ");
+
+otp.config.debugItinerarys = {
+    "OFF"      : _tr('Off'),
+    "LIST_ALL" : _tr('Show all'),
+    "LIMIT_TO_NUM_OF_ITINERARIES" : limitTo + '<code>numItineraries</code>',
+    "LIMIT_TO_SEARCH_WINDOW" : limitTo + '<code>searchWindow</code>'
 };

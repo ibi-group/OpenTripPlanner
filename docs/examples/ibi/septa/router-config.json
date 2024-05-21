@@ -1,0 +1,16 @@
+{
+  "updaters": [
+    {
+      "type": "vehicle-positions",
+      "url": "https://www3.septa.org/gtfsrt/septarail-pa-us/Vehicle/rtVehiclePosition.pb",
+      "feedId": "septa-rail",
+      "frequency": "1m"
+    },
+    {
+      "type": "vehicle-rental",
+      "sourceType": "gbfs",
+      "frequency": "1m",
+      "url": "https://gbfs.bcycle.com/bcycle_indego/gbfs.json"
+    }
+  ]
+}

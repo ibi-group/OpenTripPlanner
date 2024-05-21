@@ -1,11 +1,11 @@
 package org.opentripplanner.graph_builder.module;
 
-import javax.inject.Inject;
-import org.opentripplanner.graph_builder.DataImportIssueStore;
+import jakarta.inject.Inject;
+import org.opentripplanner.graph_builder.issue.api.DataImportIssueStore;
 import org.opentripplanner.graph_builder.model.GraphBuilderModule;
-import org.opentripplanner.routing.graph.Edge;
 import org.opentripplanner.routing.graph.Graph;
-import org.opentripplanner.routing.graph.Vertex;
+import org.opentripplanner.street.model.edge.Edge;
+import org.opentripplanner.street.model.vertex.Vertex;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,16 +40,8 @@ public class GraphCoherencyCheckerModule implements GraphBuilderModule {
           issueStore.add("InvalidEdge", "outgoing edge of %s: from vertex %s does not match", v, e);
           coherent = false;
         }
-        if (e.getToVertex() == null) {
-          issueStore.add("InvalidEdge", "outgoing edge has no to vertex %s", e);
-          coherent = false;
-        }
       }
       for (Edge e : v.getIncoming()) {
-        if (e.getFromVertex() == null) {
-          issueStore.add("InvalidEdge", "incoming edge has no from vertex %s", e);
-          coherent = false;
-        }
         if (e.getToVertex() != v) {
           issueStore.add("InvalidEdge", "incoming edge of %s: to vertex %s does not match", v, e);
           coherent = false;
@@ -57,10 +49,5 @@ public class GraphCoherencyCheckerModule implements GraphBuilderModule {
       }
     }
     LOG.info("edge lists and from/to members are {}coherent.", coherent ? "" : "not ");
-  }
-
-  @Override
-  public void checkInputs() {
-    //No inputs other than the graph itself
   }
 }

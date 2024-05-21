@@ -5,8 +5,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.text.ParseException;
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.Base64;
 import javax.annotation.Nullable;
 import org.opentripplanner.transit.model.framework.FeedScopedId;
@@ -28,11 +28,9 @@ public class LegReferenceSerializer {
     if (legReference == null) {
       return null;
     }
-    LegReferenceType typeEnum = LegReferenceType.forClass(legReference.getClass());
-
-    if (typeEnum == null) {
-      throw new IllegalArgumentException("Unknown LegReference type");
-    }
+    LegReferenceType typeEnum = LegReferenceType
+      .forClass(legReference.getClass())
+      .orElseThrow(() -> new IllegalArgumentException("Unknown LegReference type"));
 
     var buf = new ByteArrayOutputStream();
     try (var out = new ObjectOutputStream(buf)) {
@@ -53,21 +51,31 @@ public class LegReferenceSerializer {
       return null;
     }
 
-    var buf = Base64.getUrlDecoder().decode(legReference);
-    var input = new ByteArrayInputStream(buf);
+    byte[] serializedLegReference;
+    try {
+      serializedLegReference = Base64.getUrlDecoder().decode(legReference);
+    } catch (IllegalArgumentException e) {
+      LOG.info("Unable to decode leg reference (invalid base64 encoding): '{}'", legReference, e);
+      return null;
+    }
+    var input = new ByteArrayInputStream(serializedLegReference);
 
     try (var in = new ObjectInputStream(input)) {
       // The order must be the same in the encode and decode function
 
       var type = readEnum(in, LegReferenceType.class);
       return type.getDeserializer().read(in);
-    } catch (IOException | ParseException e) {
-      LOG.error("Unable to decode leg reference: '" + legReference + "'", e);
+    } catch (IOException e) {
+      LOG.warn(
+        "Unable to decode leg reference (incompatible serialization format): '{}'",
+        legReference,
+        e
+      );
       return null;
     }
   }
 
-  static void writeScheduledTransitLeg(LegReference ref, ObjectOutputStream out)
+  static void writeScheduledTransitLegV1(LegReference ref, ObjectOutputStream out)
     throws IOException {
     if (ref instanceof ScheduledTransitLegReference s) {
       out.writeUTF(s.tripId().toString());
@@ -79,13 +87,71 @@ public class LegReferenceSerializer {
     }
   }
 
-  static LegReference readScheduledTransitLeg(ObjectInputStream objectInputStream)
+  static void writeScheduledTransitLegV2(LegReference ref, ObjectOutputStream out)
+    throws IOException {
+    if (ref instanceof ScheduledTransitLegReference s) {
+      out.writeUTF(s.tripId().toString());
+      out.writeUTF(s.serviceDate().toString());
+      out.writeInt(s.fromStopPositionInPattern());
+      out.writeInt(s.toStopPositionInPattern());
+      out.writeUTF(s.fromStopId().toString());
+      out.writeUTF(s.toStopId().toString());
+    } else {
+      throw new IllegalArgumentException("Invalid LegReference type");
+    }
+  }
+
+  static void writeScheduledTransitLegV3(LegReference ref, ObjectOutputStream out)
+    throws IOException {
+    if (ref instanceof ScheduledTransitLegReference s) {
+      out.writeUTF(s.tripOnServiceDateId() == null ? s.tripId().toString() : "");
+      out.writeUTF(s.serviceDate().toString());
+      out.writeInt(s.fromStopPositionInPattern());
+      out.writeInt(s.toStopPositionInPattern());
+      out.writeUTF(s.fromStopId().toString());
+      out.writeUTF(s.toStopId().toString());
+      out.writeUTF(s.tripOnServiceDateId() == null ? "" : s.tripOnServiceDateId().toString());
+    } else {
+      throw new IllegalArgumentException("Invalid LegReference type");
+    }
+  }
+
+  static LegReference readScheduledTransitLegV1(ObjectInputStream objectInputStream)
     throws IOException {
     return new ScheduledTransitLegReference(
-      FeedScopedId.parseId(objectInputStream.readUTF()),
-      LocalDate.parse(objectInputStream.readUTF()),
+      FeedScopedId.parse(objectInputStream.readUTF()),
+      LocalDate.parse(objectInputStream.readUTF(), DateTimeFormatter.ISO_LOCAL_DATE),
       objectInputStream.readInt(),
-      objectInputStream.readInt()
+      objectInputStream.readInt(),
+      null,
+      null,
+      null
+    );
+  }
+
+  static LegReference readScheduledTransitLegV2(ObjectInputStream objectInputStream)
+    throws IOException {
+    return new ScheduledTransitLegReference(
+      FeedScopedId.parse(objectInputStream.readUTF()),
+      LocalDate.parse(objectInputStream.readUTF(), DateTimeFormatter.ISO_LOCAL_DATE),
+      objectInputStream.readInt(),
+      objectInputStream.readInt(),
+      FeedScopedId.parse(objectInputStream.readUTF()),
+      FeedScopedId.parse(objectInputStream.readUTF()),
+      null
+    );
+  }
+
+  static LegReference readScheduledTransitLegV3(ObjectInputStream objectInputStream)
+    throws IOException {
+    return new ScheduledTransitLegReference(
+      FeedScopedId.parse(objectInputStream.readUTF()),
+      LocalDate.parse(objectInputStream.readUTF(), DateTimeFormatter.ISO_LOCAL_DATE),
+      objectInputStream.readInt(),
+      objectInputStream.readInt(),
+      FeedScopedId.parse(objectInputStream.readUTF()),
+      FeedScopedId.parse(objectInputStream.readUTF()),
+      FeedScopedId.parse(objectInputStream.readUTF())
     );
   }
 

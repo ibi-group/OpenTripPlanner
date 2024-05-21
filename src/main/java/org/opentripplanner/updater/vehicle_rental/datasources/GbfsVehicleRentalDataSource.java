@@ -6,19 +6,23 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import org.entur.gbfs.v2_2.free_bike_status.GBFSFreeBikeStatus;
-import org.entur.gbfs.v2_2.station_information.GBFSStationInformation;
-import org.entur.gbfs.v2_2.station_status.GBFSStation;
-import org.entur.gbfs.v2_2.station_status.GBFSStationStatus;
-import org.entur.gbfs.v2_2.system_information.GBFSSystemInformation;
-import org.entur.gbfs.v2_2.vehicle_types.GBFSVehicleTypes;
-import org.opentripplanner.routing.vehicle_rental.RentalVehicleType;
-import org.opentripplanner.routing.vehicle_rental.VehicleRentalPlace;
-import org.opentripplanner.routing.vehicle_rental.VehicleRentalSystem;
-import org.opentripplanner.updater.DataSource;
+import org.entur.gbfs.v2_3.free_bike_status.GBFSFreeBikeStatus;
+import org.entur.gbfs.v2_3.geofencing_zones.GBFSGeofencingZones;
+import org.entur.gbfs.v2_3.station_information.GBFSStationInformation;
+import org.entur.gbfs.v2_3.station_status.GBFSStation;
+import org.entur.gbfs.v2_3.station_status.GBFSStationStatus;
+import org.entur.gbfs.v2_3.system_information.GBFSSystemInformation;
+import org.entur.gbfs.v2_3.vehicle_types.GBFSVehicleType;
+import org.entur.gbfs.v2_3.vehicle_types.GBFSVehicleTypes;
+import org.opentripplanner.framework.application.OTPFeature;
+import org.opentripplanner.framework.io.OtpHttpClient;
+import org.opentripplanner.framework.io.OtpHttpClientFactory;
+import org.opentripplanner.framework.tostring.ToStringBuilder;
+import org.opentripplanner.service.vehiclerental.model.GeofencingZone;
+import org.opentripplanner.service.vehiclerental.model.RentalVehicleType;
+import org.opentripplanner.service.vehiclerental.model.VehicleRentalPlace;
+import org.opentripplanner.service.vehiclerental.model.VehicleRentalSystem;
 import org.opentripplanner.updater.vehicle_rental.datasources.params.GbfsVehicleRentalDataSourceParameters;
-import org.opentripplanner.util.OTPFeature;
-import org.opentripplanner.util.lang.ToStringBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,29 +34,23 @@ import org.slf4j.LoggerFactory;
  * VehicleRentalServiceDirectoryFetcher endpoint (which may be outside our control) will not be
  * used.
  */
-class GbfsVehicleRentalDataSource implements DataSource<VehicleRentalPlace> {
+class GbfsVehicleRentalDataSource implements VehicleRentalDatasource {
 
   private static final Logger LOG = LoggerFactory.getLogger(GbfsVehicleRentalDataSource.class);
 
-  private final String url;
+  private final GbfsVehicleRentalDataSourceParameters params;
 
-  private final String language;
-
-  private final Map<String, String> httpHeaders;
-
-  private final String network;
-
-  /** Is it possible to arrive at the destination with a rented bicycle, without dropping it off */
-  private final boolean allowKeepingRentedVehicleAtDestination;
-
+  private final OtpHttpClient otpHttpClient;
   private GbfsFeedLoader loader;
+  private List<GeofencingZone> geofencingZones = List.of();
+  private boolean logGeofencingZonesDoesNotExistWarning = true;
 
-  public GbfsVehicleRentalDataSource(GbfsVehicleRentalDataSourceParameters parameters) {
-    url = parameters.getUrl();
-    language = parameters.language();
-    httpHeaders = parameters.getHttpHeaders();
-    allowKeepingRentedVehicleAtDestination = parameters.allowKeepingRentedVehicleAtDestination();
-    network = parameters.network();
+  public GbfsVehicleRentalDataSource(
+    GbfsVehicleRentalDataSourceParameters parameters,
+    OtpHttpClientFactory otpHttpClientFactory
+  ) {
+    this.params = parameters;
+    this.otpHttpClient = otpHttpClientFactory.create(LOG);
   }
 
   @Override
@@ -70,22 +68,11 @@ class GbfsVehicleRentalDataSource implements DataSource<VehicleRentalPlace> {
     GbfsSystemInformationMapper systemInformationMapper = new GbfsSystemInformationMapper();
     VehicleRentalSystem system = systemInformationMapper.mapSystemInformation(
       systemInformation.getData(),
-      network
+      params.network()
     );
 
     // Get vehicle types
-    Map<String, RentalVehicleType> vehicleTypes = null;
-    GBFSVehicleTypes rawVehicleTypes = loader.getFeed(GBFSVehicleTypes.class);
-    if (rawVehicleTypes != null) {
-      GbfsVehicleTypeMapper vehicleTypeMapper = new GbfsVehicleTypeMapper(system.systemId);
-      vehicleTypes =
-        rawVehicleTypes
-          .getData()
-          .getVehicleTypes()
-          .stream()
-          .map(vehicleTypeMapper::mapRentalVehicleType)
-          .collect(Collectors.toMap(v -> v.id.getId(), Function.identity()));
-    }
+    final Map<String, RentalVehicleType> vehicleTypes = getVehicleTypes(system);
 
     List<VehicleRentalPlace> stations = new LinkedList<>();
 
@@ -106,7 +93,8 @@ class GbfsVehicleRentalDataSource implements DataSource<VehicleRentalPlace> {
       GbfsStationInformationMapper stationInformationMapper = new GbfsStationInformationMapper(
         system,
         vehicleTypes,
-        allowKeepingRentedVehicleAtDestination
+        params.allowKeepingRentedVehicleAtDestination(),
+        params.overloadingAllowed()
       );
 
       // Iterate over all known stations, and if we have any status information add it to those station objects.
@@ -118,7 +106,7 @@ class GbfsVehicleRentalDataSource implements DataSource<VehicleRentalPlace> {
           .map(stationInformationMapper::mapStationInformation)
           .filter(Objects::nonNull)
           .peek(stationStatusMapper::fillStationStatus)
-          .collect(Collectors.toList())
+          .toList()
       );
     }
 
@@ -137,29 +125,71 @@ class GbfsVehicleRentalDataSource implements DataSource<VehicleRentalPlace> {
             .stream()
             .map(freeVehicleStatusMapper::mapFreeVehicleStatus)
             .filter(Objects::nonNull)
-            .collect(Collectors.toList())
+            .toList()
         );
       }
     }
 
+    if (params.geofencingZones()) {
+      var zones = loader.getFeed(GBFSGeofencingZones.class);
+      if (zones != null) {
+        var mapper = new GbfsGeofencingZoneMapper(system.systemId);
+        this.geofencingZones = mapper.mapGeofencingZone(zones);
+      } else {
+        if (logGeofencingZonesDoesNotExistWarning) {
+          LOG.warn(
+            "GeofencingZones is enabled in OTP, but no zones exist for network: {}",
+            params.network()
+          );
+        }
+        logGeofencingZonesDoesNotExistWarning = false;
+      }
+    }
     return stations;
   }
 
   @Override
   public void setup() {
-    loader = new GbfsFeedLoader(url, httpHeaders, language);
+    loader =
+      new GbfsFeedLoader(params.url(), params.httpHeaders(), params.language(), otpHttpClient);
   }
 
   @Override
   public String toString() {
     return ToStringBuilder
       .of(GbfsVehicleRentalDataSource.class)
-      .addStr("url", url)
-      .addStr("language", language)
+      .addStr("url", params.url())
+      .addStr("language", params.language())
       .addBoolIfTrue(
         "allowKeepingRentedVehicleAtDestination",
-        allowKeepingRentedVehicleAtDestination
+        params.allowKeepingRentedVehicleAtDestination()
       )
       .toString();
+  }
+
+  @Override
+  public List<GeofencingZone> getGeofencingZones() {
+    return this.geofencingZones;
+  }
+
+  protected static Map<String, RentalVehicleType> mapVehicleTypes(
+    GbfsVehicleTypeMapper vehicleTypeMapper,
+    List<GBFSVehicleType> gbfsVehicleTypes
+  ) {
+    return gbfsVehicleTypes
+      .stream()
+      .map(vehicleTypeMapper::mapRentalVehicleType)
+      .distinct()
+      .collect(Collectors.toMap(v -> v.id.getId(), Function.identity()));
+  }
+
+  private Map<String, RentalVehicleType> getVehicleTypes(VehicleRentalSystem system) {
+    GBFSVehicleTypes rawVehicleTypes = loader.getFeed(GBFSVehicleTypes.class);
+    if (rawVehicleTypes != null) {
+      GbfsVehicleTypeMapper vehicleTypeMapper = new GbfsVehicleTypeMapper(system.systemId);
+      List<GBFSVehicleType> gbfsVehicleTypes = rawVehicleTypes.getData().getVehicleTypes();
+      return mapVehicleTypes(vehicleTypeMapper, gbfsVehicleTypes);
+    }
+    return Map.of();
   }
 }

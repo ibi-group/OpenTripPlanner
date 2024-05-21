@@ -6,17 +6,19 @@ import com.beust.jcommander.JCommander;
 import com.beust.jcommander.ParameterException;
 import org.geotools.referencing.factory.DeferredAuthorityFactory;
 import org.geotools.util.WeakCollectionCleaner;
+import org.opentripplanner.framework.application.ApplicationShutdownSupport;
+import org.opentripplanner.framework.application.OtpAppException;
 import org.opentripplanner.graph_builder.GraphBuilder;
+import org.opentripplanner.graph_builder.issue.api.DataImportIssueSummary;
+import org.opentripplanner.raptor.configure.RaptorConfig;
 import org.opentripplanner.routing.graph.SerializedGraphObject;
 import org.opentripplanner.standalone.config.CommandLineParameters;
+import org.opentripplanner.standalone.config.ConfigModel;
 import org.opentripplanner.standalone.configure.ConstructApplication;
 import org.opentripplanner.standalone.configure.LoadApplication;
 import org.opentripplanner.standalone.server.GrizzlyServer;
-import org.opentripplanner.transit.raptor.configure.RaptorConfig;
 import org.opentripplanner.transit.service.TransitModel;
-import org.opentripplanner.updater.GraphUpdaterConfigurator;
-import org.opentripplanner.util.OtpAppException;
-import org.opentripplanner.util.ThrowableUtils;
+import org.opentripplanner.updater.configure.UpdaterConfigurator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.bridge.SLF4JBridgeHandler;
@@ -48,11 +50,12 @@ public class OTPMain {
    */
   public static void main(String[] args) {
     try {
+      Thread.currentThread().setName("main");
       CommandLineParameters params = parseAndValidateCmdLine(args);
       OtpStartupInfo.logInfo();
       startOTPServer(params);
     } catch (OtpAppException ae) {
-      LOG.error(ae.getMessage());
+      LOG.error(ae.getMessage(), ae);
       System.exit(100);
     } catch (Exception e) {
       LOG.error("An uncaught error occurred inside OTP: {}", e.getLocalizedMessage(), e);
@@ -111,11 +114,13 @@ public class OTPMain {
     var loadApp = new LoadApplication(cli);
     var config = loadApp.config();
 
+    detectUnusedConfigParams(cli, config);
+
     // Validate data sources, command line arguments and config before loading and
     // processing input data to fail early
     loadApp.validateConfigAndDataSources();
 
-    ConstructApplication app = null;
+    ConstructApplication app;
 
     /* Load graph from disk if one is not present from build. */
     if (cli.doLoadGraph() || cli.doLoadStreetGraph()) {
@@ -146,8 +151,13 @@ public class OTPMain {
       new SerializedGraphObject(
         app.graph(),
         app.transitModel(),
+        app.worldEnvelopeRepository(),
         config.buildConfig(),
-        config.routerConfig()
+        config.routerConfig(),
+        DataImportIssueSummary.combine(graphBuilder.issueSummary(), app.dataImportIssueSummary()),
+        app.emissionsDataModel(),
+        app.stopConsolidationRepository(),
+        app.streetLimitationParameters()
       )
         .save(app.graphOutputDataSource());
       // Log size info for the deduplicator
@@ -163,6 +173,15 @@ public class OTPMain {
       startOtpWebServer(cli, app);
     } else {
       LOG.info("Done building graph. Exiting.");
+    }
+  }
+
+  /**
+   * Optionally, check if the config is valid and if not abort the startup process.
+   */
+  private static void detectUnusedConfigParams(CommandLineParameters cli, ConfigModel config) {
+    if (cli.abortOnUnknownConfig) {
+      config.abortOnUnknownParameters();
     }
   }
 
@@ -196,10 +215,10 @@ public class OTPMain {
         } catch (Throwable throwable) {
           LOG.error(
             "An uncaught error occurred inside OTP. Restarting server. Error was: {}",
-            ThrowableUtils.detailedString(throwable)
+            throwable.getMessage(),
+            throwable
           );
         }
-        logLocationOfRequestLog(app.routerConfig().requestLogFile());
       }
     }
   }
@@ -216,22 +235,17 @@ public class OTPMain {
     TransitModel transitModel,
     RaptorConfig<?> raptorConfig
   ) {
-    var hook = new Thread(() -> {
-      LOG.info("OTP shutdown started...");
-      GraphUpdaterConfigurator.shutdownGraph(transitModel);
-      raptorConfig.shutdown();
-      WeakCollectionCleaner.DEFAULT.exit();
-      DeferredAuthorityFactory.exit();
-    });
-    Runtime.getRuntime().addShutdownHook(hook);
-  }
-
-  private static void logLocationOfRequestLog(String requestLogFile) {
-    if (requestLogFile != null) {
-      LOG.info("Logging incoming requests at '{}'", requestLogFile);
-    } else {
-      LOG.info("Incoming requests will not be logged.");
-    }
+    ApplicationShutdownSupport.addShutdownHook(
+      "server-shutdown",
+      () -> {
+        LOG.info("OTP shutdown started...");
+        UpdaterConfigurator.shutdownGraph(transitModel);
+        raptorConfig.shutdown();
+        WeakCollectionCleaner.DEFAULT.exit();
+        DeferredAuthorityFactory.exit();
+        LOG.info("OTP shutdown: resources released...");
+      }
+    );
   }
 
   private static void setOtpConfigVersionsOnServerInfo(ConstructApplication app) {

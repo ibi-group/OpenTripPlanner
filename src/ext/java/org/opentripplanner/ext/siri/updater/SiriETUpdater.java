@@ -1,30 +1,25 @@
 package org.opentripplanner.ext.siri.updater;
 
 import java.util.List;
-import org.apache.commons.lang3.BooleanUtils;
+import java.util.function.Consumer;
+import org.opentripplanner.ext.siri.EntityResolver;
+import org.opentripplanner.ext.siri.SiriFuzzyTripMatcher;
 import org.opentripplanner.ext.siri.SiriTimetableSnapshotSource;
-import org.opentripplanner.routing.graph.Graph;
+import org.opentripplanner.transit.service.DefaultTransitService;
 import org.opentripplanner.transit.service.TransitModel;
-import org.opentripplanner.updater.PollingGraphUpdater;
-import org.opentripplanner.updater.WriteToGraphCallback;
+import org.opentripplanner.transit.service.TransitService;
+import org.opentripplanner.updater.spi.PollingGraphUpdater;
+import org.opentripplanner.updater.spi.ResultLogger;
+import org.opentripplanner.updater.spi.UpdateResult;
+import org.opentripplanner.updater.spi.WriteToGraphCallback;
+import org.opentripplanner.updater.trip.metrics.TripUpdateMetrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import uk.org.siri.siri20.EstimatedTimetableDeliveryStructure;
 import uk.org.siri.siri20.ServiceDelivery;
-import uk.org.siri.siri20.Siri;
 
 /**
- * Update OTP stop time tables from some (realtime) source
- * <p>
- * Usage example ('rt' name is an example) in file 'Graph.properties':
- *
- * <pre>
- * rt.type = stop-time-updater
- * rt.frequencySec = 60
- * rt.sourceType = gtfs-http
- * rt.url = http://host.tld/path
- * rt.feedId = TA
- * </pre>
+ * Update OTP stop timetables from some a Siri-ET HTTP sources.
  */
 public class SiriETUpdater extends PollingGraphUpdater {
 
@@ -33,10 +28,7 @@ public class SiriETUpdater extends PollingGraphUpdater {
    * Update streamer
    */
   private final EstimatedTimetableSource updateSource;
-  /**
-   * Property to set on the RealtimeDataSnapshotSource
-   */
-  private final Boolean purgeExpiredData;
+
   /**
    * Feed id that is used for the trip ids in the TripUpdates
    */
@@ -45,75 +37,49 @@ public class SiriETUpdater extends PollingGraphUpdater {
    * Parent update manager. Is used to execute graph writer runnables.
    */
   protected WriteToGraphCallback saveResultOnGraph;
+
   /**
-   * Property to set on the RealtimeDataSnapshotSource
-   */
-  private Integer logFrequency;
-  /**
-   * Property to set on the RealtimeDataSnapshotSource
-   */
-  private Integer maxSnapshotFrequency;
-  /**
-   * The place where we'll record the incoming realtime timetables to make them available to the
+   * The place where we'll record the incoming real-time timetables to make them available to the
    * router in a thread safe way.
    */
-  private SiriTimetableSnapshotSource snapshotSource;
+  private final SiriTimetableSnapshotSource snapshotSource;
 
-  public SiriETUpdater(SiriETUpdaterParameters config) {
+  private final SiriFuzzyTripMatcher fuzzyTripMatcher;
+  private final EntityResolver entityResolver;
+
+  private final Consumer<UpdateResult> recordMetrics;
+
+  public SiriETUpdater(
+    SiriETUpdaterParameters config,
+    TransitModel transitModel,
+    SiriTimetableSnapshotSource timetableSnapshot
+  ) {
     super(config);
     // Create update streamer from preferences
-    feedId = config.getFeedId();
+    this.feedId = config.feedId();
 
-    updateSource = new SiriETHttpTripUpdateSource(config.sourceParameters());
+    this.updateSource = new SiriETHttpTripUpdateSource(config.sourceParameters());
 
-    int logFrequency = config.getLogFrequency();
-    if (logFrequency >= 0) {
-      this.logFrequency = logFrequency;
-    }
-    int maxSnapshotFrequency = config.getMaxSnapshotFrequencyMs();
-    if (maxSnapshotFrequency >= 0) {
-      this.maxSnapshotFrequency = maxSnapshotFrequency;
-    }
-    this.purgeExpiredData = config.purgeExpiredData();
+    this.snapshotSource = timetableSnapshot;
 
-    blockReadinessUntilInitialized = config.blockReadinessUntilInitialized();
+    this.blockReadinessUntilInitialized = config.blockReadinessUntilInitialized();
+    TransitService transitService = new DefaultTransitService(transitModel);
+    this.entityResolver = new EntityResolver(transitService, feedId);
+    this.fuzzyTripMatcher =
+      config.fuzzyTripMatching() ? SiriFuzzyTripMatcher.of(transitService) : null;
 
     LOG.info(
       "Creating stop time updater (SIRI ET) running every {} seconds : {}",
-      pollingPeriodSeconds,
+      pollingPeriod(),
       updateSource
     );
+    recordMetrics = TripUpdateMetrics.streaming(config);
   }
 
   @Override
   public void setGraphUpdaterManager(WriteToGraphCallback saveResultOnGraph) {
     this.saveResultOnGraph = saveResultOnGraph;
   }
-
-  @Override
-  public void setup(Graph graph, TransitModel transitModel) {
-    // Only create a realtime data snapshot source if none exists already
-    // TODO OTP2 - This is thread safe, but only because updater setup methods are called sequentially.
-    //           - Ideally we should inject the snapshotSource on this class.
-    snapshotSource =
-      transitModel.getOrSetupTimetableSnapshotProvider(SiriTimetableSnapshotSource::new);
-
-    // Set properties of realtime data snapshot source.
-    // TODO OTP2 - this is overwriting these properties if they were specified by other updaters.
-    //           - These should not be specified at a per-updater level, but at a per-router level.
-    if (logFrequency != null) {
-      snapshotSource.logFrequency = logFrequency;
-    }
-    if (maxSnapshotFrequency != null) {
-      snapshotSource.maxSnapshotFrequency = maxSnapshotFrequency;
-    }
-    if (purgeExpiredData != null) {
-      snapshotSource.purgeExpiredData = purgeExpiredData;
-    }
-  }
-
-  @Override
-  public void teardown() {}
 
   /**
    * Repeatedly makes blocking calls to an UpdateStreamer to retrieve new stop time updates, and
@@ -123,19 +89,29 @@ public class SiriETUpdater extends PollingGraphUpdater {
   public void runPolling() {
     boolean moreData = false;
     do {
-      Siri updates = updateSource.getUpdates();
-      if (updates != null) {
+      var updates = updateSource.getUpdates();
+      if (updates.isPresent()) {
         boolean fullDataset = updateSource.getFullDatasetValueOfLastUpdates();
-        ServiceDelivery serviceDelivery = updates.getServiceDelivery();
-        // Use isTrue in case isMoreData returns null. Mark this updater as primed after last page of updates.
-        // Copy moreData into a final primitive, because the object moreData persists across iterations.
-        moreData = BooleanUtils.isTrue(serviceDelivery.isMoreData());
+        ServiceDelivery serviceDelivery = updates.get().getServiceDelivery();
+        moreData = Boolean.TRUE.equals(serviceDelivery.isMoreData());
+        // Mark this updater as primed after last page of updates. Copy moreData into a final
+        // primitive, because the object moreData persists across iterations.
         final boolean markPrimed = !moreData;
         List<EstimatedTimetableDeliveryStructure> etds = serviceDelivery.getEstimatedTimetableDeliveries();
         if (etds != null) {
           saveResultOnGraph.execute((graph, transitModel) -> {
-            snapshotSource.applyEstimatedTimetable(transitModel, feedId, fullDataset, etds);
-            if (markPrimed) primed = true;
+            var result = snapshotSource.applyEstimatedTimetable(
+              fuzzyTripMatcher,
+              entityResolver,
+              feedId,
+              fullDataset,
+              etds
+            );
+            ResultLogger.logUpdateResult(feedId, "siri-et", result);
+            recordMetrics.accept(result);
+            if (markPrimed) {
+              primed = true;
+            }
           });
         }
       }

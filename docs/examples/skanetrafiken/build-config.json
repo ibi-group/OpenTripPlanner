@@ -1,16 +1,20 @@
 {
   "areaVisibility": true,
   "platformEntriesLinking": true,
-  "osmWayPropertySet": "norway",
-  "islandWithoutStopsMaxSize": 5,
-  "islandWithStopsMaxSize": 5,
+  "osmDefaults": {
+    "osmTagMapping": "norway"
+  },
+  "islandPruning": {
+    "islandWithoutStopsMaxSize": 5,
+    "islandWithStopsMaxSize": 5
+  },
   "dataImportReport": true,
-  "maxTransferDistance": 5000,
+  "maxTransferDuration": "15m",
   "maxStopToShapeSnapDistance": 500,
-  "netex" : {
+  "netexDefaults" : {
     "sharedFilePattern" : "ST_stops.xml",
     "sharedGroupFilePattern" : "(\\w{2})_shared_data.xml",
     "groupFilePattern" : "(\\w{2})_line.*\\.xml",
-    "netexFeedId": "ST"
+    "feedId": "ST"
   }
 }

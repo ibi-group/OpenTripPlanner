@@ -5,24 +5,20 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import gnu.trove.list.TLongList;
 import java.io.File;
-import java.net.URLDecoder;
-import java.nio.charset.StandardCharsets;
-import java.util.Set;
 import org.junit.jupiter.api.Test;
-import org.opentripplanner.graph_builder.DataImportIssueStore;
-import org.opentripplanner.openstreetmap.OpenStreetMapProvider;
+import org.opentripplanner.graph_builder.issue.api.DataImportIssueStore;
+import org.opentripplanner.openstreetmap.OsmProvider;
 import org.opentripplanner.openstreetmap.model.OSMNode;
 import org.opentripplanner.openstreetmap.model.OSMWay;
+import org.opentripplanner.test.support.ResourceLoader;
 
 public class OpenStreetMapParserTest {
 
   @Test
   public void testBinaryParser() {
-    File osmFile = new File(
-      URLDecoder.decode(getClass().getResource("map.osm.pbf").getPath(), StandardCharsets.UTF_8)
-    );
-    OpenStreetMapProvider pr = new OpenStreetMapProvider(osmFile, true);
-    OSMDatabase osmdb = new OSMDatabase(DataImportIssueStore.noopIssueStore(), Set.of());
+    File osmFile = ResourceLoader.of(this).file("map.osm.pbf");
+    OsmProvider pr = new OsmProvider(osmFile, true);
+    OsmDatabase osmdb = new OsmDatabase(DataImportIssueStore.NOOP);
 
     pr.readOSM(osmdb);
 

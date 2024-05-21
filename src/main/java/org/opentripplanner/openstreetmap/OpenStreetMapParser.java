@@ -3,11 +3,12 @@ package org.opentripplanner.openstreetmap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import org.openstreetmap.osmosis.osmbinary.BinaryParser;
 import org.openstreetmap.osmosis.osmbinary.Osmformat;
-import org.opentripplanner.graph_builder.module.osm.OSMDatabase;
+import org.opentripplanner.graph_builder.module.osm.OsmDatabase;
+import org.opentripplanner.openstreetmap.model.OSMMemberType;
 import org.opentripplanner.openstreetmap.model.OSMNode;
-import org.opentripplanner.openstreetmap.model.OSMNodeRef;
 import org.opentripplanner.openstreetmap.model.OSMRelation;
 import org.opentripplanner.openstreetmap.model.OSMRelationMember;
 import org.opentripplanner.openstreetmap.model.OSMTag;
@@ -18,14 +19,16 @@ import org.opentripplanner.openstreetmap.model.OSMWay;
  *
  * @since 0.4
  */
-public class OpenStreetMapParser extends BinaryParser {
+class OpenStreetMapParser extends BinaryParser {
 
-  private final OSMDatabase osmdb;
+  private final OsmDatabase osmdb;
   private final Map<String, String> stringTable = new HashMap<>();
+  private final OsmProvider provider;
   private OsmParserPhase parsePhase;
 
-  public OpenStreetMapParser(OSMDatabase osmdb) {
-    this.osmdb = osmdb;
+  public OpenStreetMapParser(OsmDatabase osmdb, OsmProvider provider) {
+    this.osmdb = Objects.requireNonNull(osmdb);
+    this.provider = Objects.requireNonNull(provider);
   }
 
   // The strings are already being pulled from a string table in the PBF file,
@@ -62,6 +65,7 @@ public class OpenStreetMapParser extends BinaryParser {
     for (Osmformat.Relation i : rels) {
       OSMRelation tmp = new OSMRelation();
       tmp.setId(i.getId());
+      tmp.setOsmProvider(provider);
 
       for (int j = 0; j < i.getKeysCount(); j++) {
         OSMTag tag = new OSMTag();
@@ -83,11 +87,11 @@ public class OpenStreetMapParser extends BinaryParser {
         relMember.setRole(internalize(getStringById(i.getRolesSid(j))));
 
         if (i.getTypes(j) == Osmformat.Relation.MemberType.NODE) {
-          relMember.setType("node");
+          relMember.setType(OSMMemberType.NODE);
         } else if (i.getTypes(j) == Osmformat.Relation.MemberType.WAY) {
-          relMember.setType("way");
+          relMember.setType(OSMMemberType.WAY);
         } else if (i.getTypes(j) == Osmformat.Relation.MemberType.RELATION) {
-          relMember.setType("relation");
+          relMember.setType(OSMMemberType.RELATION);
         } else {
           assert false; // TODO; Illegal file?
         }
@@ -120,6 +124,7 @@ public class OpenStreetMapParser extends BinaryParser {
       double latf = parseLat(lat), lonf = parseLon(lon);
 
       tmp.setId(id);
+      tmp.setOsmProvider(provider);
       tmp.lat = latf;
       tmp.lon = lonf;
 
@@ -152,6 +157,7 @@ public class OpenStreetMapParser extends BinaryParser {
     for (Osmformat.Node i : nodes) {
       OSMNode tmp = new OSMNode();
       tmp.setId(i.getId());
+      tmp.setOsmProvider(provider);
       tmp.lat = parseLat(i.getLat());
       tmp.lon = parseLon(i.getLon());
 
@@ -178,6 +184,7 @@ public class OpenStreetMapParser extends BinaryParser {
     for (Osmformat.Way i : ways) {
       OSMWay tmp = new OSMWay();
       tmp.setId(i.getId());
+      tmp.setOsmProvider(provider);
 
       for (int j = 0; j < i.getKeysCount(); j++) {
         OSMTag tag = new OSMTag();
@@ -190,10 +197,7 @@ public class OpenStreetMapParser extends BinaryParser {
 
       long lastId = 0;
       for (long j : i.getRefsList()) {
-        OSMNodeRef nodeRef = new OSMNodeRef();
-        nodeRef.setRef(j + lastId);
-        tmp.addNodeRef(nodeRef);
-
+        tmp.addNodeRef(j + lastId);
         lastId = j + lastId;
       }
 

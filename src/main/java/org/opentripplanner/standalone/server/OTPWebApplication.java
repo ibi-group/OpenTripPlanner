@@ -1,27 +1,26 @@
 package org.opentripplanner.standalone.server;
 
 import io.micrometer.core.instrument.Metrics;
-import io.micrometer.jersey2.server.DefaultJerseyTagsProvider;
-import io.micrometer.jersey2.server.MetricsApplicationEventListener;
-import io.micrometer.prometheus.PrometheusConfig;
-import io.micrometer.prometheus.PrometheusMeterRegistry;
-import java.util.HashMap;
+import io.micrometer.core.instrument.binder.jersey.server.DefaultJerseyTagsProvider;
+import io.micrometer.core.instrument.binder.jersey.server.MetricsApplicationEventListener;
+import io.micrometer.prometheusmetrics.PrometheusConfig;
+import io.micrometer.prometheusmetrics.PrometheusMeterRegistry;
+import jakarta.ws.rs.container.ContainerResponseFilter;
+import jakarta.ws.rs.core.Application;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Supplier;
-import javax.ws.rs.core.Application;
 import org.glassfish.jersey.CommonProperties;
 import org.glassfish.jersey.internal.inject.AbstractBinder;
 import org.glassfish.jersey.internal.inject.Binder;
 import org.glassfish.jersey.jackson.internal.jackson.jaxrs.json.JacksonJsonProvider;
-import org.glassfish.jersey.server.ServerProperties;
 import org.opentripplanner.api.common.OTPExceptionMapper;
-import org.opentripplanner.api.configuration.APIEndpoints;
-import org.opentripplanner.api.json.JSONObjectMapperProvider;
+import org.opentripplanner.apis.APIEndpoints;
+import org.opentripplanner.ext.restapi.serialization.JSONObjectMapperProvider;
+import org.opentripplanner.framework.application.OTPFeature;
 import org.opentripplanner.standalone.api.OtpServerRequestContext;
-import org.opentripplanner.util.OTPFeature;
 import org.slf4j.bridge.SLF4JBridgeHandler;
 
 /**
@@ -37,6 +36,8 @@ public class OTPWebApplication extends Application {
   /* This object groups together all the modules for a single running OTP server. */
   private final Supplier<OtpServerRequestContext> contextProvider;
 
+  private final List<Class<? extends ContainerResponseFilter>> customFilters;
+
   static {
     // Remove existing handlers attached to the j.u.l root logger
     SLF4JBridgeHandler.removeHandlersForRootLogger();
@@ -45,8 +46,12 @@ public class OTPWebApplication extends Application {
     SLF4JBridgeHandler.install();
   }
 
-  public OTPWebApplication(Supplier<OtpServerRequestContext> contextProvider) {
+  public OTPWebApplication(
+    OTPWebApplicationParameters parameters,
+    Supplier<OtpServerRequestContext> contextProvider
+  ) {
     this.contextProvider = contextProvider;
+    this.customFilters = createCustomFilters(parameters.traceParameters());
   }
 
   /**
@@ -62,10 +67,21 @@ public class OTPWebApplication extends Application {
     // Add API Endpoints defined in the api package
     Set<Class<?>> classes = new HashSet<>(APIEndpoints.listAPIEndpoints());
 
-    /* Features and Filters: extend Jersey, manipulate requests and responses. */
-    classes.add(CorsFilter.class);
+    classes.addAll(resolveFilterClasses());
 
     return classes;
+  }
+
+  /**
+   * Features and Filters: extend Jersey, manipulate requests and responses.
+   */
+  private Set<Class<? extends ContainerResponseFilter>> resolveFilterClasses() {
+    var set = new HashSet<Class<? extends ContainerResponseFilter>>();
+    set.addAll(customFilters);
+    set.add(CorsFilter.class);
+    set.add(EtagRequestFilter.class);
+    set.add(VaryRequestFilter.class);
+    return set;
   }
 
   /**
@@ -101,16 +117,12 @@ public class OTPWebApplication extends Application {
   }
 
   /**
-   * Enabling tracing allows us to see how web resource names were matched from the client, in
-   * headers. Disable auto-discovery of features because it's extremely obnoxious to debug and
+   * Disable auto-discovery of features because it's extremely obnoxious to debug and
    * interacts in confusing ways with manually registered features.
    */
   @Override
   public Map<String, Object> getProperties() {
-    Map<String, Object> props = new HashMap<>();
-    props.put(ServerProperties.TRACING, Boolean.TRUE);
-    props.put(CommonProperties.FEATURE_AUTO_DISCOVERY_DISABLE, Boolean.TRUE);
-    return props;
+    return Map.of(CommonProperties.FEATURE_AUTO_DISCOVERY_DISABLE, Boolean.TRUE);
   }
 
   /**
@@ -120,7 +132,8 @@ public class OTPWebApplication extends Application {
    * handlers, but in OTP we always just inject this OTP server context and grab anything else we
    * need (graph and other application components) from this single object.
    * <p>
-   * More on custom injection in Jersey 2: http://jersey.576304.n2.nabble.com/Custom-providers-in-Jersey-2-tp7580699p7580715.html
+   * More on custom injection in Jersey 2:
+   * http://jersey.576304.n2.nabble.com/Custom-providers-in-Jersey-2-tp7580699p7580715.html
    */
   private Binder makeBinder(Supplier<OtpServerRequestContext> contextProvider) {
     return new AbstractBinder() {
@@ -158,5 +171,16 @@ public class OTPWebApplication extends Application {
         bind(prometheusRegistry).to(PrometheusMeterRegistry.class);
       }
     };
+  }
+
+  private List<Class<? extends ContainerResponseFilter>> createCustomFilters(
+    List<RequestTraceParameter> traceParameters
+  ) {
+    if (traceParameters.isEmpty()) {
+      return List.of();
+    }
+    RequestTraceFilter.init(traceParameters);
+
+    return List.of(RequestTraceFilter.class);
   }
 }

@@ -1,18 +1,33 @@
 package org.opentripplanner.standalone.api;
 
 import io.micrometer.core.instrument.MeterRegistry;
+import java.util.List;
 import java.util.Locale;
-import org.opentripplanner.inspector.TileRendererManager;
-import org.opentripplanner.routing.RoutingService;
-import org.opentripplanner.routing.algorithm.astar.TraverseVisitor;
+import javax.annotation.Nullable;
+import org.opentripplanner.astar.spi.TraverseVisitor;
+import org.opentripplanner.ext.dataoverlay.routing.DataOverlayContext;
+import org.opentripplanner.ext.emissions.EmissionsService;
+import org.opentripplanner.ext.ridehailing.RideHailingService;
+import org.opentripplanner.ext.stopconsolidation.StopConsolidationService;
+import org.opentripplanner.framework.application.OTPFeature;
+import org.opentripplanner.inspector.raster.TileRendererManager;
+import org.opentripplanner.raptor.api.request.RaptorTuningParameters;
+import org.opentripplanner.raptor.configure.RaptorConfig;
+import org.opentripplanner.routing.algorithm.raptoradapter.transit.TransitTuningParameters;
 import org.opentripplanner.routing.algorithm.raptoradapter.transit.TripSchedule;
-import org.opentripplanner.routing.api.request.RoutingRequest;
+import org.opentripplanner.routing.api.RoutingService;
+import org.opentripplanner.routing.api.request.RouteRequest;
 import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.routing.graphfinder.GraphFinder;
-import org.opentripplanner.standalone.config.RouterConfig;
-import org.opentripplanner.transit.raptor.configure.RaptorConfig;
+import org.opentripplanner.service.realtimevehicles.RealtimeVehicleService;
+import org.opentripplanner.service.vehiclerental.VehicleRentalService;
+import org.opentripplanner.service.worldenvelope.WorldEnvelopeService;
+import org.opentripplanner.standalone.config.routerconfig.VectorTileConfig;
+import org.opentripplanner.standalone.config.sandbox.FlexConfig;
+import org.opentripplanner.street.model.edge.Edge;
+import org.opentripplanner.street.search.state.State;
+import org.opentripplanner.street.service.StreetLimitationParametersService;
 import org.opentripplanner.transit.service.TransitService;
-import org.slf4j.Logger;
 
 /**
  * The purpose of this class is to allow APIs (HTTP Resources) to access the OTP Server Context.
@@ -33,24 +48,22 @@ import org.slf4j.Logger;
  * </ol>
  * <p>
  * This class is not THREAD-SAFE, each HTTP request gets its own copy, but if there are multiple
- * threads witch accesses this context within the HTTP Request, then the caller is responsible
+ * threads which accesses this context within the HTTP Request, then the caller is responsible
  * for the synchronization. Only request scoped components need to be synchronized - they are
  * potentially lazy initialized.
  */
 @HttpRequestScoped
 public interface OtpServerRequestContext {
   /**
-   * A RoutingRequest containing default parameters that will be cloned when handling each request.
+   * A RouteRequest containing default parameters that will be cloned when handling each request.
    */
   @HttpRequestScoped
-  RoutingRequest defaultRoutingRequest();
+  RouteRequest defaultRouteRequest();
 
   /**
    * Return the default routing request locale(without cloning the request).
    */
   Locale defaultLocale();
-
-  RouterConfig routerConfig();
 
   RaptorConfig<TripSchedule> raptorConfig();
 
@@ -68,25 +81,55 @@ public interface OtpServerRequestContext {
   @HttpRequestScoped
   RoutingService routingService();
 
+  /**
+   * Get information on geographical bounding box and center coordinates.
+   */
+  WorldEnvelopeService worldEnvelopeService();
+
+  RealtimeVehicleService realtimeVehicleService();
+
+  VehicleRentalService vehicleRentalService();
+
+  TransitTuningParameters transitTuningParameters();
+
+  RaptorTuningParameters raptorTuningParameters();
+
+  List<RideHailingService> rideHailingServices();
+
+  @Nullable
+  StopConsolidationService stopConsolidationService();
+
+  StreetLimitationParametersService streetLimitationParametersService();
+
   MeterRegistry meterRegistry();
 
-  /**
-   * Separate logger for incoming requests. This should be handled with a Logback logger rather than
-   * something simple like a PrintStream because requests come in multi-threaded.
-   */
-  Logger requestLogger();
+  @Nullable
+  EmissionsService emissionsService();
 
   /** Inspector/debug services */
   TileRendererManager tileRendererManager();
 
   /**
-   * Callback witch is injected into the {@code DirectStreetRouter}, used to visualize the
+   * Callback which is injected into the {@code DirectStreetRouter}, used to visualize the
    * search.
    */
   @HttpRequestScoped
-  TraverseVisitor traverseVisitor();
+  TraverseVisitor<State, Edge> traverseVisitor();
 
   default GraphFinder graphFinder() {
-    return GraphFinder.getInstance(graph(), transitService()::queryStopSpatialIndex);
+    return GraphFinder.getInstance(graph(), transitService()::findRegularStops);
+  }
+
+  FlexConfig flexConfig();
+
+  VectorTileConfig vectorTileConfig();
+
+  default DataOverlayContext dataOverlayContext(RouteRequest request) {
+    return OTPFeature.DataOverlay.isOnElseNull(() ->
+      new DataOverlayContext(
+        graph().dataOverlayParameterBindings,
+        request.preferences().system().dataOverlay()
+      )
+    );
   }
 }

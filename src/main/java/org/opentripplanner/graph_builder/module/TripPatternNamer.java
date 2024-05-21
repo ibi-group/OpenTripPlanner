@@ -2,11 +2,11 @@ package org.opentripplanner.graph_builder.module;
 
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Multimap;
+import jakarta.inject.Inject;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
-import javax.inject.Inject;
 import org.opentripplanner.graph_builder.model.GraphBuilderModule;
 import org.opentripplanner.transit.model.network.Route;
 import org.opentripplanner.transit.model.network.TripPattern;
@@ -31,9 +31,6 @@ public class TripPatternNamer implements GraphBuilderModule {
     /* Generate unique human-readable names for all the TableTripPatterns. */
     generateUniqueNames(transitModel.getAllTripPatterns());
   }
-
-  @Override
-  public void checkInputs() {}
 
   /**
    * Static method that creates unique human-readable names for a collection of TableTripPatterns.
@@ -103,7 +100,9 @@ public class TripPatternNamer implements GraphBuilderModule {
       for (TripPattern pattern : routeTripPatterns) {
         StopLocation start = pattern.firstStop();
         StopLocation end = pattern.lastStop();
-        String headsign = pattern.getTripHeadsign();
+        String headsign = pattern.getTripHeadsign() != null
+          ? pattern.getTripHeadsign().toString()
+          : null;
         if (headsign != null) {
           signs.put(headsign, pattern);
         }
@@ -118,7 +117,9 @@ public class TripPatternNamer implements GraphBuilderModule {
           continue;
         }
         StringBuilder sb = new StringBuilder(routeName);
-        String headsign = pattern.getTripHeadsign();
+        String headsign = pattern.getTripHeadsign() != null
+          ? pattern.getTripHeadsign().toString()
+          : null;
         if (headsign != null && signs.get(headsign).size() == 1) {
           pattern.initName(sb.append(" ").append(headsign).toString());
           continue;

@@ -3,15 +3,15 @@ package org.opentripplanner.ext.fares.model;
 
 import java.util.Objects;
 import javax.annotation.Nonnull;
+import org.opentripplanner.transit.model.basic.Money;
 import org.opentripplanner.transit.model.framework.AbstractTransitEntity;
 import org.opentripplanner.transit.model.framework.FeedScopedId;
 
 public final class FareAttribute
   extends AbstractTransitEntity<FareAttribute, FareAttributeBuilder> {
 
-  private final float price;
-
-  private final String currencyType;
+  private FeedScopedId agency;
+  private final Money price;
 
   private final int paymentMethod;
 
@@ -19,37 +19,33 @@ public final class FareAttribute
 
   private final Integer transferDuration;
 
-  /** youthPrice is an extension to the GTFS spec to support Seattle fare types. */
-  private final float youthPrice;
-
-  /** seniorPrice is an extension to the GTFS spec to support Seattle fare types. */
-  private final float seniorPrice;
-
   /** This is a proposed extension to the GTFS spec */
   private final Integer journeyDuration;
 
   FareAttribute(FareAttributeBuilder builder) {
     super(builder.getId());
-    this.price = builder.price();
-    this.currencyType = builder.currencyType();
+    this.price = Objects.requireNonNull(builder.price());
     this.paymentMethod = builder.paymentMethod();
     this.transfers = builder.transfers();
     this.transferDuration = builder.transferDuration();
-    this.youthPrice = builder.youthPrice();
-    this.seniorPrice = builder.seniorPrice();
     this.journeyDuration = builder.journeyDuration();
+    this.agency = builder.agency();
   }
 
   public static FareAttributeBuilder of(FeedScopedId id) {
     return new FareAttributeBuilder(id);
   }
 
-  public float getPrice() {
-    return price;
+  public FeedScopedId getAgency() {
+    return agency;
   }
 
-  public String getCurrencyType() {
-    return currencyType;
+  public void setAgency(FeedScopedId agency) {
+    this.agency = agency;
+  }
+
+  public Money getPrice() {
+    return price;
   }
 
   public int getPaymentMethod() {
@@ -80,25 +76,14 @@ public final class FareAttribute
     return journeyDuration;
   }
 
-  public float getYouthPrice() {
-    return youthPrice;
-  }
-
-  public float getSeniorPrice() {
-    return seniorPrice;
-  }
-
   @Override
   public boolean sameAs(@Nonnull FareAttribute other) {
     return (
       getId().equals(other.getId()) &&
-      price == other.getPrice() &&
-      Objects.equals(currencyType, other.getCurrencyType()) &&
+      getPrice().equals(other.getPrice()) &&
       paymentMethod == other.getPaymentMethod() &&
       Objects.equals(transfers, other.getTransfers()) &&
       Objects.equals(transferDuration, other.getTransferDuration()) &&
-      youthPrice == other.getYouthPrice() &&
-      seniorPrice == other.getSeniorPrice() &&
       Objects.equals(journeyDuration, other.getJourneyDuration())
     );
   }

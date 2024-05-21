@@ -4,6 +4,7 @@ import java.net.URI;
 import java.util.List;
 import java.util.regex.Pattern;
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import org.opentripplanner.datastore.OtpDataStore;
 
 /**
@@ -11,28 +12,6 @@ import org.opentripplanner.datastore.OtpDataStore;
  * application.
  */
 public interface OtpDataStoreConfig {
-  /**
-   * Match all filenames that contains "gtfs". The pattern is NOT Case sensitive.
-   */
-  String DEFAULT_GTFS_PATTERN = "(?i)gtfs";
-
-  /**
-   * Match all filenames that contain "netex". The pattern is NOT Case sensitive.
-   */
-  String DEFAULT_NETEX_PATTERN = "(?i)netex";
-
-  /**
-   * Match all filenames that ends with suffix {@code .pbf}, {@code .osm} or {@code .osm.xml}. The
-   * pattern is NOT Case sensitive.
-   */
-  String DEFAULT_OSM_PATTERN = "(?i)(\\.pbf|\\.osm|\\.osm\\.xml)$";
-
-  /**
-   * Default: {@code (?i).tiff?$} - Match all filenames that ends with suffix {@code .tif} or {@code
-   * .tiff}. The pattern is NOT Case sensitive.
-   */
-  String DEFAULT_DEM_PATTERN = "(?i)\\.tiff?$";
-
   /**
    * Save the build issue report to this location (URI). If {@code null} the {@code baseDirectory}
    * + {@code /report} is used.
@@ -102,38 +81,29 @@ public interface OtpDataStoreConfig {
   URI streetGraph();
 
   /**
-   * Patterns for matching GTFS zip-files or directories. If the filename contains the given pattern
-   * it is considered a match. Any legal Java Regular expression is allowed.
-   * <p>
+   * The URI to the stop consolidation data source.
+   */
+  @Nullable
+  URI stopConsolidation();
+
+  /**
    *
-   * @see #DEFAULT_GTFS_PATTERN for default value.
+   * A pattern to lookup local GTFS files
    */
   Pattern gtfsLocalFilePattern();
 
   /**
-   * Patterns for matching NeTEx zip files or directories. If the filename contains the given
-   * pattern it is considered a match. Any legal Java Regular expression is allowed.
-   * <p>
-   *
-   * @see #DEFAULT_NETEX_PATTERN for default value.
+   * A pattern to lookup local NeTEx files.
    */
   Pattern netexLocalFilePattern();
 
   /**
-   * Pattern for matching Open Street Map input files. If the filename contains the given pattern it
-   * is considered a match. Any legal Java Regular expression is allowed.
-   * <p>
-   *
-   * @see #DEFAULT_OSM_PATTERN for default value.
+   * A pattern to lookup local Open Street Map extracts.
    */
   Pattern osmLocalFilePattern();
 
   /**
-   * Pattern for matching elevation DEM files. If the filename contains the given pattern it is
-   * considered a match. Any legal Java Regular expression is allowed.
-   * <p>
-   *
-   * @see #DEFAULT_DEM_PATTERN for default value.
+   * A pattern to lookup local DEM files.
    */
   Pattern demLocalFilePattern();
 }

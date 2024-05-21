@@ -5,9 +5,12 @@ import static java.util.Objects.requireNonNull;
 import static java.util.Objects.requireNonNullElse;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import org.opentripplanner.framework.i18n.I18NString;
+import org.opentripplanner.framework.lang.IntUtils;
 import org.opentripplanner.transit.model.basic.SubMode;
 import org.opentripplanner.transit.model.basic.TransitMode;
 import org.opentripplanner.transit.model.framework.AbstractTransitEntity;
@@ -24,7 +27,7 @@ public final class Route extends AbstractTransitEntity<Route, RouteBuilder> impl
   private final Branding branding;
   private final List<GroupOfRoutes> groupsOfRoutes;
   private final String shortName;
-  private final String longName;
+  private final I18NString longName;
   private final TransitMode mode;
   // TODO: consolidate gtfsType and netexSubmode
   private final Integer gtfsType;
@@ -53,7 +56,7 @@ public final class Route extends AbstractTransitEntity<Route, RouteBuilder> impl
     this.branding = builder.getBranding();
     this.groupsOfRoutes = listOfNullSafe(builder.getGroupsOfRoutes());
     this.gtfsType = builder.getGtfsType();
-    this.gtfsSortOrder = builder.getGtfsSortOrder();
+    this.gtfsSortOrder = IntUtils.requireNullOrNotNegative(builder.getGtfsSortOrder(), "sortOrder");
     this.netexSubmode = SubMode.getOrBuildAndCacheForever(builder.getNetexSubmode());
     this.flexibleLineType = builder.getFlexibleLineType();
     this.description = builder.getDescription();
@@ -127,7 +130,7 @@ public final class Route extends AbstractTransitEntity<Route, RouteBuilder> impl
   }
 
   @Nullable
-  public String getLongName() {
+  public I18NString getLongName() {
     return longName;
   }
 
@@ -146,6 +149,12 @@ public final class Route extends AbstractTransitEntity<Route, RouteBuilder> impl
     return gtfsType;
   }
 
+  /**
+   * The visual sort priority of this route when displayed in a graphical interface.
+   * A lower number means that the route has a higher priority.
+   * <p>
+   * Pass-through information from GTFS. This information is not used by OTP.
+   */
   @Nullable
   public Integer getGtfsSortOrder() {
     return gtfsSortOrder;
@@ -186,8 +195,14 @@ public final class Route extends AbstractTransitEntity<Route, RouteBuilder> impl
 
   /** @return the route's short name, or the long name if the short name is null. */
   @Nonnull
+  public String getName(Locale locale) {
+    return shortName == null ? longName.toString(locale) : shortName;
+  }
+
+  /** @return the route's short name, or the long name if the short name is null. */
+  @Nonnull
   public String getName() {
-    return shortName == null ? longName : shortName;
+    return shortName == null ? longName.toString() : shortName;
   }
 
   @Override

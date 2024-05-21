@@ -1,6 +1,5 @@
 package org.opentripplanner.api.parameter;
 
-import java.io.Serial;
 import java.io.Serializable;
 import java.util.HashSet;
 import java.util.List;
@@ -24,9 +23,6 @@ import org.opentripplanner.transit.model.basic.TransitMode;
  */
 public class QualifiedModeSet implements Serializable {
 
-  @Serial
-  private static final long serialVersionUID = 1L;
-
   public Set<QualifiedMode> qModes = new HashSet<>();
 
   public QualifiedModeSet(String[] modes) {
@@ -39,15 +35,12 @@ public class QualifiedModeSet implements Serializable {
     this(s.split(","));
   }
 
-  public RequestModes getRequestModes() {
-    RequestModesBuilder mBuilder = RequestModes.of().clearTransitModes();
+  public List<TransitMode> getTransitModes() {
+    return qModes.stream().flatMap(qMode -> qMode.mode.getTransitModes().stream()).toList();
+  }
 
-    // Set transit modes
-    for (QualifiedMode qMode : qModes) {
-      for (TransitMode mainMode : qMode.mode.getTransitModes()) {
-        mBuilder.withTransitMode(mainMode);
-      }
-    }
+  public RequestModes getRequestModes() {
+    RequestModesBuilder mBuilder = RequestModes.of();
 
     //  This is a best effort at mapping QualifiedModes to access/egress/direct StreetModes.
     //  It was unclear what exactly each combination of QualifiedModes should mean.
@@ -88,10 +81,8 @@ public class QualifiedModeSet implements Serializable {
 
     if (requestMode != null) {
       switch (requestMode.mode) {
-        case WALK:
-          mBuilder.withAllStreetModes(StreetMode.WALK);
-          break;
-        case BICYCLE:
+        case WALK -> mBuilder.withAllStreetModes(StreetMode.WALK);
+        case BICYCLE -> {
           if (requestMode.qualifiers.contains(Qualifier.RENT)) {
             mBuilder.withAllStreetModes(StreetMode.BIKE_RENTAL);
           } else if (requestMode.qualifiers.contains(Qualifier.PARK)) {
@@ -102,16 +93,16 @@ public class QualifiedModeSet implements Serializable {
           } else {
             mBuilder.withAllStreetModes(StreetMode.BIKE);
           }
-          break;
-        case SCOOTER:
+        }
+        case SCOOTER -> {
           if (requestMode.qualifiers.contains(Qualifier.RENT)) {
             mBuilder.withAllStreetModes(StreetMode.SCOOTER_RENTAL);
           } else {
             // Only supported as rental mode
             throw new IllegalArgumentException();
           }
-          break;
-        case CAR:
+        }
+        case CAR -> {
           if (requestMode.qualifiers.contains(Qualifier.RENT)) {
             mBuilder.withAllStreetModes(StreetMode.CAR_RENTAL);
           } else if (requestMode.qualifiers.contains(Qualifier.PARK)) {
@@ -129,13 +120,18 @@ public class QualifiedModeSet implements Serializable {
             mBuilder.withTransferMode(StreetMode.WALK);
             mBuilder.withEgressMode(StreetMode.WALK);
             mBuilder.withDirectMode(StreetMode.CAR_PICKUP);
+          } else if (requestMode.qualifiers.contains(Qualifier.HAIL)) {
+            mBuilder.withAccessMode(StreetMode.CAR_HAILING);
+            mBuilder.withTransferMode(StreetMode.WALK);
+            mBuilder.withEgressMode(StreetMode.CAR_HAILING);
+            mBuilder.withDirectMode(StreetMode.WALK);
           } else {
             mBuilder.withAccessMode(StreetMode.WALK);
             mBuilder.withTransferMode(StreetMode.WALK);
             mBuilder.withEgressMode(StreetMode.WALK);
             mBuilder.withDirectMode(StreetMode.CAR);
           }
-          break;
+        }
       }
     }
 

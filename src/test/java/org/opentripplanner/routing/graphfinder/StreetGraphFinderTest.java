@@ -6,12 +6,13 @@ import java.util.List;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.locationtech.jts.geom.Coordinate;
 import org.opentripplanner.routing.algorithm.GraphRoutingTest;
-import org.opentripplanner.routing.edgetype.StreetTraversalPermission;
 import org.opentripplanner.routing.vehicle_parking.VehicleParking;
-import org.opentripplanner.routing.vertextype.IntersectionVertex;
-import org.opentripplanner.routing.vertextype.TransitStopVertex;
-import org.opentripplanner.routing.vertextype.VehicleRentalPlaceVertex;
+import org.opentripplanner.service.vehiclerental.street.VehicleRentalPlaceVertex;
+import org.opentripplanner.street.model.StreetTraversalPermission;
+import org.opentripplanner.street.model.vertex.IntersectionVertex;
+import org.opentripplanner.street.model.vertex.TransitStopVertex;
 import org.opentripplanner.transit.model._data.TransitModelForTest;
 import org.opentripplanner.transit.model.basic.TransitMode;
 import org.opentripplanner.transit.model.network.Route;
@@ -123,10 +124,11 @@ class StreetGraphFinderTest extends GraphRoutingTest {
   void findClosestStops() {
     var ns1 = new NearbyStop(S1.getStop(), 0, null, null);
     var ns2 = new NearbyStop(S2.getStop(), 100, null, null);
+    var coordinate = new Coordinate(19.000, 47.500);
 
-    assertEquals(List.of(ns1), simplify(graphFinder.findClosestStops(47.500, 19.000, 10)));
+    assertEquals(List.of(ns1), simplify(graphFinder.findClosestStops(coordinate, 10)));
 
-    assertEquals(List.of(ns1, ns2), simplify(graphFinder.findClosestStops(47.500, 19.000, 100)));
+    assertEquals(List.of(ns1, ns2), simplify(graphFinder.findClosestStops(coordinate, 100)));
   }
 
   @Test
@@ -149,6 +151,7 @@ class StreetGraphFinderTest extends GraphRoutingTest {
         10.0,
         10,
         null,
+        List.of(PlaceType.STOP, PlaceType.PATTERN_AT_STOP, PlaceType.VEHICLE_RENT),
         null,
         null,
         null,
@@ -165,6 +168,13 @@ class StreetGraphFinderTest extends GraphRoutingTest {
         200.0,
         100,
         null,
+        List.of(
+          PlaceType.STOP,
+          PlaceType.PATTERN_AT_STOP,
+          PlaceType.VEHICLE_RENT,
+          PlaceType.CAR_PARK,
+          PlaceType.BIKE_PARK
+        ),
         null,
         null,
         null,
@@ -181,6 +191,7 @@ class StreetGraphFinderTest extends GraphRoutingTest {
         200.0,
         3,
         null,
+        List.of(PlaceType.STOP, PlaceType.PATTERN_AT_STOP, PlaceType.VEHICLE_RENT),
         null,
         null,
         null,
@@ -208,6 +219,7 @@ class StreetGraphFinderTest extends GraphRoutingTest {
         null,
         null,
         null,
+        null,
         transitService
       )
     );
@@ -221,6 +233,7 @@ class StreetGraphFinderTest extends GraphRoutingTest {
         100,
         List.of(TransitMode.BUS),
         List.of(PlaceType.STOP),
+        null,
         null,
         null,
         null,
@@ -248,6 +261,7 @@ class StreetGraphFinderTest extends GraphRoutingTest {
         null,
         null,
         null,
+        null,
         transitService
       )
     );
@@ -262,6 +276,7 @@ class StreetGraphFinderTest extends GraphRoutingTest {
         null,
         List.of(PlaceType.STOP, PlaceType.PATTERN_AT_STOP),
         List.of(S2.getStop().getId()),
+        null,
         null,
         null,
         transitService
@@ -288,6 +303,7 @@ class StreetGraphFinderTest extends GraphRoutingTest {
         null,
         null,
         null,
+        null,
         transitService
       )
     );
@@ -302,6 +318,7 @@ class StreetGraphFinderTest extends GraphRoutingTest {
         null,
         List.of(PlaceType.STOP, PlaceType.PATTERN_AT_STOP),
         List.of(S2.getStop().getId()),
+        null,
         List.of(R1.getId()),
         null,
         transitService
@@ -329,6 +346,7 @@ class StreetGraphFinderTest extends GraphRoutingTest {
         null,
         null,
         null,
+        null,
         transitService
       )
     );
@@ -342,6 +360,7 @@ class StreetGraphFinderTest extends GraphRoutingTest {
         100,
         null,
         List.of(PlaceType.STOP, PlaceType.PATTERN_AT_STOP),
+        null,
         null,
         List.of(R2.getId()),
         null,
@@ -367,6 +386,7 @@ class StreetGraphFinderTest extends GraphRoutingTest {
         null,
         null,
         null,
+        null,
         transitService
       )
     );
@@ -380,6 +400,7 @@ class StreetGraphFinderTest extends GraphRoutingTest {
         100,
         null,
         List.of(PlaceType.VEHICLE_RENT),
+        null,
         null,
         null,
         List.of("BR2"),
@@ -404,6 +425,7 @@ class StreetGraphFinderTest extends GraphRoutingTest {
         null,
         null,
         null,
+        null,
         transitService
       )
     );
@@ -422,6 +444,7 @@ class StreetGraphFinderTest extends GraphRoutingTest {
         100,
         null,
         List.of(PlaceType.CAR_PARK),
+        null,
         null,
         null,
         null,

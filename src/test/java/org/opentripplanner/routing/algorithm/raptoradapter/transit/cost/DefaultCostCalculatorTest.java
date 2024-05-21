@@ -3,8 +3,8 @@ package org.opentripplanner.routing.algorithm.raptoradapter.transit.cost;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import org.junit.jupiter.api.Test;
-import org.opentripplanner.transit.raptor._data.transit.TestTransfer;
-import org.opentripplanner.transit.raptor._data.transit.TestTripSchedule;
+import org.opentripplanner.raptor._data.transit.TestAccessEgress;
+import org.opentripplanner.raptor._data.transit.TestTripSchedule;
 
 public class DefaultCostCalculatorTest {
 
@@ -76,22 +76,28 @@ public class DefaultCostCalculatorTest {
     //   - Transit factor:  80 (min of 80 and 100)
 
     // Board cost is 500:
-    assertEquals(500, subject.calculateMinCost(0, 0));
+    assertEquals(500, subject.calculateRemainingMinCost(0, 0, 0));
     // The transfer 1s * 80 = 80 + board cost 500
-    assertEquals(580, subject.calculateMinCost(1, 0));
+    assertEquals(580, subject.calculateRemainingMinCost(1, 0, 0));
     // Board 2 times and transfer 1: 2 * 500 + 200
-    assertEquals(1200, subject.calculateMinCost(0, 1));
+    assertEquals(1200, subject.calculateRemainingMinCost(0, 1, 0));
 
     // Transit 200s * 80 + Board 4 * 500 + Transfer 3 * 200
-    assertEquals(18_600, subject.calculateMinCost(200, 3));
+    assertEquals(18_600, subject.calculateRemainingMinCost(200, 3, 0));
+
+    // Cost of egress should subtract the stop transfer cost 25
+    assertEquals(-25, subject.calculateRemainingMinCost(0, -1, 1));
   }
 
   @Test
   public void testConvertBetweenRaptorAndMainOtpDomainModel() {
-    assertEquals(RaptorCostConverter.toRaptorCost(BOARD_COST_SEC), subject.calculateMinCost(0, 0));
+    assertEquals(
+      RaptorCostConverter.toRaptorCost(BOARD_COST_SEC),
+      subject.calculateRemainingMinCost(0, 0, 0)
+    );
     assertEquals(
       RaptorCostConverter.toRaptorCost(0.8 * 20 + BOARD_COST_SEC),
-      subject.calculateMinCost(20, 0)
+      subject.calculateRemainingMinCost(20, 0, 0)
     );
   }
 
@@ -102,10 +108,10 @@ public class DefaultCostCalculatorTest {
     var GENERALIZED_COST = 100;
 
     // transfer cost on stop index 0 is 0 - do not subtract anything
-    var t1 = TestTransfer.walk(0, 15, GENERALIZED_COST);
+    var t1 = TestAccessEgress.walk(0, 15, GENERALIZED_COST);
     assertEquals(GENERALIZED_COST, subject.costEgress(t1));
     // transfer cost on stop index 1 is 25 - subtract 25 from generalized cost
-    var t2 = TestTransfer.walk(1, 15, 100);
+    var t2 = TestAccessEgress.walk(1, 15, 100);
     assertEquals(GENERALIZED_COST - 25, subject.costEgress(t2));
   }
 
@@ -117,9 +123,9 @@ public class DefaultCostCalculatorTest {
     var DESIRED_COST = GENERALIZED_COST + TRANSFER_COST_SEC * 100;
 
     // Should be the same on all stop indexes
-    var t1 = TestTransfer.flex(0, 15, 1, GENERALIZED_COST);
+    var t1 = TestAccessEgress.flex(0, 15, 1, GENERALIZED_COST);
     assertEquals(DESIRED_COST, subject.costEgress(t1));
-    var t2 = TestTransfer.flex(1, 15, 1, GENERALIZED_COST);
+    var t2 = TestAccessEgress.flex(1, 15, 1, GENERALIZED_COST);
     assertEquals(DESIRED_COST, subject.costEgress(t2));
   }
 }

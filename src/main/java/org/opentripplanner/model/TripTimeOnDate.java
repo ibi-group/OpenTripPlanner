@@ -5,6 +5,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import org.opentripplanner.framework.i18n.I18NString;
 import org.opentripplanner.transit.model.network.TripPattern;
 import org.opentripplanner.transit.model.site.StopLocation;
 import org.opentripplanner.transit.model.timetable.OccupancyStatus;
@@ -12,12 +13,16 @@ import org.opentripplanner.transit.model.timetable.RealTimeState;
 import org.opentripplanner.transit.model.timetable.StopTimeKey;
 import org.opentripplanner.transit.model.timetable.Trip;
 import org.opentripplanner.transit.model.timetable.TripTimes;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Represents a Trip at a specific stop index and on a specific service day. This is a read-only
  * data transfer object used to pass information from the OTP internal model to the APIs.
  */
 public class TripTimeOnDate {
+
+  private static final Logger LOG = LoggerFactory.getLogger(TripTimeOnDate.class);
 
   public static final int UNDEFINED = -1;
 
@@ -107,6 +112,13 @@ public class TripTimeOnDate {
     return tripTimes.getScheduledArrivalTime(stopIndex);
   }
 
+  /**
+   * @return The GTFS stop sequence of the stop time.
+   */
+  public int getGtfsSequence() {
+    return tripTimes.gtfsSequenceOfStopIndex(stopIndex);
+  }
+
   public int getScheduledDeparture() {
     return tripTimes.getScheduledDepartureTime(stopIndex);
   }
@@ -168,7 +180,7 @@ public class TripTimeOnDate {
   public boolean isCanceledEffectively() {
     return (
       isCancelledStop() ||
-      tripTimes.isCanceled() ||
+      tripTimes.isCanceledOrDeleted() ||
       tripTimes.getTrip().getNetexAlteration().isCanceledOrReplaced()
     );
   }
@@ -177,7 +189,7 @@ public class TripTimeOnDate {
     return tripTimes.isNoDataStop(stopIndex);
   }
 
-  public RealTimeState getRealtimeState() {
+  public RealTimeState getRealTimeState() {
     return tripTimes.isNoDataStop(stopIndex)
       ? RealTimeState.SCHEDULED
       : tripTimes.getRealTimeState();
@@ -203,7 +215,7 @@ public class TripTimeOnDate {
     return tripTimes.getTrip().getGtfsBlockId();
   }
 
-  public String getHeadsign() {
+  public I18NString getHeadsign() {
     return tripTimes.getHeadsign(stopIndex);
   }
 
@@ -212,12 +224,34 @@ public class TripTimeOnDate {
   }
 
   public PickDrop getPickupType() {
+    if (tripTimes.isDeleted()) {
+      LOG.warn(
+        "Returning pickup type for a deleted trip {} on pattern {} on date {}. This indicates a bug.",
+        tripTimes.getTrip().getId(),
+        tripPattern.getId(),
+        serviceDate
+      );
+
+      return tripPattern.getBoardType(stopIndex);
+    }
+
     return tripTimes.isCanceled() || tripTimes.isCancelledStop(stopIndex)
       ? PickDrop.CANCELLED
       : tripPattern.getBoardType(stopIndex);
   }
 
   public PickDrop getDropoffType() {
+    if (tripTimes.isDeleted()) {
+      LOG.warn(
+        "Returning dropoff type for a deleted trip {} on pattern {} on date {}. This indicates a bug.",
+        tripTimes.getTrip().getId(),
+        tripPattern.getId(),
+        serviceDate
+      );
+
+      return tripPattern.getAlightType(stopIndex);
+    }
+
     return tripTimes.isCanceled() || tripTimes.isCancelledStop(stopIndex)
       ? PickDrop.CANCELLED
       : tripPattern.getAlightType(stopIndex);

@@ -3,30 +3,33 @@ package org.opentripplanner.graph_builder.module.osm;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.File;
-import java.net.URISyntaxException;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.stream.Collectors;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
-import org.opentripplanner.graph_builder.DataImportIssueStore;
+import org.opentripplanner.graph_builder.issue.api.DataImportIssueStore;
+import org.opentripplanner.graph_builder.issue.service.DefaultDataImportIssueStore;
 import org.opentripplanner.graph_builder.issues.ParkAndRideUnlinked;
-import org.opentripplanner.graph_builder.module.StreetLinkerModule;
-import org.opentripplanner.openstreetmap.OpenStreetMapProvider;
-import org.opentripplanner.routing.edgetype.StreetVehicleParkingLink;
-import org.opentripplanner.routing.edgetype.VehicleParkingEdge;
+import org.opentripplanner.graph_builder.module.TestStreetLinkerModule;
+import org.opentripplanner.openstreetmap.OsmProvider;
 import org.opentripplanner.routing.graph.Graph;
-import org.opentripplanner.routing.vertextype.VehicleParkingEntranceVertex;
+import org.opentripplanner.street.model.edge.StreetVehicleParkingLink;
+import org.opentripplanner.street.model.edge.VehicleParkingEdge;
+import org.opentripplanner.street.model.vertex.VehicleParkingEntranceVertex;
+import org.opentripplanner.street.model.vertex.VertexLabel;
+import org.opentripplanner.test.support.ResourceLoader;
 import org.opentripplanner.transit.model.framework.Deduplicator;
 import org.opentripplanner.transit.service.StopModel;
 import org.opentripplanner.transit.service.TransitModel;
 
 public class UnconnectedAreasTest {
 
+  private static final ResourceLoader RESOURCE_LOADER = ResourceLoader.of(
+    UnconnectedAreasTest.class
+  );
+
   /**
-   * The P+R.osm.gz file contains 2 park and ride, one a single way area and the other a
+   * The P+R.osm.pbf file contains 2 park and ride, one a single way area and the other a
    * multipolygon with a hole. Both are not linked to any street, apart from three roads that
    * crosses the P+R with w/o common nodes.
    * <p>
@@ -34,8 +37,8 @@ public class UnconnectedAreasTest {
    * virtual nodes at the place where the street intersects the P+R areas. See ticket #1562.
    */
   @Test
-  public void testUnconnectedCarParkAndRide() {
-    DataImportIssueStore issueStore = new DataImportIssueStore();
+  public void unconnectedCarParkAndRide() {
+    DefaultDataImportIssueStore issueStore = new DefaultDataImportIssueStore();
     Graph gg = buildOSMGraph("P+R.osm.pbf", issueStore);
 
     assertEquals(1, getParkAndRideUnlinkedIssueCount(issueStore));
@@ -45,14 +48,14 @@ public class UnconnectedAreasTest {
     int nParkAndRideLink = gg.getEdgesOfType(StreetVehicleParkingLink.class).size();
     int nParkAndRideEdge = gg.getEdgesOfType(VehicleParkingEdge.class).size();
 
-    assertEquals(11, nParkAndRide);
-    assertEquals(30, nParkAndRideLink);
-    assertEquals(41, nParkAndRideEdge);
+    assertEquals(12, nParkAndRide);
+    assertEquals(38, nParkAndRideLink);
+    assertEquals(42, nParkAndRideEdge);
   }
 
   @Test
-  public void testUnconnectedBikeParkAndRide() {
-    DataImportIssueStore issueStore = new DataImportIssueStore();
+  public void unconnectedBikeParkAndRide() {
+    DefaultDataImportIssueStore issueStore = new DefaultDataImportIssueStore();
     Graph gg = buildOSMGraph("B+R.osm.pbf", issueStore);
 
     assertEquals(2, getParkAndRideUnlinkedIssueCount(issueStore));
@@ -62,9 +65,9 @@ public class UnconnectedAreasTest {
     int nParkAndRideLink = gg.getEdgesOfType(StreetVehicleParkingLink.class).size();
     int nParkAndRideEdge = gg.getEdgesOfType(VehicleParkingEdge.class).size();
 
-    assertEquals(11, nParkAndRideEntrances);
-    assertEquals(24, nParkAndRideLink);
-    assertEquals(31, nParkAndRideEdge);
+    assertEquals(13, nParkAndRideEntrances);
+    assertEquals(32, nParkAndRideLink);
+    assertEquals(33, nParkAndRideEdge);
   }
 
   /**
@@ -75,12 +78,12 @@ public class UnconnectedAreasTest {
    */
   @Test
   public void testCoincidentNodeUnconnectedParkAndRide() {
-    List<String> connections = testGeometricGraphWithClasspathFile("hackett_pr.osm.pbf", 4, 8);
+    List<VertexLabel> connections = testGeometricGraphWithClasspathFile("hackett_pr.osm.pbf", 4, 8);
 
-    assertTrue(connections.contains("osm:node:3096570222"));
-    assertTrue(connections.contains("osm:node:3094264704"));
-    assertTrue(connections.contains("osm:node:3094264709"));
-    assertTrue(connections.contains("osm:node:3096570227"));
+    assertTrue(connections.contains(VertexLabel.osm(3096570222L)));
+    assertTrue(connections.contains(VertexLabel.osm(3094264704L)));
+    assertTrue(connections.contains(VertexLabel.osm(3094264709L)));
+    assertTrue(connections.contains(VertexLabel.osm(3096570227L)));
   }
 
   /**
@@ -89,8 +92,12 @@ public class UnconnectedAreasTest {
    */
   @Test
   public void testRoadPassingOverNode() {
-    List<String> connections = testGeometricGraphWithClasspathFile("coincident_pr.osm.pbf", 1, 2);
-    assertTrue(connections.contains("osm:node:-102236"));
+    List<VertexLabel> connections = testGeometricGraphWithClasspathFile(
+      "coincident_pr.osm.pbf",
+      1,
+      2
+    );
+    assertTrue(connections.contains(VertexLabel.osm(-102236L)));
   }
 
   /**
@@ -99,12 +106,12 @@ public class UnconnectedAreasTest {
    */
   @Test
   public void testAreaPassingOverNode() {
-    List<String> connections = testGeometricGraphWithClasspathFile(
+    List<VertexLabel> connections = testGeometricGraphWithClasspathFile(
       "coincident_pr_reverse.osm.pbf",
       1,
       2
     );
-    assertTrue(connections.contains("osm:node:-102296"));
+    assertTrue(connections.contains(VertexLabel.osm(-102296L)));
   }
 
   /**
@@ -112,8 +119,8 @@ public class UnconnectedAreasTest {
    * there. Additionally, the node of the ring is duplicated to test this corner case.
    */
   @Test
-  public void testRoadPassingOverDuplicatedNode() throws URISyntaxException {
-    List<String> connections = testGeometricGraphWithClasspathFile(
+  public void testRoadPassingOverDuplicatedNode() {
+    List<VertexLabel> connections = testGeometricGraphWithClasspathFile(
       "coincident_pr_dupl.osm.pbf",
       1,
       2
@@ -123,7 +130,8 @@ public class UnconnectedAreasTest {
     // the duplicated nodes into the way. When we get to the other ringsegments, we will just inject
     // the node that has already been injected into the way. So either of these cases are valid.
     assertTrue(
-      connections.contains("osm:node:-102266") || connections.contains("osm:node:-102267")
+      connections.contains(VertexLabel.osm(-102266)) ||
+      connections.contains(VertexLabel.osm(-102267))
     );
   }
 
@@ -133,18 +141,18 @@ public class UnconnectedAreasTest {
    */
   @Test
   public void testRoadPassingOverParkRide() {
-    List<String> connections = testGeometricGraphWithClasspathFile(
+    List<VertexLabel> connections = testGeometricGraphWithClasspathFile(
       "coincident_pr_overlap.osm.pbf",
       2,
       4
     );
 
-    assertTrue(connections.contains("osm:node:-102283"));
-    assertTrue(connections.contains("osm:node:-102284"));
+    assertTrue(connections.contains(VertexLabel.osm(-102283)));
+    assertTrue(connections.contains(VertexLabel.osm(-102284)));
   }
 
   private Graph buildOSMGraph(String osmFileName) {
-    return buildOSMGraph(osmFileName, DataImportIssueStore.noopIssueStore());
+    return buildOSMGraph(osmFileName, DataImportIssueStore.NOOP);
   }
 
   private Graph buildOSMGraph(String osmFileName, DataImportIssueStore issueStore) {
@@ -152,25 +160,18 @@ public class UnconnectedAreasTest {
     var stopModel = new StopModel();
     var graph = new Graph(deduplicator);
     var transitModel = new TransitModel(stopModel, deduplicator);
-    var fileUrl = getClass().getResource(osmFileName);
-    Assertions.assertNotNull(fileUrl);
-    File file = new File(fileUrl.getFile());
-
-    OpenStreetMapProvider provider = new OpenStreetMapProvider(file, false);
-    OpenStreetMapModule loader = new OpenStreetMapModule(
-      List.of(provider),
-      Set.of(),
-      graph,
-      transitModel.getTimeZone(),
-      issueStore
-    );
-    loader.setDefaultWayPropertySetSource(new DefaultWayPropertySetSource());
-    loader.staticParkAndRide = true;
-    loader.staticBikeParkAndRide = true;
+    OsmProvider provider = new OsmProvider(RESOURCE_LOADER.file(osmFileName), false);
+    OsmModule loader = OsmModule
+      .of(provider, graph)
+      .withIssueStore(issueStore)
+      .withAreaVisibility(true)
+      .withStaticParkAndRide(true)
+      .withStaticBikeParkAndRide(true)
+      .build();
 
     loader.buildGraph();
 
-    StreetLinkerModule.linkStreetsForTestOnly(graph, transitModel);
+    TestStreetLinkerModule.link(graph, transitModel);
 
     return graph;
   }
@@ -179,7 +180,7 @@ public class UnconnectedAreasTest {
    * We've written several OSM files that exhibit different situations but should show the same
    * results. Test with this code.
    */
-  private List<String> testGeometricGraphWithClasspathFile(
+  private List<VertexLabel> testGeometricGraphWithClasspathFile(
     String fileName,
     int prCount,
     int prlCount
@@ -203,7 +204,7 @@ public class UnconnectedAreasTest {
       .map(StreetVehicleParkingLink.class::cast)
       .collect(Collectors.toCollection(HashSet::new));
 
-    List<String> connections = outgoingEdges
+    List<VertexLabel> connections = outgoingEdges
       .stream()
       .map(e -> e.getToVertex().getLabel())
       .collect(Collectors.toList());
@@ -220,9 +221,9 @@ public class UnconnectedAreasTest {
     return connections;
   }
 
-  private int getParkAndRideUnlinkedIssueCount(DataImportIssueStore issueStore) {
+  private int getParkAndRideUnlinkedIssueCount(DefaultDataImportIssueStore issueStore) {
     return (int) issueStore
-      .getIssues()
+      .listIssues()
       .stream()
       .filter(dataImportIssue -> dataImportIssue instanceof ParkAndRideUnlinked)
       .count();

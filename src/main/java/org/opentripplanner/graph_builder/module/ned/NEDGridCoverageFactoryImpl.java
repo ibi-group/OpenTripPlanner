@@ -11,8 +11,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
+import org.geotools.api.coverage.Coverage;
 import org.geotools.coverage.grid.GridCoverage2D;
-import org.opengis.coverage.Coverage;
 import org.opentripplanner.graph_builder.services.ned.ElevationGridCoverageFactory;
 import org.opentripplanner.graph_builder.services.ned.NEDTileSource;
 import org.opentripplanner.routing.graph.Graph;
@@ -69,6 +69,12 @@ public class NEDGridCoverageFactoryImpl implements ElevationGridCoverageFactory 
 
     // Create a new UnifiedGridCoverage using the shared region coverages.
     return new UnifiedGridCoverage(regionCoverages, datums);
+  }
+
+  @Override
+  public double elevationUnitMultiplier() {
+    // NED elevation is provided in decimal meter
+    return 1;
   }
 
   @Override

@@ -2,10 +2,11 @@
 package org.opentripplanner.model;
 
 import java.util.List;
+import org.opentripplanner.framework.i18n.I18NString;
+import org.opentripplanner.framework.time.TimeUtils;
 import org.opentripplanner.transit.model.site.StopLocation;
 import org.opentripplanner.transit.model.timetable.StopTimeKey;
 import org.opentripplanner.transit.model.timetable.Trip;
-import org.opentripplanner.util.time.TimeUtils;
 
 /**
  * This class is TEMPORALLY used during mapping of GTFS and Netex into the internal Model, it is not
@@ -30,7 +31,7 @@ public final class StopTime implements Comparable<StopTime> {
 
   private int stopSequence;
 
-  private String stopHeadsign;
+  private I18NString stopHeadsign;
 
   private List<String> headsignVias;
 
@@ -60,28 +61,6 @@ public final class StopTime implements Comparable<StopTime> {
   private BookingInfo pickupBookingInfo;
 
   public StopTime() {}
-
-  public StopTime(StopTime st) {
-    this.trip = st.trip;
-    this.stop = st.stop;
-    this.arrivalTime = st.arrivalTime;
-    this.departureTime = st.departureTime;
-    this.timepoint = st.timepoint;
-    this.stopSequence = st.stopSequence;
-    this.stopHeadsign = st.stopHeadsign;
-    this.routeShortName = st.routeShortName;
-    this.pickupType = st.pickupType;
-    this.dropOffType = st.dropOffType;
-    this.shapeDistTraveled = st.shapeDistTraveled;
-    this.farePeriodId = st.farePeriodId;
-    this.flexWindowStart = st.flexWindowStart;
-    this.flexWindowEnd = st.flexWindowEnd;
-    this.flexContinuousPickup = st.flexContinuousPickup;
-    this.flexContinuousDropOff = st.flexContinuousDropOff;
-    this.dropOffBookingInfo = st.dropOffBookingInfo;
-    this.pickupBookingInfo = st.pickupBookingInfo;
-    this.headsignVias = st.headsignVias;
-  }
 
   /**
    * The id is used to navigate/link StopTime to other entities (Map from StopTime.id -> Entity.id).
@@ -135,10 +114,6 @@ public final class StopTime implements Comparable<StopTime> {
     this.arrivalTime = arrivalTime;
   }
 
-  public void clearArrivalTime() {
-    this.arrivalTime = MISSING_VALUE;
-  }
-
   public boolean isDepartureTimeSet() {
     return departureTime != MISSING_VALUE;
   }
@@ -152,10 +127,6 @@ public final class StopTime implements Comparable<StopTime> {
 
   public void setDepartureTime(int departureTime) {
     this.departureTime = departureTime;
-  }
-
-  public void clearDepartureTime() {
-    this.departureTime = MISSING_VALUE;
   }
 
   public boolean isTimepointSet() {
@@ -173,15 +144,11 @@ public final class StopTime implements Comparable<StopTime> {
     this.timepoint = timepoint;
   }
 
-  public void clearTimepoint() {
-    this.timepoint = MISSING_VALUE;
-  }
-
-  public String getStopHeadsign() {
+  public I18NString getStopHeadsign() {
     return stopHeadsign;
   }
 
-  public void setStopHeadsign(String headSign) {
+  public void setStopHeadsign(I18NString headSign) {
     this.stopHeadsign = headSign;
   }
 
@@ -221,10 +188,6 @@ public final class StopTime implements Comparable<StopTime> {
     this.shapeDistTraveled = shapeDistTraveled;
   }
 
-  public void clearShapeDistTraveled() {
-    this.shapeDistTraveled = MISSING_VALUE;
-  }
-
   public String getFarePeriodId() {
     return farePeriodId;
   }
@@ -247,6 +210,16 @@ public final class StopTime implements Comparable<StopTime> {
 
   public void setFlexWindowEnd(int flexWindowEnd) {
     this.flexWindowEnd = flexWindowEnd;
+  }
+
+  /** Get either the start of the flex window or the departure time, whichever is set */
+  public int getEarliestPossibleDepartureTime() {
+    return getAvailableTime(getFlexWindowStart(), getDepartureTime());
+  }
+
+  /** Get either the end of the flex window or the arrival time, whichever is set */
+  public int getLatestPossibleArrivalTime() {
+    return getAvailableTime(getFlexWindowEnd(), getArrivalTime());
   }
 
   public PickDrop getFlexContinuousPickup() {
@@ -298,14 +271,6 @@ public final class StopTime implements Comparable<StopTime> {
     dropOffType = PickDrop.CANCELLED;
   }
 
-  public void cancelDropOff() {
-    dropOffType = PickDrop.CANCELLED;
-  }
-
-  public void cancelPickup() {
-    pickupType = PickDrop.CANCELLED;
-  }
-
   @Override
   public String toString() {
     return (
@@ -321,5 +286,22 @@ public final class StopTime implements Comparable<StopTime> {
       TimeUtils.timeToStrLong(getDepartureTime()) +
       ")"
     );
+  }
+
+  private static int getAvailableTime(int... times) {
+    for (var time : times) {
+      if (time != MISSING_VALUE) {
+        return time;
+      }
+    }
+
+    return MISSING_VALUE;
+  }
+
+  /**
+   * Does this stop time define a flex window?
+   */
+  public boolean hasFlexWindow() {
+    return flexWindowStart != MISSING_VALUE || flexWindowEnd != MISSING_VALUE;
   }
 }

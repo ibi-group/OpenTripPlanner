@@ -1,11 +1,9 @@
 package org.opentripplanner.routing.vehicle_parking;
 
-import org.opentripplanner.routing.edgetype.StreetEdge;
-import org.opentripplanner.routing.edgetype.StreetTraversalPermission;
-import org.opentripplanner.routing.vertextype.StreetVertex;
-import org.opentripplanner.transit.model.basic.NonLocalizedString;
+import org.opentripplanner.framework.geometry.WgsCoordinate;
+import org.opentripplanner.framework.i18n.NonLocalizedString;
+import org.opentripplanner.street.model._data.StreetModelForTest;
 import org.opentripplanner.transit.model.framework.FeedScopedId;
-import org.opentripplanner.util.geometry.GeometryUtils;
 
 public class VehicleParkingTestUtil {
 
@@ -25,33 +23,16 @@ public class VehicleParkingTestUtil {
       builder
         .entranceId(new FeedScopedId(TEST_FEED_ID, "Entrance " + id))
         .name(new NonLocalizedString("Entrance " + id))
-        .x(x)
-        .y(y)
+        .coordinate(new WgsCoordinate(y, x))
         .walkAccessible(true);
 
-    return VehicleParking
-      .builder()
+    return StreetModelForTest
+      .vehicleParking()
       .id(new FeedScopedId(TEST_FEED_ID, id))
       .bicyclePlaces(true)
       .capacity(vehiclePlaces)
       .availability(vehiclePlaces)
       .entrance(entrance)
       .build();
-  }
-
-  public static void createStreet(
-    StreetVertex from,
-    StreetVertex to,
-    StreetTraversalPermission permissions
-  ) {
-    new StreetEdge(
-      from,
-      to,
-      GeometryUtils.makeLineString(from.getLat(), from.getLon(), to.getLat(), to.getLon()),
-      String.format("%s%s street", from.getDefaultName(), to.getDefaultName()),
-      1,
-      permissions,
-      false
-    );
   }
 }

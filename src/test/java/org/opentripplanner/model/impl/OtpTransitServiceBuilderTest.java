@@ -73,7 +73,7 @@ public class OtpTransitServiceBuilderTest {
   public void testGetRoutes() {
     Collection<Route> routes = subject.getRoutes().values();
 
-    assertEquals(18, routes.size());
+    assertEquals(19, routes.size());
     assertEquals("Route{agency:1 BUS 1}", first(routes).toString());
   }
 
@@ -88,7 +88,7 @@ public class OtpTransitServiceBuilderTest {
   /* private methods */
 
   private static OtpTransitServiceBuilder createBuilder() throws IOException {
-    OtpTransitServiceBuilder builder = contextBuilder(FEED_ID, ConstantsForTests.FAKE_GTFS)
+    OtpTransitServiceBuilder builder = contextBuilder(FEED_ID, ConstantsForTests.SIMPLE_GTFS)
       .getTransitBuilder();
     Agency agency = agency(builder);
 

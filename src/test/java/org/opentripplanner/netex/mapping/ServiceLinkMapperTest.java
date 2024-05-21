@@ -3,26 +3,29 @@ package org.opentripplanner.netex.mapping;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.opentripplanner.netex.mapping.MappingSupport.ID_FACTORY;
 
+import jakarta.xml.bind.JAXBElement;
 import java.math.BigDecimal;
-import java.util.ArrayList;
 import java.util.List;
-import javax.xml.bind.JAXBElement;
 import net.opengis.gml._3.DirectPositionListType;
 import net.opengis.gml._3.LineStringType;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.LineString;
-import org.opentripplanner.common.model.T2;
-import org.opentripplanner.graph_builder.DataImportIssueStore;
+import org.opentripplanner.framework.i18n.NonLocalizedString;
+import org.opentripplanner.graph_builder.issue.api.DataImportIssueStore;
+import org.opentripplanner.graph_builder.issue.service.DefaultDataImportIssueStore;
 import org.opentripplanner.netex.index.hierarchy.HierarchicalMap;
 import org.opentripplanner.netex.index.hierarchy.HierarchicalMapById;
-import org.opentripplanner.transit.model.basic.NonLocalizedString;
+import org.opentripplanner.netex.mapping.support.NetexMainAndSubMode;
+import org.opentripplanner.transit.model.basic.Accessibility;
 import org.opentripplanner.transit.model.basic.TransitMode;
-import org.opentripplanner.transit.model.basic.WheelchairAccessibility;
+import org.opentripplanner.transit.model.framework.DefaultEntityById;
 import org.opentripplanner.transit.model.framework.EntityById;
 import org.opentripplanner.transit.model.network.StopPattern;
+import org.opentripplanner.transit.model.site.RegularStop;
 import org.opentripplanner.transit.model.site.Station;
-import org.opentripplanner.transit.model.site.Stop;
+import org.opentripplanner.transit.service.StopModel;
 import org.rutebanken.netex.model.JourneyPattern;
 import org.rutebanken.netex.model.LinkSequenceProjection;
 import org.rutebanken.netex.model.LinkSequenceProjection_VersionStructure;
@@ -36,9 +39,9 @@ import org.rutebanken.netex.model.ServiceLinkInJourneyPattern_VersionedChildStru
 import org.rutebanken.netex.model.ServiceLinkRefStructure;
 import org.rutebanken.netex.model.SimplePoint_VersionStructure;
 
-public class ServiceLinkMapperTest {
+class ServiceLinkMapperTest {
 
-  private static final Double[] COORDINATES = {
+  private static final Double[] SERVICE_LINKS_COORDINATES = {
     59.90929,
     10.74527,
     59.90893,
@@ -47,10 +50,98 @@ public class ServiceLinkMapperTest {
     10.74585,
   };
 
-  @Test
-  public void mapServiceLinks() {
-    JourneyPattern journeyPattern = new JourneyPattern().withId("RUT:JourneyPattern:1300");
+  private static final Double[] QUAY1_COORDINATES = { 59.9093, 10.7453 };
+  private static final Double[] QUAY2_COORDINATES = { 59.9089, 10.7449 };
+  private static final Double[] QUAY3_COORDINATES = { 59.9087, 10.7459 };
+  public static final double FLOATING_POINT_COMPARISON_PRECISION = 0.000001;
+  private StopPattern.StopPatternBuilder stopPatternBuilder;
+  private ServiceLinkMapper serviceLinkMapper;
+  private DataImportIssueStore issueStore;
 
+  @BeforeEach
+  void setUpTestData() {
+    ServiceLink serviceLink1 = createServiceLink(
+      "RUT:ServiceLink:1",
+      "RUT:StopPoint:1",
+      "RUT:StopPoint:2",
+      new Double[] {
+        SERVICE_LINKS_COORDINATES[0],
+        SERVICE_LINKS_COORDINATES[1],
+        SERVICE_LINKS_COORDINATES[2],
+        SERVICE_LINKS_COORDINATES[3],
+      }
+    );
+    ServiceLink serviceLink2 = createServiceLink(
+      "RUT:ServiceLink:2",
+      "RUT:StopPoint:2",
+      "RUT:StopPoint:3",
+      new Double[] {
+        SERVICE_LINKS_COORDINATES[2],
+        SERVICE_LINKS_COORDINATES[3],
+        SERVICE_LINKS_COORDINATES[4],
+        SERVICE_LINKS_COORDINATES[5],
+      }
+    );
+
+    HierarchicalMapById<ServiceLink> serviceLinksById = new HierarchicalMapById<>();
+    serviceLinksById.add(serviceLink1);
+    serviceLinksById.add(serviceLink2);
+
+    Quay quay1 = new Quay()
+      .withId("NSR:Quay:1")
+      .withCentroid(getLocation(QUAY1_COORDINATES[0], QUAY1_COORDINATES[1]));
+    Quay quay2 = new Quay()
+      .withId("NSR:Quay:2")
+      .withCentroid(getLocation(QUAY2_COORDINATES[0], QUAY2_COORDINATES[1]));
+    Quay quay3 = new Quay()
+      .withId("NSR:Quay:3")
+      .withCentroid(getLocation(QUAY3_COORDINATES[0], QUAY3_COORDINATES[1]));
+
+    List<Quay> quaysById = List.of(quay1, quay2, quay3);
+
+    HierarchicalMap<String, String> quayIdByStopPointRef = new HierarchicalMap<>();
+    quayIdByStopPointRef.add("RUT:StopPoint:1", "NSR:Quay:1");
+    quayIdByStopPointRef.add("RUT:StopPoint:2", "NSR:Quay:2");
+    quayIdByStopPointRef.add("RUT:StopPoint:3", "NSR:Quay:3");
+
+    EntityById<RegularStop> stopsById = new DefaultEntityById<>();
+    issueStore = new DefaultDataImportIssueStore();
+
+    QuayMapper quayMapper = new QuayMapper(ID_FACTORY, issueStore, new StopModel().withContext());
+    stopPatternBuilder = StopPattern.create(3);
+
+    Station parentStation = Station
+      .of(ID_FACTORY.createId("NSR:StopArea:1"))
+      .withName(NonLocalizedString.ofNullable("Parent Station"))
+      .withCoordinate(59.908, 10.745)
+      .build();
+
+    for (int i = 0; i < quaysById.size(); i++) {
+      RegularStop stop = quayMapper.mapQuayToStop(
+        quaysById.get(i),
+        parentStation,
+        List.of(),
+        new NetexMainAndSubMode(TransitMode.BUS, "UNKNOWN"),
+        Accessibility.NO_INFORMATION
+      );
+      stopPatternBuilder.stops.with(i, stop);
+      stopsById.add(stop);
+    }
+
+    serviceLinkMapper =
+      new ServiceLinkMapper(
+        ID_FACTORY,
+        serviceLinksById,
+        quayIdByStopPointRef,
+        stopsById,
+        issueStore,
+        150
+      );
+  }
+
+  @Test
+  void testMapValidServiceLinks() {
+    JourneyPattern journeyPattern = new JourneyPattern().withId("RUT:JourneyPattern:1300");
     journeyPattern.setLinksInSequence(
       new LinksInJourneyPattern_RelStructure()
         .withServiceLinkInJourneyPatternOrTimingLinkInJourneyPattern(
@@ -63,68 +154,78 @@ public class ServiceLinkMapperTest {
         )
     );
 
-    ServiceLink serviceLink1 = createServiceLink(
-      "RUT:ServiceLink:1",
-      "RUT:StopPoint:1",
-      "RUT:StopPoint:2",
-      new Double[] { COORDINATES[0], COORDINATES[1], COORDINATES[2], COORDINATES[3] }
-    );
-    ServiceLink serviceLink2 = createServiceLink(
-      "RUT:ServiceLink:2",
-      "RUT:StopPoint:2",
-      "RUT:StopPoint:3",
-      new Double[] { COORDINATES[2], COORDINATES[3], COORDINATES[4], COORDINATES[5] }
+    List<LineString> shape = serviceLinkMapper.getGeometriesByJourneyPattern(
+      journeyPattern,
+      stopPatternBuilder.build()
     );
 
-    HierarchicalMapById<ServiceLink> serviceLinksById = new HierarchicalMapById<>();
-    serviceLinksById.add(serviceLink1);
-    serviceLinksById.add(serviceLink2);
+    assertEquals(0, issueStore.listIssues().size());
 
-    Quay quay1 = new Quay().withId("NSR:Quay:1").withCentroid(getLocation(59.9093, 10.7453));
-    Quay quay2 = new Quay().withId("NSR:Quay:2").withCentroid(getLocation(59.9089, 10.7449));
-    Quay quay3 = new Quay().withId("NSR:Quay:3").withCentroid(getLocation(59.9087, 10.7459));
+    Coordinate[] coordinates = shape.get(0).getCoordinates();
 
-    List<Quay> quaysById = new ArrayList<>();
-    quaysById.add(quay1);
-    quaysById.add(quay2);
-    quaysById.add(quay3);
+    assertEquals(
+      SERVICE_LINKS_COORDINATES[0],
+      coordinates[0].getY(),
+      FLOATING_POINT_COMPARISON_PRECISION
+    );
+    assertEquals(
+      SERVICE_LINKS_COORDINATES[1],
+      coordinates[0].getX(),
+      FLOATING_POINT_COMPARISON_PRECISION
+    );
+    assertEquals(
+      SERVICE_LINKS_COORDINATES[2],
+      coordinates[1].getY(),
+      FLOATING_POINT_COMPARISON_PRECISION
+    );
+    assertEquals(
+      SERVICE_LINKS_COORDINATES[3],
+      coordinates[1].getX(),
+      FLOATING_POINT_COMPARISON_PRECISION
+    );
 
-    HierarchicalMap<String, String> quayIdByStopPointRef = new HierarchicalMap<>();
-    quayIdByStopPointRef.add("RUT:StopPoint:1", "NSR:Quay:1");
-    quayIdByStopPointRef.add("RUT:StopPoint:2", "NSR:Quay:2");
-    quayIdByStopPointRef.add("RUT:StopPoint:3", "NSR:Quay:3");
+    coordinates = shape.get(1).getCoordinates();
 
-    EntityById<Stop> stopsById = new EntityById<>();
+    assertEquals(
+      SERVICE_LINKS_COORDINATES[2],
+      coordinates[0].getY(),
+      FLOATING_POINT_COMPARISON_PRECISION
+    );
+    assertEquals(
+      SERVICE_LINKS_COORDINATES[3],
+      coordinates[0].getX(),
+      FLOATING_POINT_COMPARISON_PRECISION
+    );
+    assertEquals(
+      SERVICE_LINKS_COORDINATES[4],
+      coordinates[1].getY(),
+      FLOATING_POINT_COMPARISON_PRECISION
+    );
+    assertEquals(
+      SERVICE_LINKS_COORDINATES[5],
+      coordinates[1].getX(),
+      FLOATING_POINT_COMPARISON_PRECISION
+    );
+  }
 
-    DataImportIssueStore issueStore = DataImportIssueStore.noopIssueStore();
-    StopMapper stopMapper = new StopMapper(ID_FACTORY, issueStore);
-    StopPattern.StopPatternBuilder stopPatternBuilder = StopPattern.create(3);
+  @Test
+  void testMapWrongNumberOfServiceLinks() {
+    JourneyPattern journeyPattern = new JourneyPattern().withId("RUT:JourneyPattern:1300");
 
-    Station parentStation = Station
-      .of(ID_FACTORY.createId("NSR:StopArea:1"))
-      .withName(NonLocalizedString.ofNullable("Parent Station"))
-      .withCoordinate(59.908, 10.745)
-      .build();
-
-    for (int i = 0; i < quaysById.size(); i++) {
-      Stop stop = stopMapper.mapQuayToStop(
-        quaysById.get(i),
-        parentStation,
-        List.of(),
-        new T2<>(TransitMode.BUS, "UNKNOWN"),
-        WheelchairAccessibility.NO_INFORMATION
-      );
-      stopPatternBuilder.stops[i] = stop;
-      stopsById.add(stop);
-    }
-
-    ServiceLinkMapper serviceLinkMapper = new ServiceLinkMapper(
-      ID_FACTORY,
-      serviceLinksById,
-      quayIdByStopPointRef,
-      stopsById,
-      issueStore,
-      150
+    journeyPattern.setLinksInSequence(
+      new LinksInJourneyPattern_RelStructure()
+        .withServiceLinkInJourneyPatternOrTimingLinkInJourneyPattern(
+          new ServiceLinkInJourneyPattern_VersionedChildStructure()
+            .withServiceLinkRef(new ServiceLinkRefStructure().withRef("RUT:ServiceLink:1"))
+        )
+        .withServiceLinkInJourneyPatternOrTimingLinkInJourneyPattern(
+          new ServiceLinkInJourneyPattern_VersionedChildStructure()
+            .withServiceLinkRef(new ServiceLinkRefStructure().withRef("RUT:ServiceLink:2"))
+        )
+        .withServiceLinkInJourneyPatternOrTimingLinkInJourneyPattern(
+          new ServiceLinkInJourneyPattern_VersionedChildStructure()
+            .withServiceLinkRef(new ServiceLinkRefStructure().withRef("RUT:ServiceLink:2"))
+        )
     );
 
     List<LineString> shape = serviceLinkMapper.getGeometriesByJourneyPattern(
@@ -132,21 +233,23 @@ public class ServiceLinkMapperTest {
       stopPatternBuilder.build()
     );
 
+    assertEquals(1, issueStore.listIssues().size());
+
     Coordinate[] coordinates = shape.get(0).getCoordinates();
 
-    assertEquals(0, issueStore.getIssues().size());
-
-    assertEquals(COORDINATES[0], coordinates[0].getY(), 0.000001);
-    assertEquals(COORDINATES[1], coordinates[0].getX(), 0.000001);
-    assertEquals(COORDINATES[2], coordinates[1].getY(), 0.000001);
-    assertEquals(COORDINATES[3], coordinates[1].getX(), 0.000001);
+    // when the provided service links are invalid, the mapper falls back to
+    // generating straight-line ServiceLinks between the stops.
+    assertEquals(QUAY1_COORDINATES[0], coordinates[0].getY(), FLOATING_POINT_COMPARISON_PRECISION);
+    assertEquals(QUAY1_COORDINATES[1], coordinates[0].getX(), FLOATING_POINT_COMPARISON_PRECISION);
+    assertEquals(QUAY2_COORDINATES[0], coordinates[1].getY(), FLOATING_POINT_COMPARISON_PRECISION);
+    assertEquals(QUAY2_COORDINATES[1], coordinates[1].getX(), FLOATING_POINT_COMPARISON_PRECISION);
 
     coordinates = shape.get(1).getCoordinates();
 
-    assertEquals(COORDINATES[2], coordinates[0].getY(), 0.000001);
-    assertEquals(COORDINATES[3], coordinates[0].getX(), 0.000001);
-    assertEquals(COORDINATES[4], coordinates[1].getY(), 0.000001);
-    assertEquals(COORDINATES[5], coordinates[1].getX(), 0.000001);
+    assertEquals(QUAY2_COORDINATES[0], coordinates[0].getY(), FLOATING_POINT_COMPARISON_PRECISION);
+    assertEquals(QUAY2_COORDINATES[1], coordinates[0].getX(), FLOATING_POINT_COMPARISON_PRECISION);
+    assertEquals(QUAY3_COORDINATES[0], coordinates[1].getY(), FLOATING_POINT_COMPARISON_PRECISION);
+    assertEquals(QUAY3_COORDINATES[1], coordinates[1].getX(), FLOATING_POINT_COMPARISON_PRECISION);
   }
 
   private SimplePoint_VersionStructure getLocation(double latitude, double longitude) {

@@ -1,23 +1,22 @@
 package org.opentripplanner.ext.parkAndRideApi;
 
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
+import jakarta.ws.rs.core.Context;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.Response.Status;
 import java.util.Optional;
-import javax.ws.rs.GET;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
-import javax.ws.rs.core.Context;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.Response.Status;
-import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Envelope;
+import org.opentripplanner.framework.i18n.I18NString;
 import org.opentripplanner.routing.graphfinder.DirectGraphFinder;
 import org.opentripplanner.routing.graphfinder.GraphFinder;
 import org.opentripplanner.routing.vehicle_parking.VehicleParking;
 import org.opentripplanner.routing.vehicle_parking.VehicleParkingService;
 import org.opentripplanner.standalone.api.OtpServerRequestContext;
-import org.opentripplanner.transit.model.basic.I18NString;
 
 /**
  * Created by demory on 7/26/18.
@@ -43,7 +42,7 @@ public class ParkAndRideResource {
     //           - serverContext.graphFinder(). This needs at least a comment!
     //           - This can be replaced with a search done with the StopModel
     //           - if we have a radius search there.
-    this.graphFinder = new DirectGraphFinder(serverContext.transitService()::queryStopSpatialIndex);
+    this.graphFinder = new DirectGraphFinder(serverContext.transitService()::findRegularStops);
   }
 
   /** Envelopes are in latitude, longitude format */
@@ -75,7 +74,7 @@ public class ParkAndRideResource {
 
     var prs = vehicleParkingService
       .getCarParks()
-      .filter(lot -> envelope.contains(new Coordinate(lot.getX(), lot.getY())))
+      .filter(lot -> envelope.contains(lot.getCoordinate().asJtsCoordinate()))
       .filter(lot -> hasTransitStopsNearby(maxTransitDistance, lot))
       .map(ParkAndRideInfo::ofVehicleParking)
       .toList();
@@ -87,7 +86,10 @@ public class ParkAndRideResource {
     if (maxTransitDistance == null) {
       return true;
     } else {
-      var stops = graphFinder.findClosestStops(lot.getY(), lot.getX(), maxTransitDistance);
+      var stops = graphFinder.findClosestStops(
+        lot.getCoordinate().asJtsCoordinate(),
+        maxTransitDistance
+      );
       return !stops.isEmpty();
     }
   }
@@ -99,7 +101,11 @@ public class ParkAndRideResource {
         .map(I18NString::toString)
         .orElse(parking.getId().getId());
 
-      return new ParkAndRideInfo(name, parking.getX(), parking.getY());
+      return new ParkAndRideInfo(
+        name,
+        parking.getCoordinate().longitude(),
+        parking.getCoordinate().latitude()
+      );
     }
   }
 }

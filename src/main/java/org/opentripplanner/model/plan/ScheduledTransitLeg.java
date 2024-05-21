@@ -8,19 +8,27 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
+import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.LineString;
-import org.opentripplanner.common.geometry.SphericalDistanceLibrary;
+import org.opentripplanner.framework.geometry.GeometryUtils;
+import org.opentripplanner.framework.geometry.SphericalDistanceLibrary;
+import org.opentripplanner.framework.i18n.I18NString;
+import org.opentripplanner.framework.lang.DoubleUtils;
+import org.opentripplanner.framework.time.ServiceDateUtils;
+import org.opentripplanner.framework.tostring.ToStringBuilder;
 import org.opentripplanner.model.BookingInfo;
 import org.opentripplanner.model.PickDrop;
+import org.opentripplanner.model.fare.FareProductUse;
 import org.opentripplanner.model.plan.legreference.LegReference;
 import org.opentripplanner.model.plan.legreference.ScheduledTransitLegReference;
 import org.opentripplanner.model.transfer.ConstrainedTransfer;
 import org.opentripplanner.routing.alertpatch.TransitAlert;
-import org.opentripplanner.routing.core.TraverseMode;
-import org.opentripplanner.transit.model.basic.WheelchairAccessibility;
+import org.opentripplanner.transit.model.basic.Accessibility;
+import org.opentripplanner.transit.model.basic.TransitMode;
 import org.opentripplanner.transit.model.framework.AbstractTransitEntity;
 import org.opentripplanner.transit.model.network.Route;
 import org.opentripplanner.transit.model.network.TripPattern;
@@ -28,17 +36,14 @@ import org.opentripplanner.transit.model.organization.Agency;
 import org.opentripplanner.transit.model.organization.Operator;
 import org.opentripplanner.transit.model.site.StopLocation;
 import org.opentripplanner.transit.model.timetable.Trip;
+import org.opentripplanner.transit.model.timetable.TripOnServiceDate;
 import org.opentripplanner.transit.model.timetable.TripTimes;
-import org.opentripplanner.util.geometry.GeometryUtils;
-import org.opentripplanner.util.lang.DoubleUtils;
-import org.opentripplanner.util.lang.ToStringBuilder;
-import org.opentripplanner.util.time.ServiceDateUtils;
 
 /**
  * One leg of a trip -- that is, a temporally continuous piece of the journey that takes place on a
  * particular vehicle.
  */
-public class ScheduledTransitLeg implements Leg {
+public class ScheduledTransitLeg implements TransitLeg {
 
   protected final TripTimes tripTimes;
   protected final TripPattern tripPattern;
@@ -54,49 +59,48 @@ public class ScheduledTransitLeg implements Leg {
   private final int generalizedCost;
   protected final LocalDate serviceDate;
   protected final ZoneId zoneId;
+  private final TripOnServiceDate tripOnServiceDate;
   private double distanceMeters;
+  private final double directDistanceMeters;
   private final Float accessibilityScore;
+  private List<FareProductUse> fareProducts = List.of();
 
-  public ScheduledTransitLeg(
-    TripTimes tripTimes,
-    TripPattern tripPattern,
-    int boardStopIndexInPattern,
-    int alightStopIndexInPattern,
-    ZonedDateTime startTime,
-    ZonedDateTime endTime,
-    LocalDate serviceDate,
-    ZoneId zoneId,
-    ConstrainedTransfer transferFromPreviousLeg,
-    ConstrainedTransfer transferToNextLeg,
-    int generalizedCost,
-    @Nullable Float accessibilityScore
-  ) {
-    this.tripTimes = tripTimes;
-    this.tripPattern = tripPattern;
+  protected ScheduledTransitLeg(ScheduledTransitLegBuilder<?> builder) {
+    this.tripTimes = builder.tripTimes();
+    this.tripPattern = builder.tripPattern();
 
-    this.boardStopPosInPattern = boardStopIndexInPattern;
-    this.alightStopPosInPattern = alightStopIndexInPattern;
+    this.boardStopPosInPattern = builder.boardStopIndexInPattern();
+    this.alightStopPosInPattern = builder.alightStopIndexInPattern();
 
-    this.startTime = startTime;
-    this.endTime = endTime;
+    this.startTime = builder.startTime();
+    this.endTime = builder.endTime();
 
-    this.serviceDate = serviceDate;
-    this.zoneId = zoneId;
+    this.serviceDate = builder.serviceDate();
+    this.zoneId = Objects.requireNonNull(builder.zoneId());
 
-    this.transferFromPrevLeg = transferFromPreviousLeg;
-    this.transferToNextLeg = transferToNextLeg;
+    this.tripOnServiceDate = builder.tripOnServiceDate();
 
-    this.generalizedCost = generalizedCost;
+    this.transferFromPrevLeg = builder.transferFromPreviousLeg();
+    this.transferToNextLeg = builder.transferToNextLeg();
 
-    this.accessibilityScore = accessibilityScore;
+    this.generalizedCost = builder.generalizedCost();
+
+    this.accessibilityScore = builder.accessibilityScore();
     List<Coordinate> transitLegCoordinates = extractTransitLegCoordinates(
       tripPattern,
-      boardStopIndexInPattern,
-      alightStopIndexInPattern
+      builder.boardStopIndexInPattern(),
+      builder.alightStopIndexInPattern()
     );
     this.legGeometry = GeometryUtils.makeLineString(transitLegCoordinates);
 
     setDistanceMeters(getDistanceFromCoordinates(transitLegCoordinates));
+    this.directDistanceMeters =
+      getDistanceFromCoordinates(
+        List.of(
+          transitLegCoordinates.get(0),
+          transitLegCoordinates.get(transitLegCoordinates.size() - 1)
+        )
+      );
   }
 
   public ZoneId getZoneId() {
@@ -116,14 +120,11 @@ public class ScheduledTransitLeg implements Leg {
   }
 
   @Override
-  public boolean isTransitLeg() {
-    return true;
-  }
-
   public boolean isScheduledTransitLeg() {
     return true;
   }
 
+  @Override
   public ScheduledTransitLeg asScheduledTransitLeg() {
     return this;
   }
@@ -157,13 +158,32 @@ public class ScheduledTransitLeg implements Leg {
   }
 
   @Override
-  public WheelchairAccessibility getTripWheelchairAccessibility() {
+  public Accessibility getTripWheelchairAccessibility() {
     return tripTimes.getWheelchairAccessibility();
   }
 
   @Override
-  public TraverseMode getMode() {
-    return TraverseMode.fromTransitMode(getTrip().getMode());
+  public LegTime start() {
+    if (getRealTime()) {
+      return LegTime.of(startTime, getDepartureDelay());
+    } else {
+      return LegTime.ofStatic(startTime);
+    }
+  }
+
+  @Override
+  public LegTime end() {
+    if (getRealTime()) {
+      return LegTime.of(endTime, getArrivalDelay());
+    } else {
+      return LegTime.ofStatic(endTime);
+    }
+  }
+
+  @Override
+  @Nonnull
+  public TransitMode getMode() {
+    return getTrip().getMode();
   }
 
   @Override
@@ -217,19 +237,29 @@ public class ScheduledTransitLeg implements Leg {
     this.distanceMeters = DoubleUtils.roundTo2Decimals(distanceMeters);
   }
 
+  public double getDirectDistanceMeters() {
+    return directDistanceMeters;
+  }
+
   @Override
   public Integer getRouteType() {
     return getTrip().getRoute().getGtfsType();
   }
 
   @Override
-  public String getHeadsign() {
+  public I18NString getHeadsign() {
     return tripTimes.getHeadsign(boardStopPosInPattern);
   }
 
   @Override
   public LocalDate getServiceDate() {
     return serviceDate;
+  }
+
+  @Override
+  @Nullable
+  public TripOnServiceDate getTripOnServiceDate() {
+    return tripOnServiceDate;
   }
 
   @Override
@@ -245,17 +275,11 @@ public class ScheduledTransitLeg implements Leg {
   @Override
   public List<StopArrival> getIntermediateStops() {
     List<StopArrival> visits = new ArrayList<>();
+    var mapper = new StopArrivalMapper(zoneId, serviceDate, tripTimes);
 
     for (int i = boardStopPosInPattern + 1; i < alightStopPosInPattern; i++) {
       StopLocation stop = tripPattern.getStop(i);
-
-      StopArrival visit = new StopArrival(
-        Place.forStop(stop),
-        ServiceDateUtils.toZonedDateTime(serviceDate, zoneId, tripTimes.getArrivalTime(i)),
-        ServiceDateUtils.toZonedDateTime(serviceDate, zoneId, tripTimes.getDepartureTime(i)),
-        i,
-        tripTimes.getOriginalGtfsStopSequence(i)
-      );
+      final StopArrival visit = mapper.map(i, stop, getRealTime());
       visits.add(visit);
     }
     return visits;
@@ -319,12 +343,12 @@ public class ScheduledTransitLeg implements Leg {
 
   @Override
   public Integer getBoardingGtfsStopSequence() {
-    return tripTimes.getOriginalGtfsStopSequence(boardStopPosInPattern);
+    return tripTimes.gtfsSequenceOfStopIndex(boardStopPosInPattern);
   }
 
   @Override
   public Integer getAlightGtfsStopSequence() {
-    return tripTimes.getOriginalGtfsStopSequence(alightStopPosInPattern);
+    return tripTimes.gtfsSequenceOfStopIndex(alightStopPosInPattern);
   }
 
   @Override
@@ -332,18 +356,37 @@ public class ScheduledTransitLeg implements Leg {
     return generalizedCost;
   }
 
+  /**
+   * Construct a leg reference from this leg.
+   * If the trip is based on a TripOnServiceDate, the leg reference will contain the
+   * TripOnServiceDate id instead of the Trip id.
+   */
   @Override
   public LegReference getLegReference() {
     return new ScheduledTransitLegReference(
-      tripTimes.getTrip().getId(),
+      tripOnServiceDate == null ? tripTimes.getTrip().getId() : null,
       serviceDate,
       boardStopPosInPattern,
-      alightStopPosInPattern
+      alightStopPosInPattern,
+      tripPattern.getStops().get(boardStopPosInPattern).getId(),
+      tripPattern.getStops().get(alightStopPosInPattern).getId(),
+      tripOnServiceDate == null ? null : tripOnServiceDate.getId()
     );
   }
 
+  @Override
   public void addAlert(TransitAlert alert) {
     transitAlerts.add(alert);
+  }
+
+  @Override
+  public void setFareProducts(List<FareProductUse> products) {
+    this.fareProducts = List.copyOf(products);
+  }
+
+  @Override
+  public List<FareProductUse> fareProducts() {
+    return fareProducts;
   }
 
   @Override
@@ -353,24 +396,14 @@ public class ScheduledTransitLeg implements Leg {
   }
 
   public ScheduledTransitLeg withAccessibilityScore(Float score) {
-    return new ScheduledTransitLeg(
-      tripTimes,
-      tripPattern,
-      boardStopPosInPattern,
-      alightStopPosInPattern,
-      startTime,
-      endTime,
-      serviceDate,
-      zoneId,
-      transferFromPrevLeg,
-      transferToNextLeg,
-      generalizedCost,
-      score
-    );
+    return new ScheduledTransitLegBuilder<>(this).withAccessibilityScore(score).build();
   }
 
   /**
    * Should be used for debug logging only
+   * <p>
+   * The {@code legGeometry} and {@code transitAlerts} are skipped to avoid
+   * spamming logs. Explicit access should be used if needed.
    */
   @Override
   public String toString() {
@@ -387,10 +420,9 @@ public class ScheduledTransitLeg implements Leg {
       .addObjOp("agencyId", getAgency(), AbstractTransitEntity::getId)
       .addObjOp("routeId", getRoute(), AbstractTransitEntity::getId)
       .addObjOp("tripId", getTrip(), AbstractTransitEntity::getId)
-      .addStr("headsign", getHeadsign())
+      .addObj("headsign", getHeadsign())
       .addObj("serviceDate", serviceDate)
-      .addObj("legGeometry", legGeometry)
-      .addCol("transitAlerts", transitAlerts)
+      .addColSize("transitAlerts", transitAlerts)
       .addEnum("boardRule", getBoardRule())
       .addEnum("alightRule", getAlightRule())
       .addObj("transferFromPrevLeg", transferFromPrevLeg)

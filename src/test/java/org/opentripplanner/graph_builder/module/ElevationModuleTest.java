@@ -8,18 +8,17 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.LineString;
-import org.opentripplanner.common.geometry.SphericalDistanceLibrary;
+import org.opentripplanner.framework.geometry.GeometryUtils;
+import org.opentripplanner.framework.geometry.SphericalDistanceLibrary;
 import org.opentripplanner.graph_builder.module.ned.DegreeGridNEDTileSource;
 import org.opentripplanner.graph_builder.module.ned.ElevationModule;
 import org.opentripplanner.graph_builder.module.ned.NEDGridCoverageFactoryImpl;
-import org.opentripplanner.routing.edgetype.StreetEdge;
-import org.opentripplanner.routing.edgetype.StreetTraversalPermission;
 import org.opentripplanner.routing.graph.Graph;
-import org.opentripplanner.routing.vertextype.OsmVertex;
+import org.opentripplanner.street.model.StreetTraversalPermission;
+import org.opentripplanner.street.model.edge.StreetEdge;
+import org.opentripplanner.street.model.edge.StreetEdgeBuilder;
+import org.opentripplanner.street.model.vertex.OsmVertex;
 import org.opentripplanner.transit.model.framework.Deduplicator;
-import org.opentripplanner.transit.service.StopModel;
-import org.opentripplanner.transit.service.TransitModel;
-import org.opentripplanner.util.geometry.GeometryUtils;
 
 public class ElevationModuleTest {
 
@@ -36,11 +35,9 @@ public class ElevationModuleTest {
   public void testSetElevationOnEdgesUsingS3BucketTiles() {
     // create a graph with a StreetWithElevationEdge
     var deduplicator = new Deduplicator();
-    var stopModel = new StopModel();
     var graph = new Graph(deduplicator);
-    var transitModel = new TransitModel(stopModel, deduplicator);
-    OsmVertex from = new OsmVertex(graph, "from", -122.6932051, 45.5122964, 40513757);
-    OsmVertex to = new OsmVertex(graph, "to", -122.6903532, 45.5115309, 1677595882);
+    OsmVertex from = new OsmVertex(-122.6932051, 45.5122964, 40513757);
+    OsmVertex to = new OsmVertex(-122.6903532, 45.5115309, 1677595882);
     LineString geometry = GeometryUtils.makeLineString(
       -122.6932051,
       45.5122964,
@@ -84,15 +81,15 @@ public class ElevationModuleTest {
     for (int i = 1; i < coordinates.length; ++i) {
       length += SphericalDistanceLibrary.distance(coordinates[i - 1], coordinates[i]);
     }
-    StreetEdge edge = new StreetEdge(
-      from,
-      to,
-      geometry,
-      "Southwest College St",
-      length,
-      StreetTraversalPermission.ALL,
-      false
-    );
+    StreetEdge edge = new StreetEdgeBuilder<>()
+      .withFromVertex(from)
+      .withToVertex(to)
+      .withGeometry(geometry)
+      .withName("Southwest College St")
+      .withMeterLength(length)
+      .withPermission(StreetTraversalPermission.ALL)
+      .withBack(false)
+      .buildAndConnect();
 
     // create the elevation module
     File cacheDirectory = new File(ElevationModuleTest.class.getResource("ned").getFile());

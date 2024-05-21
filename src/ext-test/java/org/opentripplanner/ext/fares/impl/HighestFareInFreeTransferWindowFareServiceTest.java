@@ -1,5 +1,7 @@
 package org.opentripplanner.ext.fares.impl;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.opentripplanner.model.plan.TestItineraryBuilder.newItinerary;
 import static org.opentripplanner.transit.model._data.TransitModelForTest.FEED_ID;
 import static org.opentripplanner.transit.model._data.TransitModelForTest.id;
@@ -7,17 +9,17 @@ import static org.opentripplanner.transit.model._data.TransitModelForTest.id;
 import java.time.Duration;
 import java.util.LinkedList;
 import java.util.List;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.opentripplanner.ext.fares.model.FareAttribute;
+import org.opentripplanner.ext.fares.model.FareRuleSet;
+import org.opentripplanner.framework.i18n.NonLocalizedString;
+import org.opentripplanner.model.fare.FareProduct;
 import org.opentripplanner.model.plan.Itinerary;
 import org.opentripplanner.model.plan.PlanTestConstants;
-import org.opentripplanner.routing.core.Fare;
-import org.opentripplanner.routing.core.FareRuleSet;
-import org.opentripplanner.routing.core.Money;
 import org.opentripplanner.routing.fares.FareService;
+import org.opentripplanner.transit.model.basic.Money;
 import org.opentripplanner.transit.model.basic.TransitMode;
 import org.opentripplanner.transit.model.framework.FeedScopedId;
 import org.opentripplanner.transit.model.network.Route;
@@ -37,12 +39,13 @@ class HighestFareInFreeTransferWindowFareServiceTest implements PlanTestConstant
     String testCaseName, // used to create parameterized test name
     FareService fareService,
     Itinerary i,
-    float expectedFare
+    Money expectedFare
   ) {
-    Assertions.assertEquals(
-      Money.usDollars(Math.round(expectedFare * 100)),
-      fareService.getCost(i).getFare(Fare.FareType.regular)
-    );
+    var fares = fareService.calculateFares(i);
+    assertFalse(fares.getItineraryProducts().isEmpty());
+
+    var prices = fares.getItineraryProducts().stream().map(FareProduct::price).toList();
+    assertEquals(List.of(expectedFare), prices);
   }
 
   private static List<Arguments> createTestCases() {
@@ -57,10 +60,9 @@ class HighestFareInFreeTransferWindowFareServiceTest implements PlanTestConstant
     List<FareRuleSet> defaultFareRules = new LinkedList<>();
 
     // $1 fares
-    float oneDollar = 1.0f;
+    var oneDollar = Money.usDollars(1.0f);
     FareAttribute oneDollarFareAttribute = FareAttribute
       .of(new FeedScopedId(FEED_ID, "oneDollarAttribute"))
-      .setCurrencyType("USD")
       .setPrice(oneDollar)
       .build();
     FareRuleSet oneDollarRouteBasedFares = new FareRuleSet(oneDollarFareAttribute);
@@ -69,10 +71,9 @@ class HighestFareInFreeTransferWindowFareServiceTest implements PlanTestConstant
     defaultFareRules.add(oneDollarRouteBasedFares);
 
     // $2 fares
-    float twoDollars = 2.0f;
+    var twoDollars = Money.usDollars(2.0f);
     FareAttribute twoDollarFareAttribute = FareAttribute
       .of(new FeedScopedId(FEED_ID, "twoDollarAttribute"))
-      .setCurrencyType("USD")
       .setPrice(twoDollars)
       .build();
 
@@ -152,7 +153,7 @@ class HighestFareInFreeTransferWindowFareServiceTest implements PlanTestConstant
         "Two transit legs, second leg starts outside free transfer window",
         defaultFareService,
         twoTransitLegSecondRouteHappensAfterFreeTransferWindowPath,
-        oneDollar + oneDollar
+        oneDollar.plus(oneDollar)
       )
     );
 
@@ -168,7 +169,7 @@ class HighestFareInFreeTransferWindowFareServiceTest implements PlanTestConstant
         "Three transit legs, second leg starts outside free transfer window, third leg within second free transfer window",
         defaultFareService,
         threeTransitLegSecondRouteHappensAfterFreeTransferWindowPath,
-        oneDollar + oneDollar
+        oneDollar.plus(oneDollar)
       )
     );
 
@@ -184,7 +185,7 @@ class HighestFareInFreeTransferWindowFareServiceTest implements PlanTestConstant
         "Three transit legs, all starting outside free transfer window",
         defaultFareService,
         threeTransitLegAllOutsideFreeTransferWindowPath,
-        oneDollar + oneDollar + oneDollar
+        oneDollar.plus(oneDollar).plus(oneDollar)
       )
     );
 
@@ -225,6 +226,12 @@ class HighestFareInFreeTransferWindowFareServiceTest implements PlanTestConstant
   }
 
   private static Route route(String id, String name) {
-    return Route.of(id(id)).withLongName(name).withAgency(agency).withMode(TransitMode.BUS).build();
+    NonLocalizedString lName = new NonLocalizedString(name);
+    return Route
+      .of(id(id))
+      .withLongName(lName)
+      .withAgency(agency)
+      .withMode(TransitMode.BUS)
+      .build();
   }
 }

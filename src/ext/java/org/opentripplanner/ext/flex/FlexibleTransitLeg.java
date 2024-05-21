@@ -6,29 +6,34 @@ import java.time.ZonedDateTime;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import javax.annotation.Nonnull;
 import org.locationtech.jts.geom.LineString;
 import org.opentripplanner.ext.flex.edgetype.FlexTripEdge;
+import org.opentripplanner.framework.i18n.I18NString;
+import org.opentripplanner.framework.lang.DoubleUtils;
+import org.opentripplanner.framework.tostring.ToStringBuilder;
 import org.opentripplanner.model.BookingInfo;
 import org.opentripplanner.model.PickDrop;
+import org.opentripplanner.model.fare.FareProductUse;
 import org.opentripplanner.model.plan.Leg;
+import org.opentripplanner.model.plan.LegTime;
 import org.opentripplanner.model.plan.Place;
 import org.opentripplanner.model.plan.StopArrival;
+import org.opentripplanner.model.plan.TransitLeg;
 import org.opentripplanner.routing.alertpatch.TransitAlert;
-import org.opentripplanner.routing.core.TraverseMode;
-import org.opentripplanner.transit.model.basic.WheelchairAccessibility;
+import org.opentripplanner.transit.model.basic.Accessibility;
+import org.opentripplanner.transit.model.basic.TransitMode;
 import org.opentripplanner.transit.model.framework.AbstractTransitEntity;
 import org.opentripplanner.transit.model.network.Route;
 import org.opentripplanner.transit.model.organization.Agency;
 import org.opentripplanner.transit.model.organization.Operator;
 import org.opentripplanner.transit.model.timetable.Trip;
-import org.opentripplanner.util.lang.DoubleUtils;
-import org.opentripplanner.util.lang.ToStringBuilder;
 
 /**
  * One leg of a trip -- that is, a temporally continuous piece of the journey that takes place on a
  * particular vehicle, which is running on flexible trip, i.e. not using fixed schedule and stops.
  */
-public class FlexibleTransitLeg implements Leg {
+public class FlexibleTransitLeg implements TransitLeg {
 
   private final FlexTripEdge edge;
 
@@ -39,6 +44,7 @@ public class FlexibleTransitLeg implements Leg {
   private final Set<TransitAlert> transitAlerts = new HashSet<>();
 
   private final int generalizedCost;
+  private List<FareProductUse> fareProducts;
 
   public FlexibleTransitLeg(
     FlexTripEdge flexTripEdge,
@@ -52,11 +58,6 @@ public class FlexibleTransitLeg implements Leg {
     this.endTime = endTime;
 
     this.generalizedCost = generalizedCost;
-  }
-
-  @Override
-  public boolean isTransitLeg() {
-    return true;
   }
 
   @Override
@@ -80,13 +81,24 @@ public class FlexibleTransitLeg implements Leg {
   }
 
   @Override
-  public WheelchairAccessibility getTripWheelchairAccessibility() {
+  public Accessibility getTripWheelchairAccessibility() {
     return edge.getFlexTrip().getTrip().getWheelchairBoarding();
   }
 
   @Override
-  public TraverseMode getMode() {
-    return TraverseMode.fromTransitMode(getTrip().getMode());
+  public LegTime start() {
+    return LegTime.ofStatic(startTime);
+  }
+
+  @Override
+  public LegTime end() {
+    return LegTime.ofStatic(endTime);
+  }
+
+  @Override
+  @Nonnull
+  public TransitMode getMode() {
+    return getTrip().getMode();
   }
 
   @Override
@@ -115,7 +127,7 @@ public class FlexibleTransitLeg implements Leg {
   }
 
   @Override
-  public String getHeadsign() {
+  public I18NString getHeadsign() {
     return getTrip().getHeadsign();
   }
 
@@ -184,6 +196,7 @@ public class FlexibleTransitLeg implements Leg {
     return generalizedCost;
   }
 
+  @Override
   public void addAlert(TransitAlert alert) {
     transitAlerts.add(alert);
   }
@@ -202,6 +215,16 @@ public class FlexibleTransitLeg implements Leg {
     }
 
     return copy;
+  }
+
+  @Override
+  public void setFareProducts(List<FareProductUse> products) {
+    this.fareProducts = List.copyOf(products);
+  }
+
+  @Override
+  public List<FareProductUse> fareProducts() {
+    return fareProducts;
   }
 
   /**

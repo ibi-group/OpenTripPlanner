@@ -7,7 +7,7 @@
     <url>https://opentripplanner.org</url>
     <groupId>org.opentripplanner</groupId>
     <artifactId>otp</artifactId>
-    <version>2.2.0-SNAPSHOT</version>
+    <version>2.6.0-SNAPSHOT</version>
     <packaging>jar</packaging>
 
     <licenses>
@@ -21,20 +21,57 @@
         <url>https://github.com/opentripplanner/OpenTripPlanner</url>
     </scm>
 
+    <!--
+      Developer entries are provided for the main contributors on the GitHub stats page for to the
+      dev-2.x branch. This minimal information is only present to meet the Sonatype artifact upload
+      requirements. For other contributors, see
+      https://github.com/opentripplanner/OpenTripPlanner/graphs/contributors
+    -->
+    <developers>
+        <developer>
+            <name>Andrew Byrd</name>
+            <email>andrew@fastmail.net</email>
+            <organization>Conveyal</organization>
+            <organizationUrl>http://conveyal.com/</organizationUrl>
+        </developer>
+        <developer>
+            <name>Thomas Gran</name>
+            <email>t2gran@gmail.com</email>
+            <organization>Entur</organization>
+            <organizationUrl>http://entur.org/</organizationUrl>
+        </developer>
+        <developer>
+            <name>Leonard Ehrenfried</name>
+            <email>mail@leonard.io</email>
+            <organization>Independent Contractor</organization>
+            <organizationUrl>https://leonard.io</organizationUrl>
+        </developer>
+        <developer>
+            <name>Hannes Junnila</name>
+            <email>hannes.junnila@gmail.com</email>
+            <organization>Entur</organization>
+            <organizationUrl>http://entur.org/</organizationUrl>
+        </developer>
+    </developers>
+
+
     <properties>
-        <otp.serialization.version.id>55</otp.serialization.version.id>
+        <otp.serialization.version.id>150</otp.serialization.version.id>
         <!-- Lib versions - keep list sorted on property name -->
         <aws.sdk.version>2.15.0</aws.sdk.version>
-        <geotools.version>27.0</geotools.version>
-        <google.dagger.version>2.42</google.dagger.version>
-        <jackson.version>2.13.3</jackson.version>
-        <jersey.version>2.34</jersey.version>
-        <junit.version>5.8.2</junit.version>
-        <micrometer.version>1.8.3</micrometer.version>
-        <netcdf4.version>5.5.2</netcdf4.version>
-        <netty.version>4.1.74.Final</netty.version>
-        <lucene.version>9.1.0</lucene.version>
-        <graphql.version>18.3</graphql.version>
+        <geotools.version>31.0</geotools.version>
+        <google.dagger.version>2.51.1</google.dagger.version>
+        <jackson.version>2.17.1</jackson.version>
+        <jersey.version>3.1.6</jersey.version>
+        <junit.version>5.10.2</junit.version>
+        <micrometer.version>1.13.0</micrometer.version>
+        <netcdf4.version>5.5.3</netcdf4.version>
+        <logback.version>1.5.6</logback.version>
+        <lucene.version>9.10.0</lucene.version>
+        <slf4j.version>2.0.13</slf4j.version>
+        <netex-java-model.version>2.0.15</netex-java-model.version>
+        <siri-java-model.version>1.26</siri-java-model.version>
+        <jaxb-runtime.version>4.0.5</jaxb-runtime.version>
         <!-- Other properties -->
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <GITHUB_REPOSITORY>opentripplanner/OpenTripPlanner</GITHUB_REPOSITORY>
@@ -42,8 +79,9 @@
              When running `mvn jacoco:prepare-agent test` argLine is replaced with the one activating the agent.
         -->
         <argLine/>
-        <plugin.prettier.version>0.17</plugin.prettier.version>
+        <plugin.prettier.version>0.22</plugin.prettier.version>
         <plugin.prettier.goal>write</plugin.prettier.goal>
+
     </properties>
 
     <distributionManagement>
@@ -73,15 +111,6 @@
                 <targetPath>client</targetPath>
                 <filtering>false</filtering>
             </resource>
-            <resource>
-                <!-- Shell scripts to start up OTP, need to be filtered to insert the JAR file name. -->
-                <!-- These are treated as testResources rather than resources to keep them out of the JAR. -->
-                <!-- The staging repo will reject a JAR containing them as they use traversal paths (../..). -->
-                <directory>src/scripts</directory>
-                <filtering>true</filtering>
-                <!-- Copy the scripts up into the root of the repo, not /target/classes -->
-                <targetPath>../..</targetPath>
-            </resource>
         </resources>
         <testResources>
             <testResource>
@@ -89,6 +118,15 @@
             </testResource>
             <testResource>
                 <directory>src/ext-test/resources</directory>
+            </testResource>
+            <testResource>
+                <!-- Shell scripts to start up OTP, need to be filtered to insert the JAR file name. -->
+                <!-- These are treated as testResources rather than resources to keep them out of the JAR. -->
+                <!-- The staging repo will reject a JAR containing them as they use traversal paths (../..). -->
+                <directory>src/scripts</directory>
+                <filtering>true</filtering>
+                <!-- Copy the scripts up into the root of the repo, not /target/classes -->
+                <targetPath>../..</targetPath>
             </testResource>
         </testResources>
         <extensions>
@@ -98,17 +136,17 @@
             <extension>
                 <groupId>kr.motd.maven</groupId>
                 <artifactId>os-maven-plugin</artifactId>
-                <version>1.6.2</version>
+                <version>1.7.1</version>
             </extension>
         </extensions>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.8.1</version>
+                <version>3.13.0</version>
                 <configuration>
                     <!-- Target Java version -->
-                    <release>17</release>
+                    <release>21</release>
                     <annotationProcessorPaths>
                         <path>
                             <groupId>com.google.dagger</groupId>
@@ -121,7 +159,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
-                <version>3.2.0</version>
+                <version>3.4.1</version>
                 <configuration>
                     <archive>
                         <manifestEntries>
@@ -132,28 +170,23 @@
                         </manifestEntries>
                     </archive>
                 </configuration>
-            </plugin>
-            <plugin>
-                <groupId>com.webcohesion.enunciate</groupId>
-                <artifactId>enunciate-maven-plugin</artifactId>
-                <version>2.13.3</version>
                 <executions>
                     <execution>
-                        <!-- override default binding to process-sources phase (enunciate generates web services). -->
-                        <phase>site</phase>
-                        <goals>
-                            <goal>docs</goal>
-                        </goals>
+                        <!-- OTP includes an empty javadoc.jar file. See docs/javadoc/README.md -->
+                        <id>package-javadoc</id>
+                        <phase>package</phase>
+                        <goals><goal>jar</goal></goals>
+                        <configuration>
+                            <classesDirectory>${basedir}/docs/javadoc</classesDirectory>
+                            <classifier>javadoc</classifier>
+                        </configuration>
                     </execution>
                 </executions>
-                <configuration>
-                    <docsDir>${project.build.directory}/site/enunciate</docsDir>
-                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-source-plugin</artifactId>
-                <version>3.1.0</version>
+                <version>3.3.1</version>
                 <executions>
                     <execution>
                         <id>attach-sources</id>
@@ -163,10 +196,21 @@
                     </execution>
                 </executions>
             </plugin>
+            <!-- we are seeing random failures in Windows CI builds which appear related to the
+                 properties files: https://issues.apache.org/jira/browse/MRESOURCES-265
+            -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <version>3.3.1</version>
+                <configuration>
+                    <propertiesEncoding>UTF-8</propertiesEncoding>
+                </configuration>
+            </plugin>
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>build-helper-maven-plugin</artifactId>
-                <version>3.0.0</version>
+                <version>3.5.0</version>
                 <executions>
                     <execution>
                         <id>build-helper-generate-sources</id>
@@ -196,17 +240,17 @@
                     </execution>
                 </executions>
             </plugin>
-
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-site-plugin</artifactId>
-                <version>3.11.0</version>
-            </plugin>
-
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <version>3.0.0-M5</version>
+                <version>3.2.5</version>
+                <dependencies>
+                    <dependency>
+                        <groupId>me.fabriciorby</groupId>
+                        <artifactId>maven-surefire-junit5-tree-reporter</artifactId>
+                        <version>1.2.1</version>
+                    </dependency>
+                </dependencies>
                 <configuration>
                     <!-- we have to fork the JVM during tests so that the argLine is passed along -->
                     <forkCount>3</forkCount>
@@ -220,37 +264,56 @@
                         --add-opens java.base/java.io=ALL-UNNAMED
                         --add-opens java.base/java.lang=ALL-UNNAMED
                         --add-opens java.base/java.lang.module=ALL-UNNAMED
+                        --add-opens java.base/java.lang.invoke=ALL-UNNAMED
+                        --add-opens java.base/java.lang.ref=ALL-UNNAMED
                         --add-opens java.base/java.math=ALL-UNNAMED
                         --add-opens java.base/java.net=ALL-UNNAMED
                         --add-opens java.base/java.text=ALL-UNNAMED
                         --add-opens java.base/java.time=ALL-UNNAMED
                         --add-opens java.base/java.time.zone=ALL-UNNAMED
+                        --add-opens java.base/java.time.format=ALL-UNNAMED
+                        --add-opens java.base/java.time.temporal=ALL-UNNAMED
+                        --add-opens java.base/java.time.chrono=ALL-UNNAMED
                         --add-opens java.base/java.util=ALL-UNNAMED
                         --add-opens java.base/java.util.concurrent.locks=ALL-UNNAMED
                         --add-opens java.base/java.util.regex=ALL-UNNAMED
+                        --add-opens java.base/java.util.concurrent.atomic=ALL-UNNAMED
                         --add-opens java.base/jdk.internal.reflect=ALL-UNNAMED
                         --add-opens java.base/jdk.internal.misc=ALL-UNNAMED
                         --add-opens java.base/jdk.internal.loader=ALL-UNNAMED
                         --add-opens java.base/jdk.internal.ref=ALL-UNNAMED
                         --add-opens java.base/jdk.internal.util=ALL-UNNAMED
-                        --add-opens java.base/jdk.internal.util.jar=ALL-UNNAMED
                         --add-opens java.base/jdk.internal.module=ALL-UNNAMED
                         --add-opens java.base/sun.net.www.protocol.http=ALL-UNNAMED
                         --add-opens java.base/sun.net.www.protocol.jar=ALL-UNNAMED
                         --add-opens java.base/sun.util.calendar=ALL-UNNAMED
                         --add-opens java.base/sun.util.locale=ALL-UNNAMED
+                        --add-opens java.base/sun.invoke.util=ALL-UNNAMED
                         --add-opens java.xml/org.xml.sax.helpers=ALL-UNNAMED
                     </argLine>
                     <!-- Jenkins needs XML test reports to determine whether the build is stable. -->
                     <disableXmlReport>true</disableXmlReport>
-                    <trimStackTrace>false</trimStackTrace>
+                    <reportFormat>plain</reportFormat>
+                    <consoleOutputReporter>
+                        <disable>true</disable>
+                    </consoleOutputReporter>
+                    <statelessTestsetInfoReporter implementation="org.apache.maven.plugin.surefire.extensions.junit5.JUnit5StatelessTestsetInfoTreeReporter">
+                        <printStacktraceOnError>true</printStacktraceOnError>
+                        <printStacktraceOnFailure>true</printStacktraceOnFailure>
+                        <printStdoutOnError>true</printStdoutOnError>
+                        <printStdoutOnFailure>true</printStdoutOnFailure>
+                        <printStdoutOnSuccess>false</printStdoutOnSuccess>
+                        <printStderrOnError>true</printStderrOnError>
+                        <printStderrOnFailure>true</printStderrOnFailure>
+                        <printStderrOnSuccess>false</printStderrOnSuccess>
+                    </statelessTestsetInfoReporter>
                 </configuration>
             </plugin>
             <!-- code coverage report -->
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
-                <version>0.8.8</version>
+                <version>0.8.12</version>
             </plugin>
             <plugin>
                 <!-- Get current Git commit information for use in MavenVersion class.
@@ -259,7 +322,7 @@
                   but we need the Maven project version as well, so we perform substitution. -->
                 <groupId>io.github.git-commit-id</groupId>
                 <artifactId>git-commit-id-maven-plugin</artifactId>
-                <version>5.0.0</version>
+                <version>8.0.2</version>
                 <executions>
                     <execution>
                         <goals>
@@ -269,6 +332,7 @@
                 </executions>
                 <configuration>
                     <verbose>false</verbose>
+                    <dateFormat>yyyy-MM-dd'T'HH:mm:ssXXX</dateFormat>
                     <includeOnlyProperties>
                         <!-- Including each property used reduce the plugin execution time. -->
                         <includeOnlyProperty>git.commit.id</includeOnlyProperty>
@@ -300,7 +364,7 @@
                   properly if some input files are missing a terminating newline) -->
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
-                <version>3.2.1</version>
+                <version>3.5.3</version>
                 <executions>
                     <execution>
                         <phase>package</phase>
@@ -323,6 +387,7 @@
                               for deployment in the way source and docs are. -->
                             <shadedArtifactAttached>true</shadedArtifactAttached>
                             <shadedClassifierName>shaded</shadedClassifierName>
+                            <createDependencyReducedPom>false</createDependencyReducedPom>
                             <!-- MinimizeJar removes unused classes, (classes not imported explicitly by name).
                               We have eliminated most Jersey auto-scanning, but there is still some need for include
                               filters to force-include classes that are dynamically loaded by name/auto-scanned. -->
@@ -359,7 +424,7 @@
                 <artifactId>prettier-maven-plugin</artifactId>
                 <version>${plugin.prettier.version}</version>
                 <configuration>
-                    <prettierJavaVersion>1.6.1</prettierJavaVersion>
+                    <prettierJavaVersion>2.0.0</prettierJavaVersion>
                     <inputGlobs>
                         <inputGlob>src/main/java/**/*.java</inputGlob>
                         <inputGlob>src/test/java/**/*.java</inputGlob>
@@ -380,7 +445,7 @@
             <plugin>
                 <groupId>com.google.cloud.tools</groupId>
                 <artifactId>jib-maven-plugin</artifactId>
-                <version>3.2.1</version>
+                <version>3.4.2</version>
                 <configuration>
                     <container>
                         <mainClass>org.opentripplanner.standalone.OTPMain</mainClass>
@@ -395,6 +460,19 @@
                             <port>8081</port>
                         </ports>
                     </container>
+                    <from>
+                        <image>eclipse-temurin:21-jre</image>
+                        <platforms>
+                            <platform>
+                                <architecture>amd64</architecture>
+                                <os>linux</os>
+                            </platform>
+                            <platform>
+                                <architecture>arm64</architecture>
+                                <os>linux</os>
+                            </platform>
+                        </platforms>
+                    </from>
                     <to>
                         <image>${env.CONTAINER_REPO}</image>
                         <auth>
@@ -434,7 +512,7 @@
                     </execution>
                 </executions>
                 <configuration>
-                    <protocArtifact>com.google.protobuf:protoc:3.19.2:exe:${os.detected.classifier}</protocArtifact>
+                    <protocArtifact>com.google.protobuf:protoc:3.22.0:exe:${os.detected.classifier}</protocArtifact>
                 </configuration>
             </plugin>
         </plugins>
@@ -476,25 +554,38 @@
                 <!-- This make sure all google libraries are using compatible versions. -->
                 <groupId>com.google.cloud</groupId>
                 <artifactId>libraries-bom</artifactId>
-                <version>24.1.2</version>
+                <version>26.34.0</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
+
         </dependencies>
     </dependencyManagement>
 
     <dependencies>
-        <!-- Logging library, implements slf4j logging API -->
+        <!-- Logging API -->
         <dependency>
-            <groupId>ch.qos.logback</groupId>
-            <artifactId>logback-classic</artifactId>
-            <version>1.2.11</version>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>${slf4j.version}</version>
         </dependency>
         <!-- Jersey uses java.util logging, redirect it to slf4j API (we use the Logback implementation) -->
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>jul-to-slf4j</artifactId>
-            <version>1.7.36</version>
+            <version>${slf4j.version}</version>
+        </dependency>
+        <!-- Logging library, implements slf4j logging API -->
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+            <version>${logback.version}</version>
+        </dependency>
+        <!-- JSON-formatted logging -->
+        <dependency>
+            <groupId>net.logstash.logback</groupId>
+            <artifactId>logstash-logback-encoder</artifactId>
+            <version>7.4</version>
         </dependency>
 
         <!-- dependency injection -->
@@ -502,20 +593,6 @@
             <groupId>com.google.dagger</groupId>
             <artifactId>dagger</artifactId>
             <version>${google.dagger.version}</version>
-        </dependency>
-
-        <!-- JSON AST, not used much and is a good candidate for removal -->
-        <dependency>
-            <groupId>com.googlecode.json-simple</groupId>
-            <artifactId>json-simple</artifactId>
-            <version>1.1.1</version>
-            <exclusions>
-                <!-- This includes a dependency on an ancient version of Junit which we want to exclude -->
-                <exclusion>
-                    <groupId>junit</groupId>
-                    <artifactId>junit</artifactId>
-                </exclusion>
-            </exclusions>
         </dependency>
 
         <!-- GEOTOOLS AND JTS TOPOLOGY: geometry, rasters and projections. -->
@@ -533,12 +610,7 @@
         </dependency>
         <dependency>
             <groupId>org.geotools</groupId>
-            <artifactId>gt-opengis</artifactId>
-            <version>${geotools.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.geotools</groupId>
-            <artifactId>gt-wfs-ng</artifactId>
+            <artifactId>gt-api</artifactId>
             <version>${geotools.version}</version>
         </dependency>
         <dependency>
@@ -571,11 +643,6 @@
         </dependency>
         <dependency>
             <groupId>io.micrometer</groupId>
-            <artifactId>micrometer-jersey2</artifactId>
-            <version>${micrometer.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>io.micrometer</groupId>
             <artifactId>micrometer-registry-influx</artifactId>
             <version>${micrometer.version}</version>
             <scope>test</scope>
@@ -596,39 +663,27 @@
         <dependency>
             <groupId>org.entur</groupId>
             <artifactId>netex-java-model</artifactId>
-            <version>1.0.13</version>
+            <version>${netex-java-model.version}</version>
         </dependency>
 
         <!-- SIRI -->
         <dependency>
             <groupId>org.entur</groupId>
             <artifactId>siri-java-model</artifactId>
-            <version>0.12</version>
+            <version>${siri-java-model.version}</version>
         </dependency>
 
         <!-- XML <-> protobuf-mapper for SIRI-->
         <dependency>
             <groupId>org.entur</groupId>
             <artifactId>siri-protobuf-mapper</artifactId>
-            <version>0.8</version>
+            <version>1.0.3</version>
         </dependency>
 
         <dependency>
             <groupId>org.entur.gbfs</groupId>
             <artifactId>gbfs-java-model</artifactId>
-            <version>2.2.6</version>
-        </dependency>
-
-        <!--
-            The jaxb-api provides annotations like XmlElement indicating how classes should be (de)serialized.
-            The jaxb-runtime pulls in the jaxb-api of the same version transitively. But we specify both api and
-            runtime dependencies anyway here at the top level to prevent transitive dependencies from pulling in
-            mismatched versions. This is overriding an older version of jaxb-api pulled in by the netex-java-model.
-        -->
-        <dependency>
-            <groupId>javax.xml.bind</groupId>
-            <artifactId>jaxb-api</artifactId>
-            <version>2.3.1</version>
+            <version>3.1.3</version>
         </dependency>
 
         <!-- TESTING -->
@@ -647,13 +702,13 @@
         <dependency>
             <groupId>com.tngtech.archunit</groupId>
             <artifactId>archunit</artifactId>
-            <version>0.23.1</version>
+            <version>1.3.0</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.mockito</groupId>
             <artifactId>mockito-core</artifactId>
-            <version>4.4.0</version>
+            <version>5.12.0</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -667,15 +722,21 @@
         <dependency>
             <groupId>com.conveyal</groupId>
             <artifactId>kryo-tools</artifactId>
-            <version>1.4.0</version>
+            <version>1.6.0</version>
+        </dependency>
+        <!-- kryo serializers for Guava types !-->
+        <dependency>
+            <groupId>de.javakaffee</groupId>
+            <artifactId>kryo-serializers</artifactId>
+            <version>0.45</version>
         </dependency>
         <!-- Direct dependency with -jre version, in order to not resolve to the limited -android version -->
         <dependency>
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
-            <version>31.1-jre</version>
+            <version>33.0.0-jre</version>
         </dependency>
-        <!-- Jersey annontation-driven REST web services (JAX-RS implementation) -->
+        <!-- Jersey annotation-driven REST web services (JAX-RS implementation) -->
         <dependency>
             <groupId>org.glassfish.jersey.core</groupId>
             <artifactId>jersey-server</artifactId>
@@ -704,7 +765,7 @@
         <dependency>
             <groupId>org.glassfish.jaxb</groupId>
             <artifactId>jaxb-runtime</artifactId>
-            <version>2.3.6</version>
+            <version>${jaxb-runtime.version}</version>
         </dependency>
 
         <!-- Jackson modules. -->
@@ -734,6 +795,15 @@
             <groupId>software.amazon.awssdk</groupId>
             <artifactId>s3</artifactId>
         </dependency>
+        <!--
+            jersey pulls in older versions of this dependency which are binary-incompatible
+            with the latest jackson version, so we need to explicitly define them here
+         -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-annotations</artifactId>
+            <version>${jackson.version}</version>
+        </dependency>
 
         <!--
           Google library imports
@@ -758,18 +828,17 @@
             <artifactId>protobuf-java</artifactId>
         </dependency>
 
-        <!-- Asynchronous Websocket-capable client, for message-driven incremental GTFS-RT -->
-        <!-- AsyncHttpClient Websockets need a newer version of Grizzly than Jersey does. -->
-        <dependency>
-            <groupId>org.asynchttpclient</groupId>
-            <artifactId>async-http-client</artifactId>
-            <version>2.12.3</version>
-        </dependency>
         <!-- OBA GTFS loader -->
         <dependency>
             <groupId>org.onebusaway</groupId>
             <artifactId>onebusaway-gtfs</artifactId>
-            <version>1.3.103</version>
+            <version>1.4.17</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-simple</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <!-- Processing is used for the debug GUI (though we could probably use just Java2D) -->
         <dependency>
@@ -798,17 +867,17 @@
         <dependency>
             <groupId>com.graphql-java</groupId>
             <artifactId>graphql-java</artifactId>
-            <version>${graphql.version}</version>
+            <version>21.5</version>
         </dependency>
         <dependency>
             <groupId>com.graphql-java</groupId>
             <artifactId>graphql-java-extended-scalars</artifactId>
-            <version>18.1</version>
+            <version>21.0</version>
         </dependency>
         <dependency>
-            <groupId>org.apache.httpcomponents</groupId>
-            <artifactId>httpclient</artifactId>
-            <version>4.5.13</version>
+            <groupId>org.apache.httpcomponents.client5</groupId>
+            <artifactId>httpclient5</artifactId>
+            <version>5.3.1</version>
         </dependency>
         <dependency>
             <groupId>commons-cli</groupId>
@@ -827,9 +896,9 @@
             <version>1.2.5</version>
         </dependency>
         <dependency>
-            <groupId>com.wdtinc</groupId>
+            <groupId>io.github.ci-cmg</groupId>
             <artifactId>mapbox-vector-tile</artifactId>
-            <version>3.1.0</version>
+            <version>4.0.6</version>
         </dependency>
         <dependency>
             <groupId>net.objecthunter</groupId>
@@ -839,27 +908,31 @@
         <dependency>
             <groupId>com.azure</groupId>
             <artifactId>azure-core</artifactId>
-            <version>1.21.0</version>
+            <version>1.46.0</version>
         </dependency>
         <dependency>
             <groupId>com.azure</groupId>
             <artifactId>azure-messaging-servicebus</artifactId>
-            <version>7.4.2</version>
+            <version>7.15.0</version>
         </dependency>
         <dependency>
-            <groupId>com.microsoft.azure</groupId>
-            <artifactId>azure-servicebus</artifactId>
-            <version>3.6.5</version>
-        </dependency>
-        <dependency>
-            <groupId>com.azure.resourcemanager</groupId>
-            <artifactId>azure-resourcemanager-servicebus</artifactId>
-            <version>2.9.0</version>
+            <groupId>com.azure</groupId>
+            <artifactId>azure-identity</artifactId>
+            <version>1.11.2</version>
+            <scope>compile</scope>
         </dependency>
         <dependency>
             <groupId>ch.poole</groupId>
             <artifactId>OpeningHoursParser</artifactId>
-            <version>0.27.0</version>
+            <version>0.28.2</version>
+        </dependency>
+
+        <!-- create zip test files-->
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-compress</artifactId>
+            <version>1.26.1</version>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 
@@ -874,9 +947,15 @@
         <profile>
             <id>prettierSkip</id>
             <activation>
-                <os>
-                    <family>Windows</family>
-                </os>
+                <property>
+                    <!--
+                      This works as a short alias to enable this from the command line. To skip
+                      prettier, set the 'ps' system property with the '-D ps' parameter:
+                      # mvn test -D ps
+                    -->
+                    <name>ps</name>
+                    <value/>
+                </property>
             </activation>
             <build>
                 <plugins>
@@ -907,6 +986,54 @@
                                     </includes>
                                 </fileset>
                             </filesets>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>deployGitHub</id>
+            <distributionManagement>
+                <repository>
+                    <id>github</id>
+                    <name>OpenTripPlanner Maven Repository on Github Packages</name>
+                    <url>https://maven.pkg.github.com/${GITHUB_REPOSITORY}/</url>
+                </repository>
+            </distributionManagement>
+        </profile>
+        <profile>
+            <id>release</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-gpg-plugin</artifactId>
+                        <version>3.2.4</version>
+                        <executions>
+                            <execution>
+                                <id>sign-artifacts</id>
+                                <!-- We sign in the verify phase, which means it will happen before install and deploy (the last two phases)
+                                     but not before earlier phases like test or package. -->
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>sign</goal>
+                                </goals>
+                                <configuration>
+                                    <keyname>74ED86891C2BCCD1352D928460B7785172A9FE89</keyname>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <!-- Recommended way to deploy to OSSRH , which allows deferred manual release to Central. -->
+                        <groupId>org.sonatype.plugins</groupId>
+                        <artifactId>nexus-staging-maven-plugin</artifactId>
+                        <version>1.6.13</version>
+                        <extensions>true</extensions>
+                        <configuration>
+                            <serverId>ossrh</serverId>
+                            <nexusUrl>https://oss.sonatype.org/</nexusUrl>
+                            <autoReleaseAfterClose>true</autoReleaseAfterClose>
                         </configuration>
                     </plugin>
                 </plugins>

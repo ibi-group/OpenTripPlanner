@@ -4,18 +4,20 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.opentripplanner.transit.model._data.TransitModelForTest.id;
 
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.opentripplanner.routing.edgetype.StreetTraversalPermission;
-import org.opentripplanner.routing.edgetype.StreetVehicleParkingLink;
-import org.opentripplanner.routing.edgetype.VehicleParkingEdge;
+import org.opentripplanner.framework.geometry.WgsCoordinate;
 import org.opentripplanner.routing.graph.Graph;
-import org.opentripplanner.routing.vehicle_parking.VehicleParking;
 import org.opentripplanner.routing.vehicle_parking.VehicleParkingHelper;
 import org.opentripplanner.routing.vehicle_parking.VehicleParkingTestGraphData;
-import org.opentripplanner.routing.vehicle_parking.VehicleParkingTestUtil;
-import org.opentripplanner.routing.vertextype.IntersectionVertex;
-import org.opentripplanner.routing.vertextype.VehicleParkingEntranceVertex;
+import org.opentripplanner.street.model.StreetTraversalPermission;
+import org.opentripplanner.street.model._data.StreetModelForTest;
+import org.opentripplanner.street.model.edge.StreetVehicleParkingLink;
+import org.opentripplanner.street.model.edge.VehicleParkingEdge;
+import org.opentripplanner.street.model.vertex.IntersectionVertex;
+import org.opentripplanner.street.model.vertex.VehicleParkingEntranceVertex;
+import org.opentripplanner.street.model.vertex.VertexFactory;
 import org.opentripplanner.transit.service.TransitModel;
 
 public class VehicleParkingLinkingTest {
@@ -25,6 +27,10 @@ public class VehicleParkingLinkingTest {
   private IntersectionVertex A;
   private IntersectionVertex B;
 
+  private VertexFactory vertexFactory;
+
+  private VehicleParkingHelper helper;
+
   @BeforeEach
   public void setup() {
     VehicleParkingTestGraphData graphData = new VehicleParkingTestGraphData();
@@ -33,17 +39,21 @@ public class VehicleParkingLinkingTest {
     transitModel = graphData.getTransitModel();
     A = graphData.getAVertex();
     B = graphData.getBVertex();
+    vertexFactory = new VertexFactory(graph);
+    helper = new VehicleParkingHelper(graph);
   }
 
   @Test
   public void entranceWithVertexLinkingTest() {
-    var parking = VehicleParking
-      .builder()
-      .entrance(builder -> builder.entranceId(id("1")).vertex(A))
+    var parking = StreetModelForTest
+      .vehicleParking()
+      .entrance(builder ->
+        builder.entranceId(id("1")).coordinate(new WgsCoordinate(A.getCoordinate())).vertex(A)
+      )
       .build();
-    var parkingVertex = new VehicleParkingEntranceVertex(graph, parking.getEntrances().get(0));
+    var parkingVertex = vertexFactory.vehicleParkingEntrance(parking);
 
-    StreetLinkerModule.linkStreetsForTestOnly(graph, transitModel);
+    TestStreetLinkerModule.link(graph, transitModel);
 
     assertEquals(1, parkingVertex.getOutgoing().size());
     parkingVertex.getOutgoing().forEach(e -> assertEquals(e.getToVertex(), A));
@@ -54,15 +64,19 @@ public class VehicleParkingLinkingTest {
 
   @Test
   public void entranceWithoutVertexLinkingTest() {
-    var parking = VehicleParking
-      .builder()
+    var parking = StreetModelForTest
+      .vehicleParking()
       .entrance(builder ->
-        builder.entranceId(id("1")).x(0.0001).y(0).carAccessible(true).walkAccessible(true)
+        builder
+          .entranceId(id("1"))
+          .coordinate(new WgsCoordinate(0, 0.0001))
+          .carAccessible(true)
+          .walkAccessible(true)
       )
       .build();
-    var parkingVertex = new VehicleParkingEntranceVertex(graph, parking.getEntrances().get(0));
+    var parkingVertex = vertexFactory.vehicleParkingEntrance(parking.getEntrances().get(0));
 
-    StreetLinkerModule.linkStreetsForTestOnly(graph, transitModel);
+    TestStreetLinkerModule.link(graph, transitModel);
 
     var streetLinks = graph.getEdgesOfType(StreetVehicleParkingLink.class);
     assertEquals(2, streetLinks.size());
@@ -74,21 +88,29 @@ public class VehicleParkingLinkingTest {
 
   @Test
   public void carParkingEntranceToAllTraversableStreetLinkingTest() {
-    var C = new IntersectionVertex(graph, "C", 0.0001, 0.0001);
-    var D = new IntersectionVertex(graph, "D", 0.01, 0.01);
-    VehicleParkingTestUtil.createStreet(C, D, StreetTraversalPermission.CAR);
+    var C = StreetModelForTest.intersectionVertex("C", 0.0001, 0.0001);
+    var D = StreetModelForTest.intersectionVertex("D", 0.01, 0.01);
 
-    VehicleParkingTestUtil.createStreet(A, C, StreetTraversalPermission.NONE);
+    graph.addVertex(C);
+    graph.addVertex(D);
 
-    var parking = VehicleParking
-      .builder()
+    StreetModelForTest.streetEdge(C, D, StreetTraversalPermission.CAR);
+
+    StreetModelForTest.streetEdge(A, C, StreetTraversalPermission.NONE);
+
+    var parking = StreetModelForTest
+      .vehicleParking()
       .entrance(builder ->
-        builder.entranceId(id("1")).x(0.0001).y(0).carAccessible(true).walkAccessible(true)
+        builder
+          .entranceId(id("1"))
+          .coordinate(new WgsCoordinate(0, 0.0001))
+          .carAccessible(true)
+          .walkAccessible(true)
       )
       .build();
-    var parkingVertex = new VehicleParkingEntranceVertex(graph, parking.getEntrances().get(0));
+    var parkingVertex = vertexFactory.vehicleParkingEntrance(parking.getEntrances().get(0));
 
-    StreetLinkerModule.linkStreetsForTestOnly(graph, transitModel);
+    TestStreetLinkerModule.link(graph, transitModel);
 
     var streetLinks = graph.getEdgesOfType(StreetVehicleParkingLink.class);
     assertEquals(4, streetLinks.size());
@@ -100,19 +122,30 @@ public class VehicleParkingLinkingTest {
 
   @Test
   public void removeEntranceWithNonExistingVertexTest() {
-    var vehicleParking = VehicleParking
-      .builder()
-      .id(id("VP"))
+    var vehicleParking = StreetModelForTest
+      .vehicleParking()
       .bicyclePlaces(true)
-      .entrance(builder -> builder.entranceId(id("Entrance-1")).vertex(A).walkAccessible(true))
-      .entrance(builder -> builder.entranceId(id("Entrance-2")).vertex(B).walkAccessible(true))
+      .entrance(builder ->
+        builder
+          .entranceId(id("Entrance-1"))
+          .coordinate(new WgsCoordinate(A.getCoordinate()))
+          .vertex(A)
+          .walkAccessible(true)
+      )
+      .entrance(builder ->
+        builder
+          .entranceId(id("Entrance-2"))
+          .coordinate(new WgsCoordinate(B.getCoordinate()))
+          .vertex(B)
+          .walkAccessible(true)
+      )
       .build();
 
-    VehicleParkingHelper.linkVehicleParkingToGraph(graph, vehicleParking);
+    helper.linkVehicleParkingToGraph(vehicleParking);
 
     graph.remove(A);
 
-    StreetLinkerModule.linkStreetsForTestOnly(graph, transitModel);
+    TestStreetLinkerModule.link(graph, transitModel);
 
     assertEquals(1, vehicleParking.getEntrances().size());
 
@@ -124,20 +157,25 @@ public class VehicleParkingLinkingTest {
 
   @Test
   public void removeVehicleParkingWithOneEntranceAndNonExistingVertexTest() {
-    var vehicleParking = VehicleParking
-      .builder()
-      .id(id("VP"))
+    var vehicleParking = StreetModelForTest
+      .vehicleParking()
       .bicyclePlaces(true)
-      .entrance(builder -> builder.entranceId(id("Entrance-1")).vertex(A).walkAccessible(true))
+      .entrance(builder ->
+        builder
+          .entranceId(id("Entrance-1"))
+          .coordinate(new WgsCoordinate(A.getCoordinate()))
+          .vertex(A)
+          .walkAccessible(true)
+      )
       .build();
 
     var vehicleParkingService = graph.getVehicleParkingService();
-    vehicleParkingService.addVehicleParking(vehicleParking);
-    VehicleParkingHelper.linkVehicleParkingToGraph(graph, vehicleParking);
+    vehicleParkingService.updateVehicleParking(List.of(vehicleParking), List.of());
+    helper.linkVehicleParkingToGraph(vehicleParking);
 
     graph.remove(A);
 
-    StreetLinkerModule.linkStreetsForTestOnly(graph, transitModel);
+    TestStreetLinkerModule.link(graph, transitModel);
 
     assertEquals(0, graph.getVerticesOfType(VehicleParkingEntranceVertex.class).size());
 

@@ -5,7 +5,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Stream;
 import javax.annotation.Nonnull;
-import org.opentripplanner.ext.flex.FlexParameters;
 import org.opentripplanner.ext.flex.FlexServiceDate;
 import org.opentripplanner.ext.flex.flexpathcalculator.FlexPathCalculator;
 import org.opentripplanner.ext.flex.template.FlexAccessTemplate;
@@ -14,9 +13,10 @@ import org.opentripplanner.model.BookingInfo;
 import org.opentripplanner.model.PickDrop;
 import org.opentripplanner.model.StopTime;
 import org.opentripplanner.routing.graphfinder.NearbyStop;
+import org.opentripplanner.standalone.config.sandbox.FlexConfig;
 import org.opentripplanner.transit.model.framework.AbstractTransitEntity;
-import org.opentripplanner.transit.model.site.FlexLocationGroup;
-import org.opentripplanner.transit.model.site.FlexStopLocation;
+import org.opentripplanner.transit.model.site.AreaStop;
+import org.opentripplanner.transit.model.site.GroupStop;
 import org.opentripplanner.transit.model.site.StopLocation;
 import org.opentripplanner.transit.model.timetable.Trip;
 
@@ -40,36 +40,62 @@ public abstract class FlexTrip<T extends FlexTrip<T, B>, B extends FlexTripBuild
   }
 
   public static boolean isFlexStop(StopLocation stop) {
-    return stop instanceof FlexLocationGroup || stop instanceof FlexStopLocation;
+    return stop instanceof GroupStop || stop instanceof AreaStop;
   }
 
   public abstract Stream<FlexAccessTemplate> getFlexAccessTemplates(
     NearbyStop access,
     FlexServiceDate date,
     FlexPathCalculator calculator,
-    FlexParameters params
+    FlexConfig config
   );
 
   public abstract Stream<FlexEgressTemplate> getFlexEgressTemplates(
     NearbyStop egress,
     FlexServiceDate date,
     FlexPathCalculator calculator,
-    FlexParameters params
+    FlexConfig config
   );
 
+  /**
+   * Earliest departure time from fromStopIndex to toStopIndex, which departs after departureTime,
+   * and for which the flex trip has a duration of flexTime seconds.
+   *
+   * @return {@link StopTime#MISSING_VALUE} is returned if a departure does not exist.
+   */
   public abstract int earliestDepartureTime(
     int departureTime,
     int fromStopIndex,
     int toStopIndex,
-    int flexTime
+    int flexTripDurationSeconds
   );
 
+  /**
+   * Earliest departure time from fromStopIndex.
+   *
+   * @return {@link StopTime#MISSING_VALUE} is returned if a departure does not exist.
+   */
+  public abstract int earliestDepartureTime(int stopIndex);
+
+  /**
+   * Latest arrival time to toStopIndex from fromStopIndex, which arrives before arrivalTime,
+   * and for which the flex trip has a duration of flexTime seconds.
+   *
+   * @return {@link StopTime#MISSING_VALUE} is returned if a departure does not exist.
+   */
   public abstract int latestArrivalTime(
     int arrivalTime,
     int fromStopIndex,
     int toStopIndex,
-    int flexTime
+    int tripDurationSeconds
   );
+
+  /**
+   * Latest arrival time to toStopIndex.
+   *
+   * @return {@link StopTime#MISSING_VALUE} is returned if a departure does not exist.
+   */
+  public abstract int latestArrivalTime(int stopIndex);
 
   /**
    * Returns all the stops that are in this trip.

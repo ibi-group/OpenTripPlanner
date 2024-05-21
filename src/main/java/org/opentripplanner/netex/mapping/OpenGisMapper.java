@@ -10,8 +10,8 @@ import org.locationtech.jts.geom.CoordinateSequence;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.LinearRing;
 import org.locationtech.jts.geom.Polygon;
-import org.opentripplanner.api.resource.CoordinateArrayListSequence;
-import org.opentripplanner.util.geometry.GeometryUtils;
+import org.opentripplanner.framework.geometry.CoordinateArrayListSequence;
+import org.opentripplanner.framework.geometry.GeometryUtils;
 
 /**
  * This maps from the OpenGIS PolygonType to LocationTech geometry.
@@ -19,7 +19,7 @@ import org.opentripplanner.util.geometry.GeometryUtils;
 class OpenGisMapper {
 
   static Geometry mapGeometry(PolygonType polygonType) {
-    return new Polygon(
+    Polygon polygon = new Polygon(
       new LinearRing(
         mapCoordinateSequence(polygonType.getExterior()),
         GeometryUtils.getGeometryFactory()
@@ -31,6 +31,10 @@ class OpenGisMapper {
         .toArray(LinearRing[]::new),
       GeometryUtils.getGeometryFactory()
     );
+    if (!polygon.isValid()) {
+      throw new IllegalArgumentException("The polygon has an invalid geometry");
+    }
+    return polygon;
   }
 
   private static CoordinateSequence mapCoordinateSequence(

@@ -10,7 +10,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Envelope;
 import org.opentripplanner.ext.flex.FlexIndex;
 import org.opentripplanner.model.FeedInfo;
@@ -32,10 +31,11 @@ import org.opentripplanner.transit.model.network.Route;
 import org.opentripplanner.transit.model.network.TripPattern;
 import org.opentripplanner.transit.model.organization.Agency;
 import org.opentripplanner.transit.model.organization.Operator;
-import org.opentripplanner.transit.model.site.FlexStopLocation;
+import org.opentripplanner.transit.model.site.AreaStop;
+import org.opentripplanner.transit.model.site.GroupStop;
 import org.opentripplanner.transit.model.site.MultiModalStation;
+import org.opentripplanner.transit.model.site.RegularStop;
 import org.opentripplanner.transit.model.site.Station;
-import org.opentripplanner.transit.model.site.Stop;
 import org.opentripplanner.transit.model.site.StopLocation;
 import org.opentripplanner.transit.model.site.StopLocationsGroup;
 import org.opentripplanner.transit.model.timetable.Trip;
@@ -50,6 +50,7 @@ public interface TransitService {
   Collection<String> getFeedIds();
 
   Collection<Agency> getAgencies();
+  Optional<Agency> findAgencyById(FeedScopedId id);
 
   FeedInfo getFeedInfo(String feedId);
 
@@ -89,19 +90,23 @@ public interface TransitService {
 
   Operator getOperatorForId(FeedScopedId id);
 
-  StopLocation getRegularStop(FeedScopedId id);
+  RegularStop getRegularStop(FeedScopedId id);
 
   Collection<StopLocation> listStopLocations();
 
-  Collection<Stop> listRegularStops();
+  Collection<RegularStop> listRegularStops();
+
+  Collection<GroupStop> listGroupStops();
 
   StopLocation getStopLocation(FeedScopedId parseId);
+
+  Collection<StopLocation> getStopOrChildStops(FeedScopedId id);
 
   Collection<StopLocationsGroup> listStopLocationGroups();
 
   StopLocationsGroup getStopLocationsGroup(FeedScopedId id);
 
-  FlexStopLocation getLocationById(FeedScopedId id);
+  AreaStop getAreaStop(FeedScopedId id);
 
   Trip getTripForId(FeedScopedId id);
 
@@ -129,7 +134,8 @@ public interface TransitService {
   List<StopTimesInPattern> getStopTimesForStop(
     StopLocation stop,
     LocalDate serviceDate,
-    ArrivalDeparture arrivalDeparture
+    ArrivalDeparture arrivalDeparture,
+    boolean includeCancellations
   );
 
   List<TripTimeOnDate> stopTimesForPatternAtStop(
@@ -138,7 +144,8 @@ public interface TransitService {
     Instant startTime,
     Duration timeRange,
     int numberOfDepartures,
-    ArrivalDeparture arrivalDeparture
+    ArrivalDeparture arrivalDeparture,
+    boolean includeCancellations
   );
 
   Collection<GroupOfRoutes> getGroupsOfRoutes();
@@ -179,13 +186,36 @@ public interface TransitService {
 
   ZonedDateTime getTransitServiceStarts();
 
-  Optional<Coordinate> getCenter();
-
   TransferService getTransferService();
 
   boolean transitFeedCovers(Instant dateTime);
 
-  Collection<Stop> queryStopSpatialIndex(Envelope envelope);
+  Collection<RegularStop> findRegularStops(Envelope envelope);
+
+  Collection<AreaStop> findAreaStops(Envelope envelope);
 
   GraphUpdaterStatus getUpdaterStatus();
+
+  /**
+   * For a {@link StopLocationsGroup} get all child stops and get their modes.
+   * <p>
+   * The mode is either taken from {@link StopLocation#getGtfsVehicleType()} (if non-null)
+   * or from the list of patterns that use the stop location.
+   * <p>
+   * The returning stream is ordered by the number of occurrences of the mode in the child stops.
+   * So, if more patterns of mode BUS than RAIL visit the group, the result will be [BUS,RAIL].
+   */
+  List<TransitMode> getModesOfStopLocationsGroup(StopLocationsGroup station);
+  /**
+   * For a {@link StopLocation} return its modes.
+   * <p>
+   * The mode is either taken from {@link StopLocation#getGtfsVehicleType()} (if non-null)
+   * or from the list of patterns that use the stop location.
+   * <p>
+   * If {@link StopLocation#getGtfsVehicleType()} is null the returning stream is ordered by the number
+   * of occurrences of the mode in the stop.
+   * <p>
+   * So, if more patterns of mode BUS than RAIL visit the stop, the result will be [BUS,RAIL].
+   */
+  List<TransitMode> getModesOfStopLocation(StopLocation stop);
 }

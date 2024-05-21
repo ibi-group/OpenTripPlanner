@@ -2,13 +2,13 @@ package org.opentripplanner.updater.vehicle_rental.datasources;
 
 import java.util.Map;
 import java.util.stream.Collectors;
-import org.entur.gbfs.v2_2.station_information.GBFSRentalUris;
-import org.entur.gbfs.v2_2.station_information.GBFSStation;
-import org.opentripplanner.routing.vehicle_rental.RentalVehicleType;
-import org.opentripplanner.routing.vehicle_rental.VehicleRentalStation;
-import org.opentripplanner.routing.vehicle_rental.VehicleRentalStationUris;
-import org.opentripplanner.routing.vehicle_rental.VehicleRentalSystem;
-import org.opentripplanner.transit.model.basic.NonLocalizedString;
+import org.entur.gbfs.v2_3.station_information.GBFSRentalUris;
+import org.entur.gbfs.v2_3.station_information.GBFSStation;
+import org.opentripplanner.framework.i18n.NonLocalizedString;
+import org.opentripplanner.service.vehiclerental.model.RentalVehicleType;
+import org.opentripplanner.service.vehiclerental.model.VehicleRentalStation;
+import org.opentripplanner.service.vehiclerental.model.VehicleRentalStationUris;
+import org.opentripplanner.service.vehiclerental.model.VehicleRentalSystem;
 import org.opentripplanner.transit.model.framework.FeedScopedId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,15 +20,18 @@ public class GbfsStationInformationMapper {
   private final VehicleRentalSystem system;
   private final Map<String, RentalVehicleType> vehicleTypes;
   private final boolean allowKeepingRentedVehicleAtDestination;
+  private final boolean overloadingAllowed;
 
   public GbfsStationInformationMapper(
     VehicleRentalSystem system,
     Map<String, RentalVehicleType> vehicleTypes,
-    boolean allowKeepingRentedVehicleAtDestination
+    boolean allowKeepingRentedVehicleAtDestination,
+    boolean overloadingAllowed
   ) {
     this.system = system;
     this.vehicleTypes = vehicleTypes;
     this.allowKeepingRentedVehicleAtDestination = allowKeepingRentedVehicleAtDestination;
+    this.overloadingAllowed = overloadingAllowed;
   }
 
   public VehicleRentalStation mapStationInformation(GBFSStation station) {
@@ -92,7 +95,7 @@ public class GbfsStationInformationMapper {
           )
         : null;
 
-    rentalStation.isKeepingVehicleRentalAtDestinationAllowed =
+    rentalStation.isArrivingInRentalVehicleAtDestinationAllowed =
       allowKeepingRentedVehicleAtDestination;
 
     GBFSRentalUris rentalUris = station.getRentalUris();
@@ -102,6 +105,7 @@ public class GbfsStationInformationMapper {
       String webUri = rentalUris.getWeb();
       rentalStation.rentalUris = new VehicleRentalStationUris(androidUri, iosUri, webUri);
     }
+    rentalStation.overloadingAllowed = overloadingAllowed;
     return rentalStation;
   }
 }

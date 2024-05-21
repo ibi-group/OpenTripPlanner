@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
+import org.opentripplanner.framework.i18n.NonLocalizedString;
 import org.opentripplanner.transit.model._data.TransitModelForTest;
 import org.opentripplanner.transit.model.basic.SubMode;
 import org.opentripplanner.transit.model.basic.TransitMode;
@@ -19,7 +20,7 @@ class RouteTest {
 
   private static final String ID = "1";
   private static final String SHORT_NAME = "short name";
-  private static final String LONG_NAME = "long name";
+  private static final NonLocalizedString LONG_NAME = new NonLocalizedString("long name");
   private static final String DESCRIPTION = "description";
 
   private static final BikeAccess BIKE_ACCESS = BikeAccess.ALLOWED;
@@ -27,13 +28,11 @@ class RouteTest {
   private static final String NETEX_SUBMODE_NAME = "submode";
   private static final SubMode NETEX_SUBMODE = SubMode.of(NETEX_SUBMODE_NAME);
   private static final Operator OPERATOR = Operator
-    .of(FeedScopedId.parseId("x:operatorId"))
+    .of(FeedScopedId.parse("x:operatorId"))
     .withName("operator name")
     .build();
 
-  private static final Branding BRANDING = Branding
-    .of(FeedScopedId.parseId("x:brandingId"))
-    .build();
+  private static final Branding BRANDING = Branding.of(FeedScopedId.parse("x:brandingId")).build();
   private static final String COLOR = "color";
   private static final String TEXT_COLOR = "text color";
   private static final int GTFS_TYPE = 0;
@@ -99,7 +98,7 @@ class RouteTest {
     assertTrue(subject.sameAs(subject.copy().build()));
     assertFalse(subject.sameAs(subject.copy().withId(TransitModelForTest.id("X")).build()));
     assertFalse(subject.sameAs(subject.copy().withShortName("X").build()));
-    assertFalse(subject.sameAs(subject.copy().withLongName("X").build()));
+    assertFalse(subject.sameAs(subject.copy().withLongName(new NonLocalizedString("X")).build()));
     assertFalse(subject.sameAs(subject.copy().withDescription("X").build()));
     assertFalse(subject.sameAs(subject.copy().withBikesAllowed(BikeAccess.NOT_ALLOWED).build()));
     assertFalse(subject.sameAs(subject.copy().withMode(TransitMode.RAIL).build()));
@@ -110,7 +109,7 @@ class RouteTest {
           .copy()
           .withOperator(
             Operator
-              .of(FeedScopedId.parseId("x:otherOperatorId"))
+              .of(FeedScopedId.parse("x:otherOperatorId"))
               .withName("other operator name")
               .build()
           )
@@ -122,14 +121,14 @@ class RouteTest {
       subject.sameAs(
         subject
           .copy()
-          .withBranding(Branding.of(FeedScopedId.parseId("x:otherBrandingId")).build())
+          .withBranding(Branding.of(FeedScopedId.parse("x:otherBrandingId")).build())
           .build()
       )
     );
     assertFalse(subject.sameAs(subject.copy().withColor("X").build()));
     assertFalse(subject.sameAs(subject.copy().withTextColor("X").build()));
     assertFalse(subject.sameAs(subject.copy().withGtfsType(-1).build()));
-    assertFalse(subject.sameAs(subject.copy().withGtfsSortOrder(-1).build()));
+    assertFalse(subject.sameAs(subject.copy().withGtfsSortOrder(99).build()));
     assertFalse(subject.sameAs(subject.copy().withFlexibleLineType("X").build()));
     assertFalse(subject.sameAs(subject.copy().withUrl("X").build()));
   }

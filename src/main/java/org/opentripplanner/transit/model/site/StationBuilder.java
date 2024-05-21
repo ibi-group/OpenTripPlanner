@@ -1,8 +1,8 @@
 package org.opentripplanner.transit.model.site;
 
 import java.time.ZoneId;
-import org.opentripplanner.transit.model.basic.I18NString;
-import org.opentripplanner.transit.model.basic.WgsCoordinate;
+import org.opentripplanner.framework.geometry.WgsCoordinate;
+import org.opentripplanner.framework.i18n.I18NString;
 import org.opentripplanner.transit.model.framework.AbstractEntityBuilder;
 import org.opentripplanner.transit.model.framework.FeedScopedId;
 
@@ -15,6 +15,7 @@ public class StationBuilder extends AbstractEntityBuilder<Station, StationBuilde
   private StopTransferPriority priority;
   private I18NString url;
   private ZoneId timezone;
+  private boolean transfersNotAllowed = false;
 
   StationBuilder(FeedScopedId id) {
     super(id);
@@ -29,6 +30,7 @@ public class StationBuilder extends AbstractEntityBuilder<Station, StationBuilde
     this.priority = original.getPriority();
     this.url = original.getUrl();
     this.timezone = original.getTimezone();
+    this.transfersNotAllowed = original.isTransfersNotAllowed();
   }
 
   public I18NString getName() {
@@ -96,6 +98,15 @@ public class StationBuilder extends AbstractEntityBuilder<Station, StationBuilde
 
   public StationBuilder withTimezone(ZoneId timezone) {
     this.timezone = timezone;
+    return this;
+  }
+
+  public boolean isTransfersNotAllowed() {
+    return transfersNotAllowed;
+  }
+
+  public StationBuilder withTransfersNotAllowed(boolean transfersNotAllowed) {
+    this.transfersNotAllowed = transfersNotAllowed;
     return this;
   }
 

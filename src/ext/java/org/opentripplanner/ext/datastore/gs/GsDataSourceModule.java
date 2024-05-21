@@ -2,12 +2,12 @@ package org.opentripplanner.ext.datastore.gs;
 
 import dagger.Module;
 import dagger.Provides;
+import jakarta.inject.Singleton;
 import javax.annotation.Nullable;
-import javax.inject.Singleton;
 import org.opentripplanner.datastore.api.GoogleStorageDSRepository;
 import org.opentripplanner.datastore.api.OtpDataStoreConfig;
 import org.opentripplanner.datastore.base.DataSourceRepository;
-import org.opentripplanner.util.OTPFeature;
+import org.opentripplanner.framework.application.OTPFeature;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

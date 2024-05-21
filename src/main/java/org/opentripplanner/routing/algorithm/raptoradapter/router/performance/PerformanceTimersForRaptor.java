@@ -3,9 +3,9 @@ package org.opentripplanner.routing.algorithm.raptoradapter.router.performance;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import java.util.Collection;
+import org.opentripplanner.raptor.api.debug.RaptorTimers;
 import org.opentripplanner.routing.api.request.RoutingTag;
 import org.opentripplanner.routing.framework.MicrometerUtils;
-import org.opentripplanner.transit.raptor.api.debug.RaptorTimers;
 
 public class PerformanceTimersForRaptor implements RaptorTimers {
 
@@ -13,12 +13,16 @@ public class PerformanceTimersForRaptor implements RaptorTimers {
   private final Timer timerRoute;
   private final Timer findTransitPerRound;
   private final Timer findTransfersPerRound;
+  private final MeterRegistry registry;
+  private final Collection<RoutingTag> routingTags;
 
   public PerformanceTimersForRaptor(
     String namePrefix,
     Collection<RoutingTag> routingTags,
     MeterRegistry registry
   ) {
+    this.registry = registry;
+    this.routingTags = routingTags;
     var tags = MicrometerUtils.mapTimingTags(routingTags);
     timerRoute = Timer.builder("raptor." + namePrefix + ".route").tags(tags).register(registry);
     findTransitPerRound =
@@ -52,5 +56,10 @@ public class PerformanceTimersForRaptor implements RaptorTimers {
   @Override
   public void findTransfersForRound(Runnable body) {
     findTransfersPerRound.record(body);
+  }
+
+  @Override
+  public RaptorTimers withNamePrefix(String namePrefix) {
+    return new PerformanceTimersForRaptor(namePrefix, routingTags, registry);
   }
 }

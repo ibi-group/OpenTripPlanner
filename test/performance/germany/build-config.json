@@ -1,0 +1,12 @@
+{
+  "transitServiceStart": "2022-01-01",
+  "transitServiceEnd": "2022-12-31",
+  "transitFeeds": [
+    {
+      "type": "gtfs",
+      "source": "https://otp-performance.leonard.io/data/germany/germany-2022-08-23.tidy.gtfs.zip",
+      "feedId": "1",
+      "discardMinTransferTimes": true
+    }
+  ]
+}

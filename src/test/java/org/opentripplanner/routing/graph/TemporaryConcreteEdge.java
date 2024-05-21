@@ -1,48 +1,54 @@
 package org.opentripplanner.routing.graph;
 
-import org.locationtech.jts.geom.LineString;
-import org.opentripplanner.common.geometry.SphericalDistanceLibrary;
-import org.opentripplanner.routing.core.State;
-import org.opentripplanner.routing.core.StateEditor;
-import org.opentripplanner.routing.core.TraverseMode;
-import org.opentripplanner.routing.edgetype.TemporaryEdge;
-import org.opentripplanner.routing.vertextype.TemporaryVertex;
-import org.opentripplanner.transit.model.basic.I18NString;
+import javax.annotation.Nonnull;
+import org.opentripplanner.framework.geometry.SphericalDistanceLibrary;
+import org.opentripplanner.framework.i18n.I18NString;
+import org.opentripplanner.street.model.edge.Edge;
+import org.opentripplanner.street.model.edge.TemporaryEdge;
+import org.opentripplanner.street.model.vertex.TemporaryVertex;
+import org.opentripplanner.street.model.vertex.Vertex;
+import org.opentripplanner.street.search.TraverseMode;
+import org.opentripplanner.street.search.state.State;
+import org.opentripplanner.street.search.state.StateEditor;
 
 public class TemporaryConcreteEdge extends Edge implements TemporaryEdge {
 
-  public TemporaryConcreteEdge(TemporaryVertex v1, Vertex v2) {
+  private TemporaryConcreteEdge(TemporaryVertex v1, Vertex v2) {
     super((Vertex) v1, v2);
     if (v1.isEndVertex()) {
       throw new IllegalStateException("A temporary edge is directed away from an end vertex");
     }
   }
 
-  public TemporaryConcreteEdge(Vertex v1, TemporaryVertex v2) {
+  private TemporaryConcreteEdge(Vertex v1, TemporaryVertex v2) {
     super(v1, (Vertex) v2);
     if (!v2.isEndVertex()) {
       throw new IllegalStateException("A temporary edge is directed towards a start vertex");
     }
   }
 
+  public static TemporaryConcreteEdge createTemporaryConcreteEdge(TemporaryVertex v1, Vertex v2) {
+    return connectToGraph(new TemporaryConcreteEdge(v1, v2));
+  }
+
+  public static TemporaryConcreteEdge createTemporaryConcreteEdge(Vertex v1, TemporaryVertex v2) {
+    return connectToGraph(new TemporaryConcreteEdge(v1, v2));
+  }
+
   @Override
-  public State traverse(State s0) {
+  @Nonnull
+  public State[] traverse(State s0) {
     double d = getDistanceMeters();
-    TraverseMode mode = s0.getNonTransitMode();
-    int t = (int) (d / s0.getOptions().getSpeed(mode, false));
+    TraverseMode mode = s0.currentMode();
+    int t = (int) (d / s0.getPreferences().getSpeed(mode, false));
     StateEditor s1 = s0.edit(this);
     s1.incrementTimeInSeconds(t);
     s1.incrementWeight(d);
-    return s1.makeState();
+    return s1.makeStateArray();
   }
 
   @Override
   public I18NString getName() {
-    return null;
-  }
-
-  @Override
-  public LineString getGeometry() {
     return null;
   }
 

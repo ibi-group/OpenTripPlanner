@@ -1,12 +1,12 @@
 package org.opentripplanner.ext.siri.updater;
 
-import java.io.IOException;
-import java.io.InputStream;
+import java.time.Duration;
 import java.time.ZonedDateTime;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
-import org.opentripplanner.ext.siri.SiriHttpUtils;
+import javax.annotation.Nullable;
+import org.opentripplanner.framework.io.OtpHttpClientException;
+import org.opentripplanner.updater.spi.HttpHeaders;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import uk.org.siri.siri20.Siri;
@@ -14,7 +14,7 @@ import uk.org.siri.siri20.Siri;
 public class SiriETHttpTripUpdateSource implements EstimatedTimetableSource {
 
   private static final Logger LOG = LoggerFactory.getLogger(SiriETHttpTripUpdateSource.class);
-  private static final Map<String, String> requestHeaders = new HashMap<>();
+
   /**
    * Feed id that is used to match trip ids in the TripUpdates
    */
@@ -22,10 +22,9 @@ public class SiriETHttpTripUpdateSource implements EstimatedTimetableSource {
 
   private final String url;
 
+  private final SiriLoader siriLoader;
   private final String requestorRef;
 
-  private final int timeout;
-  private final int previewIntervalMillis;
   /**
    * True iff the last list with updates represent all updates that are active right now, i.e. all
    * previous updates should be disregarded
@@ -34,69 +33,44 @@ public class SiriETHttpTripUpdateSource implements EstimatedTimetableSource {
   private ZonedDateTime lastTimestamp = ZonedDateTime.now().minusMonths(1);
 
   public SiriETHttpTripUpdateSource(Parameters parameters) {
-    this.feedId = parameters.getFeedId();
-    this.url = parameters.getUrl();
+    this.feedId = parameters.feedId();
+    this.url = parameters.url();
+
     this.requestorRef =
-      parameters.getRequestorRef() == null || parameters.getRequestorRef().isEmpty()
+      parameters.requestorRef() == null || parameters.requestorRef().isEmpty()
         ? "otp-" + UUID.randomUUID()
-        : parameters.getRequestorRef();
-    this.timeout = parameters.getTimeoutSec() > 0 ? 1000 * parameters.getTimeoutSec() : -1;
+        : parameters.requestorRef();
 
-    int min = parameters.getPreviewIntervalMinutes();
-    this.previewIntervalMillis = min > 0 ? 1000 * 60 * min : -1;
-
-    requestHeaders.put("ET-Client-Name", SiriHttpUtils.getUniqueETClientName("-ET"));
+    this.siriLoader = createLoader(url, parameters);
   }
 
   @Override
-  public Siri getUpdates() {
+  public Optional<Siri> getUpdates() {
     long t1 = System.currentTimeMillis();
-    long creating = 0;
-    long fetching = 0;
-    long unmarshalling = 0;
     try {
-      String etServiceRequest = SiriHelper.createETServiceRequestAsXml(
-        requestorRef,
-        previewIntervalMillis
-      );
-      creating = System.currentTimeMillis() - t1;
-      t1 = System.currentTimeMillis();
-
-      InputStream is = SiriHttpUtils.postData(url, etServiceRequest, timeout, requestHeaders);
-      if (is != null) {
-        // Decode message
-        fetching = System.currentTimeMillis() - t1;
-        t1 = System.currentTimeMillis();
-
-        Siri siri = SiriHelper.unmarshal(is);
-        unmarshalling = System.currentTimeMillis() - t1;
-
-        if (siri.getServiceDelivery().getResponseTimestamp().isBefore(lastTimestamp)) {
-          LOG.info("Newer data has already been processed");
-          return null;
-        }
-        lastTimestamp = siri.getServiceDelivery().getResponseTimestamp();
-
-        //All subsequent requests will return changes since last request
-        fullDataset = false;
-        return siri;
+      var siri = siriLoader.fetchETFeed(requestorRef);
+      if (siri.map(Siri::getServiceDelivery).isEmpty()) {
+        return Optional.empty();
       }
-    } catch (IOException e) {
+
+      var serviceDelivery = siri.get().getServiceDelivery();
+      if (serviceDelivery.getResponseTimestamp().isBefore(lastTimestamp)) {
+        LOG.info("Newer data has already been processed");
+        return Optional.empty();
+      }
+      lastTimestamp = serviceDelivery.getResponseTimestamp();
+
+      //All subsequent requests will return changes since last request
+      fullDataset = false;
+      return siri;
+    } catch (OtpHttpClientException e) {
       LOG.info("Failed after {} ms", (System.currentTimeMillis() - t1));
-      LOG.warn("Could not get SIRI-ET data from {}, caused by {}", url, e.getMessage());
+      LOG.warn("Could not get SIRI-ET data from {}", url, e);
     } catch (Exception e) {
       LOG.info("Failed after {} ms", (System.currentTimeMillis() - t1));
-      LOG.warn("Failed to parse SIRI-ET feed from " + url + ":", e);
-    } finally {
-      LOG.info(
-        "Updating ET [{}]: Create req: {}, Fetching data: {}, Unmarshalling: {}",
-        requestorRef,
-        creating,
-        fetching,
-        unmarshalling
-      );
+      LOG.warn("Failed to parse SIRI-ET feed from {}", url, e);
     }
-    return null;
+    return Optional.empty();
   }
 
   @Override
@@ -113,15 +87,34 @@ public class SiriETHttpTripUpdateSource implements EstimatedTimetableSource {
     return "SiriETHttpTripUpdateSource(" + url + ")";
   }
 
+  private static SiriLoader createLoader(String url, Parameters parameters) {
+    // Load real-time updates from a file.
+    if (SiriFileLoader.matchesUrl(url)) {
+      return new SiriFileLoader(url);
+    }
+    // Fallback to default loader
+    else {
+      return new SiriHttpLoader(
+        url,
+        parameters.timeout(),
+        parameters.httpRequestHeaders(),
+        parameters.previewInterval()
+      );
+    }
+  }
+
   public interface Parameters {
-    String getUrl();
+    String url();
 
-    String getRequestorRef();
+    String requestorRef();
 
-    String getFeedId();
+    String feedId();
 
-    int getTimeoutSec();
+    Duration timeout();
 
-    int getPreviewIntervalMinutes();
+    @Nullable
+    Duration previewInterval();
+
+    HttpHeaders httpRequestHeaders();
   }
 }

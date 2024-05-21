@@ -1,11 +1,10 @@
 package org.opentripplanner.ext.siri.updater;
 
+import jakarta.xml.bind.JAXBException;
 import java.io.InputStream;
+import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.util.UUID;
-import javax.xml.bind.JAXBException;
-import javax.xml.datatype.DatatypeConfigurationException;
-import javax.xml.datatype.DatatypeFactory;
 import javax.xml.stream.XMLStreamException;
 import org.rutebanken.siri20.util.SiriXml;
 import org.slf4j.Logger;
@@ -22,16 +21,6 @@ public class SiriHelper {
 
   private static final Logger LOG = LoggerFactory.getLogger(SiriHelper.class);
 
-  private static final DatatypeFactory datatypeFactory;
-
-  static {
-    try {
-      datatypeFactory = DatatypeFactory.newInstance();
-    } catch (DatatypeConfigurationException e) {
-      throw new RuntimeException(e);
-    }
-  }
-
   public static Siri unmarshal(InputStream is) throws JAXBException, XMLStreamException {
     return SiriXml.parseXml(is);
   }
@@ -47,13 +36,13 @@ public class SiriHelper {
   }
 
   public static String createETServiceRequestAsXml(String requestorRef) throws JAXBException {
-    Siri request = createETServiceRequest(requestorRef, -1);
+    Siri request = createETServiceRequest(requestorRef, null);
     return SiriXml.toXml(request);
   }
 
-  public static String createETServiceRequestAsXml(String requestorRef, int previewIntervalMillis)
+  public static String createETServiceRequestAsXml(String requestorRef, Duration previewInterval)
     throws JAXBException {
-    Siri request = createETServiceRequest(requestorRef, previewIntervalMillis);
+    Siri request = createETServiceRequest(requestorRef, previewInterval);
     return SiriXml.toXml(request);
   }
 
@@ -89,7 +78,7 @@ public class SiriHelper {
     return request;
   }
 
-  private static Siri createETServiceRequest(String requestorRefValue, int previewIntervalMillis) {
+  private static Siri createETServiceRequest(String requestorRefValue, Duration previewInterval) {
     Siri request = createSiriObject();
 
     ServiceRequest serviceRequest = new ServiceRequest();
@@ -103,8 +92,8 @@ public class SiriHelper {
     etRequest.setRequestTimestamp(ZonedDateTime.now());
     etRequest.setVersion("2.0");
 
-    if (previewIntervalMillis > 0) {
-      etRequest.setPreviewInterval(datatypeFactory.newDuration(previewIntervalMillis));
+    if (previewInterval != null) {
+      etRequest.setPreviewInterval(previewInterval);
     }
 
     MessageQualifierStructure messageIdentifier = new MessageQualifierStructure();

@@ -1,23 +1,24 @@
 package org.opentripplanner.routing.algorithm.raptoradapter.transit.cost;
 
 import javax.annotation.Nonnull;
-import org.opentripplanner.routing.api.request.WheelchairAccessibilityRequest;
-import org.opentripplanner.transit.model.basic.WheelchairAccessibility;
-import org.opentripplanner.transit.raptor.api.transit.CostCalculator;
-import org.opentripplanner.transit.raptor.api.transit.RaptorTransfer;
-import org.opentripplanner.transit.raptor.api.transit.RaptorTransferConstraint;
+import org.opentripplanner.raptor.api.model.RaptorAccessEgress;
+import org.opentripplanner.raptor.api.model.RaptorTransferConstraint;
+import org.opentripplanner.raptor.spi.RaptorCostCalculator;
+import org.opentripplanner.routing.api.request.preference.AccessibilityPreferences;
+import org.opentripplanner.transit.model.basic.Accessibility;
 
-public class WheelchairCostCalculator<T extends DefaultTripSchedule> implements CostCalculator<T> {
+public class WheelchairCostCalculator<T extends DefaultTripSchedule>
+  implements RaptorCostCalculator<T> {
 
-  private final CostCalculator<T> delegate;
+  private final RaptorCostCalculator<T> delegate;
   private final int[] wheelchairBoardingCost;
 
   public WheelchairCostCalculator(
-    @Nonnull CostCalculator<T> delegate,
-    @Nonnull WheelchairAccessibilityRequest requirements
+    @Nonnull RaptorCostCalculator<T> delegate,
+    @Nonnull AccessibilityPreferences wheelchairAccessibility
   ) {
     this.delegate = delegate;
-    this.wheelchairBoardingCost = createWheelchairCost(requirements);
+    this.wheelchairBoardingCost = createWheelchairCost(wheelchairAccessibility);
   }
 
   @Override
@@ -65,31 +66,27 @@ public class WheelchairCostCalculator<T extends DefaultTripSchedule> implements 
   }
 
   @Override
-  public int calculateMinCost(int minTravelTime, int minNumTransfers) {
-    return delegate.calculateMinCost(minTravelTime, minNumTransfers);
+  public int calculateRemainingMinCost(int minTravelTime, int minNumTransfers, int fromStop) {
+    return delegate.calculateRemainingMinCost(minTravelTime, minNumTransfers, fromStop);
   }
 
   @Override
-  public int costEgress(RaptorTransfer egress) {
+  public int costEgress(RaptorAccessEgress egress) {
     return delegate.costEgress(egress);
   }
 
   /**
    * Create the wheelchair costs for boarding a trip with all possible accessibility values
    */
-  private static int[] createWheelchairCost(WheelchairAccessibilityRequest requirements) {
-    int[] costIndex = new int[WheelchairAccessibility.values().length];
+  private static int[] createWheelchairCost(AccessibilityPreferences requirements) {
+    int[] costIndex = new int[Accessibility.values().length];
 
-    for (var it : WheelchairAccessibility.values()) {
+    for (var it : Accessibility.values()) {
       costIndex[it.ordinal()] =
         switch (it) {
-          case POSSIBLE -> 0;
-          case NO_INFORMATION -> RaptorCostConverter.toRaptorCost(
-            requirements.trip().unknownCost()
-          );
-          case NOT_POSSIBLE -> RaptorCostConverter.toRaptorCost(
-            requirements.trip().inaccessibleCost()
-          );
+          case POSSIBLE -> RaptorCostCalculator.ZERO_COST;
+          case NO_INFORMATION -> RaptorCostConverter.toRaptorCost(requirements.unknownCost());
+          case NOT_POSSIBLE -> RaptorCostConverter.toRaptorCost(requirements.inaccessibleCost());
         };
     }
     return costIndex;

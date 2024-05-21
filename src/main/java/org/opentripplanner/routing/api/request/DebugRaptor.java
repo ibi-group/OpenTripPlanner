@@ -3,9 +3,13 @@ package org.opentripplanner.routing.api.request;
 import java.io.Serial;
 import java.io.Serializable;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.EnumSet;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Pattern;
-import org.opentripplanner.util.lang.ToStringBuilder;
+import org.opentripplanner.framework.tostring.ToStringBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,7 +34,7 @@ import org.slf4j.LoggerFactory;
  *         done by adding an {@code *} to the stop: {@code [1010,1183,3211*,492]}.
  *     </li>
  *     To list stops you need to know the Raptor stop index. Enable log {@code level="debug"} for
- *     the {@code org.opentripplanner.transit.raptor} package to list all paths found by Raptor.
+ *     the {@code org.opentripplanner.raptor} package to list all paths found by Raptor.
  *     The paths will contain the stop index. For paths not listed you will have to do some
  *     research.
  * </ol>
@@ -38,23 +42,24 @@ import org.slf4j.LoggerFactory;
 public class DebugRaptor implements Serializable {
 
   @Serial
-  private static final long serialVersionUID = 1L;
-
   private static final Logger LOG = LoggerFactory.getLogger(DebugRaptor.class);
+
   private static final Pattern FIRST_STOP_PATTERN = Pattern.compile("(\\d+)\\*");
   private static final int FIRST_STOP_INDEX = 0;
 
   private List<Integer> stops = List.of();
   private List<Integer> path = List.of();
   private int debugPathFromStopIndex = 0;
+  private Set<DebugEventType> eventTypes = EnumSet.noneOf(DebugEventType.class);
 
   public DebugRaptor() {}
 
-  /** Avoid using clone(), use copy-constructor instead(Josh Bloch). */
+  /** Avoid using clone(), use copy-constructor instead (Josh Bloch). */
   public DebugRaptor(DebugRaptor other) {
     this.stops = List.copyOf(other.stops);
     this.path = List.copyOf(other.path);
     this.debugPathFromStopIndex = other.debugPathFromStopIndex;
+    this.eventTypes = EnumSet.copyOf(other.eventTypes);
   }
 
   public boolean isEnabled() {
@@ -91,12 +96,23 @@ public class DebugRaptor implements Serializable {
     return debugPathFromStopIndex;
   }
 
+  public Set<DebugEventType> eventTypes() {
+    return Collections.unmodifiableSet(eventTypes);
+  }
+
+  public DebugRaptor withEventTypes(Collection<DebugEventType> eventTypes) {
+    this.eventTypes.clear();
+    this.eventTypes.addAll(eventTypes);
+    return this;
+  }
+
   @Override
   public String toString() {
     return ToStringBuilder
       .of(DebugRaptor.class)
       .addObj("stops", toString(stops, FIRST_STOP_INDEX))
       .addObj("path", toString(path, debugPathFromStopIndex))
+      .addCol("eventType", eventTypes)
       .toString();
   }
 

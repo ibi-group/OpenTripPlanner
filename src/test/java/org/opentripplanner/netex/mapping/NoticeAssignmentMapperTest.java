@@ -8,11 +8,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
-import org.opentripplanner.graph_builder.DataImportIssueStore;
+import org.opentripplanner.graph_builder.issue.api.DataImportIssueStore;
 import org.opentripplanner.model.StopTime;
 import org.opentripplanner.netex.index.hierarchy.HierarchicalMapById;
 import org.opentripplanner.transit.model._data.TransitModelForTest;
 import org.opentripplanner.transit.model.framework.AbstractTransitEntity;
+import org.opentripplanner.transit.model.framework.DefaultEntityById;
 import org.opentripplanner.transit.model.framework.EntityById;
 import org.opentripplanner.transit.model.network.Route;
 import org.opentripplanner.transit.model.timetable.Trip;
@@ -48,16 +49,16 @@ public class NoticeAssignmentMapperTest {
 
     Route route = TransitModelForTest.route(ROUTE_ID).build();
 
-    EntityById<Route> routesById = new EntityById<>();
+    EntityById<Route> routesById = new DefaultEntityById<>();
     routesById.add(route);
 
     NoticeAssignmentMapper noticeAssignmentMapper = new NoticeAssignmentMapper(
-      DataImportIssueStore.noopIssueStore(),
+      DataImportIssueStore.NOOP,
       MappingSupport.ID_FACTORY,
       List.of(),
       new HierarchicalMapById<>(),
       routesById,
-      new EntityById<>(),
+      new DefaultEntityById<>(),
       new HashMap<>()
     );
 
@@ -103,12 +104,12 @@ public class NoticeAssignmentMapperTest {
       .withNoticeRef(new NoticeRefStructure().withRef(NOTICE_ID));
 
     NoticeAssignmentMapper noticeAssignmentMapper = new NoticeAssignmentMapper(
-      DataImportIssueStore.noopIssueStore(),
+      DataImportIssueStore.NOOP,
       MappingSupport.ID_FACTORY,
       serviceJourneys,
       noticesById,
-      new EntityById<>(),
-      new EntityById<>(),
+      new DefaultEntityById<>(),
+      new DefaultEntityById<>(),
       stopTimesById
     );
 

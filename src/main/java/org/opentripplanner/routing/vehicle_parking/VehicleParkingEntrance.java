@@ -2,10 +2,12 @@ package org.opentripplanner.routing.vehicle_parking;
 
 import java.io.Serializable;
 import java.util.Objects;
-import org.opentripplanner.routing.vertextype.StreetVertex;
-import org.opentripplanner.transit.model.basic.I18NString;
+import javax.annotation.Nullable;
+import org.opentripplanner.framework.geometry.WgsCoordinate;
+import org.opentripplanner.framework.i18n.I18NString;
+import org.opentripplanner.framework.tostring.ToStringBuilder;
+import org.opentripplanner.street.model.vertex.StreetVertex;
 import org.opentripplanner.transit.model.framework.FeedScopedId;
-import org.opentripplanner.util.lang.ToStringBuilder;
 
 public class VehicleParkingEntrance implements Serializable {
 
@@ -13,7 +15,7 @@ public class VehicleParkingEntrance implements Serializable {
 
   private final FeedScopedId entranceId;
 
-  private final double x, y;
+  private final WgsCoordinate coordinate;
 
   private final I18NString name;
   // If this entrance should be linked to car accessible streets
@@ -26,8 +28,7 @@ public class VehicleParkingEntrance implements Serializable {
   VehicleParkingEntrance(
     VehicleParking vehicleParking,
     FeedScopedId entranceId,
-    double x,
-    double y,
+    WgsCoordinate coordinate,
     I18NString name,
     StreetVertex vertex,
     boolean carAccessible,
@@ -35,8 +36,7 @@ public class VehicleParkingEntrance implements Serializable {
   ) {
     this.vehicleParking = vehicleParking;
     this.entranceId = entranceId;
-    this.x = x;
-    this.y = y;
+    this.coordinate = coordinate;
     this.name = name;
     this.vertex = vertex;
     this.carAccessible = carAccessible;
@@ -55,14 +55,11 @@ public class VehicleParkingEntrance implements Serializable {
     return entranceId;
   }
 
-  public double getX() {
-    return x;
+  public WgsCoordinate getCoordinate() {
+    return coordinate;
   }
 
-  public double getY() {
-    return y;
-  }
-
+  @Nullable
   public I18NString getName() {
     return name;
   }
@@ -81,7 +78,7 @@ public class VehicleParkingEntrance implements Serializable {
 
   @Override
   public int hashCode() {
-    return Objects.hash(entranceId, x, y, name, carAccessible, walkAccessible);
+    return Objects.hash(entranceId, coordinate, name, carAccessible, walkAccessible);
   }
 
   @Override
@@ -94,8 +91,7 @@ public class VehicleParkingEntrance implements Serializable {
     }
     final VehicleParkingEntrance that = (VehicleParkingEntrance) o;
     return (
-      Double.compare(that.x, x) == 0 &&
-      Double.compare(that.y, y) == 0 &&
+      Objects.equals(coordinate, that.coordinate) &&
       carAccessible == that.carAccessible &&
       walkAccessible == that.walkAccessible &&
       Objects.equals(entranceId, that.entranceId) &&
@@ -108,8 +104,7 @@ public class VehicleParkingEntrance implements Serializable {
       .of(VehicleParkingEntrance.class)
       .addObj("entranceId", entranceId)
       .addObj("name", name)
-      .addCoordinate("x", x)
-      .addCoordinate("y", y)
+      .addObj("coordinate", coordinate)
       .addBool("carAccessible", carAccessible)
       .addBool("walkAccessible", walkAccessible)
       .toString();
@@ -123,8 +118,7 @@ public class VehicleParkingEntrance implements Serializable {
 
     private VehicleParking vehicleParking;
     private FeedScopedId entranceId;
-    private double x;
-    private double y;
+    private WgsCoordinate coordinate;
     private I18NString name;
     private StreetVertex vertex;
     private boolean carAccessible;
@@ -142,13 +136,8 @@ public class VehicleParkingEntrance implements Serializable {
       return this;
     }
 
-    public VehicleParkingEntranceBuilder x(double x) {
-      this.x = x;
-      return this;
-    }
-
-    public VehicleParkingEntranceBuilder y(double y) {
-      this.y = y;
+    public VehicleParkingEntranceBuilder coordinate(WgsCoordinate coordinate) {
+      this.coordinate = coordinate;
       return this;
     }
 
@@ -176,8 +165,7 @@ public class VehicleParkingEntrance implements Serializable {
       return new VehicleParkingEntrance(
         vehicleParking,
         entranceId,
-        x,
-        y,
+        coordinate,
         name,
         vertex,
         carAccessible,

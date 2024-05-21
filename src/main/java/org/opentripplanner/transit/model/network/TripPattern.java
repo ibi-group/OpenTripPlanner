@@ -1,21 +1,27 @@
 package org.opentripplanner.transit.model.network;
 
 import static java.util.Objects.requireNonNull;
-import static org.opentripplanner.util.lang.ObjectUtils.requireNotInitialized;
+import static java.util.Objects.requireNonNullElseGet;
+import static org.opentripplanner.framework.lang.ObjectUtils.requireNotInitialized;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.annotation.Nonnull;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.LineString;
+import org.opentripplanner.framework.geometry.CompactLineStringUtils;
+import org.opentripplanner.framework.geometry.GeometryUtils;
+import org.opentripplanner.framework.i18n.I18NString;
 import org.opentripplanner.model.PickDrop;
 import org.opentripplanner.model.Timetable;
+import org.opentripplanner.transit.model.basic.Accessibility;
 import org.opentripplanner.transit.model.basic.SubMode;
 import org.opentripplanner.transit.model.basic.TransitMode;
-import org.opentripplanner.transit.model.basic.WheelchairAccessibility;
 import org.opentripplanner.transit.model.framework.AbstractTransitEntity;
 import org.opentripplanner.transit.model.framework.FeedScopedId;
 import org.opentripplanner.transit.model.framework.LogInfo;
@@ -25,8 +31,6 @@ import org.opentripplanner.transit.model.timetable.Direction;
 import org.opentripplanner.transit.model.timetable.FrequencyEntry;
 import org.opentripplanner.transit.model.timetable.Trip;
 import org.opentripplanner.transit.model.timetable.TripTimes;
-import org.opentripplanner.util.geometry.CompactLineStringUtils;
-import org.opentripplanner.util.geometry.GeometryUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -59,6 +63,9 @@ public final class TripPattern
    */
   private final StopPattern stopPattern;
   private final Timetable scheduledTimetable;
+  private final TransitMode mode;
+  private final SubMode netexSubMode;
+  private final boolean containsMultipleModes;
   private String name;
   /**
    * Geometries of each inter-stop segment of the tripPattern.
@@ -83,6 +90,9 @@ public final class TripPattern
     this.route = builder.getRoute();
     this.stopPattern = requireNonNull(builder.getStopPattern());
     this.createdByRealtimeUpdater = builder.isCreatedByRealtimeUpdate();
+    this.mode = requireNonNullElseGet(builder.getMode(), route::getMode);
+    this.netexSubMode = requireNonNullElseGet(builder.getNetexSubmode(), route::getNetexSubmode);
+    this.containsMultipleModes = builder.getContainsMultipleModes();
 
     this.scheduledTimetable =
       builder.getScheduledTimetable() != null
@@ -116,10 +126,18 @@ public final class TripPattern
   }
 
   /**
-   * Convenience method to get the route traverse mode, the mode for all trips in this pattern.
+   * Get the mode for all trips in this pattern.
    */
   public TransitMode getMode() {
-    return route.getMode();
+    return mode;
+  }
+
+  public SubMode getNetexSubmode() {
+    return netexSubMode;
+  }
+
+  public boolean getContainsMultipleModes() {
+    return containsMultipleModes;
   }
 
   public LineString getHopGeometry(int stopPosInPattern) {
@@ -141,9 +159,18 @@ public final class TripPattern
     return stopPattern;
   }
 
-  // TODO OTP2 this method modifies the state, it will be refactored in a subsequent step
-  public void setHopGeometry(int i, LineString hopGeometry) {
-    this.hopGeometries[i] = CompactLineStringUtils.compactLineString(hopGeometry, false);
+  /**
+   * Return the "original"/planned stop pattern as a builder. This is used when a realtime-update
+   * contains a full set of stops/pickup/dropoff for a pattern. This will wipe out any changes
+   * to the stop-pattern from previous updates.
+   * <p>
+   * Be aware, if the same update is applied twice, then the first instance will be reused to avoid
+   * unnecessary objects creation and gc.
+   */
+  public StopPattern.StopPatternBuilder copyPlannedStopPattern() {
+    return isModified()
+      ? originalTripPattern.stopPattern.mutate(stopPattern)
+      : stopPattern.mutate();
   }
 
   public LineString getGeometry() {
@@ -156,10 +183,6 @@ public final class TripPattern
       lineStrings.add(getHopGeometry(i));
     }
     return GeometryUtils.concatenateLineStrings(lineStrings);
-  }
-
-  public int numHopGeometries() {
-    return hopGeometries.length;
   }
 
   public int numberOfStops() {
@@ -243,12 +266,17 @@ public final class TripPattern
     return stopPattern.canBoard(stop);
   }
 
+  /**
+   * Returns whether passengers can alight at a given stop. This is an inefficient method iterating
+   * over the stops, do not use it in routing.
+   */
+  public boolean canAlight(StopLocation stop) {
+    return stopPattern.canAlight(stop);
+  }
+
   /** Returns whether a given stop is wheelchair-accessible. */
   public boolean wheelchairAccessible(int stopIndex) {
-    return (
-      stopPattern.getStop(stopIndex).getWheelchairAccessibility() ==
-      WheelchairAccessibility.POSSIBLE
-    );
+    return (stopPattern.getStop(stopIndex).getWheelchairAccessibility() == Accessibility.POSSIBLE);
   }
 
   public PickDrop getAlightType(int stopIndex) {
@@ -332,7 +360,7 @@ public final class TripPattern
    */
   public boolean isModifiedFromTripPatternWithEqualStops(TripPattern other) {
     return (
-      originalTripPattern != null &&
+      isModified() &&
       originalTripPattern.equals(other) &&
       getStopPattern().stopsEqual(other.getStopPattern())
     );
@@ -380,24 +408,22 @@ public final class TripPattern
     return originalTripPattern;
   }
 
-  public String getTripHeadsign() {
-    var tripTimes = scheduledTimetable.getRepresentativeTripTimes();
-    if (tripTimes == null) {
-      return null;
-    }
-    return tripTimes.getTrip().getHeadsign();
+  public boolean isModified() {
+    return originalTripPattern != null;
   }
 
-  public String getStopHeadsign(int stopIndex) {
+  /**
+   * Returns trip headsign from the scheduled timetables or from the original pattern's scheduled
+   * timetables if this pattern is added by realtime and the stop sequence has not changed apart
+   * from pickup/dropoff values.
+   *
+   * @return trip headsign
+   */
+  public I18NString getTripHeadsign() {
     var tripTimes = scheduledTimetable.getRepresentativeTripTimes();
-    if (tripTimes == null) {
-      return null;
-    }
-    return tripTimes.getHeadsign(stopIndex);
-  }
-
-  public boolean matchesModeOrSubMode(TransitMode mode, SubMode transportSubmode) {
-    return getMode().equals(mode) || route.getNetexSubmode().equals(transportSubmode);
+    return tripTimes == null
+      ? getTripHeadsignFromOriginalPattern()
+      : getTripHeadSignFromTripTimes(tripTimes);
   }
 
   public TripPattern clone() {
@@ -428,8 +454,25 @@ public final class TripPattern
     return route.logName();
   }
 
+  /**
+   * Does the pattern contain any stops passed in as argument?
+   * This method is not optimized for performance so don't use it where that is critical.
+   */
+  public boolean containsAnyStopId(Collection<FeedScopedId> ids) {
+    return ids
+      .stream()
+      .anyMatch(id ->
+        stopPattern
+          .getStops()
+          .stream()
+          .map(StopLocation::getId)
+          .collect(Collectors.toUnmodifiableSet())
+          .contains(id)
+      );
+  }
+
   private static Coordinate coordinate(StopLocation s) {
-    return new Coordinate(s.getLon(), s.getLat());
+    return s.getCoordinate().asJtsCoordinate();
   }
 
   @Override
@@ -437,6 +480,9 @@ public final class TripPattern
     return (
       getId().equals(other.getId()) &&
       Objects.equals(this.route, other.route) &&
+      Objects.equals(this.mode, other.mode) &&
+      Objects.equals(this.netexSubMode, other.netexSubMode) &&
+      Objects.equals(this.containsMultipleModes, other.containsMultipleModes) &&
       Objects.equals(this.name, other.name) &&
       Objects.equals(this.stopPattern, other.stopPattern) &&
       Objects.equals(this.scheduledTimetable, other.scheduledTimetable)
@@ -446,5 +492,31 @@ public final class TripPattern
   @Override
   public TripPatternBuilder copy() {
     return new TripPatternBuilder(this);
+  }
+
+  /**
+   * Checks if the stops in this trip pattern are the same as in the original pattern (if this trip
+   * is added through a realtime update. The pickup and dropoff values don't have to be the same.
+   */
+  private boolean containsSameStopsAsOriginalPattern() {
+    return isModified() && getStops().equals(originalTripPattern.getStops());
+  }
+
+  /**
+   * Helper method for getting the trip headsign from the {@link TripTimes}.
+   */
+  private I18NString getTripHeadSignFromTripTimes(TripTimes tripTimes) {
+    return tripTimes != null ? tripTimes.getTripHeadsign() : null;
+  }
+
+  /**
+   * Returns trip headsign from the original pattern if one exists.
+   */
+  private I18NString getTripHeadsignFromOriginalPattern() {
+    if (containsSameStopsAsOriginalPattern()) {
+      var tripTimes = originalTripPattern.getScheduledTimetable().getRepresentativeTripTimes();
+      return getTripHeadSignFromTripTimes(tripTimes);
+    }
+    return null;
   }
 }

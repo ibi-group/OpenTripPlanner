@@ -1,24 +1,25 @@
 package org.opentripplanner.transit.service;
 
+import jakarta.inject.Inject;
 import java.io.Serializable;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
 import javax.annotation.Nullable;
-import javax.inject.Inject;
 import org.locationtech.jts.geom.Envelope;
-import org.opentripplanner.transit.model.basic.WgsCoordinate;
+import org.opentripplanner.framework.collection.CollectionsView;
+import org.opentripplanner.framework.collection.MapUtils;
+import org.opentripplanner.framework.geometry.WgsCoordinate;
 import org.opentripplanner.transit.model.framework.FeedScopedId;
-import org.opentripplanner.transit.model.site.FlexLocationGroup;
-import org.opentripplanner.transit.model.site.FlexStopLocation;
+import org.opentripplanner.transit.model.site.AreaStop;
 import org.opentripplanner.transit.model.site.GroupOfStations;
+import org.opentripplanner.transit.model.site.GroupStop;
 import org.opentripplanner.transit.model.site.MultiModalStation;
+import org.opentripplanner.transit.model.site.RegularStop;
 import org.opentripplanner.transit.model.site.Station;
-import org.opentripplanner.transit.model.site.Stop;
 import org.opentripplanner.transit.model.site.StopLocation;
 import org.opentripplanner.transit.model.site.StopLocationsGroup;
-import org.opentripplanner.util.lang.CollectionsView;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,90 +30,136 @@ public class StopModel implements Serializable {
 
   private static final Logger LOG = LoggerFactory.getLogger(StopModel.class);
 
-  private final Map<FeedScopedId, Stop> regularStopsById;
+  private final AtomicInteger stopIndexCounter;
+  private final Map<FeedScopedId, RegularStop> regularStopById;
   private final Map<FeedScopedId, Station> stationById;
   private final Map<FeedScopedId, MultiModalStation> multiModalStationById;
   private final Map<FeedScopedId, GroupOfStations> groupOfStationsById;
-  private final Map<FeedScopedId, FlexStopLocation> flexStopsById;
-  private final Map<FeedScopedId, FlexLocationGroup> flexStopGroupsById;
-
-  /** The density center of the graph for determining the initial geographic extent in the client. */
-  private final WgsCoordinate stopLocationCenter;
-
+  private final Map<FeedScopedId, AreaStop> areaStopById;
+  private final Map<FeedScopedId, GroupStop> groupStopById;
   private transient StopModelIndex index;
 
   @Inject
   public StopModel() {
-    this.regularStopsById = Map.of();
+    this.stopIndexCounter = new AtomicInteger(0);
+    this.regularStopById = Map.of();
     this.stationById = Map.of();
     this.multiModalStationById = Map.of();
     this.groupOfStationsById = Map.of();
-    this.flexStopsById = Map.of();
-    this.flexStopGroupsById = Map.of();
-    this.stopLocationCenter = null;
-    this.index = new StopModelIndex(List.of(), List.of(), List.of(), List.of());
+    this.areaStopById = Map.of();
+    this.groupStopById = Map.of();
+    this.index = createIndex();
   }
 
-  public StopModel(StopModelBuilder builder) {
-    this.regularStopsById = builder.stopsById().asImmutableMap();
-    this.stationById = builder.stationsById().asImmutableMap();
-    this.multiModalStationById = builder.multiModalStationsById().asImmutableMap();
-    this.groupOfStationsById = builder.groupOfStationsById().asImmutableMap();
-    this.flexStopsById = builder.flexStopsById().asImmutableMap();
-    this.flexStopGroupsById = builder.flexStopGroupsById().asImmutableMap();
-    this.stopLocationCenter = builder.calculateTransitCenter();
+  StopModel(StopModelBuilder builder) {
+    this.stopIndexCounter = builder.stopIndexCounter();
+    this.regularStopById = builder.regularStopsById().asImmutableMap();
+    this.stationById = builder.stationById().asImmutableMap();
+    this.multiModalStationById = builder.multiModalStationById().asImmutableMap();
+    this.groupOfStationsById = builder.groupOfStationById().asImmutableMap();
+    this.areaStopById = builder.areaStopById().asImmutableMap();
+    this.groupStopById = builder.groupStopById().asImmutableMap();
     reindex();
   }
 
-  public static StopModelBuilder of() {
-    return new StopModelBuilder();
-  }
-
-  public StopModelBuilder copy() {
-    return new StopModelBuilder(this);
+  /**
+   * Merge child into main. The child model must be created using the {@code main.withContext()}
+   * method, if not this method will fail! If a duplicate key exist, then child value is kept -
+   * this feature is normally not allowed, but not enforced here.
+   */
+  private StopModel(StopModel main, StopModel child) {
+    this.stopIndexCounter = assertSameStopIndexCounterIsUsedToCreateBothModels(main, child);
+    this.areaStopById = MapUtils.combine(main.areaStopById, child.areaStopById);
+    this.regularStopById = MapUtils.combine(main.regularStopById, child.regularStopById);
+    this.groupOfStationsById =
+      MapUtils.combine(main.groupOfStationsById, child.groupOfStationsById);
+    this.groupStopById = MapUtils.combine(main.groupStopById, child.groupStopById);
+    this.multiModalStationById =
+      MapUtils.combine(main.multiModalStationById, child.multiModalStationById);
+    this.stationById = MapUtils.combine(main.stationById, child.stationById);
+    reindex();
   }
 
   /**
-   * Return a regular transit stop if found(not flex stops).
+   * Create a new builder based on an empty model. This is useful in unit-tests, but should
+   * NOT be used in the main code. It is not possible to merge the result with another
+   * {@link StopModel}, because they do not share the same context(stopIndexCounter).
+   * <p>
+   * In the application code the correct way is to retrieve a model instance and then use the
+   * {@link #withContext()} method to create a builder.
    */
-  public Stop getRegularStop(FeedScopedId id) {
-    return regularStopsById.get(id);
+  public static StopModelBuilder of() {
+    return new StopModelBuilder(new AtomicInteger(0));
+  }
+
+  /**
+   * Create a new builder attached to the existing model. The entities of the existing model are
+   * NOT copied into the builder, but the builder has access to the model - allowing it to check
+   * for duplicates and injecting information from the model(indexing). The changes in the
+   * StopModelBuilder can then be merged into the original model - this is for now left to the
+   * caller.
+   * <p>
+   * USE THIS TO CREATE A SAFE BUILDER IN PRODUCTION CODE. You MAY use this method in unit-tests,
+   * the alternative is the {@link #of()} method. This method should be used if the test have a
+   * StopModel and the {@link #of()} method should be used if a stop-model in not needed.
+   */
+  public StopModelBuilder withContext() {
+    return new StopModelBuilder(this.stopIndexCounter);
+  }
+
+  /**
+   * Return a regular transit stop if found (not flex stops).
+   */
+  public RegularStop getRegularStop(FeedScopedId id) {
+    return regularStopById.get(id);
   }
 
   /**
    * Return all regular transit stops, not flex stops and flex group of stops.
    */
-  public Collection<Stop> listRegularStops() {
-    return regularStopsById.values();
+  public Collection<RegularStop> listRegularStops() {
+    return regularStopById.values();
   }
 
-  public Collection<Stop> findRegularStops(Envelope envelope) {
-    return index.queryStopSpatialIndex(envelope);
+  /**
+   * Find regular stops within a geographical area.
+   */
+  public Collection<RegularStop> findRegularStops(Envelope envelope) {
+    return index.findRegularStops(envelope);
   }
 
-  public boolean hasFlexLocations() {
-    return !flexStopsById.isEmpty();
+  public boolean hasAreaStops() {
+    return !areaStopById.isEmpty();
   }
 
   /**
    * Flex locations are generated by GTFS graph builder, but consumed only after the street graph is
-   * built
+   * built.
    */
   @Nullable
-  public FlexStopLocation getFlexStopById(FeedScopedId id) {
-    return flexStopsById.get(id);
+  public AreaStop getAreaStop(FeedScopedId id) {
+    return areaStopById.get(id);
   }
 
-  public Collection<FlexStopLocation> getAllFlexLocations() {
-    return flexStopsById.values();
+  /**
+   * Return all flex stops, not regular transit stops and flex group of stops.
+   */
+  public Collection<AreaStop> listAreaStops() {
+    return areaStopById.values();
   }
 
-  public Collection<FlexLocationGroup> getAllFlexStopGroups() {
-    return flexStopGroupsById.values();
+  /**
+   * Find flex stops within a geographical area.
+   */
+  public Collection<AreaStop> findAreaStops(Envelope envelope) {
+    return index.findAreaStops(envelope);
   }
 
-  public Collection<FlexStopLocation> queryLocationIndex(Envelope envelope) {
-    return index.queryLocationIndex(envelope);
+  /**
+   * Return all flex groups of stops.
+   */
+  public Collection<GroupStop> listGroupStops() {
+    return groupStopById.values();
   }
 
   public StopLocation stopByIndex(int stopIndex) {
@@ -123,16 +170,12 @@ public class StopModel implements Serializable {
     return index.stopIndexSize();
   }
 
-  public Optional<WgsCoordinate> stopLocationCenter() {
-    return Optional.ofNullable(stopLocationCenter);
-  }
-
   /**
    * Return regular transit stop, flex stop or flex group of stops.
    */
   @Nullable
   public StopLocation getStopLocation(FeedScopedId id) {
-    return getById(id, regularStopsById, flexStopsById, flexStopGroupsById);
+    return getById(id, regularStopById, areaStopById, groupStopById);
   }
 
   /**
@@ -140,9 +183,9 @@ public class StopModel implements Serializable {
    */
   public Collection<StopLocation> listStopLocations() {
     return new CollectionsView<>(
-      regularStopsById.values(),
-      flexStopsById.values(),
-      flexStopGroupsById.values()
+      regularStopById.values(),
+      areaStopById.values(),
+      groupStopById.values()
     );
   }
 
@@ -151,7 +194,7 @@ public class StopModel implements Serializable {
     return stationById.get(id);
   }
 
-  public Collection<Station> getStations() {
+  public Collection<Station> listStations() {
     return stationById.values();
   }
 
@@ -160,7 +203,7 @@ public class StopModel implements Serializable {
     return multiModalStationById.get(id);
   }
 
-  public Collection<MultiModalStation> getAllMultiModalStations() {
+  public Collection<MultiModalStation> listMultiModalStations() {
     return multiModalStationById.values();
   }
 
@@ -169,7 +212,7 @@ public class StopModel implements Serializable {
     return index.getMultiModalStationForStation(station);
   }
 
-  public Collection<GroupOfStations> getAllGroupOfStations() {
+  public Collection<GroupOfStations> listGroupOfStations() {
     return groupOfStationsById.values();
   }
 
@@ -226,7 +269,7 @@ public class StopModel implements Serializable {
    * stops, area stop or stop group, then a list with one item is returned.
    * An empty list is if nothing is found.
    */
-  public Collection<StopLocation> getStopOrChildStops(FeedScopedId id) {
+  public Collection<StopLocation> findStopOrChildStops(FeedScopedId id) {
     StopLocationsGroup stops = getStopLocationsGroup(id);
     if (stops != null) {
       return stops.getChildStops();
@@ -244,25 +287,32 @@ public class StopModel implements Serializable {
     reindex();
   }
 
-  /**
-   * This is public to be able to reindex the StopModel after deserialization. DO NOT call
-   * this from other places.
-   */
+  public StopModel merge(StopModel child) {
+    return new StopModel(this, child);
+  }
+
   private void reindex() {
     LOG.info("Index stop model...");
-    index =
-      new StopModelIndex(
-        regularStopsById.values(),
-        flexStopsById.values(),
-        flexStopGroupsById.values(),
-        multiModalStationById.values()
-      );
+    index = createIndex();
     LOG.info("Index stop model complete.");
+  }
+
+  private StopModelIndex createIndex() {
+    return new StopModelIndex(
+      regularStopById.values(),
+      areaStopById.values(),
+      groupStopById.values(),
+      multiModalStationById.values(),
+      stopIndexCounter.get()
+    );
   }
 
   @Nullable
   @SafeVarargs
   private static <V> V getById(FeedScopedId id, Map<FeedScopedId, ? extends V>... maps) {
+    if (id == null) {
+      return null;
+    }
     for (Map<FeedScopedId, ? extends V> map : maps) {
       V v = map.get(id);
       if (v != null) {
@@ -270,5 +320,23 @@ public class StopModel implements Serializable {
       }
     }
     return null;
+  }
+
+  /**
+   * The 'stopIndexCounter' must be the same instance, hence the '!=' operator.
+   */
+  @SuppressWarnings("NumberEquality")
+  private static AtomicInteger assertSameStopIndexCounterIsUsedToCreateBothModels(
+    StopModel main,
+    StopModel child
+  ) {
+    if (main.stopIndexCounter != child.stopIndexCounter) {
+      throw new IllegalArgumentException(
+        "Two Stop models can only be merged if they are created with the same stopIndexCounter. " +
+        "This is archived by using the 'StopModel.withContext()' method. We do this to avoid " +
+        "duplicates/gaps in the stopIndex."
+      );
+    }
+    return main.stopIndexCounter;
   }
 }

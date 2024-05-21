@@ -1,8 +1,9 @@
 package org.opentripplanner.routing.algorithm.raptoradapter.transit;
 
 import java.util.Map;
+import org.opentripplanner.raptor.spi.RaptorSlackProvider;
+import org.opentripplanner.routing.api.request.framework.DurationForEnum;
 import org.opentripplanner.transit.model.basic.TransitMode;
-import org.opentripplanner.transit.raptor.api.transit.RaptorSlackProvider;
 
 /**
  * This class provides transferSlack, boardSlack and alightSlack for the Raptor algorithm.
@@ -30,14 +31,12 @@ public final class SlackProvider implements RaptorSlackProvider {
 
   public SlackProvider(
     int transferSlack,
-    int defaultBoardSlack,
-    Map<TransitMode, Integer> modeBoardSlack,
-    int defaultAlightSlack,
-    Map<TransitMode, Integer> modeAlightSlack
+    DurationForEnum<TransitMode> boardSlack,
+    DurationForEnum<TransitMode> alightSlack
   ) {
     this.transferSlack = transferSlack;
-    this.boardSlack = slackByMode(modeBoardSlack, defaultBoardSlack);
-    this.alightSlack = slackByMode(modeAlightSlack, defaultAlightSlack);
+    this.boardSlack = slackByMode(boardSlack);
+    this.alightSlack = slackByMode(alightSlack);
   }
 
   @Override
@@ -57,10 +56,10 @@ public final class SlackProvider implements RaptorSlackProvider {
 
   /* private methods */
 
-  private static int[] slackByMode(Map<TransitMode, Integer> modeSlack, int defaultSlack) {
+  private static int[] slackByMode(DurationForEnum<TransitMode> slack) {
     int[] result = new int[TransitMode.values().length];
     for (TransitMode mode : TransitMode.values()) {
-      result[SlackProvider.slackIndex(mode)] = modeSlack.getOrDefault(mode, defaultSlack);
+      result[SlackProvider.slackIndex(mode)] = (int) slack.valueOf(mode).toSeconds();
     }
     return result;
   }

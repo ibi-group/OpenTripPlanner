@@ -3,18 +3,18 @@ package org.opentripplanner.transit.model.site;
 import java.time.ZoneId;
 import java.util.Collection;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.Optional;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import org.locationtech.jts.geom.Geometry;
-import org.opentripplanner.transit.model.basic.I18NString;
+import org.opentripplanner.framework.geometry.WgsCoordinate;
+import org.opentripplanner.framework.i18n.I18NString;
+import org.opentripplanner.framework.lang.ObjectUtils;
+import org.opentripplanner.transit.model.basic.Accessibility;
 import org.opentripplanner.transit.model.basic.SubMode;
 import org.opentripplanner.transit.model.basic.TransitMode;
-import org.opentripplanner.transit.model.basic.WgsCoordinate;
-import org.opentripplanner.transit.model.basic.WheelchairAccessibility;
 import org.opentripplanner.transit.model.framework.FeedScopedId;
 import org.opentripplanner.transit.model.framework.LogInfo;
-import org.opentripplanner.util.lang.ObjectUtils;
 
 /**
  * A StopLocation describes a place where a vehicle can be boarded or alighted, which is not
@@ -22,8 +22,6 @@ import org.opentripplanner.util.lang.ObjectUtils;
  * transit. StopLocations are referred to in stop times.
  */
 public interface StopLocation extends LogInfo {
-  AtomicInteger INDEX_COUNTER = new AtomicInteger(0);
-
   /** The ID for the StopLocation */
   FeedScopedId getId();
 
@@ -45,6 +43,9 @@ public interface StopLocation extends LogInfo {
 
   @Nullable
   I18NString getUrl();
+
+  @Nonnull
+  StopType getStopType();
 
   /**
    * Short text or a number that identifies the location for riders. These codes are often used in
@@ -91,8 +92,8 @@ public interface StopLocation extends LogInfo {
   }
 
   @Nonnull
-  default WheelchairAccessibility getWheelchairAccessibility() {
-    return WheelchairAccessibility.NO_INFORMATION;
+  default Accessibility getWheelchairAccessibility() {
+    return Accessibility.NO_INFORMATION;
   }
 
   /**
@@ -101,7 +102,10 @@ public interface StopLocation extends LogInfo {
    */
   @Nullable
   default String getFirstZoneAsString() {
-    return getFareZones().stream().map(t -> t.getId().getId()).findFirst().orElse(null);
+    for (FareZone t : getFareZones()) {
+      return t.getId().getId();
+    }
+    return null;
   }
 
   /**
@@ -121,6 +125,14 @@ public interface StopLocation extends LogInfo {
   @Nullable
   Geometry getGeometry();
 
+  /**
+   * The geometry of the area that encompasses the bounds of the stop area. If the stop is defined
+   * as a point, this is null.
+   */
+  default Optional<? extends Geometry> getEncompassingAreaGeometry() {
+    return Optional.empty();
+  }
+
   @Nullable
   default ZoneId getTimeZone() {
     return null;
@@ -134,6 +146,14 @@ public interface StopLocation extends LogInfo {
   }
 
   boolean isPartOfSameStationAs(StopLocation alternativeStop);
+
+  /**
+   * Returns the child locations of this location, for example StopLocations within a GroupStop.
+   */
+  @Nullable
+  default List<StopLocation> getChildLocations() {
+    return null;
+  }
 
   @Override
   default String logName() {
@@ -150,14 +170,10 @@ public interface StopLocation extends LogInfo {
     return getId();
   }
 
-  static int indexCounter() {
-    return INDEX_COUNTER.get();
-  }
-
   /**
-   * Use this ONLY when deserializing the graph. Sets the counter value to the highest recorded value
+   * Whether we should allow transfers to and from stop location (other than transit)
    */
-  static void initIndexCounter(int indexCounter) {
-    INDEX_COUNTER.set(indexCounter);
+  default boolean transfersNotAllowed() {
+    return false;
   }
 }

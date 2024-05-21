@@ -4,17 +4,20 @@ import java.time.Duration;
 import java.util.Collection;
 import java.util.Currency;
 import java.util.List;
+import java.util.Optional;
+import org.opentripplanner.ext.fares.model.FareRuleSet;
+import org.opentripplanner.model.fare.FareProduct;
+import org.opentripplanner.model.fare.ItineraryFares;
 import org.opentripplanner.model.plan.Leg;
-import org.opentripplanner.routing.core.Fare;
-import org.opentripplanner.routing.core.Fare.FareType;
-import org.opentripplanner.routing.core.FareRuleSet;
+import org.opentripplanner.model.plan.ScheduledTransitLeg;
+import org.opentripplanner.routing.core.FareType;
+import org.opentripplanner.transit.model.basic.Money;
+import org.opentripplanner.transit.model.framework.FeedScopedId;
 
 /**
  * This calculator is maintained by IBI Group.
  */
-public class HighestFareInFreeTransferWindowFareService extends DefaultFareServiceImpl {
-
-  private static final long serialVersionUID = 20120229L;
+public class HighestFareInFreeTransferWindowFareService extends DefaultFareService {
 
   private final boolean analyzeInterlinedTransfers;
   private final Duration freeTransferWindow;
@@ -45,27 +48,27 @@ public class HighestFareInFreeTransferWindowFareService extends DefaultFareServi
    * additional free transfers from there.
    */
   @Override
-  protected boolean populateFare(
-    Fare fare,
+  protected ItineraryFares calculateFaresForType(
     Currency currency,
     FareType fareType,
     List<Leg> legs,
     Collection<FareRuleSet> fareRules
   ) {
-    float cost = 0;
-    float currentTransferWindowCost = 0;
+    var zero = Money.ofFractionalAmount(currency, 0);
+    Money cost = zero;
+    Money currentTransferWindowCost = zero;
     // The initial value of -1 indicates that the free transfer window end time has not yet been set
     long freeTransferWindowEndTimeEpochSeconds = -1;
     for (var leg : legs) {
-      float rideCost = calculateCost(fareType, List.of(leg), fareRules);
+      Optional<Money> rideCost = calculateCost(fareType, List.of(leg), fareRules);
 
       if (leg.getStartTime().toEpochSecond() > freeTransferWindowEndTimeEpochSeconds) {
         // free transfer window has expired or has not yet been initialized. Reset some items and add to the
         // overall cost. This is fine to do if the free transfer window hasn't been initialized since the
         // overall cost will be 0.
-        cost += currentTransferWindowCost;
+        cost = cost.plus(currentTransferWindowCost);
         // reset current window cost
-        currentTransferWindowCost = 0;
+        currentTransferWindowCost = zero;
         // reset transfer window end time to trigger recalculation in next block
         freeTransferWindowEndTimeEpochSeconds = -1;
       }
@@ -78,19 +81,29 @@ public class HighestFareInFreeTransferWindowFareService extends DefaultFareServi
           leg.getStartTime().plus(freeTransferWindow).toEpochSecond();
       }
 
-      currentTransferWindowCost = Float.max(currentTransferWindowCost, rideCost);
+      currentTransferWindowCost = Money.max(currentTransferWindowCost, rideCost.orElse(zero));
     }
-    cost += currentTransferWindowCost;
-    if (cost < Float.POSITIVE_INFINITY) fare.addFare(fareType, getMoney(currency, cost));
-    return cost > 0 && cost < Float.POSITIVE_INFINITY;
+    cost = cost.plus(currentTransferWindowCost);
+    var fp = new FareProduct(
+      new FeedScopedId("fares", fareType.name()),
+      fareType.name(),
+      cost,
+      null,
+      null,
+      null
+    );
+    var fare = ItineraryFares.empty();
+    if (cost.greaterThan(zero)) {
+      fare.addItineraryProducts(List.of(fp));
+    }
+    return fare;
   }
 
-  /**
-   * Returns true if configured to analyze interlined transfers and the previous edge was an
-   * interline transfer.
-   */
   @Override
-  protected boolean shouldCombineInterlinedLegs() {
+  protected boolean shouldCombineInterlinedLegs(
+    ScheduledTransitLeg current,
+    ScheduledTransitLeg previous
+  ) {
     return !analyzeInterlinedTransfers;
   }
 }

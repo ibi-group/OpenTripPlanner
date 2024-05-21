@@ -6,11 +6,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
-import org.opentripplanner.routing.edgetype.VehicleParkingEdge;
+import org.opentripplanner.framework.geometry.WgsCoordinate;
+import org.opentripplanner.framework.i18n.NonLocalizedString;
 import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.routing.vehicle_parking.VehicleParking.VehicleParkingEntranceCreator;
-import org.opentripplanner.routing.vertextype.VehicleParkingEntranceVertex;
-import org.opentripplanner.transit.model.basic.NonLocalizedString;
+import org.opentripplanner.street.model._data.StreetModelForTest;
+import org.opentripplanner.street.model.edge.VehicleParkingEdge;
+import org.opentripplanner.street.model.vertex.VehicleParkingEntranceVertex;
 import org.opentripplanner.transit.model.framework.FeedScopedId;
 
 class VehicleParkingHelperTest {
@@ -22,7 +24,7 @@ class VehicleParkingHelperTest {
     Graph graph = new Graph();
     VehicleParking vehicleParking = createParingWithEntrances(1);
 
-    VehicleParkingHelper.linkVehicleParkingToGraph(graph, vehicleParking);
+    new VehicleParkingHelper(graph).linkVehicleParkingToGraph(vehicleParking);
 
     assertGraph(graph, 1);
   }
@@ -32,7 +34,7 @@ class VehicleParkingHelperTest {
     Graph graph = new Graph();
     VehicleParking vehicleParking = createParingWithEntrances(3);
 
-    VehicleParkingHelper.linkVehicleParkingToGraph(graph, vehicleParking);
+    new VehicleParkingHelper(graph).linkVehicleParkingToGraph(vehicleParking);
 
     assertGraph(graph, 3);
   }
@@ -40,8 +42,8 @@ class VehicleParkingHelperTest {
   @Test
   void linkSkippingEdgesTest() {
     Graph graph = new Graph();
-    var vehicleParking = VehicleParking
-      .builder()
+    var vehicleParking = StreetModelForTest
+      .vehicleParking()
       .entrances(
         IntStream
           .rangeClosed(1, 3)
@@ -50,8 +52,7 @@ class VehicleParkingHelperTest {
               builder
                 .entranceId(new FeedScopedId(TEST_FEED_ID, "Entrance " + id))
                 .name(new NonLocalizedString("Entrance " + id))
-                .x(id)
-                .y(id)
+                .coordinate(new WgsCoordinate(id, id))
                 .carAccessible(id == 1 || id == 3)
                 .walkAccessible(id == 2 || id == 3)
           )
@@ -60,15 +61,15 @@ class VehicleParkingHelperTest {
       .wheelchairAccessibleCarPlaces(true)
       .build();
 
-    VehicleParkingHelper.linkVehicleParkingToGraph(graph, vehicleParking);
+    new VehicleParkingHelper(graph).linkVehicleParkingToGraph(vehicleParking);
 
     assertEquals(3, graph.getVerticesOfType(VehicleParkingEntranceVertex.class).size());
     assertEquals(7, graph.getEdgesOfType(VehicleParkingEdge.class).size());
   }
 
   private VehicleParking createParingWithEntrances(int entranceNumber) {
-    return VehicleParking
-      .builder()
+    return StreetModelForTest
+      .vehicleParking()
       .bicyclePlaces(true)
       .entrances(
         IntStream
@@ -78,8 +79,7 @@ class VehicleParkingHelperTest {
               builder
                 .entranceId(new FeedScopedId(TEST_FEED_ID, "Entrance " + id))
                 .name(new NonLocalizedString("Entrance " + id))
-                .x(id)
-                .y(id)
+                .coordinate(new WgsCoordinate(id, id))
                 .walkAccessible(true)
           )
           .collect(Collectors.toList())

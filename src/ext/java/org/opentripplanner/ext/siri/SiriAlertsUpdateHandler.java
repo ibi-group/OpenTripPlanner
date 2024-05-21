@@ -1,7 +1,6 @@
 package org.opentripplanner.ext.siri;
 
-import java.io.Serializable;
-import java.time.LocalDate;
+import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -9,45 +8,30 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.opentripplanner.ext.siri.mapper.AffectsMapper;
+import org.opentripplanner.ext.siri.mapper.SiriSeverityMapper;
+import org.opentripplanner.framework.i18n.I18NString;
+import org.opentripplanner.framework.i18n.NonLocalizedString;
+import org.opentripplanner.framework.i18n.TranslatedString;
 import org.opentripplanner.routing.alertpatch.AlertUrl;
 import org.opentripplanner.routing.alertpatch.EntitySelector;
-import org.opentripplanner.routing.alertpatch.StopCondition;
 import org.opentripplanner.routing.alertpatch.TimePeriod;
 import org.opentripplanner.routing.alertpatch.TransitAlert;
+import org.opentripplanner.routing.alertpatch.TransitAlertBuilder;
 import org.opentripplanner.routing.services.TransitAlertService;
-import org.opentripplanner.transit.model.basic.I18NString;
-import org.opentripplanner.transit.model.basic.NonLocalizedString;
-import org.opentripplanner.transit.model.basic.SubMode;
-import org.opentripplanner.transit.model.basic.TransitMode;
-import org.opentripplanner.transit.model.basic.TranslatedString;
 import org.opentripplanner.transit.model.framework.FeedScopedId;
+import org.opentripplanner.transit.service.DefaultTransitService;
 import org.opentripplanner.transit.service.TransitModel;
-import org.opentripplanner.util.time.ServiceDateUtils;
+import org.opentripplanner.transit.service.TransitService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import uk.org.ifopt.siri20.StopPlaceRef;
-import uk.org.siri.siri20.AffectedLineStructure;
-import uk.org.siri.siri20.AffectedOperatorStructure;
-import uk.org.siri.siri20.AffectedRouteStructure;
-import uk.org.siri.siri20.AffectedStopPlaceStructure;
-import uk.org.siri.siri20.AffectedStopPointStructure;
-import uk.org.siri.siri20.AffectedVehicleJourneyStructure;
-import uk.org.siri.siri20.AffectsScopeStructure;
-import uk.org.siri.siri20.DataFrameRefStructure;
 import uk.org.siri.siri20.DefaultedTextStructure;
-import uk.org.siri.siri20.FramedVehicleJourneyRefStructure;
 import uk.org.siri.siri20.HalfOpenTimestampOutputRangeStructure;
 import uk.org.siri.siri20.InfoLinkStructure;
-import uk.org.siri.siri20.LineRef;
 import uk.org.siri.siri20.NaturalLanguageStringStructure;
-import uk.org.siri.siri20.NetworkRefStructure;
-import uk.org.siri.siri20.OperatorRefStructure;
 import uk.org.siri.siri20.PtSituationElement;
-import uk.org.siri.siri20.RoutePointTypeEnumeration;
 import uk.org.siri.siri20.ServiceDelivery;
 import uk.org.siri.siri20.SituationExchangeDeliveryStructure;
-import uk.org.siri.siri20.StopPointRef;
-import uk.org.siri.siri20.VehicleJourneyRef;
 import uk.org.siri.siri20.WorkflowStatusEnumeration;
 
 /**
@@ -59,16 +43,25 @@ public class SiriAlertsUpdateHandler {
 
   private static final Logger LOG = LoggerFactory.getLogger(SiriAlertsUpdateHandler.class);
   private final String feedId;
-  private final TransitModel transitModel;
   private final Set<TransitAlert> alerts = new HashSet<>();
-  private TransitAlertService transitAlertService;
+  private final TransitAlertService transitAlertService;
   /** How long before the posted start of an event it should be displayed to users */
-  private long earlyStart;
-  private SiriFuzzyTripMatcher siriFuzzyTripMatcher;
+  private final Duration earlyStart;
+  private final AffectsMapper affectsMapper;
 
-  public SiriAlertsUpdateHandler(String feedId, TransitModel transitModel) {
+  public SiriAlertsUpdateHandler(
+    String feedId,
+    TransitModel transitModel,
+    TransitAlertService transitAlertService,
+    SiriFuzzyTripMatcher siriFuzzyTripMatcher,
+    Duration earlyStart
+  ) {
     this.feedId = feedId;
-    this.transitModel = transitModel;
+    this.transitAlertService = transitAlertService;
+    this.earlyStart = earlyStart;
+
+    TransitService transitService = new DefaultTransitService(transitModel);
+    this.affectsMapper = new AffectsMapper(feedId, siriFuzzyTripMatcher, transitService);
   }
 
   public void update(ServiceDelivery delivery) {
@@ -85,15 +78,14 @@ public class SiriAlertsUpdateHandler {
               sxElement.getProgress().equals(WorkflowStatusEnumeration.CLOSED)
             );
 
-          String situationNumber;
-          if (sxElement.getSituationNumber() != null) {
-            situationNumber = sxElement.getSituationNumber().getValue();
-          } else {
-            situationNumber = null;
+          if (sxElement.getSituationNumber() == null) {
+            continue;
           }
+          String situationNumber = sxElement.getSituationNumber().getValue();
+          FeedScopedId id = new FeedScopedId(feedId, situationNumber);
 
           if (expireSituation) {
-            alerts.removeIf(transitAlert -> transitAlert.getId().equals(situationNumber));
+            alerts.removeIf(transitAlert -> transitAlert.getId().equals(id));
             expiredCounter++;
           } else {
             TransitAlert alert = null;
@@ -108,17 +100,7 @@ public class SiriAlertsUpdateHandler {
               );
             }
             if (alert != null) {
-              alert.setId(situationNumber);
-              if (alert.getEntities().isEmpty()) {
-                LOG.info(
-                  "No match found for Alert - setting Unknown entity for situation with situationNumber {}",
-                  situationNumber
-                );
-                alert.addEntity(
-                  new EntitySelector.Unknown("Alert had no entities that could be handled")
-                );
-              }
-              alerts.removeIf(transitAlert -> transitAlert.getId().equals(situationNumber));
+              alerts.removeIf(transitAlert -> transitAlert.getId().equals(id));
               alerts.add(alert);
             }
           }
@@ -138,29 +120,13 @@ public class SiriAlertsUpdateHandler {
     }
   }
 
-  public void setTransitAlertService(TransitAlertService transitAlertService) {
-    this.transitAlertService = transitAlertService;
-  }
-
-  public long getEarlyStart() {
-    return earlyStart;
-  }
-
-  public void setEarlyStart(long earlyStart) {
-    this.earlyStart = earlyStart;
-  }
-
-  public void setSiriFuzzyTripMatcher(SiriFuzzyTripMatcher siriFuzzyTripMatcher) {
-    this.siriFuzzyTripMatcher = siriFuzzyTripMatcher;
-  }
-
   private TransitAlert handleAlert(PtSituationElement situation) {
-    TransitAlert alert = createAlertWithTexts(situation);
+    TransitAlertBuilder alert = createAlertWithTexts(situation);
 
     if (
-      (alert.alertHeaderText == null || alert.alertHeaderText.toString().isEmpty()) &&
-      (alert.alertDescriptionText == null || alert.alertDescriptionText.toString().isEmpty()) &&
-      (alert.alertDetailText == null || alert.alertDetailText.toString().isEmpty())
+      (alert.headerText() == null || alert.headerText().toString().isEmpty()) &&
+      (alert.descriptionText() == null || alert.descriptionText().toString().isEmpty()) &&
+      (alert.detailText() == null || alert.detailText().toString().isEmpty())
     ) {
       LOG.debug(
         "Empty Alert - ignoring situationNumber: {}",
@@ -169,13 +135,25 @@ public class SiriAlertsUpdateHandler {
       return null;
     }
 
+    if (situation.getCreationTime() != null) {
+      alert.withCreationTime(situation.getCreationTime());
+    }
+    if (situation.getVersionedAtTime() != null) {
+      alert.withUpdatedTime(situation.getVersionedAtTime());
+    }
+    if (situation.getVersion() != null && situation.getVersion().getValue() != null) {
+      alert.withVersion(situation.getVersion().getValue().intValue());
+    }
+
     ArrayList<TimePeriod> periods = new ArrayList<>();
     if (situation.getValidityPeriods().size() > 0) {
       for (HalfOpenTimestampOutputRangeStructure activePeriod : situation.getValidityPeriods()) {
         final long realStart = activePeriod.getStartTime() != null
           ? getEpochSecond(activePeriod.getStartTime())
           : 0;
-        final long start = activePeriod.getStartTime() != null ? realStart - earlyStart : 0;
+        final long start = activePeriod.getStartTime() != null
+          ? realStart - earlyStart.toSeconds()
+          : 0;
 
         final long realEnd = activePeriod.getEndTime() != null
           ? getEpochSecond(activePeriod.getEndTime())
@@ -189,259 +167,31 @@ public class SiriAlertsUpdateHandler {
       periods.add(new TimePeriod(0, TimePeriod.OPEN_ENDED));
     }
 
-    alert.setTimePeriods(periods);
+    alert.addTimePeriods(periods);
 
     if (situation.getPriority() != null) {
-      alert.priority = situation.getPriority().intValue();
+      alert.withPriority(situation.getPriority().intValue());
     }
 
-    AffectsScopeStructure affectsStructure = situation.getAffects();
+    alert.addEntites(affectsMapper.mapAffects(situation.getAffects()));
 
-    if (affectsStructure != null) {
-      AffectsScopeStructure.Operators operators = affectsStructure.getOperators();
-
-      if (operators != null && isNotEmpty(operators.getAffectedOperators())) {
-        for (AffectedOperatorStructure affectedOperator : operators.getAffectedOperators()) {
-          OperatorRefStructure operatorRef = affectedOperator.getOperatorRef();
-          if (operatorRef == null || operatorRef.getValue() == null) {
-            continue;
-          }
-
-          // SIRI Operators are mapped to OTP Agency, this i probably wrong - but
-          // I leave this for now.
-          String agencyId = operatorRef.getValue();
-
-          alert.addEntity(new EntitySelector.Agency(new FeedScopedId(feedId, agencyId)));
-        }
-      }
-
-      AffectsScopeStructure.StopPoints stopPoints = affectsStructure.getStopPoints();
-      AffectsScopeStructure.StopPlaces stopPlaces = affectsStructure.getStopPlaces();
-
-      if (stopPoints != null && isNotEmpty(stopPoints.getAffectedStopPoints())) {
-        for (AffectedStopPointStructure stopPoint : stopPoints.getAffectedStopPoints()) {
-          StopPointRef stopPointRef = stopPoint.getStopPointRef();
-          if (stopPointRef == null || stopPointRef.getValue() == null) {
-            continue;
-          }
-
-          FeedScopedId stopId = siriFuzzyTripMatcher.getStop(stopPointRef.getValue(), feedId);
-
-          if (stopId == null) {
-            stopId = new FeedScopedId(feedId, stopPointRef.getValue());
-          }
-
-          alert.addEntity(new EntitySelector.Stop(stopId));
-          // TODO: is this correct? Should the stop conditions be in the entity selector?
-          updateStopConditions(alert, stopPoint.getStopConditions());
-        }
-      } else if (stopPlaces != null && isNotEmpty(stopPlaces.getAffectedStopPlaces())) {
-        for (AffectedStopPlaceStructure stopPoint : stopPlaces.getAffectedStopPlaces()) {
-          StopPlaceRef stopPlace = stopPoint.getStopPlaceRef();
-          if (stopPlace == null || stopPlace.getValue() == null) {
-            continue;
-          }
-
-          FeedScopedId stopId = siriFuzzyTripMatcher.getStop(stopPlace.getValue(), feedId);
-
-          if (stopId == null) {
-            stopId = new FeedScopedId(feedId, stopPlace.getValue());
-          }
-
-          alert.addEntity(new EntitySelector.Stop(stopId));
-        }
-      }
-
-      AffectsScopeStructure.Networks networks = affectsStructure.getNetworks();
-      if (networks != null && isNotEmpty(networks.getAffectedNetworks())) {
-        for (AffectsScopeStructure.Networks.AffectedNetwork affectedNetwork : networks.getAffectedNetworks()) {
-          List<AffectedLineStructure> affectedLines = affectedNetwork.getAffectedLines();
-          if (isNotEmpty(affectedLines)) {
-            for (AffectedLineStructure line : affectedLines) {
-              LineRef lineRef = line.getLineRef();
-
-              if (lineRef == null || lineRef.getValue() == null) {
-                continue;
-              }
-
-              List<AffectedStopPointStructure> affectedStops = new ArrayList<>();
-
-              AffectedLineStructure.Routes routes = line.getRoutes();
-
-              // Resolve AffectedStop-ids
-              if (routes != null) {
-                for (AffectedRouteStructure route : routes.getAffectedRoutes()) {
-                  if (route.getStopPoints() != null) {
-                    List<Serializable> stopPointsList = route
-                      .getStopPoints()
-                      .getAffectedStopPointsAndLinkProjectionToNextStopPoints();
-                    for (Serializable serializable : stopPointsList) {
-                      if (serializable instanceof AffectedStopPointStructure) {
-                        AffectedStopPointStructure stopPointStructure = (AffectedStopPointStructure) serializable;
-                        affectedStops.add(stopPointStructure);
-                      }
-                    }
-                  }
-                }
-              }
-              FeedScopedId affectedRoute = new FeedScopedId(feedId, lineRef.getValue());
-
-              if (!affectedStops.isEmpty()) {
-                for (AffectedStopPointStructure affectedStop : affectedStops) {
-                  FeedScopedId stop = siriFuzzyTripMatcher.getStop(
-                    affectedStop.getStopPointRef().getValue(),
-                    feedId
-                  );
-                  if (stop == null) {
-                    stop = new FeedScopedId(feedId, affectedStop.getStopPointRef().getValue());
-                  }
-                  alert.addEntity(new EntitySelector.StopAndRoute(stop, affectedRoute));
-                  // TODO: is this correct? Should the stop conditions be in the entity selector?
-                  updateStopConditions(alert, affectedStop.getStopConditions());
-                }
-              } else {
-                alert.addEntity(new EntitySelector.Route(affectedRoute));
-              }
-            }
-          } else {
-            NetworkRefStructure networkRef = affectedNetwork.getNetworkRef();
-            if (networkRef == null || networkRef.getValue() == null) {
-              continue;
-            }
-            String networkId = networkRef.getValue();
-            // TODO: What to do here?
-          }
-        }
-      }
-
-      AffectsScopeStructure.VehicleJourneys vjs = affectsStructure.getVehicleJourneys();
-      if (vjs != null && isNotEmpty(vjs.getAffectedVehicleJourneies())) {
-        for (AffectedVehicleJourneyStructure affectedVehicleJourney : vjs.getAffectedVehicleJourneies()) {
-          List<AffectedStopPointStructure> affectedStops = new ArrayList<>();
-
-          List<AffectedRouteStructure> routes = affectedVehicleJourney.getRoutes();
-          // Resolve AffectedStop-ids
-          if (routes != null) {
-            for (AffectedRouteStructure route : routes) {
-              if (route.getStopPoints() != null) {
-                List<Serializable> stopPointsList = route
-                  .getStopPoints()
-                  .getAffectedStopPointsAndLinkProjectionToNextStopPoints();
-                for (Serializable serializable : stopPointsList) {
-                  if (serializable instanceof AffectedStopPointStructure) {
-                    AffectedStopPointStructure stopPointStructure = (AffectedStopPointStructure) serializable;
-                    affectedStops.add(stopPointStructure);
-                  }
-                }
-              }
-            }
-          }
-
-          List<VehicleJourneyRef> vehicleJourneyReves = affectedVehicleJourney.getVehicleJourneyReves();
-
-          if (isNotEmpty(vehicleJourneyReves)) {
-            for (VehicleJourneyRef vehicleJourneyRef : vehicleJourneyReves) {
-              List<FeedScopedId> tripIds = new ArrayList<>();
-
-              FeedScopedId tripIdFromVehicleJourney = siriFuzzyTripMatcher.getTripId(
-                vehicleJourneyRef.getValue(),
-                feedId
-              );
-
-              ZonedDateTime originAimedDepartureTime = affectedVehicleJourney.getOriginAimedDepartureTime() !=
-                null
-                ? affectedVehicleJourney.getOriginAimedDepartureTime()
-                : ZonedDateTime.now();
-
-              ZonedDateTime startOfService = ServiceDateUtils.asStartOfService(
-                originAimedDepartureTime
-              );
-
-              LocalDate serviceDate = startOfService.toLocalDate();
-
-              if (tripIdFromVehicleJourney != null) {
-                tripIds.add(tripIdFromVehicleJourney);
-              } else {
-                tripIds =
-                  siriFuzzyTripMatcher.getTripIdForInternalPlanningCodeServiceDateAndMode(
-                    vehicleJourneyRef.getValue(),
-                    serviceDate,
-                    TransitMode.RAIL,
-                    SubMode.of("railReplacementBus")
-                  );
-              }
-
-              for (FeedScopedId tripId : tripIds) {
-                if (!affectedStops.isEmpty()) {
-                  for (AffectedStopPointStructure affectedStop : affectedStops) {
-                    FeedScopedId stop = siriFuzzyTripMatcher.getStop(
-                      affectedStop.getStopPointRef().getValue(),
-                      feedId
-                    );
-                    if (stop == null) {
-                      stop = new FeedScopedId(feedId, affectedStop.getStopPointRef().getValue());
-                    }
-                    // Creating unique, deterministic id for the alert
-                    alert.addEntity(new EntitySelector.StopAndTrip(stop, tripId, serviceDate));
-
-                    // TODO: is this correct? Should the stop conditions be in the entity selector?
-                    updateStopConditions(alert, affectedStop.getStopConditions());
-                  }
-                } else {
-                  alert.addEntity(new EntitySelector.Trip(tripId, serviceDate));
-                }
-              }
-            }
-          }
-
-          final FramedVehicleJourneyRefStructure framedVehicleJourneyRef = affectedVehicleJourney.getFramedVehicleJourneyRef();
-          if (framedVehicleJourneyRef != null) {
-            final DataFrameRefStructure dataFrameRef = framedVehicleJourneyRef.getDataFrameRef();
-            final String datedVehicleJourneyRef = framedVehicleJourneyRef.getDatedVehicleJourneyRef();
-
-            FeedScopedId tripId = siriFuzzyTripMatcher.getTripId(datedVehicleJourneyRef, feedId);
-
-            if (tripId != null) {
-              LocalDate serviceDate = null;
-              if (dataFrameRef != null && dataFrameRef.getValue() != null) {
-                serviceDate = LocalDate.parse(dataFrameRef.getValue());
-              }
-
-              if (!affectedStops.isEmpty()) {
-                for (AffectedStopPointStructure affectedStop : affectedStops) {
-                  FeedScopedId stop = siriFuzzyTripMatcher.getStop(
-                    affectedStop.getStopPointRef().getValue(),
-                    feedId
-                  );
-                  if (stop == null) {
-                    stop = new FeedScopedId(feedId, affectedStop.getStopPointRef().getValue());
-                  }
-
-                  alert.addEntity(new EntitySelector.StopAndTrip(stop, tripId, serviceDate));
-                }
-              } else {
-                alert.addEntity(new EntitySelector.Trip(tripId, serviceDate));
-              }
-            }
-          }
-        }
-      }
+    if (alert.entities().isEmpty()) {
+      LOG.info(
+        "No match found for Alert - setting Unknown entity for situation with situationNumber {}",
+        alert.getId()
+      );
+      alert.addEntity(new EntitySelector.Unknown("Alert had no entities that could be handled"));
     }
 
-    if (alert.getStopConditions().isEmpty()) {
-      updateStopConditions(alert, null);
-    }
+    alert.withType(situation.getReportType());
 
-    alert.alertType = situation.getReportType();
-
-    alert.severity = SiriSeverityMapper.getAlertSeverityForSiriSeverity(situation.getSeverity());
+    alert.withSeverity(SiriSeverityMapper.getAlertSeverityForSiriSeverity(situation.getSeverity()));
 
     if (situation.getParticipantRef() != null) {
-      String codespace = situation.getParticipantRef().getValue();
-      alert.setFeedId(codespace + ":Authority:" + codespace); //TODO - SIRI: Should probably not assume this codespace -> authority rule
+      alert.withSiriCodespace(situation.getParticipantRef().getValue());
     }
 
-    return alert;
+    return alert.build();
   }
 
   private long getEpochSecond(ZonedDateTime startTime) {
@@ -451,17 +201,15 @@ public class SiriAlertsUpdateHandler {
   /*
    * Creates alert from PtSituation with all textual content
    */
-  private TransitAlert createAlertWithTexts(PtSituationElement situation) {
-    TransitAlert alert = new TransitAlert();
-
-    alert.alertDescriptionText = getTranslatedString(situation.getDescriptions());
-    alert.alertDetailText = getTranslatedString(situation.getDetails());
-    alert.alertAdviceText = getTranslatedString(situation.getAdvices());
-    alert.alertHeaderText = getTranslatedString(situation.getSummaries());
-    alert.alertUrl = getInfoLinkAsString(situation.getInfoLinks());
-    alert.setAlertUrlList(getInfoLinks(situation.getInfoLinks()));
-
-    return alert;
+  private TransitAlertBuilder createAlertWithTexts(PtSituationElement situation) {
+    return TransitAlert
+      .of(new FeedScopedId(feedId, situation.getSituationNumber().getValue()))
+      .withDescriptionText(getTranslatedString(situation.getDescriptions()))
+      .withDetailText(getTranslatedString(situation.getDetails()))
+      .withAdviceText(getTranslatedString(situation.getAdvices()))
+      .withHeaderText(getTranslatedString(situation.getSummaries()))
+      .withUrl(getInfoLinkAsString(situation.getInfoLinks()))
+      .addSiriUrls(getInfoLinks(situation.getInfoLinks()));
   }
 
   /*
@@ -501,40 +249,6 @@ public class SiriAlertsUpdateHandler {
       }
     }
     return alertUrls;
-  }
-
-  private void updateStopConditions(
-    TransitAlert alertPatch,
-    List<RoutePointTypeEnumeration> stopConditions
-  ) {
-    Set<StopCondition> alertStopConditions = new HashSet<>();
-    if (stopConditions != null) {
-      for (RoutePointTypeEnumeration stopCondition : stopConditions) {
-        switch (stopCondition) {
-          case EXCEPTIONAL_STOP:
-            alertStopConditions.add(StopCondition.EXCEPTIONAL_STOP);
-            break;
-          case DESTINATION:
-            alertStopConditions.add(StopCondition.DESTINATION);
-            break;
-          case NOT_STOPPING:
-            alertStopConditions.add(StopCondition.NOT_STOPPING);
-            break;
-          case REQUEST_STOP:
-            alertStopConditions.add(StopCondition.REQUEST_STOP);
-            break;
-          case START_POINT:
-            alertStopConditions.add(StopCondition.START_POINT);
-            break;
-        }
-      }
-    }
-    if (alertStopConditions.isEmpty()) {
-      //No StopConditions are set - set default
-      alertStopConditions.add(StopCondition.START_POINT);
-      alertStopConditions.add(StopCondition.DESTINATION);
-    }
-    alertPatch.getStopConditions().addAll(alertStopConditions);
   }
 
   /**

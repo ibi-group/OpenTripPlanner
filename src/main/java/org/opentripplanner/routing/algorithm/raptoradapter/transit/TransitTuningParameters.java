@@ -2,8 +2,9 @@ package org.opentripplanner.routing.algorithm.raptoradapter.transit;
 
 import java.time.Duration;
 import java.util.List;
+import org.opentripplanner.framework.time.DurationUtils;
+import org.opentripplanner.routing.api.request.RouteRequest;
 import org.opentripplanner.transit.model.site.StopTransferPriority;
-import org.opentripplanner.util.time.DurationUtils;
 
 public interface TransitTuningParameters {
   List<Duration> PAGING_SEARCH_WINDOW_ADJUSTMENTS = DurationUtils.durations("4h 2h 1h 30m 20m 10m");
@@ -12,7 +13,7 @@ public interface TransitTuningParameters {
    * These tuning parameters are typically used in unit tests. The values are:
    * <pre>
    * enableStopTransferPriority : true
-   * stopTransferCost : {
+   * stopBoardAlightDuringTransferCost : {
    *   DISCOURAGED:  3600  (equivalent of 1 hour penalty)
    *   ALLOWED:        60  (60 seconds penalty)
    *   RECOMMENDED:    20  (20 seconds penalty)
@@ -27,7 +28,7 @@ public interface TransitTuningParameters {
     }
 
     @Override
-    public Integer stopTransferCost(StopTransferPriority key) {
+    public Integer stopBoardAlightDuringTransferCost(StopTransferPriority key) {
       switch (key) {
         case DISCOURAGED:
           return 3600;
@@ -47,8 +48,18 @@ public interface TransitTuningParameters {
     }
 
     @Override
+    public Duration maxSearchWindow() {
+      return Duration.ofHours(24);
+    }
+
+    @Override
     public List<Duration> pagingSearchWindowAdjustments() {
       return PAGING_SEARCH_WINDOW_ADJUSTMENTS;
+    }
+
+    @Override
+    public List<RouteRequest> transferCacheRequests() {
+      return List.of();
     }
   };
 
@@ -59,17 +70,28 @@ public interface TransitTuningParameters {
   boolean enableStopTransferPriority();
 
   /**
-   * The stop transfer cost for the given {@link StopTransferPriority}. The cost applied to boarding
-   * and alighting all stops with the given priority.
+   * The stop board alight transfer cost for the given {@link StopTransferPriority}. The cost
+   * applied during transfers to <b>both boarding and alighting</b> of stops with the given
+   * priority.
    */
-  Integer stopTransferCost(StopTransferPriority key);
+  Integer stopBoardAlightDuringTransferCost(StopTransferPriority key);
 
   /**
-   * The maximum number of transfer RoutingRequests for which the pre-calculated transfers should be
+   * The maximum number of transfer RouteRequests for which the pre-calculated transfers should be
    * cached. If too small, the average request may be slower due to the required re-calculating. If
    * too large, more memory may be used than needed.
    */
   int transferCacheMaxSize();
+
+  /**
+   * The maximum search window that can be set through the searchWindow API parameter. Due to the
+   * way timetable data are collected before a Raptor trip search, using a search window larger than
+   * 24 hours may lead to inconsistent search results. Limiting the search window prevents also
+   * potential performance issues. The recommended maximum value is 24 hours.
+   * This parameter does not restrict the maximum duration of a dynamic search window (use
+   * the parameter transit.dynamicSearchWindow.maxWindow to specify such a restriction).
+   */
+  Duration maxSearchWindow();
 
   /**
    * This parameter is used to reduce the number of pages a client have to step through for a
@@ -96,4 +118,10 @@ public interface TransitTuningParameters {
    * The default values are: {@link #PAGING_SEARCH_WINDOW_ADJUSTMENTS}
    */
   List<Duration> pagingSearchWindowAdjustments();
+
+  /**
+   * {@link RouteRequest}s which will be used at server startup to pre-fill the raptor transfer cache.
+   * {@link org.opentripplanner.routing.algorithm.raptoradapter.transit.request.RaptorRequestTransferCache}
+   */
+  List<RouteRequest> transferCacheRequests();
 }

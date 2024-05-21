@@ -5,14 +5,17 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
+import org.opentripplanner.openstreetmap.wayproperty.specifier.WayTestData;
 
 public class OSMWithTagsTest {
 
   @Test
-  public void testHasTag() {
+  void testHasTag() {
     OSMWithTags o = new OSMWithTags();
     assertFalse(o.hasTag("foo"));
     assertFalse(o.hasTag("FOO"));
@@ -23,7 +26,7 @@ public class OSMWithTagsTest {
   }
 
   @Test
-  public void testGetTag() {
+  void testGetTag() {
     OSMWithTags o = new OSMWithTags();
     assertNull(o.getTag("foo"));
     assertNull(o.getTag("FOO"));
@@ -34,7 +37,7 @@ public class OSMWithTagsTest {
   }
 
   @Test
-  public void testIsFalse() {
+  void testIsFalse() {
     assertTrue(OSMWithTags.isFalse("no"));
     assertTrue(OSMWithTags.isFalse("0"));
     assertTrue(OSMWithTags.isFalse("false"));
@@ -48,7 +51,7 @@ public class OSMWithTagsTest {
   }
 
   @Test
-  public void testIsTrue() {
+  void testIsTrue() {
     assertTrue(OSMWithTags.isTrue("yes"));
     assertTrue(OSMWithTags.isTrue("1"));
     assertTrue(OSMWithTags.isTrue("true"));
@@ -62,7 +65,7 @@ public class OSMWithTagsTest {
   }
 
   @Test
-  public void testIsTagFalseOrTrue() {
+  void testIsTagFalseOrTrue() {
     OSMWithTags o = new OSMWithTags();
     assertFalse(o.isTagFalse("foo"));
     assertFalse(o.isTagFalse("FOO"));
@@ -83,7 +86,18 @@ public class OSMWithTagsTest {
   }
 
   @Test
-  public void testDoesAllowTagAccess() {
+  void isTag() {
+    var name = "Brendan";
+    var osm = new OSMWithTags();
+    osm.addTag("NAME", name);
+
+    assertTrue(osm.isTag("name", name));
+    assertTrue(osm.isTag("NAME", name));
+    assertFalse(osm.isTag("NAMEE", name));
+  }
+
+  @Test
+  void testDoesAllowTagAccess() {
     OSMWithTags o = new OSMWithTags();
     assertFalse(o.doesTagAllowAccess("foo"));
 
@@ -98,7 +112,7 @@ public class OSMWithTagsTest {
   }
 
   @Test
-  public void testIsGeneralAccessDenied() {
+  void testIsGeneralAccessDenied() {
     OSMWithTags o = new OSMWithTags();
     assertFalse(o.isGeneralAccessDenied());
 
@@ -113,7 +127,23 @@ public class OSMWithTagsTest {
   }
 
   @Test
-  public void getReferenceTags() {
+  void testBicycleDenied() {
+    OSMWithTags tags = new OSMWithTags();
+    assertFalse(tags.isBicycleExplicitlyDenied());
+
+    for (var allowedValue : List.of("yes", "unknown", "somevalue")) {
+      tags.addTag("bicycle", allowedValue);
+      assertFalse(tags.isBicycleExplicitlyDenied(), "bicycle=" + allowedValue);
+    }
+
+    for (var deniedValue : List.of("no", "dismount", "license")) {
+      tags.addTag("bicycle", deniedValue);
+      assertTrue(tags.isBicycleExplicitlyDenied(), "bicycle=" + deniedValue);
+    }
+  }
+
+  @Test
+  void getReferenceTags() {
     var osm = new OSMWithTags();
     osm.addTag("ref", "A");
 
@@ -122,7 +152,7 @@ public class OSMWithTagsTest {
   }
 
   @Test
-  public void getEmptyRefList() {
+  void getEmptyRefList() {
     var osm = new OSMWithTags();
     osm.addTag("ref", "A");
 
@@ -130,7 +160,7 @@ public class OSMWithTagsTest {
   }
 
   @Test
-  public void ignoreRefCase() {
+  void ignoreRefCase() {
     var osm = new OSMWithTags();
     osm.addTag("ref:IFOPT", "A");
 
@@ -138,7 +168,7 @@ public class OSMWithTagsTest {
   }
 
   @Test
-  public void readSemicolonSeparated() {
+  void readSemicolonSeparated() {
     var osm = new OSMWithTags();
     osm.addTag("ref:A", "A;A;B");
 
@@ -146,7 +176,7 @@ public class OSMWithTagsTest {
   }
 
   @Test
-  public void removeBlankRef() {
+  void removeBlankRef() {
     var osm = new OSMWithTags();
     osm.addTag("ref1", " ");
     osm.addTag("ref2", "");
@@ -156,12 +186,89 @@ public class OSMWithTagsTest {
   }
 
   @Test
-  public void shouldNotReturnNull() {
+  void shouldNotReturnNull() {
     var osm = new OSMWithTags();
     osm.addTag("ref1", " ");
     osm.addTag("ref2", "");
 
     assertEquals(Set.of(), osm.getMultiTagValues(Set.of()));
     assertEquals(Set.of(), osm.getMultiTagValues(Set.of("ref3")));
+  }
+
+  @Test
+  void isWheelchairAccessible() {
+    var osm1 = new OSMWithTags();
+    assertTrue(osm1.isWheelchairAccessible());
+
+    var osm2 = new OSMWithTags();
+    osm2.addTag("wheelchair", "no");
+    assertFalse(osm2.isWheelchairAccessible());
+
+    var osm3 = new OSMWithTags();
+    osm3.addTag("wheelchair", "yes");
+    assertTrue(osm3.isWheelchairAccessible());
+  }
+
+  @Test
+  void isRoutable() {
+    assertFalse(WayTestData.zooPlatform().isRoutable());
+  }
+
+  @Test
+  void isPlatform() {
+    assertFalse(WayTestData.zooPlatform().isPlatform());
+  }
+
+  @Test
+  void testGenerateI18NForPattern() {
+    OSMWithTags osmTags = new OSMWithTags();
+    osmTags.addTag("note", "Note EN");
+    osmTags.addTag("description:fr", "Description FR");
+    osmTags.addTag("wheelchair:description", "Wheelchair description EN");
+    osmTags.addTag("wheelchair:description:fr", "Wheelchair description FR");
+
+    assertNull(osmTags.generateI18NForPattern(null));
+    Map<String, String> expected = new HashMap<>();
+
+    expected.put(null, "");
+    assertEquals(expected, osmTags.generateI18NForPattern(""));
+
+    expected.clear();
+    expected.put(null, "Static text");
+    assertEquals(expected, osmTags.generateI18NForPattern("Static text"));
+
+    expected.clear();
+    expected.put(null, "Note: Note EN");
+    assertEquals(expected, osmTags.generateI18NForPattern("Note: {note}"));
+
+    expected.clear();
+    expected.put(null, "Desc: Description FR");
+    expected.put("fr", "Desc: Description FR");
+    assertEquals(expected, osmTags.generateI18NForPattern("Desc: {description}"));
+
+    expected.clear();
+    expected.put(null, "Note: Note EN, Wheelchair description EN");
+    expected.put("fr", "Note: Note EN, Wheelchair description FR");
+    assertEquals(
+      expected,
+      osmTags.generateI18NForPattern("Note: {note}, {wheelchair:description}")
+    );
+
+    expected.clear();
+    expected.put(null, "Note: Note EN, Wheelchair description EN, ");
+    expected.put("fr", "Note: Note EN, Wheelchair description FR, ");
+    assertEquals(
+      expected,
+      osmTags.generateI18NForPattern("Note: {note}, {wheelchair:description}, {foobar:description}")
+    );
+  }
+
+  @Test
+  void fallbackName() {
+    var nameless = WayTestData.cycleway();
+    assertTrue(nameless.hasNoName());
+
+    var namedTunnel = WayTestData.carTunnel();
+    assertFalse(namedTunnel.hasNoName());
   }
 }

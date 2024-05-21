@@ -17,16 +17,19 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import javax.annotation.Nonnull;
+import org.opentripplanner.framework.time.ServiceDateUtils;
 import org.opentripplanner.model.Timetable;
 import org.opentripplanner.model.TripTimeOnDate;
 import org.opentripplanner.model.plan.Leg;
 import org.opentripplanner.model.plan.ScheduledTransitLeg;
+import org.opentripplanner.model.plan.ScheduledTransitLegBuilder;
 import org.opentripplanner.transit.model.network.TripPattern;
 import org.opentripplanner.transit.model.site.Station;
 import org.opentripplanner.transit.model.site.StopLocation;
+import org.opentripplanner.transit.model.timetable.TripIdAndServiceDate;
+import org.opentripplanner.transit.model.timetable.TripOnServiceDate;
 import org.opentripplanner.transit.model.timetable.TripTimes;
 import org.opentripplanner.transit.service.TransitService;
-import org.opentripplanner.util.time.ServiceDateUtils;
 
 /**
  * A helper class to fetch previous/next alternative legs for a scheduled transit leg.
@@ -46,17 +49,56 @@ public class AlternativeLegs {
     boolean searchBackward,
     AlternativeLegsFilter filter
   ) {
+    return getAlternativeLegs(
+      leg,
+      numberLegs,
+      transitService,
+      searchBackward,
+      filter,
+      false,
+      false
+    );
+  }
+
+  /**
+   * Searches for alternatives to a given leg prior to or later than the departure of the given leg
+   *
+   * @param leg                  The original leg to which alternatives are searched for
+   * @param numberLegs           The number of alternative legs requested. If fewer legs are found,
+   *                             only the found legs are returned.
+   * @param transitService       The transit service used for the search
+   * @param includeDepartBefore  Boolean indicating whether the alternative legs should depart
+   *                             earlier or later than the original leg True if earlier, false if
+   *                             later.
+   * @param filter               AlternativeLegsFilter indicating which properties of the original
+   *                             leg should not change in the alternative legs
+   * @param exactOriginStop      Boolean indicating whether the exact departure stop of the original
+   *                             leg is used as departure stop for the alternatives. If false, all
+   *                             stops belonging to the same parent station are used.
+   * @param exactDestinationStop Boolean indicating whether the exact destination stop of the
+   *                             original leg is used as destination stop for the alternatives. If
+   *                             false, all stops belonging to the same parent station are used.
+   */
+  public static List<ScheduledTransitLeg> getAlternativeLegs(
+    Leg leg,
+    Integer numberLegs,
+    TransitService transitService,
+    boolean includeDepartBefore,
+    AlternativeLegsFilter filter,
+    boolean exactOriginStop,
+    boolean exactDestinationStop
+  ) {
     StopLocation fromStop = leg.getFrom().stop;
     StopLocation toStop = leg.getTo().stop;
 
     Station fromStation = fromStop.getParentStation();
     Station toStation = toStop.getParentStation();
 
-    Collection<StopLocation> origins = fromStation == null
+    Collection<StopLocation> origins = fromStation == null || exactOriginStop
       ? List.of(fromStop)
       : fromStation.getChildStops();
 
-    Collection<StopLocation> destinations = toStation == null
+    Collection<StopLocation> destinations = toStation == null || exactDestinationStop
       ? List.of(toStop)
       : toStation.getChildStops();
 
@@ -64,7 +106,7 @@ public class AlternativeLegs {
       ScheduledTransitLeg::getStartTime
     );
 
-    if (searchBackward) {
+    if (includeDepartBefore) {
       legComparator = legComparator.reversed();
     }
 
@@ -75,9 +117,16 @@ public class AlternativeLegs {
       .flatMap(stop -> transitService.getPatternsForStop(stop, true).stream())
       .filter(tripPattern -> tripPattern.getStops().stream().anyMatch(destinations::contains))
       .filter(tripPatternPredicate)
+      .distinct()
       .flatMap(tripPattern -> withBoardingAlightingPositions(origins, destinations, tripPattern))
       .flatMap(t ->
-        generateLegs(transitService, t, leg.getStartTime(), leg.getServiceDate(), searchBackward)
+        generateLegs(
+          transitService,
+          t,
+          leg.getStartTime(),
+          leg.getServiceDate(),
+          includeDepartBefore
+        )
       )
       .filter(Predicate.not(leg::isPartiallySameTransitLeg))
       .sorted(legComparator)
@@ -95,7 +144,7 @@ public class AlternativeLegs {
     TripPatternBetweenStops tripPatternBetweenStops,
     ZonedDateTime departureTime,
     LocalDate originalDate,
-    boolean searchBackward
+    boolean includeDepartBefore
   ) {
     TripPattern pattern = tripPatternBetweenStops.tripPattern;
     int boardingPosition = tripPatternBetweenStops.positions.boardingPosition;
@@ -108,7 +157,7 @@ public class AlternativeLegs {
       tts.getServiceDayMidnight() + tts.getRealtimeDeparture()
     );
 
-    if (searchBackward) {
+    if (includeDepartBefore) {
       comparator = comparator.reversed();
     }
 
@@ -138,7 +187,7 @@ public class AlternativeLegs {
           continue;
         }
 
-        boolean departureTimeInRange = searchBackward
+        boolean departureTimeInRange = includeDepartBefore
           ? tripTimes.getDepartureTime(boardingPosition) <= secondsSinceMidnight
           : tripTimes.getDepartureTime(boardingPosition) >= secondsSinceMidnight;
 
@@ -160,7 +209,16 @@ public class AlternativeLegs {
 
     while (!pq.isEmpty()) {
       TripTimeOnDate tripTimeOnDate = pq.poll();
-      res.add(mapToLeg(timeZone, pattern, boardingPosition, alightingPosition, tripTimeOnDate));
+      res.add(
+        mapToLeg(
+          timeZone,
+          pattern,
+          boardingPosition,
+          alightingPosition,
+          tripTimeOnDate,
+          transitService
+        )
+      );
     }
 
     return res.stream();
@@ -172,7 +230,8 @@ public class AlternativeLegs {
     TripPattern pattern,
     int boardingPosition,
     int alightingPosition,
-    TripTimeOnDate tripTimeOnDate
+    TripTimeOnDate tripTimeOnDate,
+    TransitService transitService
   ) {
     LocalDate serviceDay = tripTimeOnDate.getServiceDay();
     TripTimes tripTimes = tripTimeOnDate.getTripTimes();
@@ -188,20 +247,21 @@ public class AlternativeLegs {
       tripTimes.getArrivalTime(alightingPosition)
     );
 
-    return new ScheduledTransitLeg(
-      tripTimes,
-      pattern,
-      boardingPosition,
-      alightingPosition,
-      boardingTime,
-      alightingTime,
-      serviceDay,
-      timeZone,
-      null,
-      null,
-      ZERO_COST,
-      null
+    TripOnServiceDate tripOnServiceDate = transitService.getTripOnServiceDateForTripAndDay(
+      new TripIdAndServiceDate(tripTimeOnDate.getTrip().getId(), tripTimeOnDate.getServiceDay())
     );
+
+    return new ScheduledTransitLegBuilder<>()
+      .withTripTimes(tripTimes)
+      .withTripPattern(pattern)
+      .withBoardStopIndexInPattern(boardingPosition)
+      .withAlightStopIndexInPattern(alightingPosition)
+      .withStartTime(boardingTime)
+      .withEndTime(alightingTime)
+      .withServiceDate(serviceDay)
+      .withZoneId(timeZone)
+      .withTripOnServiceDate(tripOnServiceDate)
+      .build();
   }
 
   @Nonnull
@@ -224,15 +284,27 @@ public class AlternativeLegs {
       .range(0, stops.size())
       .filter(i -> origins.contains(stops.get(i)) && tripPattern.canBoard(i))
       .boxed()
-      // Create a cartesian product of the pairs
       .flatMap(boardingPosition ->
         Arrays
           .stream(alightingPositions)
           // Filter out the impossible combinations
           .filter(alightingPosition -> boardingPosition < alightingPosition)
+          .min()
+          .stream()
           .mapToObj(alightingPosition ->
             new BoardingAlightingPositions(boardingPosition, alightingPosition)
           )
+      )
+      // Group by alighting position
+      .collect(Collectors.groupingBy(pair -> pair.alightingPosition))
+      .values()
+      .stream()
+      // Find the shortest leg in each group
+      .flatMap(legGroup ->
+        legGroup
+          .stream()
+          .min(Comparator.comparing(ba -> ba.alightingPosition - ba.boardingPosition))
+          .stream()
       )
       .map(pair -> new TripPatternBetweenStops(tripPattern, pair));
   }

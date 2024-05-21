@@ -1,37 +1,33 @@
 package org.opentripplanner.routing.algorithm.transferoptimization.model;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.opentripplanner.framework.time.TimeUtils.time;
+import static org.opentripplanner.raptor._data.stoparrival.BasicPathTestCase.C1_CALCULATOR;
 import static org.opentripplanner.routing.algorithm.transferoptimization.model.MinSafeTransferTimeCalculator.bound;
-import static org.opentripplanner.transit.raptor._data.stoparrival.BasicPathTestCase.COST_CALCULATOR;
-import static org.opentripplanner.transit.raptor._data.stoparrival.BasicPathTestCase.SLACK_PROVIDER;
-import static org.opentripplanner.util.time.TimeUtils.time;
 
 import java.util.List;
 import org.junit.jupiter.api.Test;
-import org.opentripplanner.transit.raptor._data.RaptorTestConstants;
-import org.opentripplanner.transit.raptor._data.api.TestPathBuilder;
-import org.opentripplanner.transit.raptor._data.stoparrival.BasicPathTestCase;
-import org.opentripplanner.transit.raptor._data.transit.TestTripSchedule;
-import org.opentripplanner.transit.raptor.api.path.Path;
-import org.opentripplanner.util.time.DurationUtils;
+import org.opentripplanner.framework.time.DurationUtils;
+import org.opentripplanner.raptor._data.RaptorTestConstants;
+import org.opentripplanner.raptor._data.api.TestPathBuilder;
+import org.opentripplanner.raptor._data.stoparrival.BasicPathTestCase;
+import org.opentripplanner.raptor._data.transit.TestTripSchedule;
+import org.opentripplanner.raptor.api.path.RaptorPath;
 
 public class MinSafeTransferTimeCalculatorTest implements RaptorTestConstants {
 
   private static final int D2m = DurationUtils.durationInSeconds("2m");
   private static final int TRANSIT_TIME = 2000 - (BOARD_SLACK + ALIGHT_SLACK);
+  private static final TestPathBuilder PATH_BUILDER = new TestPathBuilder(C1_CALCULATOR);
 
-  private static final TestPathBuilder PATH_BUILDER = new TestPathBuilder(
-    ALIGHT_SLACK,
-    COST_CALCULATOR
-  );
   private final MinSafeTransferTimeCalculator<TestTripSchedule> subject = new MinSafeTransferTimeCalculator<>(
     SLACK_PROVIDER
   );
-  Path<TestTripSchedule> path_1_bus_leg = PATH_BUILDER
-    .access(time("10:00:15"), D2m, STOP_A)
+  RaptorPath<TestTripSchedule> path_1_bus_leg = PATH_BUILDER
+    .access(time("10:00:15"), STOP_A, D2m)
     .bus("L11", time("10:03"), TRANSIT_TIME, STOP_B)
     .egress(D2m);
-  Path<TestTripSchedule> path_3_bus_legs = BasicPathTestCase.basicTripAsPath();
+  RaptorPath<TestTripSchedule> path_3_bus_legs = BasicPathTestCase.basicTripAsPath();
 
   @Test
   public void testMinSafeTransferTimeOneTransit() {

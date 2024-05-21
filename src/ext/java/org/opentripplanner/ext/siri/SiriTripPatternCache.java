@@ -8,14 +8,14 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import javax.annotation.Nonnull;
 import org.opentripplanner.transit.model.network.StopPattern;
 import org.opentripplanner.transit.model.network.TripPattern;
 import org.opentripplanner.transit.model.network.TripPatternBuilder;
-import org.opentripplanner.transit.model.site.Stop;
+import org.opentripplanner.transit.model.site.RegularStop;
 import org.opentripplanner.transit.model.site.StopLocation;
 import org.opentripplanner.transit.model.timetable.Trip;
-import org.opentripplanner.transit.service.TransitModel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,9 +35,14 @@ public class SiriTripPatternCache {
   private final Map<TripServiceDateKey, TripPattern> updatedTripPatternsForTripCache = new HashMap<>();
 
   private final SiriTripPatternIdGenerator tripPatternIdGenerator;
+  private final Function<Trip, TripPattern> getPatternForTrip;
 
-  public SiriTripPatternCache(SiriTripPatternIdGenerator tripPatternIdGenerator) {
+  public SiriTripPatternCache(
+    SiriTripPatternIdGenerator tripPatternIdGenerator,
+    Function<Trip, TripPattern> getPatternForTrip
+  ) {
     this.tripPatternIdGenerator = tripPatternIdGenerator;
+    this.getPatternForTrip = getPatternForTrip;
   }
 
   /**
@@ -47,15 +52,19 @@ public class SiriTripPatternCache {
    * @param stopPattern stop pattern to retrieve/create trip pattern
    * @param trip        Trip containing route of new trip pattern in case a new trip pattern will be
    *                    created
-   * @param transitModel       transitModel to add vertices and edges in case a new trip pattern will be created
    * @return cached or newly created trip pattern
    */
   public synchronized TripPattern getOrCreateTripPattern(
     @Nonnull final StopPattern stopPattern,
     @Nonnull final Trip trip,
-    @Nonnull final TransitModel transitModel,
     @Nonnull LocalDate serviceDate
   ) {
+    TripPattern originalTripPattern = getPatternForTrip.apply(trip);
+
+    if (originalTripPattern.getStopPattern().equals(stopPattern)) {
+      return originalTripPattern;
+    }
+
     // Check cache for trip pattern
     StopPatternServiceDateKey key = new StopPatternServiceDateKey(stopPattern, serviceDate);
     TripPattern tripPattern = cache.get(key);
@@ -66,14 +75,11 @@ public class SiriTripPatternCache {
       TripPatternBuilder tripPatternBuilder = TripPattern
         .of(id)
         .withRoute(trip.getRoute())
+        .withMode(trip.getMode())
+        .withNetexSubmode(trip.getNetexSubMode())
         .withStopPattern(stopPattern);
 
       // TODO - SIRI: Add pattern to transitModel index?
-
-      TripPattern originalTripPattern = transitModel
-        .getTransitModelIndex()
-        .getPatternForTrip()
-        .get(trip);
 
       tripPatternBuilder.withCreatedByRealtimeUpdater(true);
       tripPatternBuilder.withOriginalTripPattern(originalTripPattern);
@@ -126,7 +132,7 @@ public class SiriTripPatternCache {
         patternsForStop.values().removeAll(Arrays.asList(cachedTripPattern));
         int sizeAfter = patternsForStop.values().size();
 
-        log.info(
+        log.debug(
           "Removed outdated TripPattern for {} stops in {} ms - tripId: {}",
           (sizeBefore - sizeAfter),
           (System.currentTimeMillis() - t1),
@@ -158,7 +164,7 @@ public class SiriTripPatternCache {
    * @param stop the stop
    * @return list of TripPatterns created by real time sources for the stop.
    */
-  public List<TripPattern> getAddedTripPatternsForStop(Stop stop) {
+  public List<TripPattern> getAddedTripPatternsForStop(RegularStop stop) {
     return patternsForStop.get(stop);
   }
 }
@@ -184,7 +190,7 @@ class StopPatternServiceDateKey {
       return false;
     }
     StopPatternServiceDateKey that = (StopPatternServiceDateKey) thatObject;
-    return (this.stopPattern.equals(that.stopPattern) & this.serviceDate.equals(that.serviceDate));
+    return (this.stopPattern.equals(that.stopPattern) && this.serviceDate.equals(that.serviceDate));
   }
 }
 
@@ -209,6 +215,6 @@ class TripServiceDateKey {
       return false;
     }
     TripServiceDateKey that = (TripServiceDateKey) thatObject;
-    return (this.trip.equals(that.trip) & this.serviceDate.equals(that.serviceDate));
+    return (this.trip.equals(that.trip) && this.serviceDate.equals(that.serviceDate));
   }
 }

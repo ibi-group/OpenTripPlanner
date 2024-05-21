@@ -1,0 +1,12 @@
+{
+  "transit": {
+    "dynamicSearchWindow": {
+      "minWindow": "8h",
+      "maxWindow": "10h"
+    }
+  },
+  "flex": {
+    "maxAccessWalkDuration": "10m",
+    "maxEgressWalkDuration": "10m"
+  }
+}

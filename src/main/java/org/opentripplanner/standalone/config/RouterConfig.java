@@ -1,19 +1,23 @@
 package org.opentripplanner.standalone.config;
 
-import static org.opentripplanner.standalone.config.RoutingRequestMapper.mapRoutingRequest;
+import static org.opentripplanner.framework.application.OtpFileNames.ROUTER_CONFIG_FILENAME;
+import static org.opentripplanner.standalone.config.framework.json.OtpVersion.V2_1;
+import static org.opentripplanner.standalone.config.routerequest.RouteRequestConfig.mapDefaultRouteRequest;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.MissingNode;
 import java.io.Serializable;
-import java.time.Duration;
-import java.time.format.DateTimeParseException;
-import org.opentripplanner.ext.flex.FlexParameters;
-import org.opentripplanner.ext.vectortiles.VectorTilesResource;
-import org.opentripplanner.routing.algorithm.raptoradapter.transit.TransitTuningParameters;
-import org.opentripplanner.routing.api.request.RoutingRequest;
+import java.util.List;
+import org.opentripplanner.ext.ridehailing.RideHailingServiceParameters;
+import org.opentripplanner.routing.api.request.RouteRequest;
+import org.opentripplanner.standalone.config.framework.json.NodeAdapter;
+import org.opentripplanner.standalone.config.routerconfig.RideHailingServicesConfig;
+import org.opentripplanner.standalone.config.routerconfig.ServerConfig;
+import org.opentripplanner.standalone.config.routerconfig.TransitRoutingConfig;
+import org.opentripplanner.standalone.config.routerconfig.UpdatersConfig;
+import org.opentripplanner.standalone.config.routerconfig.VectorTileConfig;
 import org.opentripplanner.standalone.config.sandbox.FlexConfig;
 import org.opentripplanner.standalone.config.sandbox.TransmodelAPIConfig;
-import org.opentripplanner.transit.raptor.api.request.RaptorTuningParameters;
 import org.opentripplanner.updater.UpdatersParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,7 +27,6 @@ import org.slf4j.LoggerFactory;
  */
 public class RouterConfig implements Serializable {
 
-  private static final Duration DEFAULT_STREET_ROUTING_TIMEOUT = Duration.ofSeconds(5);
   private static final Logger LOG = LoggerFactory.getLogger(RouterConfig.class);
 
   public static final RouterConfig DEFAULT = new RouterConfig(
@@ -33,35 +36,50 @@ public class RouterConfig implements Serializable {
   );
 
   /**
-   * The raw JsonNode three kept for reference and (de)serialization.
+   * The node adaptor kept for reference and (de)serialization.
    */
-  private final JsonNode rawJson;
+  private final NodeAdapter root;
   private final String configVersion;
-  private final String requestLogFile;
-  private final TransmodelAPIConfig transmodelApi;
-  private final Duration streetRoutingTimeout;
-  private final RoutingRequest routingRequestDefaults;
+  private final ServerConfig server;
+  private final RouteRequest routingRequestDefaults;
   private final TransitRoutingConfig transitConfig;
   private final UpdatersParameters updatersParameters;
-  private final VectorTileConfig vectorTileLayers;
+  private final RideHailingServicesConfig rideHailingConfig;
   private final FlexConfig flexConfig;
+  private final TransmodelAPIConfig transmodelApi;
+  private final VectorTileConfig vectorTileConfig;
 
   public RouterConfig(JsonNode node, String source, boolean logUnusedParams) {
-    NodeAdapter adapter = new NodeAdapter(node, source);
-    this.rawJson = node;
-    this.configVersion = adapter.asText("configVersion", null);
-    this.requestLogFile = adapter.asText("requestLogFile", null);
-    this.transmodelApi = new TransmodelAPIConfig(adapter.path("transmodelApi"));
-    this.streetRoutingTimeout = parseStreetRoutingTimeout(adapter);
-    this.transitConfig = new TransitRoutingConfig(adapter.path("transit"));
-    this.routingRequestDefaults = mapRoutingRequest(adapter.path("routingDefaults"));
-    this.updatersParameters = new UpdatersConfig(adapter);
-    this.vectorTileLayers = new VectorTileConfig(adapter.path("vectorTileLayers").asList());
-    this.flexConfig = new FlexConfig(adapter.path("flex"));
+    this(new NodeAdapter(node, source), logUnusedParams);
+  }
 
-    if (logUnusedParams) {
-      adapter.logAllUnusedParameters(LOG);
+  /** protected to give unit-test access */
+  RouterConfig(NodeAdapter root, boolean logUnusedParams) {
+    this.root = root;
+    this.configVersion =
+      root
+        .of("configVersion")
+        .since(V2_1)
+        .summary("Deployment version of the *" + ROUTER_CONFIG_FILENAME + "*.")
+        .description(OtpConfig.CONFIG_VERSION_DESCRIPTION)
+        .asString(null);
+
+    this.server = new ServerConfig("server", root);
+    this.transmodelApi = new TransmodelAPIConfig("transmodelApi", root);
+    this.routingRequestDefaults = mapDefaultRouteRequest("routingDefaults", root);
+    this.transitConfig = new TransitRoutingConfig("transit", root, routingRequestDefaults);
+    this.routingRequestDefaults.setMaxSearchWindow(transitConfig.maxSearchWindow());
+    this.updatersParameters = new UpdatersConfig(root);
+    this.rideHailingConfig = new RideHailingServicesConfig(root);
+    this.vectorTileConfig = VectorTileConfig.mapVectorTilesParameters(root, "vectorTiles");
+    this.flexConfig = new FlexConfig(root, "flex");
+
+    if (logUnusedParams && LOG.isWarnEnabled()) {
+      root.logAllWarnings(LOG::warn);
     }
+
+    // Semantic validation
+    server.validate(routingRequestDefaults.preferences().street().routingTimeout());
   }
 
   /**
@@ -81,32 +99,19 @@ public class RouterConfig implements Serializable {
     return configVersion;
   }
 
-  public String requestLogFile() {
-    return requestLogFile;
-  }
-
-  /**
-   * The preferred way to limit the search is to limit the distance for each street mode(WALK, BIKE,
-   * CAR). So the default timeout for a street search is set quite high. This is used to abort the
-   * search if the max distance is not reached within the timeout.
-   */
-  public Duration streetRoutingTimeout() {
-    return streetRoutingTimeout;
+  public ServerConfig server() {
+    return server;
   }
 
   public TransmodelAPIConfig transmodelApi() {
     return transmodelApi;
   }
 
-  public RoutingRequest routingRequestDefaults() {
+  public RouteRequest routingRequestDefaults() {
     return routingRequestDefaults;
   }
 
-  public RaptorTuningParameters raptorTuningParameters() {
-    return transitConfig;
-  }
-
-  public TransitTuningParameters transitTuningParameters() {
+  public TransitRoutingConfig transitTuningConfig() {
     return transitConfig;
   }
 
@@ -114,55 +119,42 @@ public class RouterConfig implements Serializable {
     return updatersParameters;
   }
 
-  public VectorTilesResource.LayersParameters vectorTileLayers() {
-    return vectorTileLayers;
+  public List<RideHailingServiceParameters> rideHailingServiceParameters() {
+    return rideHailingConfig.rideHailingServiceParameters();
   }
 
-  public FlexParameters flexParameters(RoutingRequest request) {
-    return flexConfig.toFlexParameters(request);
+  public VectorTileConfig vectorTileConfig() {
+    return vectorTileConfig;
+  }
+
+  public FlexConfig flexConfig() {
+    return flexConfig;
+  }
+
+  public NodeAdapter asNodeAdapter() {
+    return root;
   }
 
   /**
    * If {@code true} the config is loaded from file, in not the DEFAULT config is used.
    */
   public boolean isDefault() {
-    return this.rawJson.isMissingNode();
+    return root.isEmpty();
   }
 
   public String toJson() {
-    return rawJson.isMissingNode() ? "" : rawJson.toString();
+    return root.isEmpty() ? "" : root.toJson();
   }
 
   public String toString() {
-    // Print ONLY the values set, not deafult values
-    return rawJson.toPrettyString();
+    // Print ONLY the values set, not default values
+    return root.toPrettyString();
   }
 
   /**
-   * This method is needed, because we want to support the old format for the "streetRoutingTimeout"
-   * parameter. We will keep it for some time, to let OTP deployments update the config.
-   * @since 2.2 - The support for the old format can be removed in version > 2.2.
+   * Checks if any unknown or invalid parameters were encountered while loading the configuration.
    */
-  static Duration parseStreetRoutingTimeout(NodeAdapter adapter) {
-    try {
-      return adapter.asDuration("streetRoutingTimeout", DEFAULT_STREET_ROUTING_TIMEOUT);
-    } catch (DateTimeParseException ex) {
-      LOG.warn(
-        "The `streetRoutingTimeout` parameter input format changed from a real number to a " +
-        "Duration. Update you config, the support for the old format will be removed in the " +
-        "next version after v2.2. Details: " +
-        ex.getMessage()
-      );
-      // This is safe, because the asDouble, will fall back to the default value on parse error
-      return Duration.ofMillis(
-        (long) (
-          1000L *
-          adapter.asDouble(
-            "streetRoutingTimeout",
-            (double) DEFAULT_STREET_ROUTING_TIMEOUT.toSeconds()
-          )
-        )
-      );
-    }
+  public boolean hasUnknownParameters() {
+    return root.hasUnknownParameters();
   }
 }

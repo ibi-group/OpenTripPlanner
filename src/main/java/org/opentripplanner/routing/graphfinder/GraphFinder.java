@@ -3,11 +3,12 @@ package org.opentripplanner.routing.graphfinder;
 import java.util.Collection;
 import java.util.List;
 import java.util.function.Function;
+import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Envelope;
 import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.transit.model.basic.TransitMode;
 import org.opentripplanner.transit.model.framework.FeedScopedId;
-import org.opentripplanner.transit.model.site.Stop;
+import org.opentripplanner.transit.model.site.RegularStop;
 import org.opentripplanner.transit.service.TransitService;
 
 /**
@@ -21,7 +22,7 @@ public interface GraphFinder {
    */
   static GraphFinder getInstance(
     Graph graph,
-    Function<Envelope, Collection<Stop>> queryNearbyStops
+    Function<Envelope, Collection<RegularStop>> queryNearbyStops
   ) {
     return graph.hasStreets
       ? new StreetGraphFinder(graph)
@@ -31,11 +32,10 @@ public interface GraphFinder {
   /**
    * Search closest stops from a given coordinate, extending up to a specified max radius.
    *
-   * @param lat          Origin latitude
-   * @param lon          Origin longitude
+   * @param coordinate   Origin
    * @param radiusMeters Search radius from the origin in meters
    */
-  List<NearbyStop> findClosestStops(double lat, double lon, double radiusMeters);
+  List<NearbyStop> findClosestStops(Coordinate coordinate, double radiusMeters);
 
   /**
    * Search closest places, including stops, bike rental stations, bike and car parking etc, from a
@@ -66,6 +66,7 @@ public interface GraphFinder {
     List<TransitMode> filterByModes,
     List<PlaceType> filterByPlaceTypes,
     List<FeedScopedId> filterByStops,
+    List<FeedScopedId> filterByStations,
     List<FeedScopedId> filterByRoutes,
     List<String> filterByBikeRentalStations,
     TransitService transitService

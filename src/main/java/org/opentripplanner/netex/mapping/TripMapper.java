@@ -1,20 +1,23 @@
 package org.opentripplanner.netex.mapping;
 
+import jakarta.xml.bind.JAXBElement;
 import java.util.Map;
 import java.util.function.Supplier;
 import javax.annotation.Nullable;
-import javax.xml.bind.JAXBElement;
-import org.opentripplanner.graph_builder.DataImportIssueStore;
+import org.opentripplanner.framework.i18n.NonLocalizedString;
+import org.opentripplanner.graph_builder.issue.api.DataImportIssueStore;
 import org.opentripplanner.netex.index.api.ReadOnlyHierarchicalMap;
 import org.opentripplanner.netex.mapping.support.FeedScopedIdFactory;
-import org.opentripplanner.netex.mapping.support.MainAndSubMode;
-import org.opentripplanner.transit.model.basic.WheelchairAccessibility;
+import org.opentripplanner.netex.mapping.support.NetexMainAndSubMode;
+import org.opentripplanner.netex.support.JourneyPatternHelper;
+import org.opentripplanner.transit.model.basic.Accessibility;
+import org.opentripplanner.transit.model.framework.DefaultEntityById;
 import org.opentripplanner.transit.model.framework.EntityById;
 import org.opentripplanner.transit.model.framework.FeedScopedId;
 import org.opentripplanner.transit.model.organization.Operator;
 import org.opentripplanner.transit.model.timetable.Trip;
 import org.rutebanken.netex.model.DirectionTypeEnumeration;
-import org.rutebanken.netex.model.JourneyPattern;
+import org.rutebanken.netex.model.JourneyPattern_VersionStructure;
 import org.rutebanken.netex.model.LineRefStructure;
 import org.rutebanken.netex.model.Route;
 import org.rutebanken.netex.model.ServiceJourney;
@@ -34,11 +37,11 @@ class TripMapper {
   private final DataImportIssueStore issueStore;
   private final EntityById<org.opentripplanner.transit.model.network.Route> otpRouteById;
   private final ReadOnlyHierarchicalMap<String, Route> routeById;
-  private final ReadOnlyHierarchicalMap<String, JourneyPattern> journeyPatternsById;
+  private final ReadOnlyHierarchicalMap<String, JourneyPattern_VersionStructure> journeyPatternsById;
   private final Map<String, FeedScopedId> serviceIds;
   private final EntityById<Operator> operatorsById;
   private final TransportModeMapper transportModeMapper = new TransportModeMapper();
-  private final EntityById<Trip> mappedTrips = new EntityById<>();
+  private final EntityById<Trip> mappedTrips = new DefaultEntityById<>();
 
   TripMapper(
     FeedScopedIdFactory idFactory,
@@ -46,7 +49,7 @@ class TripMapper {
     EntityById<Operator> operatorsById,
     EntityById<org.opentripplanner.transit.model.network.Route> otpRouteById,
     ReadOnlyHierarchicalMap<String, Route> routeById,
-    ReadOnlyHierarchicalMap<String, JourneyPattern> journeyPatternsById,
+    ReadOnlyHierarchicalMap<String, JourneyPattern_VersionStructure> journeyPatternsById,
     Map<String, FeedScopedId> serviceIds
   ) {
     this.idFactory = idFactory;
@@ -91,7 +94,7 @@ class TripMapper {
 
     var wheelChairBoarding = WheelChairMapper.wheelchairAccessibility(
       serviceJourney.getAccessibilityAssessment(),
-      WheelchairAccessibility.NO_INFORMATION
+      Accessibility.NO_INFORMATION
     );
 
     var builder = Trip.of(id);
@@ -107,7 +110,7 @@ class TripMapper {
     builder.withOperator(findOperator(serviceJourney));
 
     if (serviceJourney.getTransportMode() != null) {
-      MainAndSubMode transitMode = null;
+      NetexMainAndSubMode transitMode = null;
       try {
         transitMode =
           transportModeMapper.map(
@@ -136,7 +139,7 @@ class TripMapper {
     // TODO RTM - Instead of getting the first headsign from the StopTime this could be the
     //          - default behaviour of the TransitModel - So, in the NeTEx mapper we would just
     //          - ignore setting the headsign on the Trip.
-    builder.withHeadsign(headsign.get());
+    builder.withHeadsign(new NonLocalizedString(headsign.get()));
 
     return builder.build();
   }
@@ -152,7 +155,7 @@ class TripMapper {
 
   private Route lookUpNetexRoute(ServiceJourney serviceJourney) {
     if (serviceJourney.getJourneyPatternRef() != null) {
-      JourneyPattern journeyPattern = journeyPatternsById.lookup(
+      JourneyPattern_VersionStructure journeyPattern = journeyPatternsById.lookup(
         serviceJourney.getJourneyPatternRef().getValue().getRef()
       );
       if (journeyPattern != null && journeyPattern.getRouteRef() != null) {
@@ -175,11 +178,10 @@ class TripMapper {
       lineRef = lineRefStruct.getValue().getRef();
     } else if (serviceJourney.getJourneyPatternRef() != null) {
       // Connect to Line referenced through JourneyPattern->Route
-      JourneyPattern journeyPattern = journeyPatternsById.lookup(
+      JourneyPattern_VersionStructure journeyPattern = journeyPatternsById.lookup(
         serviceJourney.getJourneyPatternRef().getValue().getRef()
       );
-      String routeRef = journeyPattern.getRouteRef().getRef();
-      lineRef = routeById.lookup(routeRef).getLineRef().getValue().getRef();
+      lineRef = JourneyPatternHelper.getLineFromRoute(routeById, journeyPattern);
     }
     org.opentripplanner.transit.model.network.Route route = otpRouteById.get(
       idFactory.createId(lineRef)
@@ -187,9 +189,8 @@ class TripMapper {
 
     if (route == null) {
       LOG.warn(
-        "Unable to link ServiceJourney to Route. ServiceJourney id: " +
-        serviceJourney.getId() +
-        ", Line ref: " +
+        "Unable to link ServiceJourney to Route. ServiceJourney id: {}, Line ref: {}",
+        serviceJourney.getId(),
         lineRef
       );
     }

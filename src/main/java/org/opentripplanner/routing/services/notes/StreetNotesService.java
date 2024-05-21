@@ -5,10 +5,12 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import org.opentripplanner.model.StreetNote;
-import org.opentripplanner.routing.core.State;
-import org.opentripplanner.routing.core.TraverseMode;
-import org.opentripplanner.routing.graph.Edge;
+import org.opentripplanner.street.model.edge.Edge;
+import org.opentripplanner.street.model.note.StreetNote;
+import org.opentripplanner.street.model.note.StreetNoteAndMatcher;
+import org.opentripplanner.street.model.note.StreetNoteMatcher;
+import org.opentripplanner.street.search.TraverseMode;
+import org.opentripplanner.street.search.state.State;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,50 +36,40 @@ import org.slf4j.LoggerFactory;
  */
 public class StreetNotesService implements Serializable {
 
-  private static final long serialVersionUID = 1L;
-
   @SuppressWarnings("unused")
   private static final Logger LOG = LoggerFactory.getLogger(StreetNotesService.class);
 
-  public static final NoteMatcher WHEELCHAIR_MATCHER = new NoteMatcher() {
-    private static final long serialVersionUID = 1L;
-
+  public static final StreetNoteMatcher WHEELCHAIR_MATCHER = new StreetNoteMatcher() {
     @Override
     public boolean matches(State state) {
-      return state.getOptions().wheelchairAccessibility.enabled();
+      return state.getRequest().wheelchair();
     }
   };
 
-  public static final NoteMatcher DRIVING_MATCHER = new NoteMatcher() {
-    private static final long serialVersionUID = 1L;
-
+  public static final StreetNoteMatcher DRIVING_MATCHER = new StreetNoteMatcher() {
     @Override
     public boolean matches(State state) {
-      return state.getBackMode().isDriving();
+      return state.getBackMode().isInCar();
     }
   };
 
-  public static final NoteMatcher BICYCLE_MATCHER = new NoteMatcher() {
-    private static final long serialVersionUID = 1L;
-
+  public static final StreetNoteMatcher BICYCLE_MATCHER = new StreetNoteMatcher() {
     @Override
     public boolean matches(State state) {
       return state.getBackMode() == TraverseMode.BICYCLE;
     }
   };
 
-  public static final NoteMatcher ALWAYS_MATCHER = new NoteMatcher() {
-    private static final long serialVersionUID = 1L;
-
+  public static final StreetNoteMatcher ALWAYS_MATCHER = new StreetNoteMatcher() {
     @Override
     public boolean matches(State state) {
       return true;
     }
   };
 
-  private final List<StreetNotesSource> sources = new ArrayList<>();
+  private final List<StreetNoteModel> sources = new ArrayList<>();
 
-  private final StaticStreetNotesSource staticNotesSource = new StaticStreetNotesSource();
+  private final StreetNoteModel staticNotesSource = new StreetNoteModel();
 
   public StreetNotesService() {
     sources.add(staticNotesSource);
@@ -87,7 +79,7 @@ public class StreetNotesService implements Serializable {
    * Add a new note source. The list is not transient so any source added before the graph is saved
    * will be serialized!
    */
-  public void addNotesSource(StreetNotesSource source) {
+  public void addNotesSource(StreetNoteModel source) {
     sources.add(source);
   }
 
@@ -98,29 +90,29 @@ public class StreetNotesService implements Serializable {
    */
   public Set<StreetNote> getNotes(State state) {
     Edge edge = state.getBackEdge();
-    Set<MatcherAndStreetNote> maas = new HashSet<>();
+    Set<StreetNoteAndMatcher> maas = new HashSet<>();
 
-    for (StreetNotesSource source : sources) {
-      Set<MatcherAndStreetNote> maas2 = source.getNotes(edge);
+    for (StreetNoteModel source : sources) {
+      Set<StreetNoteAndMatcher> maas2 = source.getNotes(edge);
       if (maas2 != null) maas.addAll(maas2);
     }
     if (maas == null || maas.isEmpty()) {
-      return null;
+      return Set.of();
     }
 
     Set<StreetNote> notes = new HashSet<>(maas.size());
-    for (MatcherAndStreetNote maa : maas) {
-      if (maa.getMatcher().matches(state)) {
-        notes.add(maa.getNote());
+    for (StreetNoteAndMatcher maa : maas) {
+      if (maa.matcher().matches(state)) {
+        notes.add(maa.note());
       }
     }
     if (notes.isEmpty()) {
-      return null;
+      return Set.of();
     }
     return notes;
   }
 
-  public void addStaticNote(Edge edge, StreetNote note, NoteMatcher matcher) {
+  public void addStaticNote(Edge edge, StreetNote note, StreetNoteMatcher matcher) {
     staticNotesSource.addNote(edge, note, matcher);
   }
 

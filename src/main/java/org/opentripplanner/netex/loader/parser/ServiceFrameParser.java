@@ -1,16 +1,14 @@
 package org.opentripplanner.netex.loader.parser;
 
-import static org.opentripplanner.util.logging.MaxCountLogger.maxCount;
-
+import jakarta.xml.bind.JAXBElement;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
-import javax.xml.bind.JAXBElement;
+import org.opentripplanner.framework.application.OTPFeature;
+import org.opentripplanner.framework.logging.MaxCountLogger;
 import org.opentripplanner.netex.index.NetexEntityIndex;
 import org.opentripplanner.netex.index.api.ReadOnlyHierarchicalMapById;
-import org.opentripplanner.util.OTPFeature;
-import org.opentripplanner.util.logging.MaxCountLogger;
 import org.rutebanken.netex.model.DestinationDisplay;
 import org.rutebanken.netex.model.DestinationDisplaysInFrame_RelStructure;
 import org.rutebanken.netex.model.FlexibleLine;
@@ -18,7 +16,7 @@ import org.rutebanken.netex.model.FlexibleStopAssignment;
 import org.rutebanken.netex.model.FlexibleStopPlace;
 import org.rutebanken.netex.model.GroupOfLines;
 import org.rutebanken.netex.model.GroupsOfLinesInFrame_RelStructure;
-import org.rutebanken.netex.model.JourneyPattern;
+import org.rutebanken.netex.model.JourneyPattern_VersionStructure;
 import org.rutebanken.netex.model.JourneyPatternsInFrame_RelStructure;
 import org.rutebanken.netex.model.Line;
 import org.rutebanken.netex.model.LinesInFrame_RelStructure;
@@ -37,7 +35,7 @@ import org.slf4j.LoggerFactory;
 class ServiceFrameParser extends NetexParser<Service_VersionFrameStructure> {
 
   private static final Logger LOG = LoggerFactory.getLogger(ServiceFrameParser.class);
-  private static final MaxCountLogger PASSENGER_STOP_ASSIGNMENT_LOGGER = maxCount(LOG);
+  private static final MaxCountLogger PASSENGER_STOP_ASSIGNMENT_LOGGER = MaxCountLogger.of(LOG);
 
   private final ReadOnlyHierarchicalMapById<FlexibleStopPlace> flexibleStopPlaceById;
 
@@ -53,7 +51,7 @@ class ServiceFrameParser extends NetexParser<Service_VersionFrameStructure> {
 
   private final Map<String, String> networkIdByGroupOfLineId = new HashMap<>();
 
-  private final Collection<JourneyPattern> journeyPatterns = new ArrayList<>();
+  private final Collection<JourneyPattern_VersionStructure> journeyPatterns = new ArrayList<>();
 
   private final Collection<DestinationDisplay> destinationDisplays = new ArrayList<>();
 
@@ -151,7 +149,7 @@ class ServiceFrameParser extends NetexParser<Service_VersionFrameStructure> {
             assignment.getId()
           );
         } else {
-          String quayRef = assignment.getQuayRef().getRef();
+          String quayRef = assignment.getQuayRef().getValue().getRef();
           String stopPointRef = assignment.getScheduledStopPointRef().getValue().getRef();
           quayIdByStopPointRef.put(stopPointRef, quayRef);
         }
@@ -182,8 +180,7 @@ class ServiceFrameParser extends NetexParser<Service_VersionFrameStructure> {
     if (routes == null) return;
 
     for (JAXBElement<?> element : routes.getRoute_()) {
-      if (element.getValue() instanceof Route) {
-        Route route = (Route) element.getValue();
+      if (element.getValue() instanceof Route route) {
         this.routes.add(route);
       }
     }
@@ -244,8 +241,8 @@ class ServiceFrameParser extends NetexParser<Service_VersionFrameStructure> {
     if (journeyPatterns == null) return;
 
     for (JAXBElement<?> pattern : journeyPatterns.getJourneyPattern_OrJourneyPatternView()) {
-      if (pattern.getValue() instanceof JourneyPattern) {
-        this.journeyPatterns.add((JourneyPattern) pattern.getValue());
+      if (pattern.getValue() instanceof JourneyPattern_VersionStructure journeyPattern) {
+        this.journeyPatterns.add(journeyPattern);
       } else {
         warnOnMissingMapping(LOG, pattern.getValue());
       }

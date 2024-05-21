@@ -1,15 +1,15 @@
 package org.opentripplanner.routing.algorithm.raptoradapter.transit.request;
 
 import java.util.function.IntUnaryOperator;
+import org.opentripplanner.raptor.api.model.RaptorTripSchedule;
+import org.opentripplanner.raptor.spi.RaptorTimeTable;
 import org.opentripplanner.routing.algorithm.raptoradapter.transit.TripSchedule;
-import org.opentripplanner.transit.raptor.api.transit.RaptorTimeTable;
-import org.opentripplanner.transit.raptor.api.transit.RaptorTripSchedule;
 
 /**
  * This interface add two methods the the {@link RaptorTimeTable} to optimize the terip search
  * inside the transit model. They were previously in Raptor, but the trip Search is moded outside
  * of Raptor; We have keep these methods in an interface to be able to reuse the complex TripSearch
- * in tests, witch do not use the transit model {@link TripSchedule}; Hence also the generic type
+ * in tests, which do not use the transit model {@link TripSchedule}; Hence also the generic type
  * on this interface.
  */
 public interface TripSearchTimetable<T extends RaptorTripSchedule> extends RaptorTimeTable<T> {

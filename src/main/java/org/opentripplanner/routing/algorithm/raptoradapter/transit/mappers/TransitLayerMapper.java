@@ -13,6 +13,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import javax.annotation.Nullable;
+import org.opentripplanner.framework.application.OTPFeature;
 import org.opentripplanner.model.Timetable;
 import org.opentripplanner.routing.algorithm.raptoradapter.transit.Transfer;
 import org.opentripplanner.routing.algorithm.raptoradapter.transit.TransitLayer;
@@ -27,7 +29,6 @@ import org.opentripplanner.transit.model.site.StopTransferPriority;
 import org.opentripplanner.transit.model.timetable.TripTimes;
 import org.opentripplanner.transit.service.StopModel;
 import org.opentripplanner.transit.service.TransitModel;
-import org.opentripplanner.util.OTPFeature;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -103,7 +104,7 @@ public class TransitLayerMapper {
       transferCache,
       constrainedTransfers,
       transferIndexGenerator,
-      createStopTransferCosts(stopModel, tuningParameters)
+      createStopBoardAlightTransferCosts(stopModel, tuningParameters)
     );
   }
 
@@ -179,19 +180,23 @@ public class TransitLayerMapper {
   }
 
   /**
-   * Create static board/alight cost for Raptor to include for each stop.
+   * Create static board/alight cost for Raptor to apply during transfer
    */
-  static int[] createStopTransferCosts(StopModel stops, TransitTuningParameters tuningParams) {
+  @Nullable
+  static int[] createStopBoardAlightTransferCosts(
+    StopModel stops,
+    TransitTuningParameters tuningParams
+  ) {
     if (!tuningParams.enableStopTransferPriority()) {
       return null;
     }
-    int[] stopTransferCosts = new int[stops.stopIndexSize()];
+    int[] stopBoardAlightTransferCosts = new int[stops.stopIndexSize()];
 
     for (int i = 0; i < stops.stopIndexSize(); ++i) {
       StopTransferPriority priority = stops.stopByIndex(i).getPriority();
-      int domainCost = tuningParams.stopTransferCost(priority);
-      stopTransferCosts[i] = RaptorCostConverter.toRaptorCost(domainCost);
+      int domainCost = tuningParams.stopBoardAlightDuringTransferCost(priority);
+      stopBoardAlightTransferCosts[i] = RaptorCostConverter.toRaptorCost(domainCost);
     }
-    return stopTransferCosts;
+    return stopBoardAlightTransferCosts;
   }
 }

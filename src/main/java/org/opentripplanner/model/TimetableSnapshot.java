@@ -16,17 +16,16 @@ import java.util.SortedSet;
 import java.util.TreeSet;
 import org.opentripplanner.routing.algorithm.raptoradapter.transit.mappers.TransitLayerUpdater;
 import org.opentripplanner.transit.model.framework.FeedScopedId;
+import org.opentripplanner.transit.model.framework.Result;
 import org.opentripplanner.transit.model.network.TripPattern;
 import org.opentripplanner.transit.model.site.StopLocation;
-import org.opentripplanner.transit.model.timetable.Trip;
 import org.opentripplanner.transit.model.timetable.TripIdAndServiceDate;
 import org.opentripplanner.transit.model.timetable.TripOnServiceDate;
 import org.opentripplanner.transit.model.timetable.TripTimes;
+import org.opentripplanner.updater.spi.UpdateError;
+import org.opentripplanner.updater.spi.UpdateSuccess;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-// this is only currently in edgetype because that's where Trippattern is.
-// move these classes elsewhere.
 
 /**
  * Part of concurrency control for stoptime updates.
@@ -38,17 +37,17 @@ import org.slf4j.LoggerFactory;
  * <p>
  * At this point, only one writing thread at a time is supported.
  * <p>
- *  TODO OTP2 - Move this to package: org.opentripplanner.model
- *            - after ass Entur NeTEx PRs are merged.
  */
 public class TimetableSnapshot {
 
   private static final Logger LOG = LoggerFactory.getLogger(TimetableSnapshot.class);
+
   /**
    * A set of all timetables which have been modified and are waiting to be indexed. When
    * <code>dirty</code> is <code>null</code>, it indicates that the snapshot is read-only.
    */
   private final Set<Timetable> dirtyTimetables = new HashSet<>();
+
   /**
    * The timetables for different days, for each TripPattern (each sequence of stops on a particular
    * Route) for which we have an updated Timetable. The keys include both TripPatterns from the
@@ -60,6 +59,7 @@ public class TimetableSnapshot {
    * FIXME: this could be made into a flat hashtable with compound keys.
    */
   private HashMap<TripPattern, SortedSet<Timetable>> timetables = new HashMap();
+
   /**
    * <p>
    * Map containing the current trip pattern given a trip id and a service date, if it has been
@@ -69,8 +69,7 @@ public class TimetableSnapshot {
    * This is a HashMap and not a Map so the clone function is available.
    */
   private HashMap<TripIdAndServiceDate, TripPattern> realtimeAddedTripPattern = new HashMap<>();
-  private HashMap<FeedScopedId, TripOnServiceDate> realtimeAddedTripOnServiceDate = new HashMap<>();
-  private HashMap<TripIdAndServiceDate, TripOnServiceDate> realtimeAddedTripOnServiceDateByTripIdAndServiceDate = new HashMap<>();
+
   /**
    * This maps contains all of the new or updated TripPatterns added by realtime data indexed on
    * stop. This has to be kept in order for them to be included in the stop times api call on a
@@ -81,11 +80,13 @@ public class TimetableSnapshot {
    * TODO Find a generic way to keep all realtime indexes.
    */
   private SetMultimap<StopLocation, TripPattern> patternsForStop = HashMultimap.create();
+
   /**
    * Boolean value indicating that timetable snapshot is read only if true. Once it is true, it
    * shouldn't be possible to change it to false anymore.
    */
   private boolean readOnly = false;
+
   /**
    * Boolean value indicating that this timetable snapshot contains changes compared to the state of
    * the last commit if true.
@@ -169,9 +170,13 @@ public class TimetableSnapshot {
    * @param pattern          trip pattern
    * @param updatedTripTimes updated trip times
    * @param serviceDate      service day for which this update is valid
-   * @return whether or not the update was actually applied
+   * @return whether the update was actually applied
    */
-  public boolean update(TripPattern pattern, TripTimes updatedTripTimes, LocalDate serviceDate) {
+  public Result<UpdateSuccess, UpdateError> update(
+    TripPattern pattern,
+    TripTimes updatedTripTimes,
+    LocalDate serviceDate
+  ) {
     // Preconditions
     Objects.requireNonNull(pattern);
     Objects.requireNonNull(serviceDate);
@@ -194,7 +199,9 @@ public class TimetableSnapshot {
         temp.addAll(sortedTimetables);
         sortedTimetables = temp;
       }
-      if (old.getServiceDate() != null) sortedTimetables.remove(old);
+      if (old.getServiceDate() != null) {
+        sortedTimetables.remove(old);
+      }
       sortedTimetables.add(tt);
       timetables.put(pattern, sortedTimetables);
       dirtyTimetables.add(tt);
@@ -224,7 +231,7 @@ public class TimetableSnapshot {
 
     // The time tables are finished during the commit
 
-    return true;
+    return Result.success(UpdateSuccess.noWarnings());
   }
 
   /**
@@ -259,10 +266,6 @@ public class TimetableSnapshot {
       transitLayerUpdater.update(dirtyTimetables, timetables);
     }
 
-    ret.realtimeAddedTripOnServiceDate =
-      (HashMap<FeedScopedId, TripOnServiceDate>) this.realtimeAddedTripOnServiceDate.clone();
-    ret.realtimeAddedTripOnServiceDateByTripIdAndServiceDate =
-      (HashMap<TripIdAndServiceDate, TripOnServiceDate>) this.realtimeAddedTripOnServiceDateByTripIdAndServiceDate.clone();
     this.dirtyTimetables.clear();
     this.dirty = false;
 
@@ -275,7 +278,7 @@ public class TimetableSnapshot {
   /**
    * Clear all data of snapshot for the provided feed id
    *
-   * @param feedId feed id to clear the snapshop for
+   * @param feedId feed id to clear the snapshot for
    */
   public void clear(String feedId) {
     if (readOnly) {
@@ -362,22 +365,6 @@ public class TimetableSnapshot {
 
   public void setPatternsForStop(SetMultimap<StopLocation, TripPattern> patternsForStop) {
     this.patternsForStop = patternsForStop;
-  }
-
-  public void addLastAddedTripOnServiceDate(TripOnServiceDate tripOnServiceDate) {
-    realtimeAddedTripOnServiceDate.put(tripOnServiceDate.getId(), tripOnServiceDate);
-    realtimeAddedTripOnServiceDateByTripIdAndServiceDate.put(
-      tripOnServiceDate.getTripIdAndServiceDate(),
-      tripOnServiceDate
-    );
-  }
-
-  public HashMap<FeedScopedId, TripOnServiceDate> getRealtimeAddedTripOnServiceDate() {
-    return realtimeAddedTripOnServiceDate;
-  }
-
-  public HashMap<TripIdAndServiceDate, TripOnServiceDate> getRealtimeAddedTripOnServiceDateByTripIdAndServiceDate() {
-    return realtimeAddedTripOnServiceDateByTripIdAndServiceDate;
   }
 
   /**

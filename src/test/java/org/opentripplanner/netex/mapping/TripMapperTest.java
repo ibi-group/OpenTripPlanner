@@ -5,22 +5,24 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.opentripplanner.netex.mapping.MappingSupport.ID_FACTORY;
 import static org.opentripplanner.netex.mapping.MappingSupport.createWrappedRef;
 
+import jakarta.xml.bind.JAXBElement;
 import java.util.Map;
-import javax.xml.bind.JAXBElement;
 import org.junit.jupiter.api.Test;
-import org.opentripplanner.graph_builder.DataImportIssueStore;
+import org.opentripplanner.graph_builder.issue.api.DataImportIssueStore;
 import org.opentripplanner.model.impl.OtpTransitServiceBuilder;
 import org.opentripplanner.netex.index.hierarchy.HierarchicalMap;
 import org.opentripplanner.netex.index.hierarchy.HierarchicalMapById;
 import org.opentripplanner.transit.model._data.TransitModelForTest;
-import org.opentripplanner.transit.model.basic.WheelchairAccessibility;
+import org.opentripplanner.transit.model.basic.Accessibility;
 import org.opentripplanner.transit.model.framework.FeedScopedId;
 import org.opentripplanner.transit.model.timetable.Trip;
+import org.opentripplanner.transit.service.StopModel;
 import org.rutebanken.netex.model.AccessibilityAssessment;
 import org.rutebanken.netex.model.AccessibilityLimitation;
 import org.rutebanken.netex.model.AccessibilityLimitations_RelStructure;
 import org.rutebanken.netex.model.JourneyPattern;
 import org.rutebanken.netex.model.JourneyPatternRefStructure;
+import org.rutebanken.netex.model.JourneyPattern_VersionStructure;
 import org.rutebanken.netex.model.LimitationStatusEnumeration;
 import org.rutebanken.netex.model.LineRefStructure;
 import org.rutebanken.netex.model.RouteRefStructure;
@@ -32,7 +34,7 @@ public class TripMapperTest {
   private static final String SERVICE_JOURNEY_ID = NetexTestDataSample.SERVICE_JOURNEY_ID;
   private static final String JOURNEY_PATTERN_ID = "RUT:JourneyPattern:1";
   private static final FeedScopedId SERVICE_ID = TransitModelForTest.id("S001");
-  private static final DataImportIssueStore issueStore = DataImportIssueStore.noopIssueStore();
+  private static final DataImportIssueStore issueStore = DataImportIssueStore.NOOP;
 
   private static final JAXBElement<LineRefStructure> LINE_REF = MappingSupport.createWrappedRef(
     ROUTE_ID,
@@ -47,7 +49,7 @@ public class TripMapperTest {
     var limitations = new AccessibilityLimitations_RelStructure();
     var access = new AccessibilityAssessment();
 
-    var transitBuilder = new OtpTransitServiceBuilder();
+    var transitBuilder = new OtpTransitServiceBuilder(new StopModel(), issueStore);
     transitBuilder.getRoutes().add(TransitModelForTest.route(ROUTE_ID).build());
 
     TripMapper tripMapper = new TripMapper(
@@ -69,14 +71,17 @@ public class TripMapperTest {
     assertNotNull(trip, "trip must not be null");
     assertEquals(
       trip.getWheelchairBoarding(),
-      WheelchairAccessibility.POSSIBLE,
+      Accessibility.POSSIBLE,
       "Wheelchair accessibility not possible on trip"
     );
   }
 
   @Test
   public void mapTrip() {
-    OtpTransitServiceBuilder transitBuilder = new OtpTransitServiceBuilder();
+    OtpTransitServiceBuilder transitBuilder = new OtpTransitServiceBuilder(
+      new StopModel(),
+      issueStore
+    );
     transitBuilder.getRoutes().add(TransitModelForTest.route(ROUTE_ID).build());
 
     TripMapper tripMapper = new TripMapper(
@@ -100,7 +105,10 @@ public class TripMapperTest {
 
   @Test
   public void mapTripWithRouteRefViaJourneyPattern() {
-    OtpTransitServiceBuilder transitBuilder = new OtpTransitServiceBuilder();
+    OtpTransitServiceBuilder transitBuilder = new OtpTransitServiceBuilder(
+      new StopModel(),
+      issueStore
+    );
     transitBuilder.getRoutes().add(TransitModelForTest.route(ROUTE_ID).build());
 
     JourneyPattern journeyPattern = new JourneyPattern().withId(JOURNEY_PATTERN_ID);
@@ -117,7 +125,7 @@ public class TripMapperTest {
 
     HierarchicalMapById<org.rutebanken.netex.model.Route> routeById = new HierarchicalMapById<>();
     routeById.add(netexRoute);
-    HierarchicalMapById<JourneyPattern> journeyPatternById = new HierarchicalMapById<>();
+    HierarchicalMapById<JourneyPattern_VersionStructure> journeyPatternById = new HierarchicalMapById<>();
     journeyPatternById.add(journeyPattern);
 
     TripMapper tripMapper = new TripMapper(

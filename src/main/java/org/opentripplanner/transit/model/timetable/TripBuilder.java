@@ -1,7 +1,8 @@
 package org.opentripplanner.transit.model.timetable;
 
+import org.opentripplanner.framework.i18n.I18NString;
+import org.opentripplanner.transit.model.basic.Accessibility;
 import org.opentripplanner.transit.model.basic.TransitMode;
-import org.opentripplanner.transit.model.basic.WheelchairAccessibility;
 import org.opentripplanner.transit.model.framework.AbstractEntityBuilder;
 import org.opentripplanner.transit.model.framework.FeedScopedId;
 import org.opentripplanner.transit.model.network.BikeAccess;
@@ -16,13 +17,12 @@ public class TripBuilder extends AbstractEntityBuilder<Trip, TripBuilder> {
   private String shortName;
   private TransitMode mode;
   private String netexSubmode;
-  private String headsign;
+  private I18NString headsign;
   private FeedScopedId shapeId;
   private Direction direction;
   private BikeAccess bikesAllowed;
-  private WheelchairAccessibility wheelchairBoarding;
+  private Accessibility wheelchairBoarding;
   private String gtfsBlockId;
-  private String gtfsFareId;
   private String netexInternalPlanningCode;
   private TripAlteration netexAlteration;
 
@@ -46,7 +46,6 @@ public class TripBuilder extends AbstractEntityBuilder<Trip, TripBuilder> {
     this.bikesAllowed = original.getBikesAllowed();
     this.wheelchairBoarding = original.getWheelchairBoarding();
     this.netexInternalPlanningCode = original.getNetexInternalPlanningCode();
-    this.gtfsFareId = original.getGtfsFareId();
   }
 
   public Operator getOperator() {
@@ -112,11 +111,11 @@ public class TripBuilder extends AbstractEntityBuilder<Trip, TripBuilder> {
     return this;
   }
 
-  public String getHeadsign() {
+  public I18NString getHeadsign() {
     return headsign;
   }
 
-  public TripBuilder withHeadsign(String headsign) {
+  public TripBuilder withHeadsign(I18NString headsign) {
     this.headsign = headsign;
     return this;
   }
@@ -157,11 +156,11 @@ public class TripBuilder extends AbstractEntityBuilder<Trip, TripBuilder> {
     return this;
   }
 
-  public WheelchairAccessibility getWheelchairBoarding() {
+  public Accessibility getWheelchairBoarding() {
     return wheelchairBoarding;
   }
 
-  public TripBuilder withWheelchairBoarding(WheelchairAccessibility wheelchairBoarding) {
+  public TripBuilder withWheelchairBoarding(Accessibility wheelchairBoarding) {
     this.wheelchairBoarding = wheelchairBoarding;
     return this;
   }
@@ -172,15 +171,6 @@ public class TripBuilder extends AbstractEntityBuilder<Trip, TripBuilder> {
 
   public TripBuilder withNetexAlteration(TripAlteration netexAlteration) {
     this.netexAlteration = netexAlteration;
-    return this;
-  }
-
-  public String getGtfsFareId() {
-    return gtfsFareId;
-  }
-
-  public TripBuilder withGtfsFareId(String gtfsFareId) {
-    this.gtfsFareId = gtfsFareId;
     return this;
   }
 

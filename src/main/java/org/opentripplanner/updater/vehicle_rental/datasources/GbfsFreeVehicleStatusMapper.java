@@ -1,27 +1,34 @@
 package org.opentripplanner.updater.vehicle_rental.datasources;
 
+import static java.util.Objects.requireNonNullElse;
+
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.Map;
-import org.entur.gbfs.v2_2.free_bike_status.GBFSBike;
-import org.entur.gbfs.v2_2.free_bike_status.GBFSRentalUris;
-import org.opentripplanner.routing.vehicle_rental.RentalVehicleType;
-import org.opentripplanner.routing.vehicle_rental.VehicleRentalStationUris;
-import org.opentripplanner.routing.vehicle_rental.VehicleRentalSystem;
-import org.opentripplanner.routing.vehicle_rental.VehicleRentalVehicle;
-import org.opentripplanner.transit.model.basic.NonLocalizedString;
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+import org.entur.gbfs.v2_3.free_bike_status.GBFSBike;
+import org.entur.gbfs.v2_3.free_bike_status.GBFSRentalUris;
+import org.opentripplanner.framework.i18n.NonLocalizedString;
+import org.opentripplanner.service.vehiclerental.model.RentalVehicleType;
+import org.opentripplanner.service.vehiclerental.model.VehicleRentalStationUris;
+import org.opentripplanner.service.vehiclerental.model.VehicleRentalSystem;
+import org.opentripplanner.service.vehiclerental.model.VehicleRentalVehicle;
 import org.opentripplanner.transit.model.framework.FeedScopedId;
 
 public class GbfsFreeVehicleStatusMapper {
 
   private final VehicleRentalSystem system;
+
+  @Nonnull
   private final Map<String, RentalVehicleType> vehicleTypes;
 
   public GbfsFreeVehicleStatusMapper(
     VehicleRentalSystem system,
-    Map<String, RentalVehicleType> vehicleTypes
+    @Nullable Map<String, RentalVehicleType> vehicleTypes
   ) {
     this.system = system;
-    this.vehicleTypes = vehicleTypes;
+    this.vehicleTypes = new HashMap<>(requireNonNullElse(vehicleTypes, Map.of()));
   }
 
   public VehicleRentalVehicle mapFreeVehicleStatus(GBFSBike vehicle) {
@@ -33,13 +40,14 @@ public class GbfsFreeVehicleStatusMapper {
       VehicleRentalVehicle rentalVehicle = new VehicleRentalVehicle();
       rentalVehicle.id = new FeedScopedId(system.systemId, vehicle.getBikeId());
       rentalVehicle.system = system;
-      rentalVehicle.name = new NonLocalizedString(vehicle.getBikeId());
+      rentalVehicle.name = new NonLocalizedString(getName(vehicle));
       rentalVehicle.longitude = vehicle.getLon();
       rentalVehicle.latitude = vehicle.getLat();
       rentalVehicle.vehicleType =
-        vehicleTypes == null
-          ? RentalVehicleType.getDefaultType(system.systemId)
-          : vehicleTypes.get(vehicle.getVehicleTypeId());
+        vehicleTypes.getOrDefault(
+          vehicle.getVehicleTypeId(),
+          RentalVehicleType.getDefaultType(system.systemId)
+        );
       rentalVehicle.isReserved = vehicle.getIsReserved() != null ? vehicle.getIsReserved() : false;
       rentalVehicle.isDisabled = vehicle.getIsDisabled() != null ? vehicle.getIsDisabled() : false;
       rentalVehicle.lastReported =
@@ -60,5 +68,16 @@ public class GbfsFreeVehicleStatusMapper {
     } else {
       return null;
     }
+  }
+
+  private String getName(GBFSBike vehicle) {
+    var typeId = vehicle.getVehicleTypeId();
+    if (typeId != null) {
+      var type = vehicleTypes.get(typeId);
+      if (type != null && type.name != null) {
+        return type.name;
+      }
+    }
+    return RentalVehicleType.getDefaultType(system.systemId).name;
   }
 }

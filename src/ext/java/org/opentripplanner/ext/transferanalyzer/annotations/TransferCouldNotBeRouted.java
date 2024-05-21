@@ -1,7 +1,10 @@
 package org.opentripplanner.ext.transferanalyzer.annotations;
 
-import org.opentripplanner.graph_builder.DataImportIssue;
-import org.opentripplanner.transit.model.site.Stop;
+import java.util.List;
+import org.locationtech.jts.geom.Geometry;
+import org.opentripplanner.framework.geometry.GeometryUtils;
+import org.opentripplanner.graph_builder.issue.api.DataImportIssue;
+import org.opentripplanner.transit.model.site.RegularStop;
 
 /**
  * Represents two stops that are close to each other where no route is found between them using OSM
@@ -18,11 +21,15 @@ public class TransferCouldNotBeRouted implements DataImportIssue {
     "<a href=\"http://www.openstreetmap.org/?mlat=%s&mlon=%s\">\"%s\" (%s)</a> could not be routed. " +
     "Euclidean distance is %.0f.";
 
-  private final Stop origin;
-  private final Stop destination;
+  private final RegularStop origin;
+  private final RegularStop destination;
   private final double directDistance;
 
-  public TransferCouldNotBeRouted(Stop origin, Stop destination, double directDistance) {
+  public TransferCouldNotBeRouted(
+    RegularStop origin,
+    RegularStop destination,
+    double directDistance
+  ) {
     this.origin = origin;
     this.destination = destination;
     this.directDistance = directDistance;
@@ -46,6 +53,21 @@ public class TransferCouldNotBeRouted implements DataImportIssue {
       destination.getName(),
       destination.getId(),
       directDistance
+    );
+  }
+
+  @Override
+  public int getPriority() {
+    return (int) -directDistance;
+  }
+
+  @Override
+  public Geometry getGeometry() {
+    return GeometryUtils.makeLineString(
+      List.of(
+        origin.getCoordinate().asJtsCoordinate(),
+        destination.getCoordinate().asJtsCoordinate()
+      )
     );
   }
 }

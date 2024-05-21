@@ -6,13 +6,13 @@ import java.time.Instant;
 import java.util.Base64;
 import java.util.List;
 import java.util.Objects;
+import org.opentripplanner.framework.tostring.ToStringBuilder;
 import org.opentripplanner.model.TripTimeOnDate;
 import org.opentripplanner.routing.stoptimes.ArrivalDeparture;
 import org.opentripplanner.transit.model.framework.FeedScopedId;
 import org.opentripplanner.transit.model.network.TripPattern;
 import org.opentripplanner.transit.model.site.StopLocation;
 import org.opentripplanner.transit.service.TransitService;
-import org.opentripplanner.util.lang.ToStringBuilder;
 
 /**
  * A reference to a pattern at a specific stop.
@@ -40,10 +40,10 @@ public class PatternAtStop {
   public static PatternAtStop fromId(TransitService transitService, String id) {
     String[] parts = id.split(";", 2);
     Base64.Decoder decoder = Base64.getDecoder();
-    FeedScopedId stopId = FeedScopedId.parseId(
+    FeedScopedId stopId = FeedScopedId.parse(
       new String(decoder.decode(parts[0]), StandardCharsets.UTF_8)
     );
-    FeedScopedId patternId = FeedScopedId.parseId(
+    FeedScopedId patternId = FeedScopedId.parse(
       new String(decoder.decode(parts[1]), StandardCharsets.UTF_8)
     );
     return new PatternAtStop(
@@ -76,7 +76,8 @@ public class PatternAtStop {
       startTime,
       timeRange,
       numberOfDepartures,
-      arrivalDeparture
+      arrivalDeparture,
+      true
     );
   }
 

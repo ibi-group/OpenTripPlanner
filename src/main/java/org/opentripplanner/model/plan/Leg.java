@@ -9,21 +9,22 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.annotation.Nullable;
 import org.locationtech.jts.geom.LineString;
-import org.opentripplanner.common.model.P2;
+import org.opentripplanner.framework.i18n.I18NString;
+import org.opentripplanner.framework.lang.Sandbox;
 import org.opentripplanner.model.BookingInfo;
 import org.opentripplanner.model.PickDrop;
-import org.opentripplanner.model.StreetNote;
+import org.opentripplanner.model.fare.FareProductUse;
 import org.opentripplanner.model.plan.legreference.LegReference;
 import org.opentripplanner.model.transfer.ConstrainedTransfer;
 import org.opentripplanner.routing.alertpatch.TransitAlert;
-import org.opentripplanner.routing.core.TraverseMode;
-import org.opentripplanner.transit.model.basic.WheelchairAccessibility;
-import org.opentripplanner.transit.model.framework.FeedScopedId;
+import org.opentripplanner.street.model.note.StreetNote;
+import org.opentripplanner.transit.model.basic.Accessibility;
 import org.opentripplanner.transit.model.network.Route;
 import org.opentripplanner.transit.model.organization.Agency;
 import org.opentripplanner.transit.model.organization.Operator;
 import org.opentripplanner.transit.model.site.FareZone;
 import org.opentripplanner.transit.model.timetable.Trip;
+import org.opentripplanner.transit.model.timetable.TripOnServiceDate;
 
 /**
  * One leg of a trip -- that is, a temporally continuous piece of the journey that takes place on a
@@ -68,8 +69,8 @@ public interface Leg {
   /**
    * The leg's duration in seconds
    */
-  default long getDuration() {
-    return Duration.between(getStartTime(), getEndTime()).toSeconds();
+  default Duration getDuration() {
+    return Duration.between(getStartTime(), getEndTime());
   }
 
   /**
@@ -101,13 +102,17 @@ public interface Leg {
   }
 
   /**
+   * Check is this instance has the same type and mode as the given other.
+   */
+  boolean hasSameMode(Leg other);
+
+  /**
    * Return {@code true} if to legs are the same. The mode must match and the time must overlap.
    * For transit the trip ID must match and board/alight position must overlap. (Two trips with
    * different service-date can overlap in time, so we use boarding-/alight-position to verify).
    */
   default boolean isPartiallySameLeg(Leg other) {
-    // Assert both legs have the same mode
-    if (getMode() != other.getMode()) {
+    if (!hasSameMode(other)) {
       return false;
     }
 
@@ -183,14 +188,27 @@ public interface Leg {
     return null;
   }
 
-  default WheelchairAccessibility getTripWheelchairAccessibility() {
+  /**
+   * For transit legs, the trip on service date, if it exists. For non-transit legs, null.
+   */
+  @Nullable
+  default TripOnServiceDate getTripOnServiceDate() {
+    return null;
+  }
+
+  default Accessibility getTripWheelchairAccessibility() {
     return null;
   }
 
   /**
-   * The mode (e.g., <code>Walk</code>) used when traversing this leg.
+   * The time (including realtime information) when the leg starts.
    */
-  TraverseMode getMode();
+  LegTime start();
+
+  /**
+   * The time (including realtime information) when the leg ends.
+   */
+  LegTime end();
 
   /**
    * The date and time this leg begins.
@@ -256,13 +274,6 @@ public interface Leg {
   double getDistanceMeters();
 
   /**
-   * The GTFS pathway id
-   */
-  default FeedScopedId getPathwayId() {
-    return null;
-  }
-
-  /**
    * Get the timezone offset in milliseconds.
    */
   default int getAgencyTimeZoneOffset() {
@@ -283,7 +294,7 @@ public interface Leg {
   /**
    * For transit legs, the headsign of the bus or train being used. For non-transit legs, null.
    */
-  default String getHeadsign() {
+  default I18NString getHeadsign() {
     return null;
   }
 
@@ -331,25 +342,11 @@ public interface Leg {
 
   /**
    * The leg's elevation profile.
+   *
+   * The elevation profile as a comma-separated list of x,y values. x is the distance from the start
+   * of the leg, y is the elevation at this distance.
    */
-  default List<P2<Double>> getLegElevation() {
-    return null;
-  }
-
-  /**
-   * How much elevation is gained, in total, over the course of the leg, in meters. See
-   * elevationLost.
-   */
-  default Double getElevationGained() {
-    return null;
-  }
-
-  /**
-   * How much elevation is lost, in total, over the course of the leg, in meters. As an example, a
-   * trip that went from the top of Mount Everest straight down to sea level, then back up K2, then
-   * back down again would have an elevationLost of Everest + K2.
-   */
-  default Double getElevationLost() {
+  default ElevationProfile getElevationProfile() {
     return null;
   }
 
@@ -472,6 +469,19 @@ public interface Leg {
 
     return Stream.of(intermediate, start, end).flatMap(s -> s).collect(Collectors.toSet());
   }
+
+  /**
+   * Set {@link FareProductUse} for this leg. Their use-id can identify them across several
+   * legs.
+   */
+  @Sandbox
+  void setFareProducts(List<FareProductUse> products);
+
+  /**
+   * Get the {@link FareProductUse} for this leg.
+   */
+  @Sandbox
+  List<FareProductUse> fareProducts();
 
   private static Stream<FareZone> getFareZones(Place place) {
     if (place.stop == null) {

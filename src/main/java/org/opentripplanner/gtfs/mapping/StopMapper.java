@@ -5,48 +5,47 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
+import org.onebusaway.gtfs.model.Stop;
+import org.opentripplanner.framework.collection.MapUtils;
 import org.opentripplanner.transit.model.framework.FeedScopedId;
 import org.opentripplanner.transit.model.site.FareZone;
+import org.opentripplanner.transit.model.site.RegularStop;
+import org.opentripplanner.transit.model.site.RegularStopBuilder;
 import org.opentripplanner.transit.model.site.Station;
-import org.opentripplanner.transit.model.site.Stop;
-import org.opentripplanner.transit.model.site.StopBuilder;
-import org.opentripplanner.util.MapUtils;
+import org.opentripplanner.transit.service.StopModelBuilder;
 
 /** Responsible for mapping GTFS Stop into the OTP model. */
 class StopMapper {
 
-  private final Map<org.onebusaway.gtfs.model.Stop, Stop> mappedStops = new HashMap<>();
-
+  private final Map<org.onebusaway.gtfs.model.Stop, RegularStop> mappedStops = new HashMap<>();
+  private final StopModelBuilder stopModelBuilder;
   private final TranslationHelper translationHelper;
   private final Function<FeedScopedId, Station> stationLookUp;
 
-  StopMapper(TranslationHelper translationHelper, Function<FeedScopedId, Station> stationLookUp) {
+  StopMapper(
+    TranslationHelper translationHelper,
+    Function<FeedScopedId, Station> stationLookUp,
+    StopModelBuilder stopModelBuilder
+  ) {
     this.translationHelper = translationHelper;
     this.stationLookUp = stationLookUp;
+    this.stopModelBuilder = stopModelBuilder;
   }
 
-  Collection<Stop> map(Collection<org.onebusaway.gtfs.model.Stop> allStops) {
+  Collection<RegularStop> map(Collection<org.onebusaway.gtfs.model.Stop> allStops) {
     return MapUtils.mapToList(allStops, this::map);
   }
 
   /** Map from GTFS to OTP model, {@code null} safe. */
-  Stop map(org.onebusaway.gtfs.model.Stop orginal) {
-    return orginal == null ? null : mappedStops.computeIfAbsent(orginal, this::doMap);
+  RegularStop map(org.onebusaway.gtfs.model.Stop original) {
+    return original == null ? null : mappedStops.computeIfAbsent(original, this::doMap);
   }
 
-  private Stop doMap(org.onebusaway.gtfs.model.Stop gtfsStop) {
-    if (gtfsStop.getLocationType() != org.onebusaway.gtfs.model.Stop.LOCATION_TYPE_STOP) {
-      throw new IllegalArgumentException(
-        "Expected type " +
-        org.onebusaway.gtfs.model.Stop.LOCATION_TYPE_STOP +
-        ", but got " +
-        gtfsStop.getLocationType()
-      );
-    }
-
+  private RegularStop doMap(org.onebusaway.gtfs.model.Stop gtfsStop) {
+    assertLocationTypeIsStop(gtfsStop);
     StopMappingWrapper base = new StopMappingWrapper(gtfsStop);
-    StopBuilder builder = Stop
-      .of(base.getId())
+    RegularStopBuilder builder = stopModelBuilder
+      .regularStop(base.getId())
       .withCode(base.getCode())
       .withCoordinate(base.getCoordinate())
       .withWheelchairAccessibility(base.getWheelchairAccessibility())
@@ -96,5 +95,17 @@ class StopMapper {
     }
 
     return builder.build();
+  }
+
+  private void assertLocationTypeIsStop(Stop gtfsStop) {
+    if (gtfsStop.getLocationType() != Stop.LOCATION_TYPE_STOP) {
+      throw new IllegalArgumentException(
+        "Expected location_type %s, but got %s for stops.txt entry %s".formatted(
+            Stop.LOCATION_TYPE_STOP,
+            gtfsStop.getLocationType(),
+            gtfsStop
+          )
+      );
+    }
   }
 }

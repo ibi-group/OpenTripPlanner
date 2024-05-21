@@ -7,18 +7,27 @@ import static org.opentripplanner.datastore.api.FileType.OSM;
 
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Multimap;
+import jakarta.inject.Inject;
+import jakarta.inject.Singleton;
 import java.io.File;
+import java.net.URI;
 import java.util.EnumSet;
+import java.util.Optional;
 import java.util.Set;
-import javax.inject.Inject;
-import javax.inject.Singleton;
 import org.opentripplanner.datastore.OtpDataStore;
 import org.opentripplanner.datastore.api.CompositeDataSource;
 import org.opentripplanner.datastore.api.DataSource;
 import org.opentripplanner.datastore.api.FileType;
+import org.opentripplanner.datastore.api.OtpBaseDirectory;
+import org.opentripplanner.framework.application.OtpAppException;
+import org.opentripplanner.graph_builder.module.ned.parameter.DemExtractParameters;
+import org.opentripplanner.graph_builder.module.ned.parameter.DemExtractParametersBuilder;
+import org.opentripplanner.graph_builder.module.osm.parameters.OsmExtractParameters;
+import org.opentripplanner.graph_builder.module.osm.parameters.OsmExtractParametersBuilder;
+import org.opentripplanner.gtfs.graphbuilder.GtfsFeedParameters;
+import org.opentripplanner.netex.config.NetexFeedParameters;
 import org.opentripplanner.standalone.config.BuildConfig;
 import org.opentripplanner.standalone.config.CommandLineParameters;
-import org.opentripplanner.util.OtpAppException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,7 +36,7 @@ import org.slf4j.LoggerFactory;
  * input files should be used and validate the available input files against the command line
  * parameters set.
  * <p/>
- * After this class is validated the {@link #has(FileType)} method can be used to determine if a the
+ * After this class is validated the {@link #has(FileType)} method can be used to determine if the
  * build process should include a file in the build.
  * <p/>
  * By separating this from the builder, this class can be constructed early, causing a validation of
@@ -46,22 +55,31 @@ public class GraphBuilderDataSources {
   private final Set<FileType> includeTypes = EnumSet.complementOf(EnumSet.of(FileType.UNKNOWN));
   private final File cacheDirectory;
   private final DataSource outputGraph;
+  private final BuildConfig buildConfig;
+  private final File baseDirectory;
 
   /**
    * Create a wrapper around the data-store and resolve which files to import and export. Validate
    * these files against the given command line arguments and the graph build parameters.
    */
   @Inject
-  public GraphBuilderDataSources(CommandLineParameters cli, BuildConfig bc, OtpDataStore store) {
+  public GraphBuilderDataSources(
+    CommandLineParameters cli,
+    BuildConfig bc,
+    OtpDataStore store,
+    @OtpBaseDirectory File baseDirectory
+  ) {
     this.store = store;
+    this.buildConfig = bc;
     this.cacheDirectory = cli.cacheDirectory;
     this.outputGraph = getOutputGraph(cli);
+    this.baseDirectory = baseDirectory;
 
     // Select which files to import
-    include(cli.doBuildStreet() && bc.streets, OSM);
-    include(cli.doBuildStreet() && bc.streets, DEM);
-    include(cli.doBuildTransit() && bc.transit, GTFS);
-    include(cli.doBuildTransit() && bc.transit, NETEX);
+    include(cli.doBuildStreet(), OSM);
+    include(cli.doBuildStreet(), DEM);
+    include(cli.doBuildTransit(), GTFS);
+    include(cli.doBuildTransit(), NETEX);
 
     selectFilesToImport();
 
@@ -87,6 +105,105 @@ public class GraphBuilderDataSources {
 
   public Iterable<DataSource> get(FileType type) {
     return inputData.get(type);
+  }
+
+  public Iterable<ConfiguredDataSource<OsmExtractParameters>> getOsmConfiguredDatasource() {
+    return inputData
+      .get(OSM)
+      .stream()
+      .map(it -> new ConfiguredDataSource<>(it, getOsmExtractConfig(it)))
+      .toList();
+  }
+
+  private OsmExtractParameters getOsmExtractConfig(DataSource dataSource) {
+    return buildConfig.osm.parameters
+      .stream()
+      .filter(osmExtractConfig -> uriMatch(osmExtractConfig.source(), dataSource.uri()))
+      .findFirst()
+      .orElse(
+        new OsmExtractParametersBuilder(buildConfig.osmDefaults)
+          .withSource(dataSource.uri())
+          .build()
+      );
+  }
+
+  public Iterable<ConfiguredDataSource<DemExtractParameters>> getDemConfiguredDatasource() {
+    return inputData
+      .get(DEM)
+      .stream()
+      .map(it -> new ConfiguredDataSource<>(it, getDemExtractConfig(it)))
+      .toList();
+  }
+
+  private DemExtractParameters getDemExtractConfig(DataSource dataSource) {
+    return buildConfig.dem
+      .demExtracts()
+      .stream()
+      .filter(demExtractConfig -> uriMatch(demExtractConfig.source(), dataSource.uri()))
+      .findFirst()
+      .orElse(
+        new DemExtractParametersBuilder(buildConfig.demDefaults)
+          .withSource(dataSource.uri())
+          .build()
+      );
+  }
+
+  public Iterable<ConfiguredDataSource<GtfsFeedParameters>> getGtfsConfiguredDatasource() {
+    return inputData
+      .get(GTFS)
+      .stream()
+      .map(it -> new ConfiguredDataSource<>(it, getGtfsFeedConfig(it)))
+      .toList();
+  }
+
+  private GtfsFeedParameters getGtfsFeedConfig(DataSource dataSource) {
+    return buildConfig.transitFeeds
+      .gtfsFeeds()
+      .stream()
+      .filter(gtfsFeedConfig -> uriMatch(gtfsFeedConfig.source(), dataSource.uri()))
+      .findFirst()
+      .orElse(buildConfig.gtfsDefaults.copyOf().withSource(dataSource.uri()).build());
+  }
+
+  public Iterable<ConfiguredDataSource<NetexFeedParameters>> getNetexConfiguredDatasource() {
+    return inputData
+      .get(NETEX)
+      .stream()
+      .map(it -> new ConfiguredDataSource<>(it, getNetexConfig(it)))
+      .toList();
+  }
+
+  public NetexFeedParameters getNetexConfig(DataSource dataSource) {
+    return buildConfig.transitFeeds
+      .netexFeeds()
+      .stream()
+      .filter(netexFeedConfig -> uriMatch(netexFeedConfig.source(), dataSource.uri()))
+      .findFirst()
+      .orElse(buildConfig.netexDefaults.copyOf().withSource(dataSource.uri()).build());
+  }
+
+  /**
+   * Returns the optional data source for the stop consolidation configuration.
+   */
+  public Optional<DataSource> stopConsolidation() {
+    return store.stopConsolidation();
+  }
+
+  /**
+   * Match the URI provided in the configuration with the URI of a datasource,
+   * either by comparing directly the two URIs or by first prepending the OTP base directory
+   * to the URI provided in the configuration.
+   * This covers the case where the source parameter provided in the configuration is relative to
+   * the base directory.
+   */
+  private boolean uriMatch(URI configURI, URI datasourceURI) {
+    return (
+      configURI.equals(datasourceURI) ||
+      (
+        !configURI.isAbsolute() &&
+        baseDirectory.toPath().resolve(configURI.toString()).toUri().equals(datasourceURI)
+      )
+    );
   }
 
   public CompositeDataSource getBuildReportDir() {
@@ -115,7 +232,7 @@ public class GraphBuilderDataSources {
     LOG.info("Existing files expected to be read or written:");
     for (FileType type : FileType.values()) {
       for (DataSource source : inputData.get(type)) {
-        LOG.info(BULLET_POINT + source.detailedInfo());
+        LOG.info(BULLET_POINT + "{}", source.detailedInfo());
       }
     }
 
@@ -123,7 +240,7 @@ public class GraphBuilderDataSources {
       LOG.info("Files excluded due to command line switches or unknown type:");
       for (FileType type : FileType.values()) {
         for (DataSource source : skipData.get(type)) {
-          LOG.info(BULLET_POINT + source.detailedInfo());
+          LOG.info(BULLET_POINT + "{}", source.detailedInfo());
         }
       }
     }
@@ -132,7 +249,7 @@ public class GraphBuilderDataSources {
   private void validateCliMatchesInputData(CommandLineParameters cli) {
     if (cli.build) {
       if (!hasOneOf(OSM, GTFS, NETEX)) {
-        throw new OtpAppException("Unable to build graph, no transit data available.");
+        throw new OtpAppException("Unable to build graph, no transit nor OSM data available.");
       }
     } else if (cli.buildStreet) {
       if (!has(OSM)) {
@@ -151,6 +268,9 @@ public class GraphBuilderDataSources {
           "Unable to load street graph, no street graph file found: %s",
           store.getStreetGraph().path()
         );
+      }
+      if (!hasOneOf(GTFS, NETEX)) {
+        throw new OtpAppException("Unable to build transit graph, no transit data available.");
       }
     }
   }

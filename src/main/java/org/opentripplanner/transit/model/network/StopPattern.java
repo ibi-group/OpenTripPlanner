@@ -5,12 +5,16 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Predicate;
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+import org.opentripplanner.framework.lang.MemEfficientArrayBuilder;
 import org.opentripplanner.model.PickDrop;
 import org.opentripplanner.model.StopTime;
-import org.opentripplanner.transit.model.site.FlexStopLocation;
+import org.opentripplanner.transit.model.framework.FeedScopedId;
+import org.opentripplanner.transit.model.site.RegularStop;
 import org.opentripplanner.transit.model.site.Station;
 import org.opentripplanner.transit.model.site.StopLocation;
 
@@ -40,7 +44,6 @@ import org.opentripplanner.transit.model.site.StopLocation;
  */
 public final class StopPattern implements Serializable {
 
-  private static final long serialVersionUID = 20140101L;
   public static final int NOT_FOUND = -1;
 
   private final StopLocation[] stops;
@@ -80,11 +83,19 @@ public final class StopPattern implements Serializable {
    * For creating StopTimes without StopTime, for example for unit testing.
    */
   public static StopPatternBuilder create(int length) {
-    return new StopPatternBuilder(new StopPattern(length));
+    return new StopPatternBuilder(new StopPattern(length), null);
   }
 
-  public StopPatternBuilder mutate() {
-    return new StopPatternBuilder(this);
+  /**
+   * This has package local access since a StopPattern is a part of a TripPattern. To change it
+   * use the {@link TripPattern#copyPlannedStopPattern()} method.
+   */
+  StopPatternBuilder mutate() {
+    return new StopPatternBuilder(this, null);
+  }
+
+  StopPatternBuilder mutate(StopPattern realTime) {
+    return new StopPatternBuilder(this, realTime);
   }
 
   public int hashCode() {
@@ -132,6 +143,16 @@ public final class StopPattern implements Serializable {
 
   public int getSize() {
     return stops.length;
+  }
+
+  /**
+   * Checks that all stops ar non-routable.
+   */
+  public boolean isAllStopsNonRoutable() {
+    return (
+      Arrays.stream(pickups).allMatch(PickDrop::isNotRoutable) &&
+      Arrays.stream(dropoffs).allMatch(PickDrop::isNotRoutable)
+    );
   }
 
   /** Find the given stop position in the sequence, return -1 if not found. */
@@ -182,6 +203,20 @@ public final class StopPattern implements Serializable {
     return dropoffs[stopPosInPattern].isRoutable();
   }
 
+  /**
+   * Returns whether passengers can alight at a given stop. This is an inefficient method iterating
+   * over the stops, do not use it in routing.
+   */
+  boolean canAlight(StopLocation stop) {
+    // We skip the last stop, not allowed for boarding
+    for (int i = 0; i < stops.length - 1; ++i) {
+      if (stop == stops[i] && canAlight(i)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   /** Returns whether passengers can board at a given stop */
   boolean canBoard(int stopPosInPattern) {
     return pickups[stopPosInPattern].isRoutable();
@@ -206,10 +241,10 @@ public final class StopPattern implements Serializable {
    * (centroids) and might not have times.
    */
   private static PickDrop computePickDrop(StopLocation stop, PickDrop pickDrop) {
-    if (stop instanceof FlexStopLocation) {
-      return PickDrop.NONE;
-    } else {
+    if (stop instanceof RegularStop) {
       return pickDrop;
+    } else {
+      return PickDrop.NONE;
     }
   }
 
@@ -275,14 +310,20 @@ public final class StopPattern implements Serializable {
 
   public static class StopPatternBuilder {
 
-    public final StopLocation[] stops;
-    public final PickDrop[] pickups;
-    public final PickDrop[] dropoffs;
+    public final MemEfficientArrayBuilder<StopLocation> stops;
+    public final MemEfficientArrayBuilder<PickDrop> pickups;
+    public final MemEfficientArrayBuilder<PickDrop> dropoffs;
+    private final StopPattern original;
 
-    public StopPatternBuilder(StopPattern original) {
-      stops = Arrays.copyOf(original.stops, original.stops.length);
-      pickups = Arrays.copyOf(original.pickups, original.pickups.length);
-      dropoffs = Arrays.copyOf(original.dropoffs, original.dropoffs.length);
+    @Nullable
+    private final StopPattern realTime;
+
+    public StopPatternBuilder(StopPattern original, StopPattern realTime) {
+      stops = MemEfficientArrayBuilder.of(original.stops);
+      pickups = MemEfficientArrayBuilder.of(original.pickups);
+      dropoffs = MemEfficientArrayBuilder.of(original.dropoffs);
+      this.original = original;
+      this.realTime = realTime;
     }
 
     /**
@@ -292,14 +333,45 @@ public final class StopPattern implements Serializable {
      */
     public StopPatternBuilder cancelStops(List<Integer> cancelledStopIndices) {
       cancelledStopIndices.forEach(index -> {
-        pickups[index] = PickDrop.CANCELLED;
-        dropoffs[index] = PickDrop.CANCELLED;
+        pickups.with(index, PickDrop.CANCELLED);
+        dropoffs.with(index, PickDrop.CANCELLED);
       });
       return this;
     }
 
+    /**
+     * Replace the stop {@code old} in the stop pattern with ${code newStop}.
+     */
+    public StopPatternBuilder replaceStop(FeedScopedId old, StopLocation newStop) {
+      Objects.requireNonNull(old);
+      Objects.requireNonNull(newStop);
+      for (int i = 0; i < stops.size(); i++) {
+        if (stops.getOrOriginal(i).getId().equals(old)) {
+          stops.with(i, newStop);
+        }
+      }
+      return this;
+    }
+
+    /**
+     * We want to deduplicate this as much as we can, since this is done
+     * millions of times during real-time updates.
+     */
     public StopPattern build() {
-      return new StopPattern(stops, pickups, dropoffs);
+      if (stops.isNotModified() && dropoffs.isNotModified() && pickups.isNotModified()) {
+        return original;
+      }
+
+      if (realTime != null) {
+        var newStopPattern = new StopPattern(
+          stops.build(realTime.stops),
+          pickups.build(realTime.pickups),
+          dropoffs.build(realTime.dropoffs)
+        );
+        return realTime.equals(newStopPattern) ? realTime : newStopPattern;
+      }
+
+      return new StopPattern(stops.build(), pickups.build(), dropoffs.build());
     }
   }
 }

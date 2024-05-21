@@ -1,7 +1,7 @@
 package org.opentripplanner.api.common;
 
 import java.util.Locale;
-import org.opentripplanner.util.resources.ResourceBundleAdaptor;
+import org.opentripplanner.framework.resources.ResourceBundleAdaptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -14,16 +14,19 @@ public enum Message {
   // id field is loosely based on HTTP error codes http://en.wikipedia.org/wiki/List_of_HTTP_status_codes
   PLAN_OK(200),
   SYSTEM_ERROR(500),
+
+  PROCESSING_TIMEOUT(422),
+
   GRAPH_UNAVAILABLE(503),
 
   OUTSIDE_BOUNDS(400),
   PATH_NOT_FOUND(404),
   NO_TRANSIT_TIMES(406),
-  REQUEST_TIMEOUT(408),
   BOGUS_PARAMETER(413),
   GEOCODE_FROM_NOT_FOUND(440),
   GEOCODE_TO_NOT_FOUND(450),
   GEOCODE_FROM_TO_NOT_FOUND(460),
+  GEOCODE_INTERMEDIATE_NOT_FOUND(465),
   TOO_CLOSE(409),
   LOCATION_NOT_ACCESSIBLE(470),
 
@@ -50,7 +53,7 @@ public enum Message {
     try {
       return config.get(name(), l);
     } catch (Exception e) {
-      LOG.warn("No entry in Message.properties file could be found for string " + name());
+      LOG.warn("No entry in Message.properties file could be found for string {}", name());
       return "";
     }
   }

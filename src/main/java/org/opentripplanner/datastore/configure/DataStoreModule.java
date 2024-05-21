@@ -2,20 +2,21 @@ package org.opentripplanner.datastore.configure;
 
 import dagger.Module;
 import dagger.Provides;
+import jakarta.inject.Singleton;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import javax.annotation.Nullable;
-import javax.inject.Singleton;
 import org.opentripplanner.datastore.OtpDataStore;
 import org.opentripplanner.datastore.api.AmazonS3DSRepository;
 import org.opentripplanner.datastore.api.CompositeDataSource;
 import org.opentripplanner.datastore.api.FileType;
 import org.opentripplanner.datastore.api.GoogleStorageDSRepository;
+import org.opentripplanner.datastore.api.OtpBaseDirectory;
 import org.opentripplanner.datastore.api.OtpDataStoreConfig;
 import org.opentripplanner.datastore.base.DataSourceRepository;
 import org.opentripplanner.datastore.file.FileDataSourceRepository;
-import org.opentripplanner.standalone.config.api.OtpBaseDirectory;
+import org.opentripplanner.datastore.https.HttpsDataSourceRepository;
 
 /**
  * This is the global access point to create a data store and create datasource objects(tests). It
@@ -62,6 +63,9 @@ public abstract class DataStoreModule {
     if (gsRepository != null) {
       repositories.add(gsRepository);
     }
+
+    repositories.add(new HttpsDataSourceRepository());
+
     // The file data storage repository should be last, to allow
     // other repositories to "override" and grab files analyzing the
     // datasource uri passed in

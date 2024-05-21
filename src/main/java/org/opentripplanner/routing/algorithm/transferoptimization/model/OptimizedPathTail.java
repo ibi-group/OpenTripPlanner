@@ -1,19 +1,21 @@
 package org.opentripplanner.routing.algorithm.transferoptimization.model;
 
 import javax.annotation.Nullable;
+import org.opentripplanner.framework.tostring.ValueObjectToStringBuilder;
 import org.opentripplanner.model.transfer.TransferConstraint;
+import org.opentripplanner.raptor.api.model.RaptorConstants;
+import org.opentripplanner.raptor.api.model.RaptorTransfer;
+import org.opentripplanner.raptor.api.model.RaptorTripSchedule;
+import org.opentripplanner.raptor.api.model.RaptorValueFormatter;
+import org.opentripplanner.raptor.api.path.RaptorStopNameResolver;
+import org.opentripplanner.raptor.api.path.TransitPathLeg;
+import org.opentripplanner.raptor.path.PathBuilder;
+import org.opentripplanner.raptor.path.PathBuilderLeg;
+import org.opentripplanner.raptor.spi.BoardAndAlightTime;
+import org.opentripplanner.raptor.spi.RaptorCostCalculator;
+import org.opentripplanner.raptor.spi.RaptorSlackProvider;
 import org.opentripplanner.routing.algorithm.transferoptimization.api.OptimizedPath;
 import org.opentripplanner.routing.algorithm.transferoptimization.api.TransferOptimized;
-import org.opentripplanner.transit.raptor.api.path.PathBuilder;
-import org.opentripplanner.transit.raptor.api.path.PathBuilderLeg;
-import org.opentripplanner.transit.raptor.api.path.TransitPathLeg;
-import org.opentripplanner.transit.raptor.api.transit.BoardAndAlightTime;
-import org.opentripplanner.transit.raptor.api.transit.CostCalculator;
-import org.opentripplanner.transit.raptor.api.transit.RaptorSlackProvider;
-import org.opentripplanner.transit.raptor.api.transit.RaptorStopNameResolver;
-import org.opentripplanner.transit.raptor.api.transit.RaptorTransfer;
-import org.opentripplanner.transit.raptor.api.transit.RaptorTripSchedule;
-import org.opentripplanner.util.lang.ValueObjectToStringBuilder;
 
 /**
  * This class is used to decorate a {@link TransitPathLeg} with information about transfers
@@ -31,25 +33,30 @@ public class OptimizedPathTail<T extends RaptorTripSchedule>
   @Nullable
   private final TransferWaitTimeCostCalculator waitTimeCostCalculator;
 
+  @Nullable
   private final StopPriorityCostCalculator stopPriorityCostCalculator;
 
   private int transferPriorityCost = TransferConstraint.ZERO_COST;
   private int waitTimeOptimizedCost = TransferWaitTimeCostCalculator.ZERO_COST;
-  private int generalizedCost = CostCalculator.ZERO_COST;
+  private int generalizedCost = RaptorCostCalculator.ZERO_COST;
 
   public OptimizedPathTail(
     RaptorSlackProvider slackProvider,
-    CostCalculator<T> costCalculator,
+    RaptorCostCalculator<T> costCalculator,
+    int iterationDepartureTime,
     TransferWaitTimeCostCalculator waitTimeCostCalculator,
-    int[] stopBoardAlightCosts,
+    @Nullable int[] stopBoardAlightTransferCosts,
     double extraStopBoardAlightCostsFactor,
     RaptorStopNameResolver stopNameResolver
   ) {
-    super(null, slackProvider, costCalculator, stopNameResolver);
+    super(slackProvider, iterationDepartureTime, costCalculator, stopNameResolver, null);
     this.waitTimeCostCalculator = waitTimeCostCalculator;
     this.stopPriorityCostCalculator =
-      (stopBoardAlightCosts != null || extraStopBoardAlightCostsFactor > 0.01)
-        ? new StopPriorityCostCalculator(extraStopBoardAlightCostsFactor, stopBoardAlightCosts)
+      (stopBoardAlightTransferCosts != null && extraStopBoardAlightCostsFactor > 0.01)
+        ? new StopPriorityCostCalculator(
+          extraStopBoardAlightCostsFactor,
+          stopBoardAlightTransferCosts
+        )
         : null;
   }
 
@@ -124,11 +131,12 @@ public class OptimizedPathTail<T extends RaptorTripSchedule>
   }
 
   @Override
-  public OptimizedPath<T> build(int iterationDepartureTime) {
+  public OptimizedPath<T> build() {
     return new OptimizedPath<>(
-      createPathLegs(costCalculator, slackProvider),
+      createPathLegs(costCalculator(), slackProvider()),
       iterationDepartureTime,
       generalizedCost,
+      c2(),
       transferPriorityCost,
       waitTimeOptimizedCost,
       breakTieCost()
@@ -137,22 +145,28 @@ public class OptimizedPathTail<T extends RaptorTripSchedule>
 
   @Override
   public String toString() {
-    return ValueObjectToStringBuilder
-      .of()
-      .addObj(super.toString())
-      .addText(" [")
-      .addCost(generalizedCost())
-      .addCost(transferPriorityCost, "pri")
-      .addCost(generalizedCostWaitTimeOptimized(), "wtc")
-      .addText("]")
-      .toString();
+    var builder = ValueObjectToStringBuilder.of().addObj(super.toString()).addText(" [");
+
+    if (generalizedCost != RaptorCostCalculator.ZERO_COST) {
+      builder.addObj(RaptorValueFormatter.formatC1(generalizedCost()));
+    }
+    if (c2() != RaptorConstants.NOT_SET) {
+      builder.addObj(RaptorValueFormatter.formatC2(c2()));
+    }
+    if (transferPriorityCost != TransferConstraint.ZERO_COST) {
+      builder.addObj(RaptorValueFormatter.formatTransferPriority(transferPriorityCost));
+    }
+    if (waitTimeOptimizedCost != TransferWaitTimeCostCalculator.ZERO_COST) {
+      builder.addObj(RaptorValueFormatter.formatWaitTimeCost(generalizedCostWaitTimeOptimized()));
+    }
+    return builder.addText("]").toString();
   }
 
   @Override
   protected void add(PathBuilderLeg<T> newLeg) {
     addHead(newLeg);
     // Keep from- and to- times up to date by time-shifting access, transfer and egress legs.
-    newLeg.timeShiftThisAndNextLeg(slackProvider);
+    newLeg.timeShiftThisAndNextLeg(slackProvider(), iterationDepartureTime);
     addTransferPriorityCost(newLeg);
     addOptimizedWaitTimeCost(newLeg);
     updateGeneralizedCost();
@@ -202,7 +216,7 @@ public class OptimizedPathTail<T extends RaptorTripSchedule>
       return;
     }
     this.generalizedCost =
-      legsAsStream().mapToInt(it -> it.generalizedCost(costCalculator, slackProvider)).sum();
+      legsAsStream().mapToInt(it -> it.c1(costCalculator(), slackProvider())).sum();
   }
 
   /*private methods */
@@ -260,10 +274,10 @@ public class OptimizedPathTail<T extends RaptorTripSchedule>
 
   private int extraStopPriorityCost(PathBuilderLeg<?> leg) {
     if (stopPriorityCostCalculator == null) {
-      return CostCalculator.ZERO_COST;
+      return RaptorCostCalculator.ZERO_COST;
     }
 
-    int extraCost = CostCalculator.ZERO_COST;
+    int extraCost = RaptorCostCalculator.ZERO_COST;
     // Ideally we would like to add the board- & alight-stop-cost when a new transit-leg
     // is added to the path. But, the board stop is unknown until the leg before it is
     // added. So, instead of adding the board-stop-cost when it is added, we wait and add it

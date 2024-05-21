@@ -11,13 +11,13 @@ import org.rutebanken.netex.model.FlexibleLine;
 import org.rutebanken.netex.model.FlexibleStopPlace;
 import org.rutebanken.netex.model.GroupOfLines;
 import org.rutebanken.netex.model.GroupOfStopPlaces;
-import org.rutebanken.netex.model.JourneyPattern;
+import org.rutebanken.netex.model.JourneyPattern_VersionStructure;
 import org.rutebanken.netex.model.Line;
 import org.rutebanken.netex.model.Network;
 import org.rutebanken.netex.model.Notice;
 import org.rutebanken.netex.model.NoticeAssignment;
 import org.rutebanken.netex.model.OperatingDay;
-import org.rutebanken.netex.model.OperatingPeriod;
+import org.rutebanken.netex.model.OperatingPeriod_VersionStructure;
 import org.rutebanken.netex.model.Operator;
 import org.rutebanken.netex.model.Quay;
 import org.rutebanken.netex.model.Route;
@@ -25,7 +25,7 @@ import org.rutebanken.netex.model.ServiceJourney;
 import org.rutebanken.netex.model.ServiceJourneyInterchange;
 import org.rutebanken.netex.model.ServiceLink;
 import org.rutebanken.netex.model.StopPlace;
-import org.rutebanken.netex.model.TariffZone;
+import org.rutebanken.netex.model.TariffZone_VersionStructure;
 
 public interface NetexEntityIndexReadOnlyView {
   Network lookupNetworkForLine(String groupOfLineOrNetworkId);
@@ -46,7 +46,7 @@ public interface NetexEntityIndexReadOnlyView {
 
   ReadOnlyHierarchicalMapById<GroupOfStopPlaces> getGroupOfStopPlacesById();
 
-  ReadOnlyHierarchicalMapById<JourneyPattern> getJourneyPatternsById();
+  ReadOnlyHierarchicalMapById<JourneyPattern_VersionStructure> getJourneyPatternsById();
 
   ReadOnlyHierarchicalMapById<FlexibleLine> getFlexibleLineById();
 
@@ -60,7 +60,7 @@ public interface NetexEntityIndexReadOnlyView {
 
   ReadOnlyHierarchicalMapById<OperatingDay> getOperatingDayById();
 
-  ReadOnlyHierarchicalMapById<OperatingPeriod> getOperatingPeriodById();
+  ReadOnlyHierarchicalMapById<OperatingPeriod_VersionStructure> getOperatingPeriodById();
 
   ReadOnlyHierarchicalMapById<Operator> getOperatorsById();
 
@@ -80,7 +80,7 @@ public interface NetexEntityIndexReadOnlyView {
 
   ReadOnlyHierarchicalVersionMapById<StopPlace> getStopPlaceById();
 
-  ReadOnlyHierarchicalVersionMapById<TariffZone> getTariffZonesById();
+  ReadOnlyHierarchicalVersionMapById<TariffZone_VersionStructure> getTariffZonesById();
 
   ReadOnlyHierarchicalMapById<Branding> getBrandingById();
 

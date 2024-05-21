@@ -7,15 +7,17 @@ the contribution process and expectations.
 ## Primary Channels of Communication
 
 If you have any questions about problems you are encountering with code, deployment, documentation,
-or development coordination, please don't hesitate to post to the OpenTripPlanner discussion groups.
-These are Google Groups which can be accessed as web forums or as traditional email mailing lists:
+or development coordination, please don't hesitate to post to the [OpenTripPlanner Gitter chat](https://gitter.im/opentripplanner/OpenTripPlanner)
+or the mailing list. This is the Google Group which can be accessed as web forums or as traditional 
+email mailing lists:
 
-- https://groups.google.com/g/opentripplanner-dev (opentripplanner-dev@googlegroups.com)
 - https://groups.google.com/g/opentripplanner-users (opentripplanner-users@googlegroups.com)
 
 Any message posted there will be seen by most of the contributors, some of whom work on OTP full
 time. It will also create a record of the discussion that will be useful to the larger community and
 often leads to issues being discussed at the twice-weekly development meetings.
+
+## Developer meetings
 
 OTP development meetings usually occur twice a week. These meetings are open to anyone who wants to
 join, even if you simply want to observe the process or ask a few questions. The most effective way
@@ -118,8 +120,8 @@ When creating and building on a pull request, please do the following:
   reverted configuration changes.
 
 In turn, in order to prevent OTP2 from turning into a "
-big-ball-of-mud" (https://en.wikipedia.org/wiki/Big_ball_of_mud) and ensure development does grind
-to a halt, the maintainers of the project will:
+big-ball-of-mud" (https://en.wikipedia.org/wiki/Big_ball_of_mud) and ensure development does not
+grind to a halt, the maintainers of the project will:
 
 - Keep an eye out for features which are not core, and suggest that they be Sandbox features.
 - Ask for example use cases for new functionality to make sure OTP is the right place to implement

@@ -36,22 +36,28 @@ The `build-config.json` for a Norwegian graph using Netex data looks like this:
 {
   "areaVisibility": true,
   "platformEntriesLinking": true,
-  "osmWayPropertySet": "norway",
   "islandWithoutStopsMaxSize": 5,
   "islandWithStopsMaxSize": 5,
   "dataImportReport": true,
-  "netex" : {
+  "netexDefaults" : {
     "moduleFilePattern" : ".*-netex\\.zip",
     "sharedFilePattern": "_stops.xml",
     "sharedGroupFilePattern": "_(\\w{3})(_flexible)?_shared_data.xml",
     "groupFilePattern": "(\\w{3})_.*\\.xml",
-    "netexFeedId": "EN",
+    "feedId": "EN",
     "ferryIdsNotAllowedForBicycle": [
       "NYC:Line:1",
       "NYC:Line:012fc5c4-131b-4dfc-8160-4e49136e531a",
       "NYC:Line:8bfef12a-ac98-4376-8a2a-eb5a336d107b"
     ]
-  }
+  },
+  "osm": [
+    {
+      "source": "norway-latest.osm.pbf",
+      "osmTagMapping": "norway",
+      "timeZone": "Europe/Oslo"
+    }
+    ]
 }
 ```
 
@@ -79,11 +85,11 @@ using OTP's built in testing web client. Try some long trips like Oslo to Bergen
 get long distance trains and flights as alternatives. You might need to increase the walking limit
 above its very low default value.
 
-## Adding SIRI Realtime Data
+## Adding SIRI Real-time Data
 
 Another important feature in OTP2 is the ability to
-use [SIRI realtime data](https://en.wikipedia.org/wiki/Service_Interface_for_Real_Time_Information).
-Within the EU data standards, SIRI is analogous to GTFS-RT: a way to apply realtime updates on top
+use [SIRI real-time data](https://en.wikipedia.org/wiki/Service_Interface_for_Real_Time_Information).
+Within the EU data standards, SIRI is analogous to GTFS-RT: a way to apply real-time updates on top
 of schedule data. While technically a distinct specification from Netex, both Netex and SIRI use the
 Transmodel vocabulary, allowing SIRI messages to reference entities in Netex schedule data. Like
 GTFS-RT, SIRI is consumed by OTP2 using "graph updaters" which are configured in
@@ -95,14 +101,14 @@ loaded at server startup.
     "updaters": [
         {
             "type": "siri-sx-updater",
-            "frequencySec": 60,
+            "frequency": "1m",
             "url": "https://api.example.com/siri",
             "feedId": "siri-sx",
             "blockReadinessUntilInitialized": true
         },
         {
             "type": "siri-et-updater",
-            "frequencySec": 20,
+            "frequency": "20s",
             "previewIntervalMinutes": 180,
             "url": "https://api.example.com/siri",
             "feedId": "siri-et",
@@ -110,7 +116,7 @@ loaded at server startup.
         },
         {
             "type": "siri-vm-updater",
-            "frequencySec": 60,
+            "frequency": "1m",
             "url": "https://api.example.com/siri",
             "feedId": "siri-vm",
             "blockReadinessUntilInitialized": true
@@ -137,6 +143,6 @@ Note that between these SIRI updaters and the GTFS-RT Websocket updater, we now 
 and streaming examples of GTFS-RT "incrementality" semantics, so should be able to finalize that
 part of the specification.
 
-The final updater regularly performs a copy of the realtime data into a format suitable for use by
-OTP2's new Raptor router. Without this updater the realtime data will be received and cataloged, but
+The final updater regularly performs a copy of the real-time data into a format suitable for use by
+OTP2's new Raptor router. Without this updater the real-time data will be received and cataloged, but
 not visible to the router.

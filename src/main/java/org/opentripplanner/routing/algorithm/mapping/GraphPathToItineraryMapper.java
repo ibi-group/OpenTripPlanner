@@ -1,5 +1,7 @@
 package org.opentripplanner.routing.algorithm.mapping;
 
+import static org.opentripplanner.street.search.state.VehicleRentalState.RENTING_FLOATING;
+
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
@@ -10,36 +12,35 @@ import java.util.Set;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.geom.impl.PackedCoordinateSequence;
-import org.opentripplanner.api.resource.CoordinateArrayListSequence;
-import org.opentripplanner.common.model.P2;
+import org.opentripplanner.astar.model.GraphPath;
 import org.opentripplanner.ext.flex.FlexibleTransitLeg;
 import org.opentripplanner.ext.flex.edgetype.FlexTripEdge;
-import org.opentripplanner.model.StreetNote;
+import org.opentripplanner.framework.application.OTPFeature;
+import org.opentripplanner.framework.geometry.GeometryUtils;
+import org.opentripplanner.framework.i18n.I18NString;
+import org.opentripplanner.framework.time.ZoneIdFallback;
+import org.opentripplanner.model.plan.ElevationProfile;
 import org.opentripplanner.model.plan.Itinerary;
 import org.opentripplanner.model.plan.Leg;
 import org.opentripplanner.model.plan.Place;
 import org.opentripplanner.model.plan.StreetLeg;
 import org.opentripplanner.model.plan.StreetLegBuilder;
 import org.opentripplanner.model.plan.WalkStep;
-import org.opentripplanner.routing.core.State;
-import org.opentripplanner.routing.core.TraverseMode;
-import org.opentripplanner.routing.edgetype.BoardingLocationToStopLink;
-import org.opentripplanner.routing.edgetype.PathwayEdge;
-import org.opentripplanner.routing.edgetype.StreetEdge;
-import org.opentripplanner.routing.edgetype.VehicleParkingEdge;
-import org.opentripplanner.routing.edgetype.VehicleRentalEdge;
-import org.opentripplanner.routing.graph.Edge;
-import org.opentripplanner.routing.graph.Vertex;
-import org.opentripplanner.routing.location.TemporaryStreetLocation;
 import org.opentripplanner.routing.services.notes.StreetNotesService;
-import org.opentripplanner.routing.spt.GraphPath;
-import org.opentripplanner.routing.vertextype.StreetVertex;
-import org.opentripplanner.routing.vertextype.TransitStopVertex;
-import org.opentripplanner.routing.vertextype.VehicleParkingEntranceVertex;
-import org.opentripplanner.routing.vertextype.VehicleRentalPlaceVertex;
-import org.opentripplanner.transit.model.basic.I18NString;
-import org.opentripplanner.util.OTPFeature;
-import org.opentripplanner.util.geometry.GeometryUtils;
+import org.opentripplanner.service.vehiclerental.street.VehicleRentalEdge;
+import org.opentripplanner.service.vehiclerental.street.VehicleRentalPlaceVertex;
+import org.opentripplanner.street.model.edge.BoardingLocationToStopLink;
+import org.opentripplanner.street.model.edge.Edge;
+import org.opentripplanner.street.model.edge.StreetEdge;
+import org.opentripplanner.street.model.edge.VehicleParkingEdge;
+import org.opentripplanner.street.model.note.StreetNote;
+import org.opentripplanner.street.model.vertex.StreetVertex;
+import org.opentripplanner.street.model.vertex.TemporaryStreetLocation;
+import org.opentripplanner.street.model.vertex.TransitStopVertex;
+import org.opentripplanner.street.model.vertex.VehicleParkingEntranceVertex;
+import org.opentripplanner.street.model.vertex.Vertex;
+import org.opentripplanner.street.search.TraverseMode;
+import org.opentripplanner.street.search.state.State;
 
 /**
  * A mapper class used in converting internal GraphPaths to Itineraries, which are returned by the
@@ -58,7 +59,7 @@ public class GraphPathToItineraryMapper {
     StreetNotesService streetNotesService,
     double ellipsoidToGeoidDifference
   ) {
-    this.timeZone = timeZone;
+    this.timeZone = ZoneIdFallback.zoneId(timeZone);
     this.streetNotesService = streetNotesService;
     this.ellipsoidToGeoidDifference = ellipsoidToGeoidDifference;
   }
@@ -70,18 +71,32 @@ public class GraphPathToItineraryMapper {
     );
   }
 
-  public static boolean isRentalDropOff(State state) {
+  public static boolean isRentalStationDropOff(State state) {
     return (
       state.getBackEdge() instanceof VehicleRentalEdge && state.getBackState().isRentingVehicle()
     );
   }
 
   /**
+   * Dropping of a free-floating vehicle can happen at any edge so be sure to select the correct
+   * state (forward, not backward).
+   */
+  public static boolean isFloatingRentalDropoff(State state) {
+    return (
+      !state.isRentingVehicle() &&
+      (
+        state.getBackState() != null &&
+        state.getBackState().getVehicleRentalState() == RENTING_FLOATING
+      )
+    );
+  }
+
+  /**
    * Generates a TripPlan from a set of paths
    */
-  public List<Itinerary> mapItineraries(List<GraphPath> paths) {
+  public List<Itinerary> mapItineraries(List<GraphPath<State, Edge, Vertex>> paths) {
     List<Itinerary> itineraries = new LinkedList<>();
-    for (GraphPath path : paths) {
+    for (GraphPath<State, Edge, Vertex> path : paths) {
       Itinerary itinerary = generateItinerary(path);
       if (itinerary.getLegs().isEmpty()) {
         continue;
@@ -99,7 +114,7 @@ public class GraphPathToItineraryMapper {
    * @param path The graph path to base the itinerary on
    * @return The generated itinerary
    */
-  public Itinerary generateItinerary(GraphPath path) {
+  public Itinerary generateItinerary(GraphPath<State, Edge, Vertex> path) {
     List<Leg> legs = new ArrayList<>();
     WalkStep previousStep = null;
     for (List<State> legStates : sliceStates(path.states)) {
@@ -131,30 +146,6 @@ public class GraphPathToItineraryMapper {
   }
 
   /**
-   * Generate a {@link CoordinateArrayListSequence} based on an {@link Edge} array.
-   *
-   * @param edges The array of input edges
-   * @return The coordinates of the points on the edges
-   */
-  private static CoordinateArrayListSequence makeCoordinates(List<Edge> edges) {
-    CoordinateArrayListSequence coordinates = new CoordinateArrayListSequence();
-
-    for (Edge edge : edges) {
-      LineString geometry = edge.getGeometry();
-
-      if (geometry != null) {
-        if (coordinates.size() == 0) {
-          coordinates.extend(geometry.getCoordinates());
-        } else {
-          coordinates.extend(geometry.getCoordinates(), 1); // Avoid duplications
-        }
-      }
-    }
-
-    return coordinates;
-  }
-
-  /**
    * Slice a {@link State} list at the leg boundaries.
    *
    * @param states The list of input states
@@ -176,7 +167,10 @@ public class GraphPathToItineraryMapper {
 
       var flexChange =
         forwardState.backEdge instanceof FlexTripEdge || backState.backEdge instanceof FlexTripEdge;
-      var rentalChange = isRentalPickUp(backState) || isRentalDropOff(backState);
+      var rentalChange =
+        isRentalPickUp(backState) ||
+        isRentalStationDropOff(backState) ||
+        isFloatingRentalDropoff(backState);
       var parkingChange = backState.isVehicleParked() != forwardState.isVehicleParked();
       var carPickupChange = backState.getCarPickupState() != forwardState.getCarPickupState();
 
@@ -205,18 +199,6 @@ public class GraphPathToItineraryMapper {
     }
 
     return legsStates;
-  }
-
-  /**
-   * TODO: This is mindless. Why is this set on leg, rather than on a walk step? Now only the first pathway is used
-   */
-  private static StreetLegBuilder setPathwayInfo(StreetLegBuilder leg, List<State> legStates) {
-    for (State legsState : legStates) {
-      if (legsState.getBackEdge() instanceof PathwayEdge pe) {
-        leg.withPathwayId(pe.getId());
-      }
-    }
-    return leg;
   }
 
   /**
@@ -259,16 +241,12 @@ public class GraphPathToItineraryMapper {
       // The first state is part of the previous leg
       .skip(1)
       .map(state -> {
-        var mode = state.getNonTransitMode();
+        var mode = state.currentMode();
 
         if (mode != null) {
           // Resolve correct mode if renting vehicle
           if (state.isRentingVehicle()) {
-            return switch (state.stateData.rentalVehicleFormFactor) {
-              case BICYCLE, OTHER -> TraverseMode.BICYCLE;
-              case SCOOTER, MOPED -> TraverseMode.SCOOTER;
-              case CAR -> TraverseMode.CAR;
-            };
+            return state.stateData.rentalVehicleFormFactor.traverseMode;
           } else {
             return mode;
           }
@@ -282,41 +260,41 @@ public class GraphPathToItineraryMapper {
       .orElse(TraverseMode.WALK);
   }
 
-  private static List<P2<Double>> encodeElevationProfileWithNaN(
+  private static ElevationProfile encodeElevationProfileWithNaN(
     Edge edge,
     double distanceOffset,
     double heightOffset
   ) {
     var elevations = encodeElevationProfile(edge, distanceOffset, heightOffset);
     if (elevations.isEmpty()) {
-      return List.of(
-        new P2<>(distanceOffset, Double.NaN),
-        new P2<>(distanceOffset + edge.getDistanceMeters(), Double.NaN)
-      );
+      return ElevationProfile
+        .of()
+        .stepYUnknown(distanceOffset)
+        .stepYUnknown(distanceOffset + edge.getDistanceMeters())
+        .build();
     }
     return elevations;
   }
 
-  private static List<P2<Double>> encodeElevationProfile(
+  private static ElevationProfile encodeElevationProfile(
     Edge edge,
     double distanceOffset,
     double heightOffset
   ) {
-    ArrayList<P2<Double>> out = new ArrayList<P2<Double>>();
-
     if (!(edge instanceof StreetEdge elevEdge)) {
-      return out;
+      return ElevationProfile.empty();
     }
     if (elevEdge.getElevationProfile() == null) {
-      return out;
+      return ElevationProfile.empty();
     }
 
+    var out = ElevationProfile.of();
     Coordinate[] coordArr = elevEdge.getElevationProfile().toCoordinateArray();
     for (final Coordinate coordinate : coordArr) {
-      out.add(new P2<>(coordinate.x + distanceOffset, coordinate.y + heightOffset));
+      out.step(coordinate.x + distanceOffset, coordinate.y + heightOffset);
     }
 
-    return out;
+    return out.build();
   }
 
   /**
@@ -341,10 +319,7 @@ public class GraphPathToItineraryMapper {
     } else if (vertex instanceof VehicleRentalPlaceVertex) {
       return Place.forVehicleRentalPlace((VehicleRentalPlaceVertex) vertex);
     } else if (vertex instanceof VehicleParkingEntranceVertex) {
-      return Place.forVehicleParkingEntrance(
-        (VehicleParkingEntranceVertex) vertex,
-        state.getOptions()
-      );
+      return Place.forVehicleParkingEntrance((VehicleParkingEntranceVertex) vertex, state);
     } else {
       return Place.normal(vertex, name);
     }
@@ -389,8 +364,7 @@ public class GraphPathToItineraryMapper {
 
     double distanceMeters = edges.stream().mapToDouble(Edge::getDistanceMeters).sum();
 
-    CoordinateArrayListSequence coordinates = makeCoordinates(edges);
-    LineString geometry = GeometryUtils.getGeometryFactory().createLineString(coordinates);
+    LineString geometry = GeometryUtils.concatenateLineStrings(edges, Edge::getGeometry);
 
     var statesToWalkStepsMapper = new StatesToWalkStepsMapper(
       states,
@@ -420,7 +394,9 @@ public class GraphPathToItineraryMapper {
       .withDistanceMeters(distanceMeters)
       .withGeneralizedCost((int) (lastState.getWeight() - firstState.getWeight()))
       .withGeometry(geometry)
-      .withElevation(makeElevation(edges, firstState.getOptions().geoidElevation))
+      .withElevationProfile(
+        makeElevation(edges, firstState.getPreferences().system().geoidElevation())
+      )
       .withWalkSteps(walkSteps)
       .withRentedVehicle(firstState.isRentingVehicle())
       .withWalkingBike(false);
@@ -434,8 +410,6 @@ public class GraphPathToItineraryMapper {
 
     addStreetNotes(leg, states);
 
-    setPathwayInfo(leg, states);
-
     return leg.build();
   }
 
@@ -445,7 +419,7 @@ public class GraphPathToItineraryMapper {
    * @param leg    The leg to add the mode and alerts to
    * @param states The states that go with the leg
    */
-  private StreetLegBuilder addStreetNotes(StreetLegBuilder leg, List<State> states) {
+  private void addStreetNotes(StreetLegBuilder leg, List<State> states) {
     for (State state : states) {
       Set<StreetNote> streetNotes = streetNotesService.getNotes(state);
 
@@ -453,43 +427,23 @@ public class GraphPathToItineraryMapper {
         leg.withStreetNotes(streetNotes);
       }
     }
-    return leg;
   }
 
-  private List<P2<Double>> makeElevation(List<Edge> edges, boolean geoidElevation) {
-    ArrayList<P2<Double>> elevationProfile = new ArrayList<>();
+  private ElevationProfile makeElevation(List<Edge> edges, boolean geoidElevation) {
+    var builder = ElevationProfile.of();
 
     double heightOffset = geoidElevation ? ellipsoidToGeoidDifference : 0;
 
     double distanceOffset = 0;
     for (final Edge edge : edges) {
       if (edge.getDistanceMeters() > 0) {
-        elevationProfile.addAll(encodeElevationProfileWithNaN(edge, distanceOffset, heightOffset));
+        builder.add(encodeElevationProfileWithNaN(edge, distanceOffset, heightOffset));
         distanceOffset += edge.getDistanceMeters();
       }
     }
 
-    // Remove repeated values, preserving the first and last value
-    for (int i = elevationProfile.size() - 3; i >= 0; i--) {
-      var first = elevationProfile.get(i);
-      var second = elevationProfile.get(i + 1);
-      var third = elevationProfile.get(i + 2);
+    var p = builder.build();
 
-      if (
-        Objects.equals(first.second, second.second) && Objects.equals(second.second, third.second)
-      ) {
-        elevationProfile.remove(i + 1);
-      } else if (first.second.isNaN() && second.second.isNaN() && third.second.isNaN()) {
-        elevationProfile.remove(i + 1);
-      } else if (Objects.equals(first, second)) {
-        elevationProfile.remove(i + 1);
-      }
-    }
-
-    if (elevationProfile.stream().allMatch(p2 -> p2.second.isNaN())) {
-      return null;
-    }
-
-    return elevationProfile;
+    return p.isAllYUnknown() ? null : p;
   }
 }

@@ -3,8 +3,11 @@ package org.opentripplanner.routing.error;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CompletionException;
+import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
+import org.opentripplanner.routing.api.response.InputField;
 import org.opentripplanner.routing.api.response.RoutingError;
+import org.opentripplanner.routing.api.response.RoutingErrorCode;
 
 public class RoutingValidationException extends RuntimeException {
 
@@ -19,12 +22,17 @@ public class RoutingValidationException extends RuntimeException {
   }
 
   public static void unwrapAndRethrowCompletionException(CompletionException e) {
-    if (e.getCause() instanceof RoutingValidationException) {
-      throw (RoutingValidationException) e.getCause();
-    } else if (e.getCause() instanceof RuntimeException) {
-      throw (RuntimeException) e.getCause();
+    if (e.getCause() instanceof RuntimeException cause) {
+      throw cause;
     }
     throw e;
+  }
+
+  public static void unwrapAndRethrowExecutionException(ExecutionException e) {
+    if (e.getCause() instanceof RuntimeException cause) {
+      throw cause;
+    }
+    throw new RuntimeException(e);
   }
 
   public List<RoutingError> getRoutingErrors() {
@@ -34,5 +42,29 @@ public class RoutingValidationException extends RuntimeException {
   @Override
   public String getMessage() {
     return routingErrors.stream().map(Objects::toString).collect(Collectors.joining("\n"));
+  }
+
+  public boolean isFromLocationNotFound() {
+    return isLocationNotFound(InputField.FROM_PLACE);
+  }
+
+  public boolean isToLocationNotFound() {
+    return isLocationNotFound(InputField.TO_PLACE);
+  }
+
+  public boolean isFromToLocationNotFound() {
+    return isFromLocationNotFound() && isToLocationNotFound();
+  }
+
+  private boolean isLocationNotFound(InputField location) {
+    return (
+      routingErrors != null &&
+      routingErrors
+        .stream()
+        .anyMatch(routingError ->
+          routingError.code == RoutingErrorCode.LOCATION_NOT_FOUND &&
+          routingError.inputField == location
+        )
+    );
   }
 }

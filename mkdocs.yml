@@ -8,51 +8,98 @@ site_url: https://docs.opentripplanner.org
 repo_url: https://github.com/opentripplanner/OpenTripPlanner
 docs_dir: docs
 site_dir: target/mkdocs
+strict: true
+
+plugins:
+    - "no-sitemap"
+    - search
+
+theme:
+    name: material
+    features:
+        - toc.integrate
+        - content.code.copy
+        - search.suggest
+        - search.highlight
+    palette:
+        primary: blue
+        accent: blue
+        scheme: default
+
+
+extra:
+    version:
+        provider: mike
+
+markdown_extensions:
+    - pymdownx.highlight:
+          anchor_linenums: true
+    - pymdownx.inlinehilite
+    - pymdownx.snippets
+    - pymdownx.superfences
+    - admonition
 
 # MkDocs will automatically discover pages if you don't list them here.
 # In that case subdirectories can be used to organize pages.
 # The list below organizes them into categories and controls the order.
 
-pages:
+nav:
 - Home: 'index.md'
 - About:
+    - Product Overview: 'Product-Overview.md'
     - Governance: 'Governance.md'
     - History: 'History.md'
+    - Presentations: 'Presentations.md'
+    - Roadmap: 'Roadmap.md'
     - Deployments: 'Deployments.md'
     - Changelog: 'Changelog.md'
-    - Comparing OTP2 to OTP1: 'Version-Comparison.md'
-    - OTP2 migration guide: 'OTP2-MigrationGuide.md'
     - Visual Identity: 'Visual-Identity.md'
 - 'Usage':
     - Basic Tutorial: 'Basic-Tutorial.md'
+    - Data Sources: 'Data-Sources.md'
     - Getting OTP: 'Getting-OTP.md'
-    - Container image: 'Container-Image.md'
-    - Configuration:
-        - Introduction: 'Configuration.md'
-        - Build: 'BuildConfiguration.md'
-        - "Boarding locations": 'BoardingLocations.md'
-        - Router: 'RouterConfiguration.md'
-        - Accessibility: 'Accessibility.md'
+    - Container Image: 'Container-Image.md'
+    - System Requirements and Suggestions: 'System-Requirements.md'
     - Preparing OSM Data: 'Preparing-OSM.md'
     - Netex and SIRI: 'Netex-Norway.md'
-    - Security: 'Security.md'
     - Troubleshooting: 'Troubleshooting-Routing.md'
+    - Comparing OTP2 to OTP1: 'Version-Comparison.md'
+    - Frontends: 'Frontends.md'
+- APIs:
+    - Introduction: 'apis/Apis.md'
+    - GraphQL Tutorial: 'apis/GraphQL-Tutorial.md'
+    - GTFS GraphQL API: 'apis/GTFS-GraphQL-API.md'
+    - Transmodel (NeTEx) GraphQL API: 'apis/TransmodelApi.md'
+- Configuration:
+    - Introduction: 'Configuration.md'
+    - Build: 'BuildConfiguration.md'
+    - Router: 'RouterConfiguration.md'
+    - "Route Request": 'RouteRequest.md'
+    - "Realtime Updaters": 'UpdaterConfig.md'
+    - "Migrating between versions/builds": 'Migrating-Configuration.md'
+- Features explained:
+    - "Routing modes": 'RoutingModes.md'
+    - "In-station navigation": 'In-Station-Navigation.md'
+    - "Boarding Locations": 'BoardingLocations.md'
+    - "Stop Area Relations": 'StopAreas.md'
+    - "Street Graph Pruning": 'IslandPruning.md'
+    - Accessibility: 'Accessibility.md'
+    - "Travel Time Analysis": 'Analysis.md'
+    - "Logging": "Logging.md"
 - Development:
     - "Developers' Guide": 'Developers-Guide.md'
-    - Interfaces and Data Sources: 'Interfaces-Data-Sources.md'
     - Localization: 'Localization.md'
     - Bibliography: 'Bibliography.md'
     - Codestyle: 'Codestyle.md'
-    - Sandbox development: 'SandboxExtension.md'
+    - Sandbox Development: 'SandboxExtension.md'
+    - Release Checklist: 'ReleaseChecklist.md'
 - Sandbox:
     - About: 'SandboxExtension.md'
     - Actuator API: 'sandbox/ActuatorAPI.md'
-    - Direct transfer analyzer: 'sandbox/transferanalyzer.md'
+    - Direct Transfer Analyzer: 'sandbox/transferanalyzer.md'
     - Google Cloud Storage: 'sandbox/GoogleCloudStorage.md'
-    - HSL Legacy GraphQL API: 'sandbox/LegacyGraphQLApi.md'
-    - Transmodel(NeTEx) GraphQL API: 'sandbox/TransmodelApi.md'
-    - SIRI Updater (Google Cloud): 'sandbox/SiriUpdator.md'
-    - SIRI Updater (Azure): 'sandbox/SiriAzureUpdater.md'
+    - SIRI Updaters: 'sandbox/siri/SiriUpdater.md'
+    - SIRI Updater (Azure): 'sandbox/siri/SiriAzureUpdater.md'
     - Vehicle Rental Service Directory API support: 'sandbox/VehicleRentalServiceDirectory.md'
     - Smoove Bike Rental Updator Support: 'sandbox/SmooveBikeRental.md'
     - Mapbox Vector Tiles API: 'sandbox/MapboxVectorTilesApi.md'
@@ -62,8 +109,10 @@ pages:
     - Park and Ride API: 'sandbox/ParkAndRideApi.md'
     - Data Overlay: 'sandbox/DataOverlay.md'
     - Vehicle Parking Updaters: 'sandbox/VehicleParking.md'
-    - Vehicle-to-stop Heuristics: 'sandbox/VehicleToStopHeuristics.md'
     - Geocoder API: 'sandbox/GeocoderAPI.md'
-    - Travel time isochrones: 'sandbox/TravelTime.md'
-    - IBI accessibility score: 'sandbox/IBIAccessibilityScore.md'
+    - Travel Time Isochrones: 'sandbox/TravelTime.md'
+    - IBI Accessibility Score: 'sandbox/IBIAccessibilityScore.md'
     - Fares: 'sandbox/Fares.md'
+    - Ride Hailing: 'sandbox/RideHailing.md'
+    - Emissions: 'sandbox/Emissions.md'
+    - Stop Consolidation: 'sandbox/StopConsolidation.md'

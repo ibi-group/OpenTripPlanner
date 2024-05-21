@@ -13,12 +13,14 @@ import org.opentripplanner.transit.model.timetable.TripTimes;
  * only included components which are allowed by the request. Such filters may included bike or
  * wheelchair accessibility, banned routes and transit modes.
  *
- * @see RoutingRequestTransitDataProviderFilter
+ * @see RouteRequestTransitDataProviderFilter
  */
 public interface TransitDataProviderFilter {
   boolean tripPatternPredicate(TripPatternForDate tripPatternForDate);
 
-  boolean tripTimesPredicate(TripTimes tripTimes);
+  boolean hasSubModeFilters();
+
+  boolean tripTimesPredicate(TripTimes tripTimes, boolean withFilters);
 
   /**
    * Check if boarding/alighting is possible at each stop. If the values differ from the default
@@ -27,7 +29,12 @@ public interface TransitDataProviderFilter {
    * @param tripPattern      Trip pattern that should contain boarding/alighting information, e.g.
    *                         wheelchair accessibility for each stop.
    * @param boardingPossible Initial information regarding boarding/alighting possible
+   * @param boardAlight      Whether we are filtering boarding or alighting stops
    * @return Information if stops are available for boarding or alighting
    */
-  BitSet filterAvailableStops(RoutingTripPattern tripPattern, BitSet boardingPossible);
+  BitSet filterAvailableStops(
+    RoutingTripPattern tripPattern,
+    BitSet boardingPossible,
+    BoardAlight boardAlight
+  );
 }

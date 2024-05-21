@@ -2,6 +2,8 @@ package org.opentripplanner.routing.algorithm.raptoradapter.transit.request;
 
 import static org.opentripplanner.routing.algorithm.raptoradapter.transit.request.TestTransitCaseData.DATE;
 import static org.opentripplanner.routing.algorithm.raptoradapter.transit.request.TestTransitCaseData.OFFSET;
+import static org.opentripplanner.routing.algorithm.raptoradapter.transit.request.TestTransitCaseData.STOP_A;
+import static org.opentripplanner.routing.algorithm.raptoradapter.transit.request.TestTransitCaseData.STOP_B;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -9,7 +11,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import org.opentripplanner.framework.i18n.NonLocalizedString;
+import org.opentripplanner.framework.time.TimeUtils;
 import org.opentripplanner.model.StopTime;
+import org.opentripplanner.raptor.spi.RaptorTimeTable;
 import org.opentripplanner.routing.algorithm.raptoradapter.transit.TripPatternForDate;
 import org.opentripplanner.routing.algorithm.raptoradapter.transit.TripSchedule;
 import org.opentripplanner.transit.model._data.TransitModelForTest;
@@ -19,12 +24,11 @@ import org.opentripplanner.transit.model.network.Route;
 import org.opentripplanner.transit.model.network.RoutingTripPattern;
 import org.opentripplanner.transit.model.network.StopPattern;
 import org.opentripplanner.transit.model.network.TripPattern;
-import org.opentripplanner.transit.model.site.Stop;
+import org.opentripplanner.transit.model.site.RegularStop;
 import org.opentripplanner.transit.model.site.StopLocation;
 import org.opentripplanner.transit.model.timetable.Trip;
 import org.opentripplanner.transit.model.timetable.TripTimes;
-import org.opentripplanner.transit.raptor.api.transit.RaptorTimeTable;
-import org.opentripplanner.util.time.TimeUtils;
+import org.opentripplanner.transit.model.timetable.TripTimesFactory;
 
 public class TestRouteData {
 
@@ -37,13 +41,13 @@ public class TestRouteData {
   private final TripPattern tripPattern;
   private Trip currentTrip;
 
-  public TestRouteData(String route, TransitMode mode, List<Stop> stops, String... times) {
+  public TestRouteData(Route route, List<RegularStop> stops, List<String> times) {
     final Deduplicator deduplicator = new Deduplicator();
-    this.route = TransitModelForTest.route(route).withMode(mode).withShortName(route).build();
+    this.route = route;
     this.trips =
-      Arrays
-        .stream(times)
-        .map(it -> parseTripInfo(route, it, stops, deduplicator))
+      times
+        .stream()
+        .map(it -> parseTripInfo(route.getName(), it, stops, deduplicator))
         .collect(Collectors.toList());
 
     List<StopTime> stopTimesFistTrip = firstTrip().getStopTimes();
@@ -62,16 +66,16 @@ public class TestRouteData {
     tripTimes.forEach(tripPattern::add);
 
     RoutingTripPattern routingTripPattern = tripPattern.getRoutingTripPattern();
-    var listOfTripPatternForDates = List.of(
-      new TripPatternForDate(routingTripPattern, tripTimes, List.of(), DATE)
-    );
 
     var patternForDates = new TripPatternForDates(
       routingTripPattern,
-      listOfTripPatternForDates,
-      List.of(OFFSET),
+      new TripPatternForDate[] {
+        new TripPatternForDate(routingTripPattern, tripTimes, List.of(), DATE),
+      },
+      new int[] { OFFSET },
       null,
-      null
+      null,
+      0
     );
     int id = 0;
     for (Trip trip : trips) {
@@ -81,6 +85,35 @@ public class TestRouteData {
     }
 
     this.timetable = patternForDates;
+  }
+
+  public static TestRouteData of(
+    String route,
+    TransitMode mode,
+    List<RegularStop> stops,
+    String... times
+  ) {
+    return new TestRouteData.Builder(route)
+      .withMode(mode)
+      .withStops(stops)
+      .withTimes(Arrays.asList(times))
+      .build();
+  }
+
+  public static TestRouteData.Builder of(String route, TransitMode mode) {
+    return new TestRouteData.Builder(route).withMode(mode);
+  }
+
+  public static TestRouteData.Builder bus(String route) {
+    return of(route, TransitMode.BUS);
+  }
+
+  public static TestRouteData.Builder rail(String route) {
+    return of(route, TransitMode.RAIL);
+  }
+
+  public static TestRouteData.Builder ferry(String route) {
+    return of(route, TransitMode.FERRY);
   }
 
   public Route getRoute() {
@@ -101,7 +134,7 @@ public class TestRouteData {
     return this;
   }
 
-  public StopTime getStopTime(Stop stop) {
+  public StopTime getStopTime(RegularStop stop) {
     return stopTimesByTrip.get(currentTrip).get(stopPosition(stop));
   }
 
@@ -130,7 +163,7 @@ public class TestRouteData {
   private Trip parseTripInfo(
     String route,
     String tripTimes,
-    List<Stop> stops,
+    List<RegularStop> stops,
     Deduplicator deduplicator
   ) {
     var trip = Trip
@@ -139,7 +172,7 @@ public class TestRouteData {
       .build();
     var stopTimes = stopTimes(trip, stops, tripTimes);
     this.stopTimesByTrip.put(trip, stopTimes);
-    this.tripTimesByTrip.put(trip, new TripTimes(trip, stopTimes, deduplicator));
+    this.tripTimesByTrip.put(trip, TripTimesFactory.tripTimes(trip, stopTimes, deduplicator));
     return trip;
   }
 
@@ -147,7 +180,7 @@ public class TestRouteData {
     return stopTimesByTrip.get(currentTrip);
   }
 
-  private List<StopTime> stopTimes(Trip trip, List<Stop> stops, String timesAsString) {
+  private List<StopTime> stopTimes(Trip trip, List<RegularStop> stops, String timesAsString) {
     var times = TimeUtils.times(timesAsString);
     var stopTimes = new ArrayList<StopTime>();
     for (int i = 0; i < stops.size(); i++) {
@@ -156,15 +189,85 @@ public class TestRouteData {
     return stopTimes;
   }
 
-  private StopTime stopTime(Trip trip, Stop stop, int time, int seq) {
+  private StopTime stopTime(Trip trip, RegularStop stop, int time, int seq) {
     var s = new StopTime();
     s.setTrip(trip);
     s.setStop(stop);
     s.setArrivalTime(time);
     s.setDepartureTime(time);
     s.setStopSequence(seq);
-    s.setStopHeadsign("NA");
+    s.setStopHeadsign(new NonLocalizedString("NA"));
     s.setRouteShortName("NA");
     return s;
+  }
+
+  public static class Builder {
+
+    private final String route;
+    private String agency;
+    private TransitMode mode = TransitMode.BUS;
+    private String submode;
+    private List<RegularStop> stops;
+    private List<String> times;
+
+    public Builder(String route) {
+      this.route = route;
+    }
+
+    public Builder withAgency(String agency) {
+      this.agency = agency;
+      return this;
+    }
+
+    public Builder withMode(TransitMode mode) {
+      this.mode = mode;
+      return this;
+    }
+
+    public Builder withStops(List<RegularStop> stops) {
+      this.stops = stops;
+      return this;
+    }
+
+    public List<RegularStop> stops() {
+      if (stops == null) {
+        withStops(List.of(STOP_A, STOP_B));
+      }
+      return stops;
+    }
+
+    public Builder withTimes(List<String> times) {
+      this.times = times;
+      return this;
+    }
+
+    public List<String> times() {
+      if (times == null) {
+        var buf = new StringBuilder();
+        int t = TimeUtils.time("10:00");
+        for (var ignore : stops()) {
+          t += 600;
+          buf.append(" ").append(TimeUtils.timeToStrLong(t));
+        }
+        this.times = List.of(buf.substring(1));
+      }
+      return times;
+    }
+
+    public Builder withSubmode(String submode) {
+      this.submode = submode;
+      return this;
+    }
+
+    public TestRouteData build() {
+      var routeBuilder = TransitModelForTest.route(route).withMode(mode).withShortName(route);
+      if (agency != null) {
+        routeBuilder.withAgency(TransitModelForTest.agency(agency));
+      }
+      if (submode != null) {
+        routeBuilder.withNetexSubmode(submode);
+      }
+      return new TestRouteData(routeBuilder.build(), stops(), times());
+    }
   }
 }

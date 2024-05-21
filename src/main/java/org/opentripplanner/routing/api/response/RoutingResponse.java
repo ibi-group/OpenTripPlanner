@@ -1,10 +1,10 @@
 package org.opentripplanner.routing.api.response;
 
 import java.util.List;
+import org.opentripplanner.framework.tostring.ToStringBuilder;
 import org.opentripplanner.model.plan.TripPlan;
-import org.opentripplanner.model.plan.pagecursor.PageCursor;
+import org.opentripplanner.model.plan.paging.cursor.PageCursor;
 import org.opentripplanner.routing.framework.DebugTimingAggregator;
-import org.opentripplanner.util.lang.ToStringBuilder;
 
 public class RoutingResponse {
 
@@ -53,6 +53,13 @@ public class RoutingResponse {
 
   public List<RoutingError> getRoutingErrors() {
     return routingErrors;
+  }
+
+  /**
+   * Generate empty result with just an error.
+   */
+  public static RoutingResponse ofError(RoutingError error) {
+    return new RoutingResponse(null, null, null, null, List.of(error), new DebugTimingAggregator());
   }
 
   @Override

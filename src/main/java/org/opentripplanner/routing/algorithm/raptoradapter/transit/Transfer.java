@@ -1,21 +1,28 @@
 package org.opentripplanner.routing.algorithm.raptoradapter.transit;
 
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import org.locationtech.jts.geom.Coordinate;
+import org.opentripplanner.framework.logging.Throttle;
+import org.opentripplanner.framework.tostring.ToStringBuilder;
+import org.opentripplanner.raptor.api.model.RaptorTransfer;
 import org.opentripplanner.routing.algorithm.raptoradapter.transit.cost.RaptorCostConverter;
-import org.opentripplanner.routing.algorithm.raptoradapter.transit.request.TransferWithDuration;
-import org.opentripplanner.routing.api.request.RoutingRequest;
-import org.opentripplanner.routing.core.RoutingContext;
-import org.opentripplanner.routing.core.State;
-import org.opentripplanner.routing.core.StateEditor;
-import org.opentripplanner.routing.graph.Edge;
-import org.opentripplanner.transit.raptor.api.transit.RaptorTransfer;
+import org.opentripplanner.routing.api.request.preference.WalkPreferences;
+import org.opentripplanner.street.model.edge.Edge;
+import org.opentripplanner.street.search.request.StreetSearchRequest;
+import org.opentripplanner.street.search.state.EdgeTraverser;
+import org.opentripplanner.street.search.state.StateEditor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class Transfer {
+
+  private static final Logger LOG = LoggerFactory.getLogger(Transfer.class);
+  private static final Throttle THROTTLE_COST_EXCEEDED = Throttle.ofOneSecond();
+
+  protected static final int MAX_TRANSFER_COST = 2_000_000;
 
   private final int toStop;
 
@@ -33,41 +40,6 @@ public class Transfer {
     this.toStop = toStopIndex;
     this.distanceMeters = distanceMeters;
     this.edges = null;
-  }
-
-  public static RoutingRequest prepareTransferRoutingRequest(RoutingRequest request) {
-    RoutingRequest rr = request.getStreetSearchRequest(request.modes.transferMode);
-
-    rr.arriveBy = false;
-    rr.setDateTime(Instant.ofEpochSecond(0));
-    rr.from = null;
-    rr.to = null;
-
-    // Some of the values are rounded to ease caching in RaptorRequestTransferCache
-    rr.bikeTriangleSafetyFactor = roundTo(request.bikeTriangleSafetyFactor, 1);
-    rr.bikeTriangleSlopeFactor = roundTo(request.bikeTriangleSlopeFactor, 1);
-    rr.bikeTriangleTimeFactor = 1.0 - rr.bikeTriangleSafetyFactor - rr.bikeTriangleSlopeFactor;
-    rr.bikeSwitchCost = roundTo100(request.bikeSwitchCost);
-    rr.bikeSwitchTime = roundTo100(request.bikeSwitchTime);
-
-    // it's a record (immutable) so can be safely reused
-    rr.wheelchairAccessibility = request.wheelchairAccessibility;
-
-    rr.walkSpeed = roundToHalf(request.walkSpeed);
-    rr.bikeSpeed = roundToHalf(request.bikeSpeed);
-
-    rr.walkReluctance = roundTo(request.walkReluctance, 1);
-    rr.stairsReluctance = roundTo(request.stairsReluctance, 1);
-    rr.stairsTimeFactor = roundTo(request.stairsTimeFactor, 1);
-    rr.turnReluctance = roundTo(request.turnReluctance, 1);
-    rr.walkSafetyFactor = roundTo(request.walkSafetyFactor, 1);
-
-    rr.elevatorBoardCost = roundTo100(request.elevatorBoardCost);
-    rr.elevatorBoardTime = roundTo100(request.elevatorBoardTime);
-    rr.elevatorHopCost = roundTo100(request.elevatorHopCost);
-    rr.elevatorHopTime = roundTo100(request.elevatorHopTime);
-
-    return rr;
   }
 
   public List<Coordinate> getCoordinates() {
@@ -95,52 +67,73 @@ public class Transfer {
     return edges;
   }
 
-  public Optional<RaptorTransfer> asRaptorTransfer(RoutingContext routingContext) {
-    RoutingRequest routingRequest = routingContext.opt;
+  public Optional<RaptorTransfer> asRaptorTransfer(StreetSearchRequest request) {
+    WalkPreferences walkPreferences = request.preferences().walk();
     if (edges == null || edges.isEmpty()) {
-      double durationSeconds = distanceMeters / routingRequest.walkSpeed;
+      double durationSeconds = distanceMeters / walkPreferences.speed();
+      final double domainCost = costLimitSanityCheck(
+        durationSeconds * walkPreferences.reluctance()
+      );
       return Optional.of(
-        new TransferWithDuration(
-          this,
+        new DefaultRaptorTransfer(
+          this.toStop,
           (int) Math.ceil(durationSeconds),
-          RaptorCostConverter.toRaptorCost(durationSeconds * routingRequest.walkReluctance)
+          RaptorCostConverter.toRaptorCost(domainCost),
+          this
         )
       );
     }
 
-    StateEditor se = new StateEditor(routingContext, edges.get(0).getFromVertex());
+    StateEditor se = new StateEditor(edges.get(0).getFromVertex(), request);
     se.setTimeSeconds(0);
 
-    State s = se.makeState();
-    for (Edge e : edges) {
-      s = e.traverse(s);
-      if (s == null) {
-        return Optional.empty();
-      }
-    }
+    var state = EdgeTraverser.traverseEdges(se.makeState(), edges);
 
-    return Optional.of(
-      new TransferWithDuration(
-        this,
+    return state.map(s ->
+      new DefaultRaptorTransfer(
+        this.toStop,
         (int) s.getElapsedTimeSeconds(),
-        RaptorCostConverter.toRaptorCost(s.getWeight())
+        RaptorCostConverter.toRaptorCost(costLimitSanityCheck(s.getWeight())),
+        this
       )
     );
   }
 
-  private static double roundToHalf(double input) {
-    return ((int) (input * 2 + 0.5)) / 2.0;
-  }
-
-  private static double roundTo(double input, int decimals) {
-    return Math.round(input * Math.pow(10, decimals)) / Math.pow(10, decimals);
-  }
-
-  private static int roundTo100(int input) {
-    if (input > 0 && input < 100) {
-      return 100;
+  /**
+   * Since transfer costs are not computed through a full A* with pruning they can incur an
+   * absurdly high cost that overflows the integer cost inside RAPTOR
+   * (https://github.com/opentripplanner/OpenTripPlanner/issues/5509).
+   * <p>
+   * An example would be a transfer using lots of stairs being used on a wheelchair when no
+   * wheelchair-specific one has been generated.
+   * (see https://docs.opentripplanner.org/en/dev-2.x/Accessibility/).
+   * <p>
+   * For this reason there is this sanity limit that makes sure that the transfer cost stays below a
+   * limit that is still very high (several days of transit-equivalent cost) but far away from the
+   * integer overflow.
+   *
+   * @see EdgeTraverser
+   * @see RaptorCostConverter
+   */
+  private int costLimitSanityCheck(double cost) {
+    if (cost >= 0 && cost <= MAX_TRANSFER_COST) {
+      return (int) cost;
+    } else {
+      THROTTLE_COST_EXCEEDED.throttle(() ->
+        LOG.warn(
+          "Transfer exceeded maximum cost. Please consider changing the transfer cost calculation. More information: https://github.com/opentripplanner/OpenTripPlanner/pull/5516#issuecomment-1819138078"
+        )
+      );
+      return MAX_TRANSFER_COST;
     }
+  }
 
-    return ((input + 50) / 100) * 100;
+  @Override
+  public String toString() {
+    return ToStringBuilder
+      .of(Transfer.class)
+      .addNum("toStop", toStop)
+      .addNum("distance", distanceMeters, "m")
+      .toString();
   }
 }

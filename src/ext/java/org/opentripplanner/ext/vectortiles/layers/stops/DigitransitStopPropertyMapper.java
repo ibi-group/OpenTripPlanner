@@ -1,36 +1,85 @@
 package org.opentripplanner.ext.vectortiles.layers.stops;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Collection;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
-import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import org.json.simple.JSONArray;
-import org.json.simple.JSONObject;
-import org.opentripplanner.common.model.T2;
-import org.opentripplanner.ext.vectortiles.PropertyMapper;
+import org.opentripplanner.apis.support.mapping.PropertyMapper;
+import org.opentripplanner.framework.i18n.I18NStringMapper;
+import org.opentripplanner.framework.json.ObjectMappers;
+import org.opentripplanner.inspector.vector.KeyValue;
 import org.opentripplanner.transit.model.network.TripPattern;
-import org.opentripplanner.transit.model.site.Stop;
+import org.opentripplanner.transit.model.site.RegularStop;
 import org.opentripplanner.transit.service.TransitService;
 
-public class DigitransitStopPropertyMapper extends PropertyMapper<Stop> {
+public class DigitransitStopPropertyMapper extends PropertyMapper<RegularStop> {
 
+  private static final ObjectMapper OBJECT_MAPPER = ObjectMappers.ignoringExtraFields();
   private final TransitService transitService;
+  private final I18NStringMapper i18NStringMapper;
 
-  private DigitransitStopPropertyMapper(TransitService transitService) {
+  DigitransitStopPropertyMapper(TransitService transitService, Locale locale) {
     this.transitService = transitService;
+    this.i18NStringMapper = new I18NStringMapper(locale);
   }
 
-  public static DigitransitStopPropertyMapper create(TransitService transitService) {
-    return new DigitransitStopPropertyMapper(transitService);
+  protected static DigitransitStopPropertyMapper create(
+    TransitService transitService,
+    Locale locale
+  ) {
+    return new DigitransitStopPropertyMapper(transitService, locale);
   }
 
   @Override
-  public Collection<T2<String, Object>> map(Stop stop) {
+  protected Collection<KeyValue> map(RegularStop stop) {
+    return getBaseKeyValues(stop, i18NStringMapper, transitService);
+  }
+
+  protected static Collection<KeyValue> getBaseKeyValues(
+    RegularStop stop,
+    I18NStringMapper i18NStringMapper,
+    TransitService transitService
+  ) {
+    return List.of(
+      new KeyValue("gtfsId", stop.getId().toString()),
+      new KeyValue("name", i18NStringMapper.mapNonnullToApi(stop.getName())),
+      new KeyValue("code", stop.getCode()),
+      new KeyValue("platform", stop.getPlatformCode()),
+      new KeyValue("desc", i18NStringMapper.mapToApi(stop.getDescription())),
+      new KeyValue("type", getType(transitService, stop)),
+      new KeyValue("routes", getRoutes(transitService, stop)),
+      new KeyValue(
+        "parentStation",
+        stop.getParentStation() != null ? stop.getParentStation().getId() : null
+      )
+    );
+  }
+
+  protected static String getRoutes(TransitService transitService, RegularStop stop) {
+    try {
+      var objects = transitService
+        .getRoutesForStop(stop)
+        .stream()
+        .map(route -> {
+          var routeObject = OBJECT_MAPPER.createObjectNode();
+          routeObject.put("gtfsType", route.getGtfsType());
+          return routeObject;
+        })
+        .toList();
+      return OBJECT_MAPPER.writeValueAsString(objects);
+    } catch (JsonProcessingException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  protected static String getType(TransitService transitService, RegularStop stop) {
     Collection<TripPattern> patternsForStop = transitService.getPatternsForStop(stop);
 
-    String type = patternsForStop
+    return patternsForStop
       .stream()
       .map(TripPattern::getMode)
       .collect(Collectors.groupingBy(Function.identity(), Collectors.counting()))
@@ -40,34 +89,5 @@ public class DigitransitStopPropertyMapper extends PropertyMapper<Stop> {
       .map(Map.Entry::getKey)
       .map(Enum::name)
       .orElse(null);
-
-    String patterns = JSONArray.toJSONString(
-      patternsForStop
-        .stream()
-        .map(tripPattern -> {
-          String headsign = tripPattern.getStopHeadsign(tripPattern.findStopPosition(stop));
-          JSONObject pattern = new JSONObject();
-          pattern.put("headsign", Optional.ofNullable(headsign).orElse(""));
-          pattern.put("type", tripPattern.getRoute().getMode().name());
-          pattern.put("shortName", tripPattern.getRoute().getShortName());
-          return pattern;
-        })
-        .collect(Collectors.toList())
-    );
-    String desc = stop.getDescription() != null ? stop.getDescription().toString() : null;
-    return List.of(
-      new T2<>("gtfsId", stop.getId().toString()),
-      // Name is I18NString now, we return default name
-      new T2<>("name", stop.getName().toString()),
-      new T2<>("code", stop.getCode()),
-      new T2<>("platform", stop.getPlatformCode()),
-      new T2<>("desc", desc),
-      new T2<>(
-        "parentStation",
-        stop.getParentStation() != null ? stop.getParentStation().getId() : "null"
-      ),
-      new T2<>("type", type),
-      new T2<>("patterns", patterns)
-    );
   }
 }

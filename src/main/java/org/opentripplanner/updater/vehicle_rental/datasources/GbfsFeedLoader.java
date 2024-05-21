@@ -1,20 +1,21 @@
 package org.opentripplanner.updater.vehicle_rental.datasources;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.io.IOException;
-import java.io.InputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.HashMap;
 import java.util.Map;
-import org.entur.gbfs.v2_2.gbfs.GBFS;
-import org.entur.gbfs.v2_2.gbfs.GBFSFeed;
-import org.entur.gbfs.v2_2.gbfs.GBFSFeedName;
-import org.entur.gbfs.v2_2.gbfs.GBFSFeeds;
-import org.opentripplanner.util.HttpUtils;
+import org.entur.gbfs.v2_3.gbfs.GBFS;
+import org.entur.gbfs.v2_3.gbfs.GBFSFeed;
+import org.entur.gbfs.v2_3.gbfs.GBFSFeedName;
+import org.entur.gbfs.v2_3.gbfs.GBFSFeeds;
+import org.opentripplanner.framework.io.OtpHttpClient;
+import org.opentripplanner.framework.io.OtpHttpClientException;
+import org.opentripplanner.framework.io.OtpHttpClientFactory;
+import org.opentripplanner.updater.spi.HttpHeaders;
+import org.opentripplanner.updater.spi.UpdaterConstructionException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,32 +30,40 @@ public class GbfsFeedLoader {
   private static final ObjectMapper objectMapper = new ObjectMapper();
   /** One updater per feed type(?) */
   private final Map<GBFSFeedName, GBFSFeedUpdater<?>> feedUpdaters = new HashMap<>();
-  private final Map<String, String> httpHeaders;
+  private final HttpHeaders httpHeaders;
+  private final OtpHttpClient otpHttpClient;
 
   static {
     objectMapper.configure(DeserializationFeature.READ_UNKNOWN_ENUM_VALUES_AS_NULL, true);
   }
 
-  public GbfsFeedLoader(String url, Map<String, String> httpHeaders, String languageCode) {
+  public GbfsFeedLoader(
+    String url,
+    HttpHeaders httpHeaders,
+    String languageCode,
+    OtpHttpClient otpHttpClient
+  ) {
     this.httpHeaders = httpHeaders;
+    this.otpHttpClient = otpHttpClient;
     URI uri;
     try {
       uri = new URI(url);
     } catch (URISyntaxException e) {
-      throw new RuntimeException("Invalid url " + url);
-    }
-
-    if (!url.endsWith("gbfs.json")) {
-      LOG.warn(
-        "GBFS autoconfiguration url {} does not end with gbfs.json. Make sure it follows the specification, if you get any errors using it.",
-        url
-      );
+      throw new UpdaterConstructionException("Invalid url " + url);
     }
 
     // Fetch autoconfiguration file
     GBFS data = fetchFeed(uri, httpHeaders, GBFS.class);
     if (data == null) {
-      throw new RuntimeException("Could not fetch the feed auto-configuration file from " + uri);
+      if (!url.endsWith("gbfs.json")) {
+        LOG.warn(
+          "GBFS autoconfiguration url {} does not end with gbfs.json. Make sure it follows the specification, if you get any errors using it.",
+          url
+        );
+      }
+      throw new UpdaterConstructionException(
+        "Could not fetch the feed auto-configuration file from " + uri
+      );
     }
 
     // Pick first language if none defined
@@ -62,14 +71,16 @@ public class GbfsFeedLoader {
       ? data.getFeedsData().values().iterator().next()
       : data.getFeedsData().get(languageCode);
     if (feeds == null) {
-      throw new RuntimeException("Language " + languageCode + " does not exist in feed " + uri);
+      throw new UpdaterConstructionException(
+        "Language " + languageCode + " does not exist in feed " + uri
+      );
     }
 
     // Create updater for each file
     for (GBFSFeed feed : feeds.getFeeds()) {
       GBFSFeedName feedName = feed.getName();
       if (feedUpdaters.containsKey(feedName)) {
-        throw new RuntimeException(
+        throw new UpdaterConstructionException(
           "Feed contains duplicate url for feed " +
           feedName +
           ". " +
@@ -85,6 +96,10 @@ public class GbfsFeedLoader {
         feedUpdaters.put(feedName, new GBFSFeedUpdater<>(feed));
       }
     }
+  }
+
+  GbfsFeedLoader(String url, HttpHeaders httpHeaders, String languageCode) {
+    this(url, httpHeaders, languageCode, new OtpHttpClientFactory().create(LOG));
   }
 
   /**
@@ -120,14 +135,10 @@ public class GbfsFeedLoader {
 
   /* private static methods */
 
-  private static <T> T fetchFeed(URI uri, Map<String, String> httpHeaders, Class<T> clazz) {
-    try (InputStream is = HttpUtils.openInputStream(uri, httpHeaders);) {
-      if (is == null) {
-        LOG.warn("Failed to get data from url {}", uri);
-        return null;
-      }
-      return objectMapper.readValue(is, clazz);
-    } catch (IllegalArgumentException | IOException e) {
+  private <T> T fetchFeed(URI uri, HttpHeaders httpHeaders, Class<T> clazz) {
+    try {
+      return otpHttpClient.getAndMapAsJsonObject(uri, httpHeaders.asMap(), objectMapper, clazz);
+    } catch (OtpHttpClientException e) {
       LOG.warn("Error parsing vehicle rental feed from {}. Details: {}.", uri, e.getMessage(), e);
       return null;
     }
@@ -156,9 +167,9 @@ public class GbfsFeedLoader {
     }
 
     private boolean fetchData() {
-      T newData = GbfsFeedLoader.fetchFeed(url, httpHeaders, implementingClass);
+      T newData = fetchFeed(url, httpHeaders, implementingClass);
       if (newData == null) {
-        LOG.error("Invalid data for {}", url);
+        LOG.warn("Could not fetch GBFS data for {}. Retrying.", url);
         nextUpdate = getCurrentTimeSeconds();
         return false;
       }

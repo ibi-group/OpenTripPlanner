@@ -1,38 +1,46 @@
 package org.opentripplanner.routing.algorithm.raptoradapter.transit.mappers;
 
-import static org.opentripplanner.transit.raptor.api.request.Optimization.PARALLEL;
+import static org.opentripplanner.raptor.api.request.Optimization.PARALLEL;
 
 import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.util.Collection;
+import java.util.List;
+import org.opentripplanner.framework.application.OTPFeature;
+import org.opentripplanner.raptor.api.model.GeneralizedCostRelaxFunction;
+import org.opentripplanner.raptor.api.model.RaptorAccessEgress;
+import org.opentripplanner.raptor.api.model.RaptorConstants;
+import org.opentripplanner.raptor.api.model.RaptorTripSchedule;
+import org.opentripplanner.raptor.api.model.RelaxFunction;
+import org.opentripplanner.raptor.api.request.DebugRequestBuilder;
+import org.opentripplanner.raptor.api.request.Optimization;
+import org.opentripplanner.raptor.api.request.PassThroughPoint;
+import org.opentripplanner.raptor.api.request.RaptorRequest;
+import org.opentripplanner.raptor.api.request.RaptorRequestBuilder;
+import org.opentripplanner.raptor.rangeraptor.SystemErrDebugLogger;
 import org.opentripplanner.routing.algorithm.raptoradapter.router.performance.PerformanceTimersForRaptor;
-import org.opentripplanner.routing.algorithm.raptoradapter.transit.SlackProvider;
-import org.opentripplanner.routing.algorithm.raptoradapter.transit.TripSchedule;
-import org.opentripplanner.routing.api.request.RoutingRequest;
-import org.opentripplanner.transit.raptor.api.request.Optimization;
-import org.opentripplanner.transit.raptor.api.request.RaptorProfile;
-import org.opentripplanner.transit.raptor.api.request.RaptorRequest;
-import org.opentripplanner.transit.raptor.api.request.RaptorRequestBuilder;
-import org.opentripplanner.transit.raptor.api.request.SearchParams;
-import org.opentripplanner.transit.raptor.api.transit.RaptorTransfer;
-import org.opentripplanner.transit.raptor.rangeraptor.SystemErrDebugLogger;
-import org.opentripplanner.util.OTPFeature;
+import org.opentripplanner.routing.algorithm.raptoradapter.transit.cost.RaptorCostConverter;
+import org.opentripplanner.routing.algorithm.raptoradapter.transit.cost.grouppriority.TransitGroupPriority32n;
+import org.opentripplanner.routing.api.request.DebugEventType;
+import org.opentripplanner.routing.api.request.RouteRequest;
+import org.opentripplanner.routing.api.request.framework.CostLinearFunction;
+import org.opentripplanner.transit.model.site.StopLocation;
 
-public class RaptorRequestMapper {
+public class RaptorRequestMapper<T extends RaptorTripSchedule> {
 
-  private final RoutingRequest request;
-  private final Collection<? extends RaptorTransfer> accessPaths;
-  private final Collection<? extends RaptorTransfer> egressPaths;
+  private final RouteRequest request;
+  private final Collection<? extends RaptorAccessEgress> accessPaths;
+  private final Collection<? extends RaptorAccessEgress> egressPaths;
   private final long transitSearchTimeZeroEpocSecond;
   private final boolean isMultiThreadedEnbled;
   private final MeterRegistry meterRegistry;
 
   private RaptorRequestMapper(
-    RoutingRequest request,
+    RouteRequest request,
     boolean isMultiThreaded,
-    Collection<? extends RaptorTransfer> accessPaths,
-    Collection<? extends RaptorTransfer> egressPaths,
+    Collection<? extends RaptorAccessEgress> accessPaths,
+    Collection<? extends RaptorAccessEgress> egressPaths,
     long transitSearchTimeZeroEpocSecond,
     MeterRegistry meterRegistry
   ) {
@@ -44,15 +52,15 @@ public class RaptorRequestMapper {
     this.meterRegistry = meterRegistry;
   }
 
-  public static RaptorRequest<TripSchedule> mapRequest(
-    RoutingRequest request,
+  public static <T extends RaptorTripSchedule> RaptorRequest<T> mapRequest(
+    RouteRequest request,
     ZonedDateTime transitSearchTimeZero,
     boolean isMultiThreaded,
-    Collection<? extends RaptorTransfer> accessPaths,
-    Collection<? extends RaptorTransfer> egressPaths,
+    Collection<? extends RaptorAccessEgress> accessPaths,
+    Collection<? extends RaptorAccessEgress> egressPaths,
     MeterRegistry meterRegistry
   ) {
-    return new RaptorRequestMapper(
+    return new RaptorRequestMapper<T>(
       request,
       isMultiThreaded,
       accessPaths,
@@ -63,40 +71,60 @@ public class RaptorRequestMapper {
       .doMap();
   }
 
-  private RaptorRequest<TripSchedule> doMap() {
-    var builder = new RaptorRequestBuilder<TripSchedule>();
+  private RaptorRequest<T> doMap() {
+    var builder = new RaptorRequestBuilder<T>();
     var searchParams = builder.searchParams();
 
-    if (request.pageCursor == null) {
-      int time = relativeTime(request.getDateTime());
+    var preferences = request.preferences();
 
-      int timeLimit = relativeTime(request.raptorOptions.getTimeLimit());
+    if (request.pageCursor() == null) {
+      int time = relativeTime(request.dateTime());
 
-      if (request.arriveBy) {
+      int timeLimit = relativeTime(preferences.transit().raptor().timeLimit());
+
+      if (request.arriveBy()) {
         searchParams.latestArrivalTime(time);
         searchParams.earliestDepartureTime(timeLimit);
       } else {
         searchParams.earliestDepartureTime(time);
         searchParams.latestArrivalTime(timeLimit);
       }
-      searchParams.searchWindow(request.searchWindow);
+      searchParams.searchWindow(request.searchWindow());
     } else {
-      var c = request.pageCursor;
+      var c = request.pageCursor();
 
-      if (c.earliestDepartureTime != null) {
-        searchParams.earliestDepartureTime(relativeTime(c.earliestDepartureTime));
+      if (c.earliestDepartureTime() != null) {
+        searchParams.earliestDepartureTime(relativeTime(c.earliestDepartureTime()));
       }
-      if (c.latestArrivalTime != null) {
-        searchParams.latestArrivalTime(relativeTime(c.latestArrivalTime));
+      if (c.latestArrivalTime() != null) {
+        searchParams.latestArrivalTime(relativeTime(c.latestArrivalTime()));
       }
-      searchParams.searchWindow(c.searchWindow);
+      searchParams.searchWindow(c.searchWindow());
     }
 
-    if (request.maxTransfers != null) {
-      searchParams.maxNumberOfTransfers(request.maxTransfers);
+    if (preferences.transfer().maxTransfers() != null) {
+      searchParams.maxNumberOfTransfers(preferences.transfer().maxTransfers());
     }
 
-    for (Optimization optimization : request.raptorOptions.getOptimizations()) {
+    if (preferences.transfer().maxAdditionalTransfers() != null) {
+      searchParams.numberOfAdditionalTransfers(preferences.transfer().maxAdditionalTransfers());
+    }
+
+    builder.withMultiCriteria(mcBuilder -> {
+      var pt = preferences.transit();
+      var r = pt.raptor();
+
+      // Note! If a pass-through-point exists, then the transit-group-priority feature is disabled
+      if (!request.getPassThroughPoints().isEmpty()) {
+        mcBuilder.withPassThroughPoints(mapPassThroughPoints());
+        r.relaxGeneralizedCostAtDestination().ifPresent(mcBuilder::withRelaxCostAtDestination);
+      } else if (!pt.relaxTransitGroupPriority().isNormal()) {
+        mcBuilder.withTransitPriorityCalculator(TransitGroupPriority32n.priorityCalculator());
+        mcBuilder.withRelaxC1(mapRelaxCost(pt.relaxTransitGroupPriority()));
+      }
+    });
+
+    for (Optimization optimization : preferences.transit().raptor().optimizations()) {
       if (optimization.is(PARALLEL)) {
         if (isMultiThreadedEnbled) {
           builder.enableOptimization(optimization);
@@ -106,59 +134,88 @@ public class RaptorRequestMapper {
       }
     }
 
-    builder.profile(request.raptorOptions.getProfile());
-    builder.searchDirection(request.raptorOptions.getSearchDirection());
-
-    builder
-      .profile(RaptorProfile.MULTI_CRITERIA)
-      .enableOptimization(Optimization.PARETO_CHECK_AGAINST_DESTINATION)
-      .slackProvider(
-        new SlackProvider(
-          request.transferSlack,
-          request.boardSlack,
-          request.boardSlackForMode,
-          request.alightSlack,
-          request.alightSlackForMode
-        )
-      );
+    builder.profile(preferences.transit().raptor().profile());
+    builder.searchDirection(preferences.transit().raptor().searchDirection());
 
     builder
       .searchParams()
-      .timetableEnabled(request.timetableView)
-      .constrainedTransfersEnabled(OTPFeature.TransferConstraints.isOn())
+      .timetable(request.timetableView())
+      .constrainedTransfers(OTPFeature.TransferConstraints.isOn())
       .addAccessPaths(accessPaths)
       .addEgressPaths(egressPaths);
 
-    if (request.raptorDebugging.isEnabled()) {
+    var raptorDebugging = request.journey().transit().raptorDebugging();
+
+    if (raptorDebugging.isEnabled()) {
       var debug = builder.debug();
-      var debugLogger = new SystemErrDebugLogger(true);
+      var debugLogger = new SystemErrDebugLogger(true, false);
 
       debug
-        .addStops(request.raptorDebugging.stops())
-        .setPath(request.raptorDebugging.path())
-        .debugPathFromStopIndex(request.raptorDebugging.debugPathFromStopIndex())
-        .stopArrivalListener(debugLogger::stopArrivalLister)
-        .patternRideDebugListener(debugLogger::patternRideLister)
-        .pathFilteringListener(debugLogger::pathFilteringListener)
+        .addStops(raptorDebugging.stops())
+        .setPath(raptorDebugging.path())
+        .debugPathFromStopIndex(raptorDebugging.debugPathFromStopIndex())
         .logger(debugLogger);
+
+      for (var type : raptorDebugging.eventTypes()) {
+        addLogListenerForEachEventTypeRequested(debug, type, debugLogger);
+      }
     }
 
-    if (!request.timetableView && request.arriveBy) {
+    if (!request.timetableView() && request.arriveBy()) {
       builder.searchParams().preferLateArrival(true);
     }
 
     // Add this last, it depends on generating an alias from the set values
-    builder.performanceTimers(
-      new PerformanceTimersForRaptor(builder.generateAlias(), request.tags, meterRegistry)
-    );
+    if (meterRegistry != null) {
+      builder.performanceTimers(
+        new PerformanceTimersForRaptor(
+          builder.generateAlias(),
+          preferences.system().tags(),
+          meterRegistry
+        )
+      );
+    }
 
     return builder.build();
   }
 
+  private List<PassThroughPoint> mapPassThroughPoints() {
+    return request
+      .getPassThroughPoints()
+      .stream()
+      .map(p -> {
+        final int[] stops = p.stopLocations().stream().mapToInt(StopLocation::getIndex).toArray();
+        return new PassThroughPoint(p.name(), stops);
+      })
+      .toList();
+  }
+
+  static RelaxFunction mapRelaxCost(CostLinearFunction relax) {
+    if (relax == null) {
+      return null;
+    }
+    return GeneralizedCostRelaxFunction.of(
+      relax.coefficient(),
+      RaptorCostConverter.toRaptorCost(relax.constant().toSeconds())
+    );
+  }
+
   private int relativeTime(Instant time) {
     if (time == null) {
-      return SearchParams.TIME_NOT_SET;
+      return RaptorConstants.TIME_NOT_SET;
     }
     return (int) (time.getEpochSecond() - transitSearchTimeZeroEpocSecond);
+  }
+
+  private static void addLogListenerForEachEventTypeRequested(
+    DebugRequestBuilder target,
+    DebugEventType type,
+    SystemErrDebugLogger logger
+  ) {
+    switch (type) {
+      case STOP_ARRIVALS -> target.stopArrivalListener(logger::stopArrivalLister);
+      case PATTERN_RIDES -> target.patternRideDebugListener(logger::patternRideLister);
+      case DESTINATION_ARRIVALS -> target.pathFilteringListener(logger::pathFilteringListener);
+    }
   }
 }

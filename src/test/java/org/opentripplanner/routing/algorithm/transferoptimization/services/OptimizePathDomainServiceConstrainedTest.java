@@ -2,28 +2,26 @@ package org.opentripplanner.routing.algorithm.transferoptimization.services;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.opentripplanner.framework.time.TimeUtils.time;
 import static org.opentripplanner.model.transfer.TransferPriority.ALLOWED;
 import static org.opentripplanner.model.transfer.TransferPriority.NOT_ALLOWED;
 import static org.opentripplanner.model.transfer.TransferPriority.PREFERRED;
 import static org.opentripplanner.model.transfer.TransferPriority.RECOMMENDED;
-import static org.opentripplanner.routing.algorithm.transferoptimization.services.TestTransferBuilder.txConstrained;
 import static org.opentripplanner.routing.algorithm.transferoptimization.services.TransferGeneratorDummy.dummyTransferGenerator;
-import static org.opentripplanner.routing.algorithm.transferoptimization.services.TransferGeneratorDummy.tx;
-import static org.opentripplanner.util.time.TimeUtils.time;
 
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.opentripplanner.model.transfer.ConstrainedTransfer;
 import org.opentripplanner.model.transfer.TransferPriority;
-import org.opentripplanner.transit.raptor._data.RaptorTestConstants;
-import org.opentripplanner.transit.raptor._data.api.PathUtils;
-import org.opentripplanner.transit.raptor._data.transit.TestTripSchedule;
+import org.opentripplanner.raptor._data.RaptorTestConstants;
+import org.opentripplanner.raptor._data.api.PathUtils;
+import org.opentripplanner.raptor._data.transit.TestTripSchedule;
 
 /**
  * <pre>
  * POSSIBLE TRANSFERS
  * Transfers        B-C 1m     C-D 2m       D-E 3m     E-F 4m      F-G 5m
- * Constraint       ALLOWED  RECOMMENDED  PREFERRED  GUARANTIED  STAY_SEATED
+ * Constraint       ALLOWED  RECOMMENDED  PREFERRED  GUARANTEED  STAY_SEATED
  * Trip 1  A 10:02  B 10:10    C 10:15     D 10:20     E 10:25     F 10:30
  * Trip 2           C 10:13    D 10:18     E 10:24     G 10:30     G 10:36   H 10:40
  * </pre>
@@ -65,15 +63,15 @@ public class OptimizePathDomainServiceConstrainedTest implements RaptorTestConst
 
   TransferGenerator<TestTripSchedule> transfers = dummyTransferGenerator(
     List.of(
-      tx(txConstrained(trip1, STOP_B, trip2, STOP_C).priority(ALLOWED), D1m),
-      tx(txConstrained(trip1, STOP_C, trip2, STOP_D).priority(RECOMMENDED), D2m),
-      tx(txConstrained(trip1, STOP_D, trip2, STOP_E).priority(PREFERRED), D3m),
-      tx(txConstrained(trip1, STOP_E, trip2, STOP_F).guaranteed(), D4m),
-      tx(txConstrained(trip1, STOP_F, trip2, STOP_G).staySeated(), D5m),
-      tx(txConstrained(trip1, STOP_C, trip2, STOP_C).priority(NOT_ALLOWED)),
-      tx(txConstrained(trip1, STOP_D, trip2, STOP_D).priority(NOT_ALLOWED)),
-      tx(txConstrained(trip1, STOP_E, trip2, STOP_E).priority(NOT_ALLOWED)),
-      tx(txConstrained(trip1, STOP_F, trip2, STOP_F).priority(NOT_ALLOWED))
+      TestTransferBuilder.tx(trip1, STOP_B, trip2, STOP_C).priority(ALLOWED).walk(D1m).build(),
+      TestTransferBuilder.tx(trip1, STOP_C, trip2, STOP_D).priority(RECOMMENDED).walk(D2m).build(),
+      TestTransferBuilder.tx(trip1, STOP_D, trip2, STOP_E).priority(PREFERRED).walk(D3m).build(),
+      TestTransferBuilder.tx(trip1, STOP_E, trip2, STOP_F).guaranteed().walk(D4m).build(),
+      TestTransferBuilder.tx(trip1, STOP_F, trip2, STOP_G).staySeated().walk(D5m).build(),
+      TestTransferBuilder.tx(trip1, STOP_C, trip2, STOP_C).priority(NOT_ALLOWED).build(),
+      TestTransferBuilder.tx(trip1, STOP_D, trip2, STOP_D).priority(NOT_ALLOWED).build(),
+      TestTransferBuilder.tx(trip1, STOP_E, trip2, STOP_E).priority(NOT_ALLOWED).build(),
+      TestTransferBuilder.tx(trip1, STOP_F, trip2, STOP_F).priority(NOT_ALLOWED).build()
     )
   );
 
@@ -82,7 +80,7 @@ public class OptimizePathDomainServiceConstrainedTest implements RaptorTestConst
     testPriority(
       STOP_D,
       ALLOWED,
-      "A ~ BUS T1 10:02 10:10 ~ B ~ Walk 1m ~ C ~ BUS T2 10:13 10:18 ~ D [10:00:20 10:18:20 18m 1tx $1180 $33pri]"
+      "A ~ BUS T1 10:02 10:10 ~ B ~ Walk 1m ~ C ~ BUS T2 10:13 10:18 ~ D [10:01:20 10:18:20 17m Tₓ1 C₁1_120 Tₚ3_300]"
     );
   }
 
@@ -91,7 +89,7 @@ public class OptimizePathDomainServiceConstrainedTest implements RaptorTestConst
     testPriority(
       STOP_E,
       RECOMMENDED,
-      "A ~ BUS T1 10:02 10:15 ~ C ~ Walk 2m ~ D ~ BUS T2 10:18 10:24 ~ E [10:00:20 10:24:20 24m 1tx $1600 $32pri]"
+      "A ~ BUS T1 10:02 10:15 ~ C ~ Walk 2m ~ D ~ BUS T2 10:18 10:24 ~ E [10:01:20 10:24:20 23m Tₓ1 C₁1_540 Tₚ3_200]"
     );
   }
 
@@ -100,7 +98,7 @@ public class OptimizePathDomainServiceConstrainedTest implements RaptorTestConst
     testPriority(
       STOP_F,
       PREFERRED,
-      "A ~ BUS T1 10:02 10:20 ~ D ~ Walk 3m ~ E ~ BUS T2 10:24 10:30 ~ F [10:00:20 10:30:20 30m 1tx $2020 $31pri]"
+      "A ~ BUS T1 10:02 10:20 ~ D ~ Walk 3m ~ E ~ BUS T2 10:24 10:30 ~ F [10:01:20 10:30:20 29m Tₓ1 C₁1_960 Tₚ3_100]"
     );
   }
 
@@ -108,7 +106,7 @@ public class OptimizePathDomainServiceConstrainedTest implements RaptorTestConst
   public void testTransferGuaranteed() {
     testGuaranteed(
       STOP_G,
-      "A ~ BUS T1 10:02 10:25 ~ E ~ Walk 4m ~ F ~ BUS T2 10:30 10:36 ~ G [10:00:20 10:36:20 36m 1tx $2410 $23pri]"
+      "A ~ BUS T1 10:02 10:25 ~ E ~ Walk 4m ~ F ~ BUS T2 10:30 10:36 ~ G [10:01:20 10:36:20 35m Tₓ1 C₁2_350 Tₚ2_300]"
     );
   }
 
@@ -116,7 +114,7 @@ public class OptimizePathDomainServiceConstrainedTest implements RaptorTestConst
   public void testTransferStaySeated() {
     testStaySeated(
       STOP_H,
-      "A ~ BUS T1 10:02 10:30 ~ F ~ Walk 5m ~ G ~ BUS T2 10:36 10:40 ~ H [10:00:20 10:40:20 40m 0tx $2710 $13pri]"
+      "A ~ BUS T1 10:02 10:30 ~ F ~ Walk 5m ~ G ~ BUS T2 10:36 10:40 ~ H [10:01:20 10:40:20 39m Tₓ0 C₁2_650 Tₚ1_300]"
     );
   }
 
@@ -143,7 +141,7 @@ public class OptimizePathDomainServiceConstrainedTest implements RaptorTestConst
   ) {
     var original = OptimizePathDomainServiceTest
       .pathBuilder()
-      .access(START_TIME_T1, 0, STOP_A)
+      .access(START_TIME_T1, STOP_A)
       .bus(trip1, STOP_B)
       .walk(D1m, STOP_C)
       .bus(trip2, egressStop)

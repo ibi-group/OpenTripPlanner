@@ -1,5 +1,6 @@
 package org.opentripplanner.ext.siri.updater.azure;
 
+import com.azure.identity.DefaultAzureCredentialBuilder;
 import com.azure.messaging.servicebus.ServiceBusClientBuilder;
 import com.azure.messaging.servicebus.ServiceBusErrorContext;
 import com.azure.messaging.servicebus.ServiceBusException;
@@ -9,39 +10,55 @@ import com.azure.messaging.servicebus.ServiceBusReceivedMessageContext;
 import com.azure.messaging.servicebus.administration.ServiceBusAdministrationAsyncClient;
 import com.azure.messaging.servicebus.administration.ServiceBusAdministrationClientBuilder;
 import com.azure.messaging.servicebus.administration.models.CreateSubscriptionOptions;
+import com.azure.messaging.servicebus.models.ServiceBusReceiveMode;
 import com.google.common.base.Preconditions;
-import java.io.IOException;
+import java.net.URI;
 import java.net.URISyntaxException;
 import java.time.Duration;
-import java.time.ZonedDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
-import org.opentripplanner.ext.siri.SiriTimetableSnapshotSource;
-import org.opentripplanner.routing.graph.Graph;
+import org.apache.hc.client5.http.classic.methods.HttpGet;
+import org.opentripplanner.ext.siri.EntityResolver;
+import org.opentripplanner.ext.siri.SiriFuzzyTripMatcher;
+import org.opentripplanner.framework.application.ApplicationShutdownSupport;
+import org.opentripplanner.framework.io.OtpHttpClientFactory;
+import org.opentripplanner.transit.service.DefaultTransitService;
 import org.opentripplanner.transit.service.TransitModel;
-import org.opentripplanner.updater.GraphUpdater;
-import org.opentripplanner.updater.WriteToGraphCallback;
+import org.opentripplanner.transit.service.TransitService;
+import org.opentripplanner.updater.spi.GraphUpdater;
+import org.opentripplanner.updater.spi.HttpHeaders;
+import org.opentripplanner.updater.spi.WriteToGraphCallback;
+import org.rutebanken.siri20.util.SiriXml;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import uk.org.siri.siri20.ServiceDelivery;
 
 public abstract class AbstractAzureSiriUpdater implements GraphUpdater {
 
   private final Logger LOG = LoggerFactory.getLogger(getClass());
-  private boolean isPrimed = false;
-  protected WriteToGraphCallback saveResultOnGraph;
-  protected SiriTimetableSnapshotSource snapshotSource;
+  private final AuthenticationType authenticationType;
+  private final String fullyQualifiedNamespace;
   private final String configRef;
-
-  private ServiceBusProcessorClient eventProcessor;
+  private final String serviceBusUrl;
+  private final SiriFuzzyTripMatcher fuzzyTripMatcher;
+  private final EntityResolver entityResolver;
   private final Consumer<ServiceBusReceivedMessageContext> messageConsumer = this::messageConsumer;
   private final Consumer<ServiceBusErrorContext> errorConsumer = this::errorConsumer;
+  private final String topicName;
+  private final Duration autoDeleteOnIdle;
+  private final int prefetchCount;
+
+  protected WriteToGraphCallback saveResultOnGraph;
+  private ServiceBusProcessorClient eventProcessor;
   private ServiceBusAdministrationAsyncClient serviceBusAdmin;
-  protected final String topicName;
+  private boolean isPrimed = false;
   private String subscriptionName;
-  private final String serviceBusUrl;
-  protected String feedId;
+
+  protected final String feedId;
 
   /**
    * The URL used to fetch all initial updates
@@ -50,17 +67,23 @@ public abstract class AbstractAzureSiriUpdater implements GraphUpdater {
   /**
    * The timeout used when fetching historical data
    */
-  protected int timeout;
+  protected final int timeout;
 
-  public AbstractAzureSiriUpdater(SiriAzureUpdaterParameters config) {
-    this.configRef = config.getConfigRef();
-
+  public AbstractAzureSiriUpdater(SiriAzureUpdaterParameters config, TransitModel transitModel) {
+    this.configRef = config.configRef();
+    this.authenticationType = config.getAuthenticationType();
+    this.fullyQualifiedNamespace = config.getFullyQualifiedNamespace();
     this.serviceBusUrl = config.getServiceBusUrl();
     this.topicName = config.getTopicName();
-
     this.dataInitializationUrl = config.getDataInitializationUrl();
     this.timeout = config.getTimeout();
-    this.feedId = config.getFeedId();
+    this.feedId = config.feedId();
+    this.autoDeleteOnIdle = config.getAutoDeleteOnIdle();
+    this.prefetchCount = config.getPrefetchCount();
+    TransitService transitService = new DefaultTransitService(transitModel);
+    this.entityResolver = new EntityResolver(transitService, feedId);
+    this.fuzzyTripMatcher =
+      config.isFuzzyTripMatching() ? SiriFuzzyTripMatcher.of(transitService) : null;
   }
 
   /**
@@ -81,13 +104,7 @@ public abstract class AbstractAzureSiriUpdater implements GraphUpdater {
   }
 
   @Override
-  public void setup(Graph graph, TransitModel transitModel) throws Exception {
-    snapshotSource =
-      transitModel.getOrSetupTimetableSnapshotProvider(SiriTimetableSnapshotSource::new);
-  }
-
-  @Override
-  public void run() throws Exception {
+  public void run() {
     Objects.requireNonNull(topicName, "'topic' must be set");
     Objects.requireNonNull(serviceBusUrl, "'servicebus-url' must be set");
     Objects.requireNonNull(feedId, "'feedId' must be set");
@@ -100,14 +117,23 @@ public abstract class AbstractAzureSiriUpdater implements GraphUpdater {
     }
 
     // Client with permissions to create subscription
-    serviceBusAdmin =
-      new ServiceBusAdministrationClientBuilder()
-        .connectionString(serviceBusUrl)
-        .buildAsyncClient();
+    if (authenticationType == AuthenticationType.FederatedIdentity) {
+      serviceBusAdmin =
+        new ServiceBusAdministrationClientBuilder()
+          .credential(fullyQualifiedNamespace, new DefaultAzureCredentialBuilder().build())
+          .buildAsyncClient();
+    } else if (authenticationType == AuthenticationType.SharedAccessKey) {
+      serviceBusAdmin =
+        new ServiceBusAdministrationClientBuilder()
+          .connectionString(serviceBusUrl)
+          .buildAsyncClient();
+    }
 
-    // If Idle more then one day, then delete subscription so we don't have old obsolete subscriptions on Azure Service Bus
+    // Set options
     var options = new CreateSubscriptionOptions();
-    options.setAutoDeleteOnIdle(Duration.ofDays(1));
+    options.setDefaultMessageTimeToLive(Duration.of(25, ChronoUnit.HOURS));
+    // Set subscription to be deleted if idle for a certain time, so that orphaned instances doesn't linger.
+    options.setAutoDeleteOnIdle(autoDeleteOnIdle);
 
     // Make sure there is no old subscription on serviceBus
     if (
@@ -132,30 +158,32 @@ public abstract class AbstractAzureSiriUpdater implements GraphUpdater {
         .processor()
         .topicName(topicName)
         .subscriptionName(subscriptionName)
+        .receiveMode(ServiceBusReceiveMode.RECEIVE_AND_DELETE)
+        .disableAutoComplete() // Receive and delete does not need autocomplete
+        .prefetchCount(prefetchCount)
         .processError(errorConsumer)
         .processMessage(messageConsumer)
         .buildProcessorClient();
 
     eventProcessor.start();
     LOG.info(
-      "Service Bus processor started for topic {} and subscription {}",
+      "Service Bus processor started for topic '{}' and subscription '{}', prefetching {} messages.",
       topicName,
-      subscriptionName
+      subscriptionName,
+      prefetchCount
     );
 
-    try {
-      Runtime.getRuntime().addShutdownHook(new Thread(this::teardown));
-    } catch (IllegalStateException e) {
-      LOG.error(e.getLocalizedMessage(), e);
-      teardown();
-    }
-  }
+    setPrimed();
 
-  @Override
-  public void teardown() {
-    eventProcessor.stop();
-    serviceBusAdmin.deleteSubscription(topicName, subscriptionName).block();
-    LOG.info("Subscription {} deleted on topic {}", subscriptionName, topicName);
+    ApplicationShutdownSupport.addShutdownHook(
+      "azure-siri-updater-shutdown",
+      () -> {
+        LOG.info("Calling shutdownHook on AbstractAzureSiriUpdater");
+        eventProcessor.close();
+        serviceBusAdmin.deleteSubscription(topicName, subscriptionName).block();
+        LOG.info("Subscription '{}' deleted on topic '{}'.", subscriptionName, topicName);
+      }
+    );
   }
 
   @Override
@@ -163,8 +191,8 @@ public abstract class AbstractAzureSiriUpdater implements GraphUpdater {
     return this.isPrimed;
   }
 
-  public void setPrimed(boolean primed) {
-    isPrimed = primed;
+  private void setPrimed() {
+    isPrimed = true;
   }
 
   @Override
@@ -173,17 +201,53 @@ public abstract class AbstractAzureSiriUpdater implements GraphUpdater {
   }
 
   /**
+   * Returns None for empty result
+   */
+  protected Optional<ServiceDelivery> fetchInitialSiriData(URI uri) {
+    var headers = HttpHeaders.of().acceptApplicationXML().build().asMap();
+
+    try (OtpHttpClientFactory otpHttpClientFactory = new OtpHttpClientFactory()) {
+      var otpHttpClient = otpHttpClientFactory.create(LOG);
+      var t1 = System.currentTimeMillis();
+      var siriOptional = otpHttpClient.executeAndMapOptional(
+        new HttpGet(uri),
+        Duration.ofMillis(timeout),
+        headers,
+        SiriXml::parseXml
+      );
+      var t2 = System.currentTimeMillis();
+      LOG.info("Fetched initial data in {} ms", (t2 - t1));
+
+      if (siriOptional.isEmpty()) {
+        LOG.info("Got status 204 'No Content'.");
+      }
+
+      return siriOptional.map(siri -> siri.getServiceDelivery());
+    }
+  }
+
+  SiriFuzzyTripMatcher fuzzyTripMatcher() {
+    return fuzzyTripMatcher;
+  }
+
+  EntityResolver entityResolver() {
+    return entityResolver;
+  }
+
+  /**
    * InitializeData - wrapping method that calls an implementation of initialize data - and blocks readiness till finished
    */
   private void initializeData() {
     int sleepPeriod = 1000;
     int attemptCounter = 1;
-    while (true) {
+    boolean otpIsShuttingDown = false;
+
+    while (!otpIsShuttingDown) {
       try {
         initializeData(dataInitializationUrl, messageConsumer);
         break;
       } catch (Exception e) {
-        sleepPeriod = sleepPeriod * 2;
+        sleepPeriod = Math.min(sleepPeriod * 2, 60 * 1000);
 
         LOG.warn(
           "Caught exception while initializing data will retry after {} ms - attempt {}. ({})",
@@ -193,8 +257,10 @@ public abstract class AbstractAzureSiriUpdater implements GraphUpdater {
         );
         try {
           Thread.sleep(sleepPeriod);
-        } catch (InterruptedException interruptedException) {
-          //Ignore
+        } catch (InterruptedException ie) {
+          Thread.currentThread().interrupt();
+          otpIsShuttingDown = true;
+          LOG.info("OTP is shutting down, cancelling attempt to initialize Azure SIRI Updater.");
         }
       }
     }
@@ -203,7 +269,7 @@ public abstract class AbstractAzureSiriUpdater implements GraphUpdater {
   protected abstract void initializeData(
     String url,
     Consumer<ServiceBusReceivedMessageContext> consumer
-  ) throws IOException, URISyntaxException;
+  ) throws URISyntaxException;
 
   /**
    * Make some sensible logging on error and if Service Bus is busy, sleep for some time before try again to get messages.
@@ -242,18 +308,12 @@ public abstract class AbstractAzureSiriUpdater implements GraphUpdater {
       try {
         // Choosing an arbitrary amount of time to wait until trying again.
         TimeUnit.SECONDS.sleep(5);
-      } catch (InterruptedException e2) {
-        LOG.error("Unable to sleep for period of time");
+      } catch (InterruptedException ie) {
+        Thread.currentThread().interrupt();
+        LOG.info("OTP is shutting down, stopping processing of ServiceBus error messages");
       }
     } else {
       LOG.error(e.getLocalizedMessage(), e);
     }
-  }
-
-  /**
-   * @return the current datetime adjusted to the current timezone
-   */
-  protected long now() {
-    return ZonedDateTime.now().toInstant().toEpochMilli();
   }
 }

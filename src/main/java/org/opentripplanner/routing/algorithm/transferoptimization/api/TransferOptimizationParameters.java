@@ -1,7 +1,7 @@
 package org.opentripplanner.routing.algorithm.transferoptimization.api;
 
 import org.opentripplanner.model.transfer.TransferConstraint;
-import org.opentripplanner.transit.raptor.api.path.Path;
+import org.opentripplanner.raptor.api.path.RaptorPath;
 
 /**
  * @see org.opentripplanner.routing.algorithm.transferoptimization package documantation.
@@ -15,7 +15,7 @@ public interface TransferOptimizationParameters {
 
   /**
    * This enables the transfer wait time optimization. If not enabled the {@link
-   * Path#generalizedCost()} function is used to pick the optimal transfer point.
+   * RaptorPath#c1()} function is used to pick the optimal transfer point.
    */
   boolean optimizeTransferWaitTime();
 
@@ -35,9 +35,10 @@ public interface TransferOptimizationParameters {
   double minSafeWaitTimeFactor();
 
   /**
-   * Use this to add an extra board- and alight-cost for (none) prioritized stops. A {@code
-   * stopBoardAlightCosts} is added to the generalized-cost during routing. But, this cost cannot be
-   * too high, because that would add extra cost to the transfer, and favor other alternative paths.
+   * Use this to add an extra board- and alight-cost for (non) prioritized stops. A {@code
+   * stopBoardAlightTransferCosts} is added to the generalized-cost during routing. But, this cost
+   * cannot be too high, because that would add extra cost to the transfer, and favor other
+   * alternative paths.
    * But, when optimizing transfers, we do not have to take other paths into consideration and can
    * "boost" the stop-priority-cost to allow transfers to take place at a preferred stop.
    * <p>

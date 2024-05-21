@@ -8,22 +8,23 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import org.opentripplanner.transit.model.basic.SubMode;
+import java.util.function.BiFunction;
+import java.util.stream.Collectors;
+import javax.annotation.Nonnull;
+import org.opentripplanner.framework.time.ServiceDateUtils;
+import org.opentripplanner.model.Timetable;
+import org.opentripplanner.model.calendar.CalendarService;
 import org.opentripplanner.transit.model.basic.TransitMode;
 import org.opentripplanner.transit.model.framework.FeedScopedId;
 import org.opentripplanner.transit.model.network.Route;
 import org.opentripplanner.transit.model.network.TripPattern;
 import org.opentripplanner.transit.model.timetable.Trip;
-import org.opentripplanner.transit.model.timetable.TripOnServiceDate;
 import org.opentripplanner.transit.model.timetable.TripTimes;
 import org.opentripplanner.transit.service.TransitService;
-import org.opentripplanner.util.time.ServiceDateUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import uk.org.siri.siri20.EstimatedCall;
 import uk.org.siri.siri20.EstimatedVehicleJourney;
-import uk.org.siri.siri20.RecordedCall;
-import uk.org.siri.siri20.VehicleActivityStructure;
+import uk.org.siri.siri20.MonitoredVehicleJourneyStructure;
 import uk.org.siri.siri20.VehicleModesEnumeration;
 
 /**
@@ -36,23 +37,34 @@ import uk.org.siri.siri20.VehicleModesEnumeration;
  * process will always be applied even in places where you have good quality IDs in SIRI data and
  * don't need it - we'd have to add a way to disable it.
  * <p>
- * Several instances of this SiriFuzzyTripMatcher may appear in different SIRI updaters, but they
- * all share a common set of static Map fields. We generally don't advocate using static fields in
- * this way, but as part of a sandbox contribution we are maintaining this implementation.
+ * The same instance of this SiriFuzzyTripMatcher may appear in different SIRI updaters. Be sure
+ * to fetch the instance at during the setup of the updaters, the initialization is not thread-safe.
  */
 public class SiriFuzzyTripMatcher {
 
   private static final Logger LOG = LoggerFactory.getLogger(SiriFuzzyTripMatcher.class);
-  private static final Map<String, Set<Trip>> mappedTripsCache = new HashMap<>();
-  private static final Map<String, Set<Trip>> mappedVehicleRefCache = new HashMap<>();
-  private static final Map<String, Set<Route>> mappedRoutesCache = new HashMap<>();
-  private static final Map<String, Set<Trip>> start_stop_tripCache = new HashMap<>();
-  private static final Map<String, Trip> vehicleJourneyTripCache = new HashMap<>();
-  private static final Set<String> nonExistingStops = new HashSet<>();
 
+  private static SiriFuzzyTripMatcher instance;
+
+  private final Map<String, Set<Trip>> internalPlanningCodeCache = new HashMap<>();
+  private final Map<String, Set<Trip>> startStopTripCache = new HashMap<>();
   private final TransitService transitService;
+  private boolean initialized = false;
 
-  public SiriFuzzyTripMatcher(TransitService transitService) {
+  /**
+   * Factory method used to create only one instance.
+   * <p>
+   * THIS METHOD IS NOT THREAD-SAFE AND SHOULD BE CALLED DURING THE
+   * INITIALIZATION PROCESS.
+   */
+  public static SiriFuzzyTripMatcher of(TransitService transitService) {
+    if (instance == null) {
+      instance = new SiriFuzzyTripMatcher(transitService);
+    }
+    return instance;
+  }
+
+  private SiriFuzzyTripMatcher(TransitService transitService) {
     this.transitService = transitService;
     initCache(this.transitService);
   }
@@ -60,194 +72,107 @@ public class SiriFuzzyTripMatcher {
   /**
    * Matches VehicleActivity to a set of possible Trips based on tripId
    */
-  public Set<Trip> match(VehicleActivityStructure activity, String feedId) {
-    VehicleActivityStructure.MonitoredVehicleJourney monitoredVehicleJourney = activity.getMonitoredVehicleJourney();
-    Set<Trip> trips = new HashSet<>();
-    if (monitoredVehicleJourney != null) {
-      String datedVehicleRef = null;
-      if (monitoredVehicleJourney.getFramedVehicleJourneyRef() != null) {
-        datedVehicleRef =
-          monitoredVehicleJourney.getFramedVehicleJourneyRef().getDatedVehicleJourneyRef();
-        if (datedVehicleRef != null) {
-          trips = mappedTripsCache.get(datedVehicleRef);
-        }
-      }
-      if (monitoredVehicleJourney.getDestinationRef() != null) {
-        String destinationRef = monitoredVehicleJourney.getDestinationRef().getValue();
-        ZonedDateTime arrivalTime = monitoredVehicleJourney.getDestinationAimedArrivalTime();
+  public Trip match(
+    MonitoredVehicleJourneyStructure monitoredVehicleJourney,
+    EntityResolver entityResolver
+  ) {
+    if (monitoredVehicleJourney.getDestinationRef() != null) {
+      String destinationRef = monitoredVehicleJourney.getDestinationRef().getValue();
+      ZonedDateTime arrivalTime = monitoredVehicleJourney.getDestinationAimedArrivalTime();
 
-        if (arrivalTime != null) {
-          trips = getMatchingTripsOnStopOrSiblings(destinationRef, feedId, arrivalTime);
+      if (arrivalTime != null) {
+        Set<Trip> trips = getMatchingTripsOnStopOrSiblings(
+          destinationRef,
+          arrivalTime,
+          entityResolver
+        );
+        if (trips.isEmpty()) {
+          return null;
         }
+        return getTripForJourney(trips, monitoredVehicleJourney);
       }
     }
-
-    return trips;
+    return null;
   }
 
   /**
    * Matches EstimatedVehicleJourney to a set of possible Trips based on tripId
    */
-  public Set<Trip> match(EstimatedVehicleJourney journey, String feedId) {
-    Set<Trip> trips = null;
-    if (
-      journey.getVehicleRef() != null &&
-      (
-        journey.getVehicleModes() != null &&
-        journey.getVehicleModes().contains(VehicleModesEnumeration.RAIL)
-      )
-    ) {
-      trips = getCachedTripsByVehicleRef(journey.getVehicleRef().getValue());
-    }
+  public TripAndPattern match(
+    EstimatedVehicleJourney journey,
+    EntityResolver entityResolver,
+    BiFunction<TripPattern, LocalDate, Timetable> getCurrentTimetable,
+    BiFunction<FeedScopedId, LocalDate, TripPattern> getRealtimeAddedTripPattern
+  ) {
+    List<CallWrapper> calls = CallWrapper.of(journey);
 
-    if (trips == null || trips.isEmpty()) {
-      String serviceJourneyId = resolveDatedVehicleJourneyRef(journey);
-      if (serviceJourneyId != null) {
-        trips = getCachedTripsBySiriId(serviceJourneyId);
-      }
-    }
-    if (trips == null || trips.isEmpty()) {
-      String lastStopPoint = null;
-      ZonedDateTime arrivalTime = null;
-
-      if (
-        journey.getEstimatedCalls() != null &&
-        journey.getEstimatedCalls().getEstimatedCalls() != null &&
-        !journey.getEstimatedCalls().getEstimatedCalls().isEmpty()
-      ) { // Pick last stop from EstimatedCalls
-        List<EstimatedCall> estimatedCalls = journey.getEstimatedCalls().getEstimatedCalls();
-        EstimatedCall lastStop = estimatedCalls.get(estimatedCalls.size() - 1);
-
-        lastStopPoint = lastStop.getStopPointRef().getValue();
-        arrivalTime =
-          lastStop.getAimedArrivalTime() != null
-            ? lastStop.getAimedArrivalTime()
-            : lastStop.getAimedDepartureTime();
-      } else if (
-        journey.getRecordedCalls() != null &&
-        journey.getRecordedCalls().getRecordedCalls() != null &&
-        !journey.getRecordedCalls().getRecordedCalls().isEmpty()
-      ) { // No EstimatedCalls exist - pick last RecordedCall
-        List<RecordedCall> recordedCalls = journey.getRecordedCalls().getRecordedCalls();
-        final RecordedCall lastStop = recordedCalls.get(recordedCalls.size() - 1);
-
-        lastStopPoint = lastStop.getStopPointRef().getValue();
-        arrivalTime =
-          lastStop.getAimedArrivalTime() != null
-            ? lastStop.getAimedArrivalTime()
-            : lastStop.getAimedDepartureTime();
-      }
-
-      if (arrivalTime != null) {
-        trips = getMatchingTripsOnStopOrSiblings(lastStopPoint, feedId, arrivalTime);
-      }
-    }
-    return trips;
-  }
-
-  public Set<Route> getRoutesForStop(FeedScopedId siriStopId) {
-    var stop = transitService.getRegularStop(siriStopId);
-    return transitService.getRoutesForStop(stop);
-  }
-
-  public FeedScopedId getStop(String siriStopId, String feedId) {
-    if (nonExistingStops.contains(siriStopId)) {
+    if (calls.isEmpty()) {
       return null;
     }
 
-    FeedScopedId id = new FeedScopedId(feedId, siriStopId);
-    if (transitService.getRegularStop(id) != null) {
-      return id;
-    } else if (transitService.getStationById(id) != null) {
-      return id;
+    Set<Trip> trips = null;
+    if (
+      journey.getVehicleRef() != null &&
+      journey.getVehicleModes().contains(VehicleModesEnumeration.RAIL)
+    ) {
+      trips = getCachedTripsByInternalPlanningCode(journey.getVehicleRef().getValue());
     }
 
-    nonExistingStops.add(siriStopId);
-    return null;
-  }
+    if (trips == null || trips.isEmpty()) {
+      CallWrapper lastStop = calls.get(calls.size() - 1);
+      String lastStopPoint = lastStop.getStopPointRef();
+      ZonedDateTime arrivalTime = lastStop.getAimedArrivalTime() != null
+        ? lastStop.getAimedArrivalTime()
+        : lastStop.getAimedDepartureTime();
 
-  public Set<Route> getRoutes(String lineRefValue) {
-    return mappedRoutesCache.getOrDefault(lineRefValue, new HashSet<>());
-  }
-
-  public FeedScopedId getTripId(String vehicleJourney, String feedId) {
-    Trip trip = vehicleJourneyTripCache.get(vehicleJourney);
-    if (trip != null) {
-      return trip.getId();
-    } else {
-      //Attempt to find trip using datedServiceJourneys
-      TripOnServiceDate tripOnServiceDate = transitService.getTripOnServiceDateById(
-        new FeedScopedId(feedId, vehicleJourney)
-      );
-      if (tripOnServiceDate != null) {
-        return tripOnServiceDate.getTrip().getId();
+      if (arrivalTime != null) {
+        trips = getMatchingTripsOnStopOrSiblings(lastStopPoint, arrivalTime, entityResolver);
       }
     }
-    //Fallback to handle extrajourneys
-    trip = transitService.getTripForId(new FeedScopedId(feedId, vehicleJourney));
-    if (trip != null) {
-      vehicleJourneyTripCache.put(vehicleJourney, trip);
-      return trip.getId();
+    if (trips == null || trips.isEmpty()) {
+      return null;
     }
-    return null;
+
+    if (journey.getLineRef() != null) {
+      var lineRef = journey.getLineRef().getValue();
+      Route route = entityResolver.resolveRoute(lineRef);
+      if (route != null) {
+        trips =
+          trips.stream().filter(trip -> trip.getRoute().equals(route)).collect(Collectors.toSet());
+      }
+    }
+
+    return getTripAndPatternForJourney(
+      trips,
+      calls,
+      entityResolver,
+      getCurrentTimetable,
+      getRealtimeAddedTripPattern
+    );
   }
 
   /**
    * Returns a match of tripIds that match the provided values.
    */
-  public List<FeedScopedId> getTripIdForInternalPlanningCodeServiceDateAndMode(
+  public List<FeedScopedId> getTripIdForInternalPlanningCodeServiceDate(
     String internalPlanningCode,
-    LocalDate serviceDate,
-    TransitMode mode,
-    SubMode transportSubmode
+    LocalDate serviceDate
   ) {
-    Set<Trip> cachedTripsBySiriId = getCachedTripsBySiriId(internalPlanningCode);
-
-    if (cachedTripsBySiriId.isEmpty()) {
-      cachedTripsBySiriId = getCachedTripsByVehicleRef(internalPlanningCode);
-    }
-
     List<FeedScopedId> matches = new ArrayList<>();
-    for (Trip trip : cachedTripsBySiriId) {
-      final TripPattern tripPattern = transitService.getPatternForTrip(trip);
-      if (tripPattern.matchesModeOrSubMode(mode, transportSubmode)) {
-        Set<LocalDate> serviceDates = transitService
-          .getCalendarService()
-          .getServiceDatesForServiceId(trip.getServiceId());
-        if (
-          serviceDates.contains(serviceDate) &&
-          trip.getNetexInternalPlanningCode() != null &&
-          trip.getNetexInternalPlanningCode().equals(internalPlanningCode)
-        ) {
-          matches.add(trip.getId());
-        }
+    for (Trip trip : getCachedTripsByInternalPlanningCode(internalPlanningCode)) {
+      Set<LocalDate> serviceDates = transitService
+        .getCalendarService()
+        .getServiceDatesForServiceId(trip.getServiceId());
+      if (serviceDates.contains(serviceDate)) {
+        matches.add(trip.getId());
       }
     }
 
     return matches;
   }
 
-  Trip findTripByDatedVehicleJourneyRef(EstimatedVehicleJourney journey, String feedId) {
-    String serviceJourneyId = resolveDatedVehicleJourneyRef(journey);
-    if (serviceJourneyId != null) {
-      Trip trip = transitService.getTripForId(new FeedScopedId(feedId, serviceJourneyId));
-      if (trip != null) {
-        return trip;
-      } else {
-        //Attempt to find trip using datedServiceJourneyId
-        TripOnServiceDate tripOnServiceDate = transitService.getTripOnServiceDateById(
-          new FeedScopedId(feedId, serviceJourneyId)
-        );
-        if (tripOnServiceDate != null) {
-          return tripOnServiceDate.getTrip();
-        }
-      }
-    }
-    return null;
-  }
-
-  private static void initCache(TransitService index) {
-    if (mappedTripsCache.isEmpty()) {
+  private void initCache(TransitService index) {
+    if (!initialized) {
       for (Trip trip : index.getAllTrips()) {
         TripPattern tripPattern = index.getPatternForTrip(trip);
 
@@ -255,26 +180,12 @@ public class SiriFuzzyTripMatcher {
           continue;
         }
 
-        String currentTripId = getUnpaddedTripId(trip.getId().getId());
-
-        if (mappedTripsCache.containsKey(currentTripId)) {
-          mappedTripsCache.get(currentTripId).add(trip);
-        } else {
-          Set<Trip> initialSet = new HashSet<>();
-          initialSet.add(trip);
-          mappedTripsCache.put(currentTripId, initialSet);
-        }
-
-        if (tripPattern.matchesModeOrSubMode(TransitMode.RAIL, SubMode.of("railReplacementBus"))) {
-          if (trip.getNetexInternalPlanningCode() != null) {
-            String internalPlanningCode = trip.getNetexInternalPlanningCode();
-            if (mappedVehicleRefCache.containsKey(internalPlanningCode)) {
-              mappedVehicleRefCache.get(internalPlanningCode).add(trip);
-            } else {
-              Set<Trip> initialSet = new HashSet<>();
-              initialSet.add(trip);
-              mappedVehicleRefCache.put(internalPlanningCode, initialSet);
-            }
+        if (tripPattern.getRoute().getMode().equals(TransitMode.RAIL)) {
+          String internalPlanningCode = trip.getNetexInternalPlanningCode();
+          if (internalPlanningCode != null) {
+            internalPlanningCodeCache
+              .computeIfAbsent(internalPlanningCode, key -> new HashSet<>())
+              .add(trip);
           }
         }
         String lastStopId = tripPattern.lastStop().getId().getId();
@@ -284,63 +195,26 @@ public class SiriFuzzyTripMatcher {
           int arrivalTime = tripTimes.getArrivalTime(tripTimes.getNumStops() - 1);
 
           String key = createStartStopKey(lastStopId, arrivalTime);
-          if (start_stop_tripCache.containsKey(key)) {
-            start_stop_tripCache.get(key).add(trip);
-          } else {
-            Set<Trip> initialSet = new HashSet<>();
-            initialSet.add(trip);
-            start_stop_tripCache.put(key, initialSet);
-          }
-        }
-      }
-      for (Route route : index.getAllRoutes()) {
-        String currentRouteId = getUnpaddedTripId(route.getId().getId());
-        if (mappedRoutesCache.containsKey(currentRouteId)) {
-          mappedRoutesCache.get(currentRouteId).add(route);
-        } else {
-          Set<Route> initialSet = new HashSet<>();
-          initialSet.add(route);
-          mappedRoutesCache.put(currentRouteId, initialSet);
+          startStopTripCache.computeIfAbsent(key, k -> new HashSet<>()).add(trip);
         }
       }
 
-      LOG.info("Built route-cache [{}].", mappedRoutesCache.size());
-      LOG.info("Built vehicleRef-cache [{}].", mappedVehicleRefCache.size());
-      LOG.info("Built trips-cache [{}].", mappedTripsCache.size());
-      LOG.info("Built start-stop-cache [{}].", start_stop_tripCache.size());
+      LOG.info("Built internalPlanningCode-cache [{}].", internalPlanningCodeCache.size());
+      LOG.info("Built start-stop-cache [{}].", startStopTripCache.size());
     }
 
-    if (vehicleJourneyTripCache.isEmpty()) {
-      index.getAllTrips().forEach(trip -> vehicleJourneyTripCache.put(trip.getId().getId(), trip));
-    }
+    initialized = true;
   }
 
   private static String createStartStopKey(String lastStopId, int lastStopArrivalTime) {
     return lastStopId + ":" + lastStopArrivalTime;
   }
 
-  private static String getUnpaddedTripId(String id) {
-    if (id.indexOf("-") > 0) {
-      return id.substring(0, id.indexOf("-"));
-    } else {
-      return id;
-    }
-  }
-
-  private String resolveDatedVehicleJourneyRef(EstimatedVehicleJourney journey) {
-    if (journey.getFramedVehicleJourneyRef() != null) {
-      return journey.getFramedVehicleJourneyRef().getDatedVehicleJourneyRef();
-    } else if (journey.getDatedVehicleJourneyRef() != null) {
-      return journey.getDatedVehicleJourneyRef().getValue();
-    }
-
-    return null;
-  }
-
+  @Nonnull
   private Set<Trip> getMatchingTripsOnStopOrSiblings(
     String lastStopPoint,
-    String feedId,
-    ZonedDateTime arrivalTime
+    ZonedDateTime arrivalTime,
+    EntityResolver entityResolver
   ) {
     int secondsSinceMidnight = ServiceDateUtils.secondsSinceStartOfService(
       arrivalTime,
@@ -353,49 +227,158 @@ public class SiriFuzzyTripMatcher {
       transitService.getTimeZone()
     );
 
-    Set<Trip> trips = start_stop_tripCache.get(
+    Set<Trip> trips = startStopTripCache.get(
       createStartStopKey(lastStopPoint, secondsSinceMidnight)
     );
     if (trips == null) {
       //Attempt to fetch trips that started yesterday - i.e. add 24 hours to arrival-time
       trips =
-        start_stop_tripCache.get(createStartStopKey(lastStopPoint, secondsSinceMidnightYesterday));
+        startStopTripCache.get(createStartStopKey(lastStopPoint, secondsSinceMidnightYesterday));
     }
 
-    if (trips == null || trips.isEmpty()) {
-      //SIRI-data may report other platform, but still on the same Parent-stop
-      var stop = transitService.getRegularStop(new FeedScopedId(feedId, lastStopPoint));
-      if (stop != null && stop.isPartOfStation()) {
-        // TODO OTP2 resolve stop-station split
-        var allQuays = stop.getParentStation().getChildStops();
-        for (var quay : allQuays) {
-          Set<Trip> tripSet = start_stop_tripCache.get(
-            createStartStopKey(quay.getId().getId(), secondsSinceMidnight)
-          );
-          if (tripSet != null) {
-            if (trips == null) {
-              trips = tripSet;
-            } else {
-              trips.addAll(tripSet);
-            }
-          }
-        }
+    if (trips != null) {
+      return trips;
+    }
+
+    //SIRI-data may report other platform, but still on the same Parent-stop
+    var stop = entityResolver.resolveQuay(lastStopPoint);
+    if (stop == null || !stop.isPartOfStation()) {
+      return Set.of();
+    }
+
+    trips = new HashSet<>();
+    var allQuays = stop.getParentStation().getChildStops();
+    for (var quay : allQuays) {
+      Set<Trip> tripSet = startStopTripCache.get(
+        createStartStopKey(quay.getId().getId(), secondsSinceMidnight)
+      );
+      if (tripSet != null) {
+        trips.addAll(tripSet);
       }
     }
     return trips;
   }
 
-  private Set<Trip> getCachedTripsByVehicleRef(String vehicleRef) {
-    if (vehicleRef == null) {
+  private Set<Trip> getCachedTripsByInternalPlanningCode(String internalPlanningCode) {
+    if (internalPlanningCode == null) {
       return null;
     }
-    return mappedVehicleRefCache.getOrDefault(vehicleRef, new HashSet<>());
+    return internalPlanningCodeCache.getOrDefault(internalPlanningCode, new HashSet<>());
   }
 
-  private Set<Trip> getCachedTripsBySiriId(String tripId) {
-    if (tripId == null) {
+  /**
+   * Finds the correct trip based on OTP-ServiceDate and SIRI-DepartureTime
+   */
+  private TripAndPattern getTripAndPatternForJourney(
+    Set<Trip> trips,
+    List<CallWrapper> calls,
+    EntityResolver entityResolver,
+    BiFunction<TripPattern, LocalDate, Timetable> getCurrentTimetable,
+    BiFunction<FeedScopedId, LocalDate, TripPattern> getRealtimeAddedTripPattern
+  ) {
+    var journeyFirstStop = entityResolver.resolveQuay(calls.get(0).getStopPointRef());
+    var journeyLastStop = entityResolver.resolveQuay(calls.get(calls.size() - 1).getStopPointRef());
+    if (journeyFirstStop == null || journeyLastStop == null) {
       return null;
     }
-    return mappedTripsCache.getOrDefault(tripId, new HashSet<>());
+
+    ZonedDateTime date = calls.get(0).getAimedDepartureTime();
+    LocalDate serviceDate = date.toLocalDate();
+
+    int departureInSecondsSinceMidnight = ServiceDateUtils.secondsSinceStartOfService(
+      date,
+      date,
+      transitService.getTimeZone()
+    );
+    CalendarService calendarService = transitService.getCalendarService();
+    Set<TripAndPattern> possibleTrips = new HashSet<>();
+    for (Trip trip : trips) {
+      if (!calendarService.getServiceDatesForServiceId(trip.getServiceId()).contains(serviceDate)) {
+        continue;
+      }
+
+      var realTimeAddedTripPattern = getRealtimeAddedTripPattern.apply(trip.getId(), serviceDate);
+      TripPattern tripPattern = realTimeAddedTripPattern != null
+        ? realTimeAddedTripPattern
+        : transitService.getPatternForTrip(trip);
+
+      var firstStop = tripPattern.firstStop();
+      var lastStop = tripPattern.lastStop();
+
+      boolean firstStopIsMatch =
+        firstStop.equals(journeyFirstStop) || firstStop.isPartOfSameStationAs(journeyFirstStop);
+      boolean lastStopIsMatch =
+        lastStop.equals(journeyLastStop) || lastStop.isPartOfSameStationAs(journeyLastStop);
+
+      if (!firstStopIsMatch || !lastStopIsMatch) {
+        continue;
+      }
+
+      TripTimes times = getCurrentTimetable.apply(tripPattern, serviceDate).getTripTimes(trip);
+      if (times != null && times.getScheduledDepartureTime(0) == departureInSecondsSinceMidnight) {
+        // Found matches
+        possibleTrips.add(new TripAndPattern(times.getTrip(), tripPattern));
+      }
+    }
+
+    if (possibleTrips.isEmpty()) {
+      return null;
+    } else if (possibleTrips.size() > 1) {
+      LOG.warn("Multiple trip and pattern combinations found, skipping all, {}", possibleTrips);
+      return null;
+    } else {
+      return possibleTrips.iterator().next();
+    }
+  }
+
+  /**
+   * Finds the correct trip based on OTP-ServiceDate and SIRI-DepartureTime
+   */
+  private Trip getTripForJourney(
+    Set<Trip> trips,
+    MonitoredVehicleJourneyStructure monitoredVehicleJourney
+  ) {
+    ZonedDateTime date = monitoredVehicleJourney.getOriginAimedDepartureTime();
+    if (date == null) {
+      //If no date is set - assume Realtime-data is reported for 'today'.
+      date = ZonedDateTime.now();
+    }
+    LocalDate serviceDate = date.toLocalDate();
+
+    List<Trip> results = new ArrayList<>();
+    for (Trip trip : trips) {
+      Set<LocalDate> serviceDatesForServiceId = transitService
+        .getCalendarService()
+        .getServiceDatesForServiceId(trip.getServiceId());
+
+      for (LocalDate next : serviceDatesForServiceId) {
+        if (next.equals(serviceDate)) {
+          results.add(trip);
+        }
+      }
+    }
+
+    if (results.size() == 1) {
+      return results.get(0);
+    } else if (results.size() > 1) {
+      // Multiple possible matches - check if lineRef/routeId matches
+      if (
+        monitoredVehicleJourney.getLineRef() != null &&
+        monitoredVehicleJourney.getLineRef().getValue() != null
+      ) {
+        String lineRef = monitoredVehicleJourney.getLineRef().getValue();
+        for (Trip trip : results) {
+          if (lineRef.equals(trip.getRoute().getId().getId())) {
+            // Return first trip where the lineRef matches routeId
+            return trip;
+          }
+        }
+      }
+
+      // Line does not match any routeId - return first result.
+      return results.get(0);
+    }
+
+    return null;
   }
 }

@@ -6,7 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import java.time.Duration;
 import java.time.LocalTime;
 import org.junit.jupiter.api.Test;
-import org.opentripplanner.graph_builder.DataImportIssueStore;
+import org.opentripplanner.graph_builder.issue.api.DataImportIssueStore;
 import org.opentripplanner.model.BookingInfo;
 import org.rutebanken.netex.model.BookingArrangementsStructure;
 import org.rutebanken.netex.model.ContactStructure;
@@ -17,7 +17,7 @@ import org.rutebanken.netex.model.PurchaseWhenEnumeration;
 import org.rutebanken.netex.model.ServiceJourney;
 import org.rutebanken.netex.model.StopPointInJourneyPattern;
 
-public class BookingInfoMapperTest {
+class BookingInfoMapperTest {
 
   private static final String STOP_POINT_CONTACT = "StopPoint booking info contact";
   private static final String SERVICE_JOURNEY_CONTACT = "ServiceJourney booking info contact";
@@ -31,12 +31,10 @@ public class BookingInfoMapperTest {
   private static final LocalTime FIVE_THIRTY = LocalTime.of(5, 30);
   private static final Duration THIRTY_MINUTES = Duration.ofMinutes(30);
 
-  private final BookingInfoMapper subject = new BookingInfoMapper(
-    DataImportIssueStore.noopIssueStore()
-  );
+  private final BookingInfoMapper subject = new BookingInfoMapper(DataImportIssueStore.NOOP);
 
   @Test
-  public void testMapBookingInfoPrecedence() {
+  void testMapBookingInfoPrecedence() {
     StopPointInJourneyPattern emptyStopPoint = new StopPointInJourneyPattern();
     ServiceJourney emptyServiceJourney = new ServiceJourney();
 
@@ -81,8 +79,37 @@ public class BookingInfoMapperTest {
     );
   }
 
+  /**
+   * When the contact details are set at the flexible line level, and bookWhen information is
+   * set at StopPoint level, the BookingInfo should contain both contact details and bookWhen
+   * information
+   */
   @Test
-  public void testMapBookingInfo() {
+  void testBookingInfoMergingAndOverriding() {
+    StopPointInJourneyPattern emptyStopPoint = new StopPointInJourneyPattern();
+    ServiceJourney emptyServiceJourney = new ServiceJourney();
+    LocalTime stopPointLatestBookingTime = FIVE_THIRTY;
+
+    StopPointInJourneyPattern stopPoint = new StopPointInJourneyPattern()
+      .withBookingArrangements(
+        new BookingArrangementsStructure()
+          .withLatestBookingTime(stopPointLatestBookingTime)
+          .withBookWhen(PurchaseWhenEnumeration.ADVANCE_AND_DAY_OF_TRAVEL)
+      );
+
+    FlexibleLine flexibleLine = new FlexibleLine()
+      .withBookingContact(
+        new ContactStructure()
+          .withContactPerson(new MultilingualString().withValue(FLEXIBLE_LINE_CONTACT))
+      );
+
+    BookingInfo bookingInfo = subject.map(stopPoint, null, flexibleLine);
+    assertEquals(stopPointLatestBookingTime, bookingInfo.getLatestBookingTime().getTime());
+    assertEquals(FLEXIBLE_LINE_CONTACT, bookingInfo.getContactInfo().getContactPerson());
+  }
+
+  @Test
+  void testMapBookingInfo() {
     ContactStructure contactStructure = new ContactStructure();
     contactStructure.setContactPerson(new MultilingualString().withValue(PERSON));
     contactStructure.setPhone(PHONE);
@@ -103,7 +130,7 @@ public class BookingInfoMapperTest {
   }
 
   @Test
-  public void testMapEarliestLatestBookingTime() {
+  void testMapEarliestLatestBookingTime() {
     ContactStructure contactStructure = new ContactStructure();
     contactStructure.setContactPerson(new MultilingualString().withValue(PERSON));
 
@@ -151,7 +178,7 @@ public class BookingInfoMapperTest {
   }
 
   @Test
-  public void testMapMinimumBookingNotice() {
+  void testMapMinimumBookingNotice() {
     ContactStructure contactStructure = new ContactStructure();
     contactStructure.setContactPerson(new MultilingualString().withValue(PERSON));
 

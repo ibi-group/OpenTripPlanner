@@ -1,17 +1,28 @@
 package org.opentripplanner.standalone.configure;
 
+import jakarta.ws.rs.core.Application;
 import javax.annotation.Nullable;
-import javax.ws.rs.core.Application;
+import org.opentripplanner.apis.transmodel.TransmodelAPI;
 import org.opentripplanner.datastore.api.DataSource;
+import org.opentripplanner.ext.emissions.EmissionsDataModel;
 import org.opentripplanner.ext.geocoder.LuceneIndex;
-import org.opentripplanner.ext.transmodelapi.TransmodelAPI;
+import org.opentripplanner.ext.stopconsolidation.StopConsolidationRepository;
+import org.opentripplanner.framework.application.LogMDCSupport;
+import org.opentripplanner.framework.application.OTPFeature;
+import org.opentripplanner.framework.logging.ProgressTracker;
 import org.opentripplanner.graph_builder.GraphBuilder;
 import org.opentripplanner.graph_builder.GraphBuilderDataSources;
+import org.opentripplanner.graph_builder.issue.api.DataImportIssueSummary;
+import org.opentripplanner.raptor.configure.RaptorConfig;
 import org.opentripplanner.routing.algorithm.raptoradapter.transit.TransitLayer;
+import org.opentripplanner.routing.algorithm.raptoradapter.transit.TransitTuningParameters;
 import org.opentripplanner.routing.algorithm.raptoradapter.transit.TripSchedule;
 import org.opentripplanner.routing.algorithm.raptoradapter.transit.mappers.TransitLayerMapper;
 import org.opentripplanner.routing.algorithm.raptoradapter.transit.mappers.TransitLayerUpdater;
 import org.opentripplanner.routing.graph.Graph;
+import org.opentripplanner.service.realtimevehicles.RealtimeVehicleRepository;
+import org.opentripplanner.service.vehiclerental.VehicleRentalRepository;
+import org.opentripplanner.service.worldenvelope.WorldEnvelopeRepository;
 import org.opentripplanner.standalone.api.OtpServerRequestContext;
 import org.opentripplanner.standalone.config.BuildConfig;
 import org.opentripplanner.standalone.config.CommandLineParameters;
@@ -20,10 +31,10 @@ import org.opentripplanner.standalone.config.OtpConfig;
 import org.opentripplanner.standalone.config.RouterConfig;
 import org.opentripplanner.standalone.server.GrizzlyServer;
 import org.opentripplanner.standalone.server.OTPWebApplication;
-import org.opentripplanner.transit.raptor.configure.RaptorConfig;
+import org.opentripplanner.street.model.StreetLimitationParameters;
+import org.opentripplanner.street.model.elevation.ElevationUtils;
 import org.opentripplanner.transit.service.TransitModel;
-import org.opentripplanner.updater.GraphUpdaterConfigurator;
-import org.opentripplanner.util.OTPFeature;
+import org.opentripplanner.updater.configure.UpdaterConfigurator;
 import org.opentripplanner.visualizer.GraphVisualizer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -59,17 +70,20 @@ public class ConstructApplication {
     CommandLineParameters cli,
     Graph graph,
     TransitModel transitModel,
+    WorldEnvelopeRepository worldEnvelopeRepository,
     ConfigModel config,
-    GraphBuilderDataSources graphBuilderDataSources
+    GraphBuilderDataSources graphBuilderDataSources,
+    DataImportIssueSummary issueSummary,
+    EmissionsDataModel emissionsDataModel,
+    @Nullable StopConsolidationRepository stopConsolidationRepository,
+    StreetLimitationParameters streetLimitationParameters
   ) {
     this.cli = cli;
     this.graphBuilderDataSources = graphBuilderDataSources;
 
     // We create the optional GraphVisualizer here, because it would be significant more complex to
     // use Dagger DI to do it - passing in a parameter to enable it or not.
-    var graphVisualizer = cli.visualize
-      ? new GraphVisualizer(graph, config.routerConfig().streetRoutingTimeout())
-      : null;
+    var graphVisualizer = cli.visualize ? new GraphVisualizer(graph) : null;
 
     this.factory =
       DaggerConstructApplicationFactory
@@ -78,6 +92,11 @@ public class ConstructApplication {
         .graph(graph)
         .transitModel(transitModel)
         .graphVisualizer(graphVisualizer)
+        .worldEnvelopeRepository(worldEnvelopeRepository)
+        .emissionsDataModel(emissionsDataModel)
+        .dataImportIssueSummary(issueSummary)
+        .stopConsolidationRepository(stopConsolidationRepository)
+        .streetLimitationParameters(streetLimitationParameters)
         .build();
   }
 
@@ -90,7 +109,11 @@ public class ConstructApplication {
    * this method is called.
    */
   public GrizzlyServer createGrizzlyServer() {
-    return new GrizzlyServer(cli, createApplication());
+    return new GrizzlyServer(
+      cli,
+      createApplication(),
+      routerConfig().server().apiProcessingTimeout()
+    );
   }
 
   /**
@@ -103,6 +126,10 @@ public class ConstructApplication {
       graphBuilderDataSources,
       graph(),
       transitModel(),
+      factory.worldEnvelopeRepository(),
+      factory.emissionsDataModel(),
+      factory.stopConsolidationRepository(),
+      factory.streetLimitationParameters(),
       cli.doLoadStreetGraph(),
       cli.doSaveStreetGraph()
     );
@@ -122,21 +149,29 @@ public class ConstructApplication {
   private Application createApplication() {
     LOG.info("Wiring up and configuring server.");
     setupTransitRoutingServer();
-    return new OTPWebApplication(this::createServerContext);
+    return new OTPWebApplication(routerConfig().server(), this::createServerContext);
   }
 
   private void setupTransitRoutingServer() {
-    // Create MetricsLogging
-    factory.metricsLogging();
+    enableRequestTraceLogging();
+    createMetricsLogging();
 
-    creatTransitLayerForRaptor(transitModel(), routerConfig());
+    creatTransitLayerForRaptor(transitModel(), routerConfig().transitTuningConfig());
 
-    /* Create Graph updater modules from JSON config. */
-    GraphUpdaterConfigurator.setupGraph(graph(), transitModel(), routerConfig().updaterConfig());
+    /* Create updater modules from JSON config. */
+    UpdaterConfigurator.configure(
+      graph(),
+      realtimeVehicleRepository(),
+      vehicleRentalRepository(),
+      transitModel(),
+      routerConfig().updaterConfig()
+    );
 
-    graph().initEllipsoidToGeoidDifference();
+    initEllipsoidToGeoidDifference();
 
-    if (OTPFeature.SandboxAPITransmodelApi.isOn()) {
+    initializeTransferCache(routerConfig().transitTuningConfig(), transitModel());
+
+    if (OTPFeature.TransmodelGraphQlApi.isOn()) {
       TransmodelAPI.setUp(
         routerConfig().transmodelApi(),
         transitModel(),
@@ -150,12 +185,22 @@ public class ConstructApplication {
     }
   }
 
+  private void initEllipsoidToGeoidDifference() {
+    try {
+      var c = factory.worldEnvelopeService().envelope().orElseThrow().center();
+      double value = ElevationUtils.computeEllipsoidToGeoidDifference(c.latitude(), c.longitude());
+      graph().initEllipsoidToGeoidDifference(value, c.latitude(), c.longitude());
+    } catch (Exception e) {
+      LOG.error("Error computing ellipsoid/geoid difference");
+    }
+  }
+
   /**
    * Create transit layer for Raptor routing. Here we map the scheduled timetables.
    */
   public static void creatTransitLayerForRaptor(
     TransitModel transitModel,
-    RouterConfig routerConfig
+    TransitTuningParameters tuningParameters
   ) {
     if (!transitModel.hasTransit() || transitModel.getTransitModelIndex() == null) {
       LOG.warn(
@@ -163,9 +208,7 @@ public class ConstructApplication {
       );
     }
     LOG.info("Creating transit layer for Raptor routing.");
-    transitModel.setTransitLayer(
-      TransitLayerMapper.map(routerConfig.transitTuningParameters(), transitModel)
-    );
+    transitModel.setTransitLayer(TransitLayerMapper.map(tuningParameters, transitModel));
     transitModel.setRealtimeTransitLayer(new TransitLayer(transitModel.getTransitLayer()));
     transitModel.setTransitLayerUpdater(
       new TransitLayerUpdater(
@@ -175,12 +218,57 @@ public class ConstructApplication {
     );
   }
 
+  public static void initializeTransferCache(
+    TransitTuningParameters transitTuningConfig,
+    TransitModel transitModel
+  ) {
+    var transferCacheRequests = transitTuningConfig.transferCacheRequests();
+    if (!transferCacheRequests.isEmpty()) {
+      var progress = ProgressTracker.track(
+        "Creating initial raptor transfer cache",
+        1,
+        transferCacheRequests.size()
+      );
+
+      LOG.info(progress.startMessage());
+
+      transferCacheRequests.forEach(request -> {
+        transitModel.getTransitLayer().getRaptorTransfersForRequest(request);
+
+        //noinspection Convert2MethodRef
+        progress.step(s -> LOG.info(s));
+      });
+
+      LOG.info(progress.completeMessage());
+    }
+  }
+
   public TransitModel transitModel() {
     return factory.transitModel();
   }
 
+  public DataImportIssueSummary dataImportIssueSummary() {
+    return factory.dataImportIssueSummary();
+  }
+
+  public StopConsolidationRepository stopConsolidationRepository() {
+    return factory.stopConsolidationRepository();
+  }
+
+  public RealtimeVehicleRepository realtimeVehicleRepository() {
+    return factory.realtimeVehicleRepository();
+  }
+
+  public VehicleRentalRepository vehicleRentalRepository() {
+    return factory.vehicleRentalRepository();
+  }
+
   public Graph graph() {
     return factory.graph();
+  }
+
+  public WorldEnvelopeRepository worldEnvelopeRepository() {
+    return factory.worldEnvelopeRepository();
   }
 
   public OtpConfig otpConfig() {
@@ -205,5 +293,23 @@ public class ConstructApplication {
 
   private OtpServerRequestContext createServerContext() {
     return factory.createServerContext();
+  }
+
+  private void enableRequestTraceLogging() {
+    if (routerConfig().server().requestTraceLoggingEnabled()) {
+      LogMDCSupport.enable();
+    }
+  }
+
+  private void createMetricsLogging() {
+    factory.metricsLogging();
+  }
+
+  public EmissionsDataModel emissionsDataModel() {
+    return factory.emissionsDataModel();
+  }
+
+  public StreetLimitationParameters streetLimitationParameters() {
+    return factory.streetLimitationParameters();
   }
 }

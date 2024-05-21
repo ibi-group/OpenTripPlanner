@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.stream.Collectors;
+import org.opentripplanner.framework.application.OTPFeature;
 import org.opentripplanner.model.Timetable;
 import org.opentripplanner.routing.algorithm.raptoradapter.transit.TransitLayer;
 import org.opentripplanner.routing.algorithm.raptoradapter.transit.TripPatternForDate;
@@ -20,7 +21,6 @@ import org.opentripplanner.transit.model.network.TripPattern;
 import org.opentripplanner.transit.model.timetable.TripIdAndServiceDate;
 import org.opentripplanner.transit.model.timetable.TripTimes;
 import org.opentripplanner.transit.service.TransitModel;
-import org.opentripplanner.util.OTPFeature;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -96,7 +96,7 @@ public class TransitLayerUpdater {
 
       if (!tripPatternsStartingOnDateMapCache.containsKey(date)) {
         Map<TripPattern, TripPatternForDate> map = realtimeTransitLayer
-          .getTripPatternsStartingOnDateCopy(date)
+          .getTripPatternsOnServiceDateCopy(date)
           .stream()
           .collect(Collectors.toMap(t -> t.getTripPattern().getPattern(), t -> t));
         tripPatternsStartingOnDateMapCache.put(date, map);
@@ -112,19 +112,20 @@ public class TransitLayerUpdater {
         datesToBeUpdated.addAll(oldTripPatternForDate.getRunningPeriodDates());
       }
 
-      TripPatternForDate newTripPatternForDate = tripPatternForDateMapper.map(
-        timetable,
-        timetable.getServiceDate()
-      );
+      TripPatternForDate newTripPatternForDate;
+
+      try {
+        newTripPatternForDate = tripPatternForDateMapper.map(timetable, timetable.getServiceDate());
+      } catch (IllegalArgumentException exception) {
+        // There is some issue with finding the correct running period, using old pattern instead
+        newTripPatternForDate = oldTripPatternForDate;
+      }
 
       if (newTripPatternForDate != null) {
         tripPatternsStartingOnDateMapCache.get(date).put(tripPattern, newTripPatternForDate);
         newTripPatternsForDate.put(tripPattern, newTripPatternForDate);
         datesToBeUpdated.addAll(newTripPatternForDate.getRunningPeriodDates());
-        if (
-          transferIndexGenerator != null &&
-          newTripPatternForDate.getTripPattern().getPattern().isCreatedByRealtimeUpdater()
-        ) {
+        if (transferIndexGenerator != null && tripPattern.isCreatedByRealtimeUpdater()) {
           transferIndexGenerator.addRealtimeTrip(
             tripPattern,
             timetable.getTripTimes().stream().map(TripTimes::getTrip).collect(Collectors.toList())
@@ -145,7 +146,7 @@ public class TransitLayerUpdater {
           } else {
             LOG.debug(
               "NEW TripPatternForDate: {} - {}",
-              newTripPatternForDate.getLocalDate(),
+              newTripPatternForDate.getServiceDate(),
               newTripPatternForDate.getTripPattern().debugInfo()
             );
           }
@@ -178,7 +179,7 @@ public class TransitLayerUpdater {
       }
 
       for (TripPatternForDate tripPatternForDate : previouslyUsedPatterns) {
-        if (tripPatternForDate.getLocalDate().equals(date)) {
+        if (tripPatternForDate.getServiceDate().equals(date)) {
           TripPattern pattern = tripPatternForDate.getTripPattern().getPattern();
           if (!pattern.isCreatedByRealtimeUpdater()) {
             continue;

@@ -8,41 +8,41 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.LineString;
-import org.opentripplanner.common.TurnRestriction;
-import org.opentripplanner.common.TurnRestrictionType;
-import org.opentripplanner.routing.algorithm.astar.AStarBuilder;
-import org.opentripplanner.routing.api.request.RoutingRequest;
-import org.opentripplanner.routing.core.RoutingContext;
-import org.opentripplanner.routing.core.State;
-import org.opentripplanner.routing.core.TraverseMode;
-import org.opentripplanner.routing.core.TraverseModeSet;
-import org.opentripplanner.routing.core.intersection_model.ConstantIntersectionTraversalCostModel;
-import org.opentripplanner.routing.edgetype.StreetEdge;
-import org.opentripplanner.routing.edgetype.StreetTraversalPermission;
-import org.opentripplanner.routing.graph.Graph;
-import org.opentripplanner.routing.graph.Vertex;
-import org.opentripplanner.routing.spt.GraphPath;
-import org.opentripplanner.routing.spt.ShortestPathTree;
-import org.opentripplanner.routing.vertextype.IntersectionVertex;
-import org.opentripplanner.routing.vertextype.StreetVertex;
-import org.opentripplanner.util.geometry.GeometryUtils;
+import org.opentripplanner.astar.model.GraphPath;
+import org.opentripplanner.astar.model.ShortestPathTree;
+import org.opentripplanner.framework.geometry.GeometryUtils;
+import org.opentripplanner.routing.api.request.RouteRequest;
+import org.opentripplanner.routing.api.request.StreetMode;
+import org.opentripplanner.routing.api.request.request.StreetRequest;
+import org.opentripplanner.street.model.StreetTraversalPermission;
+import org.opentripplanner.street.model.TurnRestriction;
+import org.opentripplanner.street.model.TurnRestrictionType;
+import org.opentripplanner.street.model._data.StreetModelForTest;
+import org.opentripplanner.street.model.edge.Edge;
+import org.opentripplanner.street.model.edge.StreetEdge;
+import org.opentripplanner.street.model.edge.StreetEdgeBuilder;
+import org.opentripplanner.street.model.vertex.StreetVertex;
+import org.opentripplanner.street.model.vertex.Vertex;
+import org.opentripplanner.street.search.StreetSearchBuilder;
+import org.opentripplanner.street.search.TraverseMode;
+import org.opentripplanner.street.search.TraverseModeSet;
+import org.opentripplanner.street.search.intersection_model.ConstantIntersectionTraversalCalculator;
+import org.opentripplanner.street.search.intersection_model.IntersectionTraversalCalculator;
+import org.opentripplanner.street.search.state.State;
+import org.opentripplanner.street.search.strategy.EuclideanRemainingWeightHeuristic;
 
 public class TurnCostTest {
-
-  private Graph graph;
 
   private Vertex topRight;
 
   private Vertex bottomLeft;
 
-  private StreetEdge maple_main1, broad1_2;
+  private RouteRequest proto;
 
-  private RoutingRequest proto;
+  private IntersectionTraversalCalculator calculator;
 
   @BeforeEach
   public void before() {
-    graph = new Graph();
-
     // Graph for a fictional grid city with turn restrictions
     StreetVertex maple1 = vertex("maple_1st", 2.0, 2.0);
     StreetVertex maple2 = vertex("maple_2nd", 1.0, 2.0);
@@ -63,11 +63,11 @@ public class TurnCostTest {
     StreetEdge main1_2 = edge(main1, main2, 100.0, false);
     StreetEdge main2_3 = edge(main2, main3, 100.0, false);
 
-    broad1_2 = edge(broad1, broad2, 100.0, false);
+    StreetEdge broad1_2 = edge(broad1, broad2, 100.0, false);
     StreetEdge broad2_3 = edge(broad2, broad3, 100.0, false);
 
     // Each cross-street connects
-    maple_main1 = edge(maple1, main1, 50.0, false);
+    StreetEdge maple_main1 = edge(maple1, main1, 50.0, false);
     StreetEdge main_broad1 = edge(main1, broad1, 100.0, false);
 
     StreetEdge maple_main2 = edge(maple2, main2, 50.0, false);
@@ -89,33 +89,37 @@ public class TurnCostTest {
     bottomLeft = broad3;
 
     // Make a prototype routing request.
-    proto = new RoutingRequest();
-    proto.carSpeed = 1.0;
-    proto.walkSpeed = 1.0;
-    proto.bikeSpeed = 1.0;
-    proto.turnReluctance = (1.0);
-    proto.setNonTransitReluctance(1.0);
-    proto.stairsReluctance = (1.0);
+    proto = new RouteRequest();
+    proto.withPreferences(preferences ->
+      preferences
+        .withCar(it -> it.withReluctance(1.0))
+        .withBike(bike -> bike.withSpeed(1.0).withReluctance(1.0))
+        .withScooter(scooter -> scooter.withSpeed(1.0).withReluctance(1.0))
+        .withWalk(walk -> walk.withSpeed(1.0).withStairsReluctance(1.0).withReluctance(1.0))
+        .withStreet(it -> it.withTurnReluctance(1.0))
+    );
 
     // Turn costs are all 0 by default.
-    graph.setIntersectionTraversalCostModel(new ConstantIntersectionTraversalCostModel(0.0));
+    calculator = new ConstantIntersectionTraversalCalculator(0.0);
   }
 
   @Test
   public void testForwardDefaultNoTurnCosts() {
     // Without turn costs, this path costs 2x100 + 2x50 = 300.
-    checkForwardRouteDuration(new RoutingContext(proto, graph, topRight, bottomLeft), 300);
+    checkForwardRouteDuration(proto, StreetMode.WALK, topRight, bottomLeft, 300);
   }
 
   @Test
   public void testForwardDefaultConstTurnCosts() {
-    RoutingRequest options = proto.clone();
-    graph.setIntersectionTraversalCostModel(new ConstantIntersectionTraversalCostModel(10.0));
+    calculator = new ConstantIntersectionTraversalCalculator(10.0);
 
     // Without turn costs, this path costs 2x100 + 2x50 = 300.
     // Since we traverse 3 intersections, the total cost should be 330.
-    GraphPath path = checkForwardRouteDuration(
-      new RoutingContext(options, graph, topRight, bottomLeft),
+    GraphPath<State, Edge, Vertex> path = checkForwardRouteDuration(
+      proto,
+      StreetMode.WALK,
+      topRight,
+      bottomLeft,
       330
     );
 
@@ -124,11 +128,11 @@ public class TurnCostTest {
     List<State> states = path.states;
     assertEquals(5, states.size());
 
-    assertEquals("maple_1st", states.get(0).getVertex().getLabel());
-    assertEquals("main_1st", states.get(1).getVertex().getLabel());
-    assertEquals("main_2nd", states.get(2).getVertex().getLabel());
-    assertEquals("broad_2nd", states.get(3).getVertex().getLabel());
-    assertEquals("broad_3rd", states.get(4).getVertex().getLabel());
+    assertEquals("maple_1st", states.get(0).getVertex().getLabelString());
+    assertEquals("main_1st", states.get(1).getVertex().getLabelString());
+    assertEquals("main_2nd", states.get(2).getVertex().getLabelString());
+    assertEquals("broad_2nd", states.get(3).getVertex().getLabelString());
+    assertEquals("broad_3rd", states.get(4).getVertex().getLabelString());
 
     assertEquals(0, states.get(0).getElapsedTimeSeconds());
     assertEquals(50, states.get(1).getElapsedTimeSeconds()); // maple_main1 = 50
@@ -139,46 +143,49 @@ public class TurnCostTest {
 
   @Test
   public void testForwardCarNoTurnCosts() {
-    RoutingRequest options = proto.clone();
-    options.setMode(TraverseMode.CAR);
+    RouteRequest options = proto.clone();
 
     // Without turn costs, this path costs 3x100 + 1x50 = 300.
-    GraphPath path = checkForwardRouteDuration(
-      new RoutingContext(options, graph, topRight, bottomLeft),
+    GraphPath<State, Edge, Vertex> path = checkForwardRouteDuration(
+      options,
+      StreetMode.CAR,
+      topRight,
+      bottomLeft,
       350
     );
 
     List<State> states = path.states;
     assertEquals(5, states.size());
 
-    assertEquals("maple_1st", states.get(0).getVertex().getLabel());
-    assertEquals("main_1st", states.get(1).getVertex().getLabel());
-    assertEquals("broad_1st", states.get(2).getVertex().getLabel());
-    assertEquals("broad_2nd", states.get(3).getVertex().getLabel());
-    assertEquals("broad_3rd", states.get(4).getVertex().getLabel());
+    assertEquals("maple_1st", states.get(0).getVertex().getLabelString());
+    assertEquals("main_1st", states.get(1).getVertex().getLabelString());
+    assertEquals("broad_1st", states.get(2).getVertex().getLabelString());
+    assertEquals("broad_2nd", states.get(3).getVertex().getLabelString());
+    assertEquals("broad_3rd", states.get(4).getVertex().getLabelString());
   }
 
   @Test
   public void testForwardCarConstTurnCosts() {
-    RoutingRequest options = proto.clone();
-    graph.setIntersectionTraversalCostModel(new ConstantIntersectionTraversalCostModel(10.0));
-    options.setMode(TraverseMode.CAR);
+    calculator = new ConstantIntersectionTraversalCalculator(10.0);
 
     // Without turn costs, this path costs 3x100 + 1x50 = 350.
     // Since there are 3 turns, the total cost should be 380.
-    GraphPath path = checkForwardRouteDuration(
-      new RoutingContext(options, graph, topRight, bottomLeft),
+    GraphPath<State, Edge, Vertex> path = checkForwardRouteDuration(
+      proto,
+      StreetMode.CAR,
+      topRight,
+      bottomLeft,
       380
     );
 
     List<State> states = path.states;
     assertEquals(5, states.size());
 
-    assertEquals("maple_1st", states.get(0).getVertex().getLabel());
-    assertEquals("main_1st", states.get(1).getVertex().getLabel());
-    assertEquals("broad_1st", states.get(2).getVertex().getLabel());
-    assertEquals("broad_2nd", states.get(3).getVertex().getLabel());
-    assertEquals("broad_3rd", states.get(4).getVertex().getLabel());
+    assertEquals("maple_1st", states.get(0).getVertex().getLabelString());
+    assertEquals("main_1st", states.get(1).getVertex().getLabelString());
+    assertEquals("broad_1st", states.get(2).getVertex().getLabelString());
+    assertEquals("broad_2nd", states.get(3).getVertex().getLabelString());
+    assertEquals("broad_3rd", states.get(4).getVertex().getLabelString());
 
     assertEquals(0, states.get(0).getElapsedTimeSeconds());
     assertEquals(50, states.get(1).getElapsedTimeSeconds()); // maple_main1 = 50
@@ -187,9 +194,23 @@ public class TurnCostTest {
     assertEquals(380, states.get(4).getElapsedTimeSeconds()); // broad2_3 = 100
   }
 
-  private GraphPath checkForwardRouteDuration(RoutingContext context, int expectedDuration) {
-    ShortestPathTree tree = AStarBuilder.oneToOne().setContext(context).getShortestPathTree();
-    GraphPath path = tree.getPath(bottomLeft);
+  private GraphPath<State, Edge, Vertex> checkForwardRouteDuration(
+    RouteRequest request,
+    StreetMode streetMode,
+    Vertex from,
+    Vertex to,
+    int expectedDuration
+  ) {
+    ShortestPathTree<State, Edge, Vertex> tree = StreetSearchBuilder
+      .of()
+      .setHeuristic(new EuclideanRemainingWeightHeuristic())
+      .setRequest(request)
+      .setStreetRequest(new StreetRequest(streetMode))
+      .setFrom(from)
+      .setTo(to)
+      .setIntersectionTraversalCalculator(calculator)
+      .getShortestPathTree();
+    GraphPath<State, Edge, Vertex> path = tree.getPath(bottomLeft);
     assertNotNull(path);
 
     // Without turn costs, this path costs 2x100 + 2x50 = 300.
@@ -210,7 +231,7 @@ public class TurnCostTest {
    ****/
 
   private StreetVertex vertex(String label, double lat, double lon) {
-    return new IntersectionVertex(graph, label, lat, lon);
+    return StreetModelForTest.intersectionVertex(label, lat, lon);
   }
 
   /**
@@ -219,8 +240,8 @@ public class TurnCostTest {
    * @param back true if this is a reverse edge
    */
   private StreetEdge edge(StreetVertex vA, StreetVertex vB, double length, boolean back) {
-    String labelA = vA.getLabel();
-    String labelB = vB.getLabel();
+    var labelA = vA.getLabel();
+    var labelB = vB.getLabel();
     String name = String.format("%s_%s", labelA, labelB);
     Coordinate[] coords = new Coordinate[2];
     coords[0] = vA.getCoordinate();
@@ -228,9 +249,16 @@ public class TurnCostTest {
     LineString geom = GeometryUtils.getGeometryFactory().createLineString(coords);
 
     StreetTraversalPermission perm = StreetTraversalPermission.ALL;
-    StreetEdge pse = new StreetEdge(vA, vB, geom, name, length, perm, back);
-    pse.setCarSpeed(1.0f);
-    return pse;
+    return new StreetEdgeBuilder<>()
+      .withFromVertex(vA)
+      .withToVertex(vB)
+      .withGeometry(geom)
+      .withName(name)
+      .withMeterLength(length)
+      .withPermission(perm)
+      .withBack(back)
+      .withCarSpeed(1.0f)
+      .buildAndConnect();
   }
 
   private void DisallowTurn(StreetEdge from, StreetEdge to) {

@@ -1,8 +1,8 @@
 package org.opentripplanner.netex.loader.parser;
 
+import jakarta.xml.bind.JAXBElement;
 import java.util.ArrayList;
 import java.util.Collection;
-import javax.xml.bind.JAXBElement;
 import org.opentripplanner.netex.index.NetexEntityIndex;
 import org.rutebanken.netex.model.Authority;
 import org.rutebanken.netex.model.Branding;
@@ -57,16 +57,18 @@ class ResourceFrameParser extends NetexParser<ResourceFrame_VersionFrameStructur
   /* private methods */
 
   private void parseOrganization(OrganisationsInFrame_RelStructure elements) {
-    for (JAXBElement<?> e : elements.getOrganisation_()) {
-      parseOrganization((Organisation_VersionStructure) e.getValue());
+    if (elements != null) {
+      for (JAXBElement<?> e : elements.getOrganisation_()) {
+        parseOrganization((Organisation_VersionStructure) e.getValue());
+      }
     }
   }
 
   private void parseOrganization(Organisation_VersionStructure element) {
-    if (element instanceof Authority) {
-      authorities.add((Authority) element);
-    } else if (element instanceof Operator) {
-      operators.add((Operator) element);
+    if (element instanceof Authority authority) {
+      authorities.add(authority);
+    } else if (element instanceof Operator operator) {
+      operators.add(operator);
     } else {
       warnOnMissingMapping(LOG, element);
     }

@@ -1,0 +1,5 @@
+{
+  "otpFeatures" : {
+    "GtfsGraphQlApi": true
+  }
+}

@@ -1,7 +1,6 @@
 package org.opentripplanner.graph_builder.module.ned;
 
-import static org.opentripplanner.graph_builder.DataImportIssueStore.noopIssueStore;
-import static org.opentripplanner.util.ElevationUtils.computeEllipsoidToGeoidDifference;
+import static org.opentripplanner.street.model.elevation.ElevationUtils.computeEllipsoidToGeoidDifference;
 
 import java.io.BufferedOutputStream;
 import java.io.File;
@@ -19,28 +18,31 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.geotools.geometry.DirectPosition2D;
+import org.geotools.api.coverage.Coverage;
+import org.geotools.api.coverage.PointOutsideCoverageException;
+import org.geotools.api.referencing.crs.CoordinateReferenceSystem;
+import org.geotools.api.referencing.operation.TransformException;
+import org.geotools.geometry.Position2D;
+import org.geotools.referencing.CRS;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.impl.PackedCoordinateSequence;
-import org.opengis.coverage.Coverage;
-import org.opengis.coverage.PointOutsideCoverageException;
-import org.opengis.referencing.operation.TransformException;
-import org.opentripplanner.common.geometry.SphericalDistanceLibrary;
-import org.opentripplanner.graph_builder.DataImportIssueStore;
+import org.opentripplanner.framework.geometry.EncodedPolyline;
+import org.opentripplanner.framework.geometry.SphericalDistanceLibrary;
+import org.opentripplanner.framework.lang.IntUtils;
+import org.opentripplanner.framework.logging.ProgressTracker;
+import org.opentripplanner.framework.time.DurationUtils;
+import org.opentripplanner.graph_builder.issue.api.DataImportIssueStore;
 import org.opentripplanner.graph_builder.issues.ElevationFlattened;
 import org.opentripplanner.graph_builder.issues.ElevationProfileFailure;
 import org.opentripplanner.graph_builder.issues.Graphwide;
 import org.opentripplanner.graph_builder.model.GraphBuilderModule;
 import org.opentripplanner.graph_builder.services.ned.ElevationGridCoverageFactory;
-import org.opentripplanner.routing.edgetype.StreetEdge;
-import org.opentripplanner.routing.edgetype.StreetElevationExtension;
-import org.opentripplanner.routing.graph.Edge;
 import org.opentripplanner.routing.graph.Graph;
-import org.opentripplanner.routing.graph.Vertex;
-import org.opentripplanner.util.PolylineEncoder;
-import org.opentripplanner.util.geometry.GeometryUtils;
-import org.opentripplanner.util.logging.ProgressTracker;
+import org.opentripplanner.street.model.edge.Edge;
+import org.opentripplanner.street.model.edge.StreetEdge;
+import org.opentripplanner.street.model.edge.StreetElevationExtensionBuilder;
+import org.opentripplanner.street.model.vertex.Vertex;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -60,6 +62,25 @@ import org.slf4j.LoggerFactory;
 public class ElevationModule implements GraphBuilderModule {
 
   private static final Logger LOG = LoggerFactory.getLogger(ElevationModule.class);
+  /**
+   * The WGS84 CRS with longitude-first axis order. The first time a CRS lookup is
+   * performed is surprisingly expensive (around 500ms), apparently due to  initializing
+   * an HSQLDB JDBC connection. For this reason, the constant is defined in this
+   * narrower scope rather than a shared utility class, where it was seen to incur the
+   * initialization cost in a broader range of tests than is necessary.
+   */
+  private static final CoordinateReferenceSystem WGS84_XY;
+
+  static {
+    try {
+      WGS84_XY = CRS.getAuthorityFactory(true).createCoordinateReferenceSystem("EPSG:4326");
+    } catch (Exception ex) {
+      LOG.error("Unable to create longitude-first WGS84 CRS", ex);
+      throw new RuntimeException(
+        "Could not create longitude-first WGS84 coordinate reference system."
+      );
+    }
+  }
 
   /** The elevation data to be used in calculating elevations. */
   private final ElevationGridCoverageFactory gridCoverageFactory;
@@ -83,12 +104,7 @@ public class ElevationModule implements GraphBuilderModule {
   private final AtomicInteger nPointsEvaluated = new AtomicInteger(0);
   private final AtomicInteger nPointsOutsideDEM = new AtomicInteger(0);
   private final double distanceBetweenSamplesM;
-  /**
-   * Unit conversion multiplier for elevation values. No conversion needed if the elevation values
-   * are defined in meters in the source data. If, for example, decimetres are used in the source
-   * data, this should be set to 0.1 in build-config.json.
-   */
-  private final double elevationUnitMultiplier;
+
   /** A concurrent hashmap used for storing geoid difference values at various coordinates */
   private final ConcurrentHashMap<Integer, Double> geoidDifferenceCache = new ConcurrentHashMap<>();
   private final ThreadLocal<Coverage> coverageInterpolatorThreadLocal = new ThreadLocal<>();
@@ -114,12 +130,11 @@ public class ElevationModule implements GraphBuilderModule {
     this(
       factory,
       graph,
-      noopIssueStore(),
+      DataImportIssueStore.NOOP,
       null,
       new HashMap<>(),
       false,
       false,
-      1,
       10,
       2000,
       true,
@@ -135,7 +150,6 @@ public class ElevationModule implements GraphBuilderModule {
     Map<Vertex, Double> elevationData,
     boolean readCachedElevations,
     boolean writeCachedElevations,
-    double elevationUnitMultiplier,
     double distanceBetweenSamplesM,
     double maxElevationPropagationMeters,
     boolean includeEllipsoidToGeoidDifference,
@@ -148,7 +162,6 @@ public class ElevationModule implements GraphBuilderModule {
     this.elevationData = elevationData;
     this.readCachedElevations = readCachedElevations;
     this.writeCachedElevations = writeCachedElevations;
-    this.elevationUnitMultiplier = elevationUnitMultiplier;
     this.maxElevationPropagationMeters = maxElevationPropagationMeters;
     this.includeEllipsoidToGeoidDifference = includeEllipsoidToGeoidDifference;
     this.multiThreadElevationCalculations = multiThreadElevationCalculations;
@@ -239,6 +252,8 @@ public class ElevationModule implements GraphBuilderModule {
       }
     }
 
+    LOG.info(progress.completeMessage());
+
     // Iterate again to find edges that had elevation calculated.
     LinkedList<StreetEdge> edgesWithCalculatedElevations = new LinkedList<>();
     for (StreetEdge edgeWithElevation : streetsWithElevationEdges) {
@@ -249,10 +264,11 @@ public class ElevationModule implements GraphBuilderModule {
 
     if (writeCachedElevations) {
       // write information from edgesWithElevation to a new cache file for subsequent graph builds
+      LOG.info("Writing elevation cache");
       HashMap<String, PackedCoordinateSequence> newCachedElevations = new HashMap<>();
       for (StreetEdge streetEdge : edgesWithCalculatedElevations) {
         newCachedElevations.put(
-          PolylineEncoder.encodeGeometry(streetEdge.getGeometry()).points(),
+          EncodedPolyline.encode(streetEdge.getGeometry()).points(),
           streetEdge.getElevationProfile()
         );
       }
@@ -279,8 +295,8 @@ public class ElevationModule implements GraphBuilderModule {
     updateElevationMetadata(graph);
 
     LOG.info(
-      "Finished elevation processing in {}s",
-      Duration.between(start, Instant.now()).toSeconds()
+      "Finished elevation processing in {}",
+      DurationUtils.durationToStr(Duration.between(start, Instant.now()))
     );
   }
 
@@ -388,7 +404,7 @@ public class ElevationModule implements GraphBuilderModule {
     Geometry edgeGeometry = ee.getGeometry();
     if (cachedElevations != null) {
       PackedCoordinateSequence coordinateSequence = cachedElevations.get(
-        PolylineEncoder.encodeGeometry(edgeGeometry).points()
+        EncodedPolyline.encode(edgeGeometry).points()
       );
       if (coordinateSequence != null) {
         // found a cached value! Set the elevation profile with the pre-calculated data.
@@ -513,7 +529,12 @@ public class ElevationModule implements GraphBuilderModule {
 
   private void setEdgeElevationProfile(StreetEdge ee, PackedCoordinateSequence elevPCS) {
     try {
-      StreetElevationExtension.addToEdge(ee, elevPCS, false);
+      StreetElevationExtensionBuilder
+        .of(ee)
+        .withElevationProfile(elevPCS)
+        .withComputed(false)
+        .build()
+        .ifPresent(ee::setElevationExtension);
       if (ee.isElevationFlattened()) {
         issueStore.add(new ElevationFlattened(ee));
       }
@@ -563,14 +584,14 @@ public class ElevationModule implements GraphBuilderModule {
       // GeoTIFFs in various projections. Note that GeoTools defaults to strict EPSG axis ordering of (lat, long)
       // for DefaultGeographicCRS.WGS84, but OTP is using (long, lat) throughout and assumes unprojected DEM
       // rasters to also use (long, lat).
-      coverage.evaluate(new DirectPosition2D(GeometryUtils.WGS84_XY, x, y), values);
+      coverage.evaluate(new Position2D(WGS84_XY, x, y), values);
     } catch (PointOutsideCoverageException e) {
       nPointsOutsideDEM.incrementAndGet();
       throw e;
     }
 
     var elevation =
-      (values[0] * elevationUnitMultiplier) -
+      (values[0] * gridCoverageFactory.elevationUnitMultiplier()) -
       (includeEllipsoidToGeoidDifference ? getApproximateEllipsoidToGeoidDifference(y, x) : 0);
 
     minElevation = Math.min(minElevation, elevation);
@@ -595,8 +616,8 @@ public class ElevationModule implements GraphBuilderModule {
   private double getApproximateEllipsoidToGeoidDifference(double y, double x)
     throws TransformException {
     int geoidDifferenceCoordinateValueMultiplier = 100;
-    int xVal = (int) Math.round(x * geoidDifferenceCoordinateValueMultiplier);
-    int yVal = (int) Math.round(y * geoidDifferenceCoordinateValueMultiplier);
+    int xVal = IntUtils.round(x * geoidDifferenceCoordinateValueMultiplier);
+    int yVal = IntUtils.round(y * geoidDifferenceCoordinateValueMultiplier);
     // create a hash value that can be used to look up the value for the given rounded coordinate. The expected
     // value of xVal should never be less than -18000 (-180 * 100) or more than 18000 (180 * 100), so multiply the
     // yVal by a prime number of a magnitude larger so that there won't be any hash collisions.

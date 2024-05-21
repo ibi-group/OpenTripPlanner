@@ -1,0 +1,7 @@
+{
+  "otpFeatures" : {
+    "FlexRouting": true,
+    "GtfsGraphQlApi": true,
+    "ParallelRouting": true
+  }
+}

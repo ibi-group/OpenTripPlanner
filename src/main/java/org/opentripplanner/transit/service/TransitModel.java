@@ -1,8 +1,11 @@
 package org.opentripplanner.transit.service;
 
+import static org.opentripplanner.framework.application.OtpFileNames.BUILD_CONFIG_FILENAME;
+
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
 import gnu.trove.set.hash.TIntHashSet;
+import jakarta.inject.Inject;
 import java.io.Serializable;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -14,12 +17,14 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
-import java.util.function.Function;
+import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import javax.inject.Inject;
 import org.opentripplanner.ext.flex.trip.FlexTrip;
-import org.opentripplanner.graph_builder.DataImportIssueStore;
+import org.opentripplanner.framework.lang.ObjectUtils;
+import org.opentripplanner.framework.time.ServiceDateUtils;
+import org.opentripplanner.graph_builder.issue.api.DataImportIssueStore;
 import org.opentripplanner.graph_builder.issues.NoFutureDates;
 import org.opentripplanner.model.FeedInfo;
 import org.opentripplanner.model.PathTransfer;
@@ -44,10 +49,8 @@ import org.opentripplanner.transit.model.organization.Agency;
 import org.opentripplanner.transit.model.organization.Operator;
 import org.opentripplanner.transit.model.site.StopLocation;
 import org.opentripplanner.transit.model.timetable.TripOnServiceDate;
-import org.opentripplanner.updater.GraphUpdaterConfigurator;
 import org.opentripplanner.updater.GraphUpdaterManager;
-import org.opentripplanner.util.lang.ObjectUtils;
-import org.opentripplanner.util.time.ServiceDateUtils;
+import org.opentripplanner.updater.configure.UpdaterConfigurator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -135,26 +138,15 @@ public class TransitModel implements Serializable {
       : timetableSnapshotProvider.getTimetableSnapshot();
   }
 
-  /**
-   * TODO OTP2 - This should be replaced by proper dependency injection
-   */
-  @SuppressWarnings("unchecked")
-  public <T extends TimetableSnapshotProvider> T getOrSetupTimetableSnapshotProvider(
-    Function<TransitModel, T> creator
-  ) {
-    if (timetableSnapshotProvider == null) {
-      timetableSnapshotProvider = creator.apply(this);
-    }
-    try {
-      return (T) timetableSnapshotProvider;
-    } catch (ClassCastException e) {
+  public void initTimetableSnapshotProvider(TimetableSnapshotProvider timetableSnapshotProvider) {
+    if (this.timetableSnapshotProvider != null) {
       throw new IllegalArgumentException(
-        "We support only one timetableSnapshotSource, there are two implementation; one for GTFS and one " +
-        "for Netex/Siri. They need to be refactored to work together. This cast will fail if updaters " +
-        "try setup both.",
-        e
+        "We support only one timetableSnapshotSource, there are two implementation; one for " +
+        "GTFS and one for Netex/Siri. They need to be refactored to work together. This cast " +
+        "will fail if updaters try setup both."
       );
     }
+    this.timetableSnapshotProvider = timetableSnapshotProvider;
   }
 
   /** Data model for Raptor routing, with realtime updates applied (if any). */
@@ -233,7 +225,7 @@ public class TransitModel implements Serializable {
    * service period {@code null} is returned.
    */
   @Nullable
-  public FeedScopedId getOrCreateServiceIdForDate(LocalDate serviceDate) {
+  public FeedScopedId getOrCreateServiceIdForDate(@Nonnull LocalDate serviceDate) {
     // Start of day
     ZonedDateTime time = ServiceDateUtils.asStartOfService(serviceDate, getTimeZone());
 
@@ -272,10 +264,10 @@ public class TransitModel implements Serializable {
     return feedInfoForId.get(feedId);
   }
 
-  public void addAgency(String feedId, Agency agency) {
+  public void addAgency(Agency agency) {
     invalidateIndex();
     agencies.add(agency);
-    this.feedIds.add(feedId);
+    this.feedIds.add(agency.getId().getFeedId());
   }
 
   public void addFeedInfo(FeedInfo info) {
@@ -336,7 +328,10 @@ public class TransitModel implements Serializable {
       Collection<ZoneId> zones = getAgencyTimeZones();
       if (zones.size() > 1) {
         throw new IllegalStateException(
-          "The graph contains agencies with different time zones. Please configure the one to be used in the build-config.json"
+          (
+            "The graph contains agencies with different time zones: %s. " +
+            "Please configure the one to be used in the %s"
+          ).formatted(zones, BUILD_CONFIG_FILENAME)
         );
       }
     }
@@ -376,15 +371,9 @@ public class TransitModel implements Serializable {
     return tripPatternForId.get(id);
   }
 
-  public Map<FeedScopedId, TripOnServiceDate> getTripOnServiceDates() {
-    return tripOnServiceDates;
-  }
-
-  /**
-   * Return a transit stop, a flex stop location or flex stop location group.
-   */
-  public StopLocation getStopLocationById(FeedScopedId id) {
-    return stopModel.getStopLocation(id);
+  public void addTripOnServiceDate(FeedScopedId id, TripOnServiceDate tripOnServiceDate) {
+    invalidateIndex();
+    tripOnServiceDates.put(id, tripOnServiceDate);
   }
 
   /**
@@ -426,7 +415,7 @@ public class TransitModel implements Serializable {
    * Manages all updaters of this graph. Is created by the GraphUpdaterConfigurator when there are
    * graph updaters defined in the configuration.
    *
-   * @see GraphUpdaterConfigurator
+   * @see UpdaterConfigurator
    */
   public GraphUpdaterManager getUpdaterManager() {
     return updaterManager;
@@ -453,6 +442,10 @@ public class TransitModel implements Serializable {
     return hasTransit;
   }
 
+  public Optional<Agency> findAgencyById(FeedScopedId id) {
+    return agencies.stream().filter(a -> a.getId().equals(id)).findAny();
+  }
+
   private void updateHasTransit(boolean hasTransit) {
     this.hasTransit = this.hasTransit || hasTransit;
   }
@@ -464,9 +457,9 @@ public class TransitModel implements Serializable {
   /**
    * Updating the stop model is only allowed during graph build
    */
-  public void mergeStopModels(StopModel newStopModel) {
+  public void mergeStopModels(StopModel childStopModel) {
     invalidateIndex();
-    this.stopModel = this.stopModel.copy().addAll(newStopModel).build();
+    this.stopModel = this.stopModel.merge(childStopModel);
   }
 
   public void addFlexTrip(FeedScopedId id, FlexTrip<?, ?> flexTrip) {

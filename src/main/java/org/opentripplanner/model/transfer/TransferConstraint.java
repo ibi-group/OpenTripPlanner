@@ -9,10 +9,10 @@ import java.io.Serializable;
 import java.util.Objects;
 import java.util.function.IntSupplier;
 import javax.annotation.Nullable;
-import org.opentripplanner.transit.raptor.api.transit.RaptorTransferConstraint;
-import org.opentripplanner.transit.raptor.api.transit.SearchDirection;
-import org.opentripplanner.util.OTPFeature;
-import org.opentripplanner.util.lang.ToStringBuilder;
+import org.opentripplanner.framework.application.OTPFeature;
+import org.opentripplanner.framework.tostring.ToStringBuilder;
+import org.opentripplanner.raptor.api.model.RaptorTransferConstraint;
+import org.opentripplanner.raptor.api.model.SearchDirection;
 
 /**
  * This class holds transfer constraint information.
@@ -21,26 +21,24 @@ import org.opentripplanner.util.lang.ToStringBuilder;
  */
 public class TransferConstraint implements Serializable, RaptorTransferConstraint {
 
-  private static final long serialVersionUID = 1L;
-
   /**
    * A regular transfer is a transfer with no constraints.
    */
-  public static final TransferConstraint REGULAR_TRANSFER = create().build();
+  public static final TransferConstraint REGULAR_TRANSFER = of().build();
 
   /**
    * STAY_SEATED is not a priority, but we assign a cost to it to be able to compare it with other
-   * transfers with a priority and the {@link #GUARANTIED_TRANSFER_COST}.
+   * transfers with a priority and the {@link #GUARANTEED_TRANSFER_COST}.
    */
   private static final int STAY_SEATED_TRANSFER_COST = 10_00;
 
   /**
-   * GUARANTIED is not a priority, but we assign a cost to it to be able to compare it with other
+   * GUARANTEED is not a priority, but we assign a cost to it to be able to compare it with other
    * transfers with a priority. The cost is better than a pure prioritized transfer, but the
-   * priority and GUARANTIED attribute is added together; Hence a (GUARANTIED, RECOMMENDED) transfer
-   * is better than (GUARANTIED, ALLOWED).
+   * priority and GUARANTEED attribute is added together; Hence a (GUARANTEED, RECOMMENDED) transfer
+   * is better than (GUARANTEED, ALLOWED).
    */
-  private static final int GUARANTIED_TRANSFER_COST = 20_00;
+  private static final int GUARANTEED_TRANSFER_COST = 20_00;
 
   /**
    * A cost penalty of 10 points is added to a Transfer which is NOT stay-seated or guaranteed. This
@@ -114,7 +112,7 @@ public class TransferConstraint implements Serializable, RaptorTransferConstrain
     return c == null ? DEFAULT_COST : c.cost();
   }
 
-  public static Builder create() {
+  public static Builder of() {
     return new Builder();
   }
 
@@ -172,7 +170,7 @@ public class TransferConstraint implements Serializable, RaptorTransferConstrain
   }
 
   /**
-   * Maximum time after scheduled departure time the connecting transport is guarantied to wait for
+   * Maximum time after scheduled departure time the connecting transport is guaranteed to wait for
    * the delayed trip.
    * <p>
    * THIS IS NOT CONSIDERED IN RAPTOR. OTP relies on real-time data for this, so if the "from"
@@ -286,7 +284,7 @@ public class TransferConstraint implements Serializable, RaptorTransferConstrain
       return STAY_SEATED_TRANSFER_COST;
     }
     if (guaranteed) {
-      return GUARANTIED_TRANSFER_COST;
+      return GUARANTEED_TRANSFER_COST;
     }
     return NONE_FACILITATED_COST;
   }

@@ -1,0 +1,73 @@
+{
+  "routingDefaults": {
+    "bicycle": {
+      "triangle": {
+        "time": 0.3,
+        "flatness": 0.3,
+        "safety": 0.4
+      },
+      "rental": {
+        "pickupTime": "3m",
+        "pickupCost": 850
+      }
+    },
+    "car": {
+      "rental": {
+        "pickupTime": "3m",
+        "pickupCost": 850
+      }
+    },
+    "scooter": {
+      "triangle": {
+        "time": 0.3,
+        "flatness": 0.3,
+        "safety": 0.4
+      },
+      "rental": {
+        "pickupTime": "3m",
+        "pickupCost": 850
+      }
+    },
+    "itineraryFilters": {
+      // only show non-transit (ie. walking) when it's at least as good as the transit option
+      "nonTransitGeneralizedCostLimit": "0 + 1.0 x",
+      // add IBI accessibility score between 0 and 1
+      "accessibilityScore": true
+    },
+    // use stop and trip with unknown wheelchair accessibility during routing
+    "wheelchairAccessibility": {
+      "trip": {
+        "onlyConsiderAccessible": false,
+        "unknownCost": 600,
+        "inaccessibleCost": 3600
+      },
+      "stop": {
+        "onlyConsiderAccessible": false,
+        "unknownCost": 600,
+        "inaccessibleCost": 3600
+      }
+    }
+  },
+  "flex": {
+    // for performance allow a maximum of 4 minutes of walking from a flex vehicle to a transit stop
+    "maxTransferDuration": "4m"
+  },
+  "updaters": [
+    {
+      "type": "stop-time-updater",
+      "url": "https://api.provider.com/real-time/gtfs-rt-trip-updates",
+      "feedId": "MARTA",
+      "headers": {
+        "Authorization": "A-Token"
+      }
+    },
+    {
+      "type": "vehicle-positions",
+      "url": "https://api.provider.com/real-time/gtfs-rt-vehicle-positions",
+      "feedId": "MARTA",
+      "headers": {
+        "Authorization": "A-Token"
+      }
+    }
+  ]
+}

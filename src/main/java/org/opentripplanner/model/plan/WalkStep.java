@@ -1,17 +1,15 @@
 package org.opentripplanner.model.plan;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
-import org.opentripplanner.common.model.P2;
-import org.opentripplanner.model.StreetNote;
-import org.opentripplanner.model.VehicleRentalStationInfo;
-import org.opentripplanner.routing.graph.Edge;
-import org.opentripplanner.transit.model.basic.I18NString;
-import org.opentripplanner.transit.model.basic.WgsCoordinate;
-import org.opentripplanner.util.lang.DoubleUtils;
+import org.opentripplanner.framework.geometry.WgsCoordinate;
+import org.opentripplanner.framework.i18n.I18NString;
+import org.opentripplanner.framework.lang.DoubleUtils;
+import org.opentripplanner.framework.tostring.ToStringBuilder;
+import org.opentripplanner.street.model.edge.Edge;
+import org.opentripplanner.street.model.note.StreetNote;
 
 /**
  * Represents one instruction in walking directions. Three examples from New York City:
@@ -30,92 +28,61 @@ import org.opentripplanner.util.lang.DoubleUtils;
  * true <br> everything else false <br>
  * </p>
  */
-public class WalkStep {
+public final class WalkStep {
 
-  private double distance = 0.0;
-  private RelativeDirection relativeDirection;
-  private I18NString streetName;
-  private AbsoluteDirection absoluteDirection;
-
-  private final Set<StreetNote> streetNotes = new HashSet<>();
-
-  private final Boolean area;
-  private final Boolean bogusName;
   private final WgsCoordinate startLocation;
+  private final double distance;
+  private final RelativeDirection relativeDirection;
+  private final I18NString directionText;
+  private final AbsoluteDirection absoluteDirection;
+
+  private final Set<StreetNote> streetNotes;
+
+  private final boolean area;
+  private final boolean bogusName;
   private final double angle;
   private final boolean walkingBike;
 
-  private String exit;
-  private List<P2<Double>> elevation;
-  private Boolean stayOn = false;
+  private final String exit;
+  private final ElevationProfile elevationProfile;
+  private final boolean stayOn;
 
-  private List<Edge> edges = new ArrayList<>();
+  private final List<Edge> edges;
 
-  private VehicleRentalStationInfo vehicleRentalOnStation;
-
-  private VehicleRentalStationInfo vehicleRentalOffStation;
-
-  public WalkStep(
-    I18NString streetName,
+  WalkStep(
     WgsCoordinate startLocation,
+    RelativeDirection relativeDirection,
+    AbsoluteDirection absoluteDirection,
+    I18NString directionText,
+    Set<StreetNote> streetNotes,
+    String exit,
+    ElevationProfile elevationProfile,
     boolean bogusName,
-    double angle,
     boolean walkingBike,
-    boolean area
+    boolean area,
+    boolean stayOn,
+    double angle,
+    double distance,
+    List<Edge> edges
   ) {
-    this.streetName = streetName;
-    this.startLocation = startLocation;
+    this.distance = distance;
+    this.relativeDirection = Objects.requireNonNull(relativeDirection);
+    this.absoluteDirection = absoluteDirection;
+    this.directionText = directionText;
+    this.streetNotes = Set.copyOf(Objects.requireNonNull(streetNotes));
+    this.startLocation = Objects.requireNonNull(startLocation);
     this.bogusName = bogusName;
     this.angle = DoubleUtils.roundTo2Decimals(angle);
     this.walkingBike = walkingBike;
     this.area = area;
+    this.exit = exit;
+    this.elevationProfile = elevationProfile;
+    this.stayOn = stayOn;
+    this.edges = List.copyOf(Objects.requireNonNull(edges));
   }
 
-  public void setDirections(double lastAngle, double thisAngle, boolean roundabout) {
-    relativeDirection = RelativeDirection.calculate(lastAngle, thisAngle, roundabout);
-    setAbsoluteDirection(thisAngle);
-  }
-
-  public void setAbsoluteDirection(double thisAngle) {
-    int octant = (int) (8 + Math.round(thisAngle * 8 / (Math.PI * 2))) % 8;
-    absoluteDirection = AbsoluteDirection.values()[octant];
-  }
-
-  /**
-   * The elevation profile as a comma-separated list of x,y values. x is the distance from the start
-   * of the step, y is the elevation at this distance.
-   */
-  public List<P2<Double>> getElevation() {
-    return elevation;
-  }
-
-  public void addElevation(List<P2<Double>> elevation) {
-    if (elevation == null) {
-      return;
-    }
-    if (this.elevation == null) {
-      this.elevation = new ArrayList<>();
-    }
-    this.elevation.addAll(StreetLeg.normalizeElevation(elevation));
-  }
-
-  public void addStreetNotes(Collection<StreetNote> streetNotes) {
-    if (streetNotes == null) {
-      return;
-    }
-    this.streetNotes.addAll(streetNotes);
-  }
-
-  public String streetNameNoParens() {
-    var str = streetName.toString();
-    if (str == null) {
-      return null; //Avoid null reference exceptions with pathways which don't have names
-    }
-    int idx = str.indexOf('(');
-    if (idx > 0) {
-      return str.substring(0, idx - 1);
-    }
-    return str;
+  public ElevationProfile getElevationProfile() {
+    return elevationProfile;
   }
 
   public Set<StreetNote> getStreetNotes() {
@@ -129,10 +96,6 @@ public class WalkStep {
     return distance;
   }
 
-  public void addDistance(double distance) {
-    this.distance = DoubleUtils.roundTo2Decimals(this.distance + distance);
-  }
-
   /**
    * The relative direction of this step.
    */
@@ -140,30 +103,24 @@ public class WalkStep {
     return relativeDirection;
   }
 
-  public void setRelativeDirection(RelativeDirection relativeDirection) {
-    this.relativeDirection = relativeDirection;
-  }
-
   /**
-   * The name of the street.
+   * A piece of information that {@link WalkStep#getRelativeDirection()} relates to.
+   * This could be the name of the street ("turn right at Main Street") but also a
+   * station entrance ("enter station at Entrance 4B") or what is on a sign
+   * ("follow signs for Platform 9").
    */
-  public I18NString getStreetName() {
-    return streetName;
-  }
-
-  public void setStreetName(I18NString streetName) {
-    this.streetName = streetName;
+  public I18NString getDirectionText() {
+    return directionText;
   }
 
   /**
    * The absolute direction of this step.
+   * <p>
+   * There are steps, like riding on an elevator, that don't have an absolute direction and
+   * therefore the value is optional.
    */
-  public AbsoluteDirection getAbsoluteDirection() {
-    return absoluteDirection;
-  }
-
-  public void setAbsoluteDirection(AbsoluteDirection absoluteDirection) {
-    this.absoluteDirection = absoluteDirection;
+  public Optional<AbsoluteDirection> getAbsoluteDirection() {
+    return Optional.ofNullable(absoluteDirection);
   }
 
   /**
@@ -173,26 +130,18 @@ public class WalkStep {
     return exit;
   }
 
-  public void setExit(String exit) {
-    this.exit = exit;
-  }
-
   /**
-   * Indicates whether or not a street changes direction at an intersection.
+   * Indicates whether a street changes direction at an intersection.
    */
-  public Boolean getStayOn() {
+  public boolean isStayOn() {
     return stayOn;
-  }
-
-  public void setStayOn(Boolean stayOn) {
-    this.stayOn = stayOn;
   }
 
   /**
    * This step is on an open area, such as a plaza or train platform, and thus the directions should
    * say something like "cross"
    */
-  public Boolean getArea() {
+  public boolean getArea() {
     return area;
   }
 
@@ -200,7 +149,7 @@ public class WalkStep {
    * The name of this street was generated by the system, so we should only display it once, and
    * generally just display right/left directions
    */
-  public Boolean getBogusName() {
+  public boolean getBogusName() {
     return bogusName;
   }
 
@@ -230,36 +179,18 @@ public class WalkStep {
     return edges;
   }
 
-  public void setEdges(List<Edge> edges) {
-    this.edges = edges;
-  }
-
-  /**
-   * The vehicle rental on/off station info. Used only in generating the streetEdges array in
-   * StreetSegment; not serialized.
-   */
-  public VehicleRentalStationInfo getVehicleRentalOnStation() {
-    return vehicleRentalOnStation;
-  }
-
-  public void setVehicleRentalOnStation(VehicleRentalStationInfo vehicleRentalOnStation) {
-    this.vehicleRentalOnStation = vehicleRentalOnStation;
-  }
-
-  public VehicleRentalStationInfo getVehicleRentalOffStation() {
-    return vehicleRentalOffStation;
-  }
-
-  public void setVehicleRentalOffStation(VehicleRentalStationInfo vehicleRentalOffStation) {
-    this.vehicleRentalOffStation = vehicleRentalOffStation;
+  public static WalkStepBuilder builder() {
+    return new WalkStepBuilder();
   }
 
   @Override
   public String toString() {
-    String direction = absoluteDirection.toString();
-    if (relativeDirection != null) {
-      direction = relativeDirection.toString();
-    }
-    return "WalkStep(" + direction + " on " + streetName + " for " + distance + ")";
+    return ToStringBuilder
+      .of(this.getClass())
+      .addEnum("absoluteDirection", absoluteDirection)
+      .addEnum("relativeDirection", relativeDirection)
+      .addStr("streetName", directionText.toString())
+      .addNum("distance", distance)
+      .toString();
   }
 }

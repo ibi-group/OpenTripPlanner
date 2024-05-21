@@ -1,27 +1,22 @@
 package org.opentripplanner.graph_builder.issues;
 
-import org.opentripplanner.graph_builder.DataImportIssue;
+import org.opentripplanner.graph_builder.issue.api.DataImportIssue;
+import org.opentripplanner.openstreetmap.model.OSMWithTags;
 
-public class InvalidVehicleParkingCapacity implements DataImportIssue {
-
-  public static final String FMT =
+public record InvalidVehicleParkingCapacity(OSMWithTags entity, String capacityValue)
+  implements DataImportIssue {
+  private static final String FMT =
     "Capacity for osm node %d is not a number: '%s'; it's replaced with '-1' (unknown).";
-
-  private final long osmId;
-  private final String capacityValue;
-
-  public InvalidVehicleParkingCapacity(long osmId, String capacityValue) {
-    this.osmId = osmId;
-    this.capacityValue = capacityValue;
-  }
+  private static final String HTMLFMT =
+    "Capacity for osm node <a href='%s'>'%s'</a> is not a number: '%s'; it's replaced with '-1' (unknown).";
 
   @Override
   public String getMessage() {
-    return String.format(FMT, osmId, capacityValue);
+    return String.format(FMT, entity.getId(), capacityValue);
   }
 
   @Override
   public String getHTMLMessage() {
-    return getMessage();
+    return String.format(HTMLFMT, entity.url(), entity.getId(), capacityValue);
   }
 }

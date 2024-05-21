@@ -22,6 +22,8 @@ Feel free to add more reports and to add your organization to the contact info l
 This module mounts an endpoint for generating reports under `otp/report`. Available reports:
 
 - [/otp/report/transfers.csv](http://localhost:8080/otp/report/transfers.csv)
+- [/otp/report/graph.json](http://localhost:8080/otp/report/graph.json)
+  Detailed numbers of transit and street entities in the graph
 - [/otp/report/bicycle-safety.html](http://localhost:8080/otp/report/bicycle-safety.html):
   Interactive viewer of the rules that determine how bicycle safety factors are calculated.
 - [/otp/report/bicycle-safety.csv](http://localhost:8080/otp/report/bicycle-safety.csv): Raw CSV
@@ -30,6 +32,8 @@ This module mounts an endpoint for generating reports under `otp/report`. Availa
     - [German version](http://localhost:8080/otp/report/bicycle-safety.csv?osmWayPropertySet=germany)
     - [UK version](http://localhost:8080/otp/report/bicycle-safety.csv?osmWayPropertySet=uk)
     - [Finnish version](http://localhost:8080/otp/report/bicycle-safety.csv?osmWayPropertySet=finland)
+- [/otp/report/transit/group/priorities](http://localhost:8080/otp/report/transit/group/priorities):
+  List all transit groups used for transit-group-priority (Competition neutral planning).   
 
 ### Configuration
 

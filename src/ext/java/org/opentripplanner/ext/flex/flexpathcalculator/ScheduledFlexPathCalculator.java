@@ -1,7 +1,9 @@
 package org.opentripplanner.ext.flex.flexpathcalculator;
 
+import static org.opentripplanner.model.StopTime.MISSING_VALUE;
+
 import org.opentripplanner.ext.flex.trip.FlexTrip;
-import org.opentripplanner.routing.graph.Vertex;
+import org.opentripplanner.street.model.vertex.Vertex;
 
 /**
  * Calculate the driving times based on the scheduled timetable for the route.
@@ -18,7 +20,7 @@ public class ScheduledFlexPathCalculator implements FlexPathCalculator {
 
   @Override
   public FlexPath calculateFlexPath(Vertex fromv, Vertex tov, int fromStopIndex, int toStopIndex) {
-    FlexPath flexPath = flexPathCalculator.calculateFlexPath(
+    final var flexPath = flexPathCalculator.calculateFlexPath(
       fromv,
       tov,
       fromStopIndex,
@@ -27,18 +29,30 @@ public class ScheduledFlexPathCalculator implements FlexPathCalculator {
     if (flexPath == null) {
       return null;
     }
-    int distance = flexPath.distanceMeters;
     int departureTime = trip.earliestDepartureTime(
       Integer.MIN_VALUE,
       fromStopIndex,
       toStopIndex,
       0
     );
+
+    if (departureTime == MISSING_VALUE) {
+      return null;
+    }
+
     int arrivalTime = trip.latestArrivalTime(Integer.MAX_VALUE, fromStopIndex, toStopIndex, 0);
+
+    if (arrivalTime == MISSING_VALUE) {
+      return null;
+    }
 
     if (departureTime >= arrivalTime) {
       return null;
     }
-    return new FlexPath(distance, arrivalTime - departureTime, flexPath::getGeometry);
+    return new FlexPath(
+      flexPath.distanceMeters,
+      arrivalTime - departureTime,
+      flexPath::getGeometry
+    );
   }
 }

@@ -1,7 +1,9 @@
 package org.opentripplanner.standalone.config;
 
 import com.fasterxml.jackson.databind.node.MissingNode;
-import org.opentripplanner.util.OTPFeature;
+import org.opentripplanner.framework.application.OTPFeature;
+import org.opentripplanner.framework.application.OtpAppException;
+import org.opentripplanner.framework.application.OtpFileNames;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -10,13 +12,8 @@ import org.slf4j.LoggerFactory;
  * OTP load the config from the {@code baseDirectory}, and then if not found the config is read
  * from the serialized graph.
  * <p>
- * OTP load the following configuration files:
- * <ol>
- *     <li>{@code otp-config.json}</li>
- *     <li>{@code build-config.json}</li>
- *     <li>{@code router-config.json}</li>
- * </ol>
- * All files are loaded from the same base directory.
+ * OTP load the following configuration files, see {@link OtpFileNames}. All files are loaded from
+ * the same base directory.
  * <p>
  * Comments and unquoted keys are allowed in the these configuration files. The configuration is
  * cached, and not reloaded even if it is changed on the filesystem. Changing some parameters would
@@ -29,7 +26,7 @@ import org.slf4j.LoggerFactory;
  * with no fields defined.
  * <p>
  * This class is responsible for logging when a configuration file is loaded, and if the
- * loading fails. It delegates most of this responsibility to the {@link ConfigLoader}.
+ * loading fails. It delegates most of this responsibility to the {@link OtpConfigLoader}.
  */
 public class ConfigModel {
 
@@ -60,7 +57,7 @@ public class ConfigModel {
     initializeOtpFeatures(otpConfig);
   }
 
-  public ConfigModel(ConfigLoader loader) {
+  public ConfigModel(OtpConfigLoader loader) {
     this(loader.loadOtpConfig(), loader.loadBuildConfig(), loader.loadRouterConfig());
   }
 
@@ -73,7 +70,7 @@ public class ConfigModel {
       LOG.info("Using the graph embedded JSON router configuration.");
       this.routerConfig = routerConfig;
     }
-    ConfigLoader.logConfigVersion(
+    OtpConfigLoader.logConfigVersion(
       this.otpConfig.configVersion,
       this.buildConfig.configVersion,
       this.routerConfig.getConfigVersion()
@@ -105,8 +102,28 @@ public class ConfigModel {
     return routerConfig;
   }
 
-  private void initializeOtpFeatures(OtpConfig otpConfig) {
+  public static void initializeOtpFeatures(OtpConfig otpConfig) {
     OTPFeature.enableFeatures(otpConfig.otpFeatures);
     OTPFeature.logFeatureSetup();
+  }
+
+  /**
+   * Checks if any unknown or invalid parameters were encountered while loading the configuration.
+   * <p>
+   * If so it throws an exception.
+   */
+  public void abortOnUnknownParameters() {
+    if (
+      (
+        otpConfig.hasUnknownParameters() ||
+        buildConfig.hasUnknownParameters() ||
+        routerConfig.hasUnknownParameters()
+      )
+    ) {
+      throw new OtpAppException(
+        "Configuration contains unknown parameters (see above for details). " +
+        "Please fix your configuration or remove --abortOnUnknownConfig from your OTP CLI parameters."
+      );
+    }
   }
 }

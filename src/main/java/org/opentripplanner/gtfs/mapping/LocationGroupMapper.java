@@ -5,60 +5,65 @@ import static org.opentripplanner.gtfs.mapping.AgencyAndIdMapper.mapAgencyAndId;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
-import org.opentripplanner.transit.model.basic.NonLocalizedString;
-import org.opentripplanner.transit.model.site.FlexLocationGroup;
-import org.opentripplanner.transit.model.site.FlexLocationGroupBuilder;
-import org.opentripplanner.util.MapUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.util.Objects;
+import org.onebusaway.gtfs.model.Location;
+import org.onebusaway.gtfs.model.LocationGroup;
+import org.onebusaway.gtfs.model.Stop;
+import org.opentripplanner.framework.collection.MapUtils;
+import org.opentripplanner.framework.i18n.NonLocalizedString;
+import org.opentripplanner.transit.model.site.GroupStop;
+import org.opentripplanner.transit.model.site.GroupStopBuilder;
+import org.opentripplanner.transit.service.StopModelBuilder;
 
 public class LocationGroupMapper {
 
-  private static final Logger LOG = LoggerFactory.getLogger(LocationGroupMapper.class);
-
   private final StopMapper stopMapper;
-
   private final LocationMapper locationMapper;
+  private final StopModelBuilder stopModelBuilder;
 
-  private final Map<org.onebusaway.gtfs.model.LocationGroup, FlexLocationGroup> mappedLocationGroups = new HashMap<>();
+  private final Map<LocationGroup, GroupStop> mappedLocationGroups = new HashMap<>();
 
-  public LocationGroupMapper(StopMapper stopMapper, LocationMapper locationMapper) {
+  public LocationGroupMapper(
+    StopMapper stopMapper,
+    LocationMapper locationMapper,
+    StopModelBuilder stopModelBuilder
+  ) {
     this.stopMapper = stopMapper;
     this.locationMapper = locationMapper;
+    this.stopModelBuilder = stopModelBuilder;
   }
 
-  Collection<FlexLocationGroup> map(
-    Collection<org.onebusaway.gtfs.model.LocationGroup> allLocationGroups
-  ) {
+  Collection<GroupStop> map(Collection<LocationGroup> allLocationGroups) {
     return MapUtils.mapToList(allLocationGroups, this::map);
   }
 
   /** Map from GTFS to OTP model, {@code null} safe. */
-  FlexLocationGroup map(org.onebusaway.gtfs.model.LocationGroup original) {
+  GroupStop map(LocationGroup original) {
     return original == null ? null : mappedLocationGroups.computeIfAbsent(original, this::doMap);
   }
 
-  private FlexLocationGroup doMap(org.onebusaway.gtfs.model.LocationGroup element) {
-    FlexLocationGroupBuilder flexLocationGroupBuilder = FlexLocationGroup
-      .of(mapAgencyAndId(element.getId()))
+  private GroupStop doMap(LocationGroup element) {
+    GroupStopBuilder groupStopBuilder = stopModelBuilder
+      .groupStop(mapAgencyAndId(element.getId()))
       .withName(new NonLocalizedString(element.getName()));
 
-    for (org.onebusaway.gtfs.model.StopLocation location : element.getLocations()) {
-      if (location instanceof org.onebusaway.gtfs.model.Stop) {
-        flexLocationGroupBuilder.addLocation(
-          stopMapper.map((org.onebusaway.gtfs.model.Stop) location)
+    for (var location : element.getLocations()) {
+      Objects.requireNonNull(
+        location,
+        "Location group '%s' contains a null element.".formatted(element.getId())
+      );
+      switch (location) {
+        case Stop stop -> groupStopBuilder.addLocation(stopMapper.map(stop));
+        case Location loc -> groupStopBuilder.addLocation(locationMapper.map(loc));
+        case LocationGroup ignored -> throw new RuntimeException(
+          "Nested GroupStops are not allowed"
         );
-      } else if (location instanceof org.onebusaway.gtfs.model.Location) {
-        flexLocationGroupBuilder.addLocation(
-          locationMapper.map((org.onebusaway.gtfs.model.Location) location)
+        default -> throw new RuntimeException(
+          "Unknown location type: " + location.getClass().getSimpleName()
         );
-      } else if (location instanceof org.onebusaway.gtfs.model.LocationGroup) {
-        throw new RuntimeException("Nested LocationGroups are not allowed");
-      } else {
-        throw new RuntimeException("Unknown location type: " + location.getClass().getSimpleName());
       }
     }
 
-    return flexLocationGroupBuilder.build();
+    return groupStopBuilder.build();
   }
 }

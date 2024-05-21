@@ -1,0 +1,13 @@
+{
+  "fares": {
+    "type": "highest-fare-in-free-transfer-window",
+    "analyzeInterlinedTransfers": "true"
+  },
+  "osmDefaults": {
+    "osmTagMapping": "houston"
+  },
+  "islandPruning": {
+    "islandWithoutStopsMaxSize": 300,
+    "islandWithStopsMaxSize": 300
+  }
+}

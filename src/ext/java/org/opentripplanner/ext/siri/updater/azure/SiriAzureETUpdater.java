@@ -2,54 +2,69 @@ package org.opentripplanner.ext.siri.updater.azure;
 
 import com.azure.messaging.servicebus.ServiceBusErrorContext;
 import com.azure.messaging.servicebus.ServiceBusReceivedMessageContext;
-import com.google.common.io.CharStreams;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
+import jakarta.xml.bind.JAXBException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.time.Duration;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
-import javax.xml.bind.JAXBException;
 import javax.xml.stream.XMLStreamException;
-import org.apache.commons.lang3.time.DurationFormatUtils;
-import org.apache.http.client.utils.URIBuilder;
-import org.opentripplanner.util.HttpUtils;
+import org.apache.hc.core5.net.URIBuilder;
+import org.opentripplanner.ext.siri.SiriTimetableSnapshotSource;
+import org.opentripplanner.transit.service.TransitModel;
+import org.opentripplanner.updater.spi.ResultLogger;
+import org.opentripplanner.updater.spi.UpdateResult;
+import org.opentripplanner.updater.trip.metrics.TripUpdateMetrics;
 import org.rutebanken.siri20.util.SiriXml;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import uk.org.siri.siri20.EstimatedTimetableDeliveryStructure;
+import uk.org.siri.siri20.ServiceDelivery;
 
 public class SiriAzureETUpdater extends AbstractAzureSiriUpdater {
 
-  private final Logger LOG = LoggerFactory.getLogger(getClass());
+  private static final Logger LOG = LoggerFactory.getLogger(SiriAzureSXUpdater.class);
 
-  private static final transient AtomicLong messageCounter = new AtomicLong(0);
+  private static final AtomicLong MESSAGE_COUNTER = new AtomicLong(0);
 
   private final LocalDate fromDateTime;
-  private long startTime;
+  private final SiriTimetableSnapshotSource snapshotSource;
 
-  public SiriAzureETUpdater(SiriAzureETUpdaterParameters config) {
-    super(config);
+  private final Consumer<UpdateResult> recordMetrics;
+
+  public SiriAzureETUpdater(
+    SiriAzureETUpdaterParameters config,
+    TransitModel transitModel,
+    SiriTimetableSnapshotSource snapshotSource
+  ) {
+    super(config, transitModel);
     this.fromDateTime = config.getFromDateTime();
+    this.snapshotSource = snapshotSource;
+    this.recordMetrics = TripUpdateMetrics.streaming(config);
   }
 
   @Override
   protected void messageConsumer(ServiceBusReceivedMessageContext messageContext) {
     var message = messageContext.getMessage();
-    messageCounter.incrementAndGet();
+    MESSAGE_COUNTER.incrementAndGet();
 
-    if (messageCounter.get() % 100 == 0) {
-      LOG.info("Total SIRI-ET messages received={}", messageCounter.get());
+    if (MESSAGE_COUNTER.get() % 100 == 0) {
+      LOG.debug("Total SIRI-ET messages received={}", MESSAGE_COUNTER.get());
     }
 
-    processMessage(message.getBody().toString(), message.getMessageId());
+    try {
+      var updates = parseSiriEt(message.getBody().toString(), message.getMessageId());
+      if (!updates.isEmpty()) {
+        processMessage(updates);
+      }
+    } catch (JAXBException | XMLStreamException e) {
+      LOG.error(e.getLocalizedMessage(), e);
+    }
   }
 
   @Override
@@ -59,7 +74,7 @@ public class SiriAzureETUpdater extends AbstractAzureSiriUpdater {
 
   @Override
   protected void initializeData(String url, Consumer<ServiceBusReceivedMessageContext> consumer)
-    throws IOException, URISyntaxException {
+    throws URISyntaxException {
     if (url == null) {
       LOG.info("No history url set up for Siri Azure ET Updater");
       return;
@@ -69,83 +84,63 @@ public class SiriAzureETUpdater extends AbstractAzureSiriUpdater {
       .addParameter("fromDateTime", fromDateTime.format(DateTimeFormatter.ISO_LOCAL_DATE))
       .build();
 
-    startTime = now();
-    LOG.info("Fetching initial Siri ET data from {}, timeout is {}ms", url, timeout);
+    LOG.info("Fetching initial Siri ET data from {}, timeout is {} ms.", uri, timeout);
+    var siri = fetchInitialSiriData(uri);
 
-    HashMap<String, String> headers = new HashMap<>();
-    headers.put("Accept", "application/xml");
-
-    final long t1 = System.currentTimeMillis();
-    final InputStream data = HttpUtils.getData(uri, Duration.ofMillis(timeout), headers);
-    final long t2 = System.currentTimeMillis();
-
-    if (data == null) {
-      throw new IOException("Historical endpoint returned no data from url" + url);
+    if (siri.isEmpty()) {
+      LOG.info("Got empty ET response from history endpoint");
+      return;
     }
-
-    var reader = new InputStreamReader(data);
-    var string = CharStreams.toString(reader);
-
-    LOG.info(
-      "Fetching initial data - finished after {} ms, got {} bytes",
-      (t2 - t1),
-      string.length()
-    );
 
     // This is fine since runnables are scheduled after each other
-    processHistory(string, "ET-INITIAL-1");
+    processHistory(siri.get());
   }
 
-  private void processMessage(String message, String id) {
-    try {
-      List<EstimatedTimetableDeliveryStructure> updates = getUpdates(message, id);
-
-      if (updates.isEmpty()) {
-        return;
-      }
-
-      super.saveResultOnGraph.execute((graph, transitModel) ->
-        snapshotSource.applyEstimatedTimetable(transitModel, feedId, false, updates)
+  private Future<?> processMessage(List<EstimatedTimetableDeliveryStructure> updates) {
+    return super.saveResultOnGraph.execute((graph, transitModel) -> {
+      var result = snapshotSource.applyEstimatedTimetable(
+        fuzzyTripMatcher(),
+        entityResolver(),
+        feedId,
+        false,
+        updates
       );
-    } catch (JAXBException | XMLStreamException e) {
-      LOG.error(e.getLocalizedMessage(), e);
-    }
+      ResultLogger.logUpdateResultErrors(feedId, "siri-et", result);
+      recordMetrics.accept(result);
+    });
   }
 
-  private void processHistory(String message, String id) {
+  private void processHistory(ServiceDelivery siri) {
+    var updates = siri.getEstimatedTimetableDeliveries();
+
+    if (updates == null || updates.isEmpty()) {
+      LOG.info("Did not receive any ET messages from history endpoint");
+      return;
+    }
+
     try {
-      List<EstimatedTimetableDeliveryStructure> updates = getUpdates(message, id);
-
-      if (updates.isEmpty()) {
-        LOG.info("Did not receive any ET messages from history endpoint");
-        return;
-      }
-
-      super.saveResultOnGraph.execute((graph, transitModel) -> {
-        long t1 = System.currentTimeMillis();
-        snapshotSource.applyEstimatedTimetable(transitModel, feedId, false, updates);
-
-        setPrimed(true);
-        LOG.info(
-          "Azure ET updater initialized after {} ms: [time since startup: {}]",
-          (System.currentTimeMillis() - t1),
-          DurationFormatUtils.formatDuration((now() - startTime), "HH:mm:ss")
-        );
-      });
-    } catch (JAXBException | XMLStreamException e) {
-      LOG.error(e.getLocalizedMessage(), e);
+      long t1 = System.currentTimeMillis();
+      var f = processMessage(updates);
+      f.get();
+      LOG.info("Azure ET updater initialized in {} ms.", (System.currentTimeMillis() - t1));
+    } catch (ExecutionException | InterruptedException e) {
+      throw new SiriAzureInitializationException("Error applying history", e);
     }
   }
 
-  private List<EstimatedTimetableDeliveryStructure> getUpdates(String message, String id)
+  private List<EstimatedTimetableDeliveryStructure> parseSiriEt(String siriXmlMessage, String id)
     throws JAXBException, XMLStreamException {
-    var siri = SiriXml.parseXml(message);
+    var siri = SiriXml.parseXml(siriXmlMessage);
     if (
       siri.getServiceDelivery() == null ||
       siri.getServiceDelivery().getEstimatedTimetableDeliveries() == null ||
       siri.getServiceDelivery().getEstimatedTimetableDeliveries().isEmpty()
     ) {
-      LOG.warn("Empty Siri message {}: {}", id, message);
+      if (siri.getHeartbeatNotification() != null) {
+        LOG.debug("Received SIRI heartbeat message");
+      } else {
+        LOG.info("Empty Siri message {}: {}", id, siriXmlMessage);
+      }
       return new ArrayList<>();
     }
 

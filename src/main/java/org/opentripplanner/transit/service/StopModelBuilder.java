@@ -1,41 +1,63 @@
 package org.opentripplanner.transit.service;
 
-import org.opentripplanner.transit.model.basic.WgsCoordinate;
+import java.util.Collection;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
+import org.opentripplanner.transit.model.framework.DefaultEntityById;
 import org.opentripplanner.transit.model.framework.EntityById;
-import org.opentripplanner.transit.model.site.FlexLocationGroup;
-import org.opentripplanner.transit.model.site.FlexStopLocation;
+import org.opentripplanner.transit.model.framework.FeedScopedId;
+import org.opentripplanner.transit.model.framework.ImmutableEntityById;
+import org.opentripplanner.transit.model.site.AreaStop;
+import org.opentripplanner.transit.model.site.AreaStopBuilder;
 import org.opentripplanner.transit.model.site.GroupOfStations;
+import org.opentripplanner.transit.model.site.GroupStop;
+import org.opentripplanner.transit.model.site.GroupStopBuilder;
 import org.opentripplanner.transit.model.site.MultiModalStation;
+import org.opentripplanner.transit.model.site.RegularStop;
+import org.opentripplanner.transit.model.site.RegularStopBuilder;
 import org.opentripplanner.transit.model.site.Station;
-import org.opentripplanner.transit.model.site.Stop;
-import org.opentripplanner.util.MedianCalcForDoubles;
-import org.opentripplanner.util.lang.CollectionsView;
 
 public class StopModelBuilder {
 
-  private final EntityById<Stop> stopsById = new EntityById<>();
-  private final EntityById<Station> stationById = new EntityById<>();
-  private final EntityById<MultiModalStation> multiModalStationById = new EntityById<>();
-  private final EntityById<GroupOfStations> groupOfStationsById = new EntityById<>();
-  private final EntityById<FlexStopLocation> flexStopsById = new EntityById<>();
-  private final EntityById<FlexLocationGroup> flexStopGroupsById = new EntityById<>();
+  private final AtomicInteger stopIndexCounter;
 
-  StopModelBuilder() {}
+  private final EntityById<RegularStop> regularStopById = new DefaultEntityById<>();
+  private final EntityById<AreaStop> areaStopById = new DefaultEntityById<>();
+  private final EntityById<GroupStop> groupStopById = new DefaultEntityById<>();
+  private final EntityById<Station> stationById = new DefaultEntityById<>();
+  private final EntityById<MultiModalStation> multiModalStationById = new DefaultEntityById<>();
+  private final EntityById<GroupOfStations> groupOfStationById = new DefaultEntityById<>();
 
-  StopModelBuilder(StopModel stopModel) {
-    addAll(stopModel);
+  StopModelBuilder(AtomicInteger stopIndexCounter) {
+    this.stopIndexCounter = stopIndexCounter;
   }
 
-  public EntityById<Stop> stopsById() {
-    return stopsById;
+  public ImmutableEntityById<RegularStop> regularStopsById() {
+    return regularStopById;
   }
 
-  public StopModelBuilder withStop(Stop stop) {
-    stopsById.add(stop);
+  public RegularStopBuilder regularStop(FeedScopedId id) {
+    return RegularStop.of(id, stopIndexCounter::getAndIncrement);
+  }
+
+  public RegularStop computeRegularStopIfAbsent(
+    FeedScopedId id,
+    Function<FeedScopedId, RegularStop> factory
+  ) {
+    return regularStopById.computeIfAbsent(id, factory);
+  }
+
+  public StopModelBuilder withRegularStop(RegularStop stop) {
+    regularStopById.add(stop);
     return this;
   }
 
-  public EntityById<Station> stationsById() {
+  public StopModelBuilder withRegularStops(Collection<RegularStop> stops) {
+    regularStopById.addAll(stops);
+    return this;
+  }
+
+  public ImmutableEntityById<Station> stationById() {
     return stationById;
   }
 
@@ -44,7 +66,16 @@ public class StopModelBuilder {
     return this;
   }
 
-  public EntityById<MultiModalStation> multiModalStationsById() {
+  public Station computeStationIfAbsent(FeedScopedId id, Function<FeedScopedId, Station> body) {
+    return stationById.computeIfAbsent(id, body::apply);
+  }
+
+  public StopModelBuilder withStations(Collection<Station> stations) {
+    stationById.addAll(stations);
+    return this;
+  }
+
+  public ImmutableEntityById<MultiModalStation> multiModalStationById() {
     return multiModalStationById;
   }
 
@@ -53,30 +84,48 @@ public class StopModelBuilder {
     return this;
   }
 
-  public EntityById<GroupOfStations> groupOfStationsById() {
-    return groupOfStationsById;
+  public ImmutableEntityById<GroupOfStations> groupOfStationById() {
+    return groupOfStationById;
   }
 
   public StopModelBuilder withGroupOfStation(GroupOfStations station) {
-    groupOfStationsById.add(station);
+    groupOfStationById.add(station);
     return this;
   }
 
-  public EntityById<FlexStopLocation> flexStopsById() {
-    return flexStopsById;
+  public AreaStopBuilder areaStop(FeedScopedId id) {
+    return AreaStop.of(id, stopIndexCounter::getAndIncrement);
   }
 
-  public StopModelBuilder withFlexStop(FlexStopLocation stop) {
-    flexStopsById.add(stop);
+  public ImmutableEntityById<AreaStop> areaStopById() {
+    return areaStopById;
+  }
+
+  public StopModelBuilder withAreaStop(AreaStop stop) {
+    areaStopById.add(stop);
     return this;
   }
 
-  public EntityById<FlexLocationGroup> flexStopGroupsById() {
-    return flexStopGroupsById;
+  public StopModelBuilder withAreaStops(Collection<AreaStop> stops) {
+    areaStopById.addAll(stops);
+    return this;
   }
 
-  public StopModelBuilder withFlexStopGroup(FlexLocationGroup group) {
-    flexStopGroupsById.add(group);
+  public GroupStopBuilder groupStop(FeedScopedId id) {
+    return GroupStop.of(id, stopIndexCounter::getAndIncrement);
+  }
+
+  public ImmutableEntityById<GroupStop> groupStopById() {
+    return groupStopById;
+  }
+
+  public StopModelBuilder withGroupStop(GroupStop group) {
+    groupStopById.add(group);
+    return this;
+  }
+
+  public StopModelBuilder withGroupStops(Collection<GroupStop> groups) {
+    groupStopById.addAll(groups);
     return this;
   }
 
@@ -85,51 +134,20 @@ public class StopModelBuilder {
    * {@code other} model, will replace existing entities.
    */
   public StopModelBuilder addAll(StopModel other) {
-    stopsById.addAll(other.listRegularStops());
-    stationById.addAll(other.getStations());
-    multiModalStationById.addAll(other.getAllMultiModalStations());
-    groupOfStationsById.addAll(other.getAllGroupOfStations());
-    flexStopsById.addAll(other.getAllFlexLocations());
-    flexStopGroupsById.addAll(other.getAllFlexStopGroups());
+    regularStopById.addAll(other.listRegularStops());
+    stationById.addAll(other.listStations());
+    multiModalStationById.addAll(other.listMultiModalStations());
+    groupOfStationById.addAll(other.listGroupOfStations());
+    areaStopById.addAll(other.listAreaStops());
+    groupStopById.addAll(other.listGroupStops());
     return this;
-  }
-
-  /**
-   * Calculates Transit center from median of coordinates of all transitStops if graph has transit.
-   * If it doesn't it isn't calculated. (mean value of min, max latitude and longitudes are used)
-   * <p>
-   * Transit center is saved in center variable
-   * <p>
-   * This speeds up calculation, but problem is that median needs to have all of
-   * latitudes/longitudes in memory, this can become problematic in large installations. It works
-   * without a problem on New York State.
-   */
-  WgsCoordinate calculateTransitCenter() {
-    var stops = new CollectionsView<>(
-      stopsById.values(),
-      flexStopsById.values(),
-      flexStopGroupsById.values()
-    );
-
-    if (stops.isEmpty()) {
-      return null;
-    }
-
-    // we need this check because there could be only FlexStopLocations (which don't have vertices)
-    // in the graph
-    var medianCalculator = new MedianCalcForDoubles(stops.size());
-
-    stops.forEach(v -> medianCalculator.add(v.getLon()));
-    double lon = medianCalculator.median();
-
-    medianCalculator.reset();
-    stops.forEach(v -> medianCalculator.add(v.getLat()));
-    double lat = medianCalculator.median();
-
-    return new WgsCoordinate(lat, lon);
   }
 
   public StopModel build() {
     return new StopModel(this);
+  }
+
+  AtomicInteger stopIndexCounter() {
+    return stopIndexCounter;
   }
 }

@@ -2,12 +2,13 @@ package org.opentripplanner.routing.algorithm.raptoradapter.transit.constrainedt
 
 import java.util.LinkedList;
 import java.util.List;
+import javax.annotation.Nullable;
 import org.opentripplanner.model.transfer.TransferConstraint;
+import org.opentripplanner.raptor.spi.RaptorBoardOrAlightEvent;
+import org.opentripplanner.raptor.spi.RaptorConstrainedBoardingSearch;
+import org.opentripplanner.raptor.spi.RaptorTimeTable;
 import org.opentripplanner.routing.algorithm.raptoradapter.transit.TripSchedule;
 import org.opentripplanner.transit.model.timetable.Trip;
-import org.opentripplanner.transit.raptor.api.transit.RaptorConstrainedTripScheduleBoardingSearch;
-import org.opentripplanner.transit.raptor.api.transit.RaptorTimeTable;
-import org.opentripplanner.transit.raptor.api.transit.RaptorTripScheduleBoardOrAlightEvent;
 
 /**
  * The responsibility of this class is to provide transfer constraints to the Raptor search for a
@@ -17,7 +18,7 @@ import org.opentripplanner.transit.raptor.api.transit.RaptorTripScheduleBoardOrA
  * and the "to" point in the reverse search.
  */
 public final class ConstrainedBoardingSearch
-  implements RaptorConstrainedTripScheduleBoardingSearch<TripSchedule> {
+  implements RaptorConstrainedBoardingSearch<TripSchedule> {
 
   /**
    * Abort the search after looking at 5 valid boardings. In the case where this happens, one of
@@ -28,14 +29,22 @@ public final class ConstrainedBoardingSearch
 
   private static final ConstrainedBoardingSearchStrategy FORWARD_STRATEGY = new ConstrainedBoardingSearchForward();
   private static final ConstrainedBoardingSearchStrategy REVERSE_STRATEGY = new ConstrainedBoardingSearchReverse();
+  public static final RaptorConstrainedBoardingSearch<TripSchedule> NOOP_SEARCH = new NoopRaptorConstrainedBoardingSearch();
 
   /** Handle forward and reverse specific tasks */
   private final ConstrainedBoardingSearchStrategy searchStrategy;
 
   /**
+   * List of transfers used for boarding for each stop position in pattern
+   */
+  @Nullable
+  private final TransferForPatternByStopPos transfersToTargetStop;
+
+  /**
    * List of transfers for each stop position in pattern
    */
-  private final TransferForPatternByStopPos transfers;
+  @Nullable
+  private final TransferForPatternByStopPos transfersFromSourceStop;
 
   private List<TransferForPattern> currentTransfers;
   private int currentTargetStopPos;
@@ -45,25 +54,35 @@ public final class ConstrainedBoardingSearch
   private int onTripIndex;
   private TransferConstraint onTripTxConstraint;
 
-  public ConstrainedBoardingSearch(boolean forwardSearch, TransferForPatternByStopPos transfers) {
-    this.transfers = transfers;
+  public ConstrainedBoardingSearch(
+    boolean forwardSearch,
+    @Nullable TransferForPatternByStopPos transfersFromSourceStop,
+    @Nullable TransferForPatternByStopPos transfersToTargetStop
+  ) {
+    this.transfersToTargetStop = transfersToTargetStop;
+    this.transfersFromSourceStop = transfersFromSourceStop;
     this.searchStrategy = forwardSearch ? FORWARD_STRATEGY : REVERSE_STRATEGY;
   }
 
   @Override
-  public boolean transferExist(int targetStopPos) {
-    if (transfers == null) {
+  public boolean transferExistTargetStop(int targetStopPos) {
+    if (transfersToTargetStop == null) {
       return false;
     }
 
     // Get all guaranteed transfers for the target pattern at the target stop position
-    this.currentTransfers = transfers.get(targetStopPos);
+    this.currentTransfers = transfersToTargetStop.get(targetStopPos);
     this.currentTargetStopPos = targetStopPos;
     return currentTransfers != null;
   }
 
   @Override
-  public RaptorTripScheduleBoardOrAlightEvent<TripSchedule> find(
+  public boolean transferExistSourceStop(int sourceStopPos) {
+    return transfersFromSourceStop != null && transfersFromSourceStop.get(sourceStopPos) != null;
+  }
+
+  @Override
+  public RaptorBoardOrAlightEvent<TripSchedule> find(
     RaptorTimeTable<TripSchedule> timetable,
     int transferSlack,
     TripSchedule sourceTripSchedule,
@@ -74,7 +93,7 @@ public final class ConstrainedBoardingSearch
     var transfers = findMatchingTransfers(sourceTripSchedule, sourceStopIndex);
 
     if (!transfers.iterator().hasNext()) {
-      return null;
+      return RaptorBoardOrAlightEvent.empty(earliestBoardTime);
     }
 
     boolean found = findTimetableTripInfo(
@@ -87,7 +106,7 @@ public final class ConstrainedBoardingSearch
     );
 
     if (!found) {
-      return null;
+      return RaptorBoardOrAlightEvent.empty(earliestBoardTime);
     }
 
     var trip = timetable.getTripSchedule(onTripIndex);
@@ -197,5 +216,31 @@ public final class ConstrainedBoardingSearch
       }
     }
     return false;
+  }
+
+  private static final class NoopRaptorConstrainedBoardingSearch
+    implements RaptorConstrainedBoardingSearch<TripSchedule> {
+
+    @Override
+    public boolean transferExistTargetStop(int targetStopPos) {
+      return false;
+    }
+
+    @Override
+    public boolean transferExistSourceStop(int targetStopPos) {
+      return false;
+    }
+
+    @Override
+    public RaptorBoardOrAlightEvent<TripSchedule> find(
+      RaptorTimeTable<TripSchedule> targetTimetable,
+      int transferSlack,
+      TripSchedule sourceTrip,
+      int sourceStopIndex,
+      int prevTransitArrivalTime,
+      int earliestBoardTime
+    ) {
+      return null;
+    }
   }
 }

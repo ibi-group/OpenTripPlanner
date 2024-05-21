@@ -12,7 +12,7 @@ import org.junit.jupiter.api.Test;
 import org.onebusaway.gtfs.model.AgencyAndId;
 import org.onebusaway.gtfs.model.FareAttribute;
 import org.onebusaway.gtfs.model.FareRule;
-import org.opentripplanner.graph_builder.DataImportIssueStore;
+import org.opentripplanner.graph_builder.issue.api.DataImportIssueStore;
 
 public class FareRuleMapperTest {
 
@@ -33,7 +33,7 @@ public class FareRuleMapperTest {
   private static final String ORIGIN_ID = "Origin Id";
 
   private final FareRuleMapper subject = new FareRuleMapper(
-    new RouteMapper(new AgencyMapper(FEED_ID), DataImportIssueStore.noopIssueStore()),
+    new RouteMapper(new AgencyMapper(FEED_ID), DataImportIssueStore.NOOP, new TranslationHelper()),
     new FareAttributeMapper()
   );
 
@@ -41,6 +41,7 @@ public class FareRuleMapperTest {
     var data = new GtfsTestData();
 
     FARE_ATTRIBUTE.setId(AGENCY_AND_ID);
+    FARE_ATTRIBUTE.setCurrencyType("USD");
 
     FARE_RULE.setId(ID);
     FARE_RULE.setContainsId(CONTAINS_ID);
@@ -79,7 +80,7 @@ public class FareRuleMapperTest {
     assertNull(result.getRoute());
   }
 
-  /** Mapping the same object twice, should return the the same instance. */
+  /** Mapping the same object twice, should return the same instance. */
   @Test
   public void testMapCache() throws Exception {
     org.opentripplanner.ext.fares.model.FareRule result1 = subject.map(FARE_RULE);

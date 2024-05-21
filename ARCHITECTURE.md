@@ -15,6 +15,24 @@ Be sure to also read the [developer documentation](docs/Developers-Guide.md).
 
 ## Modules/Components
 
+The diagram shows a simplified/generic version on how we want to model the OTP components with 2 
+examples. The Transit model is more complex than the VehiclePosition model.   
+
+![MainModelOverview](docs/images/ServiceModelOverview.png)
+
+ - `Use Case Service` A service which combine the functionality in many `Domain Services` to fulfill
+   a use-case or set of features. It may have an api with request/response classes. These are 
+   usually stateless; Hence the `Use Case Service` does normally not have a model. The implementing
+   class has the same name as the interface with prefix `Default`.
+ - `Domain Model` A model which encapsulate a business area. In the drawing two examples are shown,
+   the `transit` and `vhicleposition` domain model. The transit model is more complex so the 
+   implementation have a separate `Service` and `Repository`. Almost all http endpoints are , 
+   read-only so the `Service` can focus on serving the http API endpoints, while the repository
+   is used to maintain the model by the updaters. 
+
+> **Note!** The above is the goal, the current package structure needs cleanup.
+
+
 Below is a list of documented components in OTP. Not every component is documented at a high level,
 but this is a start and we would like to expand this list in the future.
 
@@ -37,7 +55,7 @@ Used to import NeTEx transit data files.
 
 ### Transit Routing
 
-#### [Raptor transit routing](src/main/java/org/opentripplanner/transit/raptor/package.md)
+#### [Raptor transit routing](src/main/java/org/opentripplanner/raptor/package.md)
 
 This is the OTP2 new transit routing engine implemented using the Raptor algorithm. It explains how
 Raptor works, the important concepts and the design. It might be worth reading even if you are not a
@@ -53,9 +71,9 @@ implementation is highly critical code, hence we set the bar higher with respect
 OTP provides transit data to Raptor by implementing the _raptor/api/transit_ model. The
 [RoutingService](src/main/java/org/opentripplanner/routing/RoutingService.java)
 is responsible for mapping from the OTP context to a
-[RaptorRequest](src/main/java/org/opentripplanner/transit/raptor/api/request/RaptorRequest.java)
+[RaptorRequest](src/main/java/org/opentripplanner/raptor/api/request/RaptorRequest.java)
 and then map the
-result, [Raptor Path](src/main/java/org/opentripplanner/transit/raptor/api/path/Path.java), back to
+result, [Raptor Path](src/main/java/org/opentripplanner/raptor/api/path/Path.java), back to
 the OTP internal domain. This might seem like a lot of unnecessary mapping, but mapping is simple -
 routing is not.
 
@@ -78,3 +96,7 @@ routers in [RoutingWorker](src/main/java/org/opentripplanner/routing/algorithm/R
 in order to sort and reduce the number of returned itineraries. It can also be used to decorate the
 returned itineraries, especially if it requires more complex calculations, which would be unfeasible
 to do during the routing process.
+
+### [Service](src/main/java/org/opentripplanner/service/package.md)
+The service package contains small services usually specific to one or a few use-cases. In contrast 
+to a domain model they may use one or many domain models and other services. 

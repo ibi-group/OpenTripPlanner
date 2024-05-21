@@ -7,30 +7,29 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.csvreader.CsvReader;
-import java.io.IOException;
-import java.io.InputStream;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import org.entur.gbfs.v2_2.free_bike_status.GBFSFreeBikeStatus;
-import org.entur.gbfs.v2_2.geofencing_zones.GBFSGeofencingZones;
-import org.entur.gbfs.v2_2.station_information.GBFSStation;
-import org.entur.gbfs.v2_2.station_information.GBFSStationInformation;
-import org.entur.gbfs.v2_2.station_status.GBFSStationStatus;
-import org.entur.gbfs.v2_2.system_alerts.GBFSSystemAlerts;
-import org.entur.gbfs.v2_2.system_calendar.GBFSSystemCalendar;
-import org.entur.gbfs.v2_2.system_hours.GBFSSystemHours;
-import org.entur.gbfs.v2_2.system_information.GBFSSystemInformation;
-import org.entur.gbfs.v2_2.system_pricing_plans.GBFSSystemPricingPlans;
-import org.entur.gbfs.v2_2.system_regions.GBFSSystemRegions;
-import org.entur.gbfs.v2_2.vehicle_types.GBFSVehicleType;
-import org.entur.gbfs.v2_2.vehicle_types.GBFSVehicleTypes;
+import org.entur.gbfs.v2_3.free_bike_status.GBFSFreeBikeStatus;
+import org.entur.gbfs.v2_3.geofencing_zones.GBFSGeofencingZones;
+import org.entur.gbfs.v2_3.station_information.GBFSStation;
+import org.entur.gbfs.v2_3.station_information.GBFSStationInformation;
+import org.entur.gbfs.v2_3.station_status.GBFSStationStatus;
+import org.entur.gbfs.v2_3.system_alerts.GBFSSystemAlerts;
+import org.entur.gbfs.v2_3.system_calendar.GBFSSystemCalendar;
+import org.entur.gbfs.v2_3.system_hours.GBFSSystemHours;
+import org.entur.gbfs.v2_3.system_information.GBFSSystemInformation;
+import org.entur.gbfs.v2_3.system_pricing_plans.GBFSSystemPricingPlans;
+import org.entur.gbfs.v2_3.system_regions.GBFSSystemRegions;
+import org.entur.gbfs.v2_3.vehicle_types.GBFSVehicleType;
+import org.entur.gbfs.v2_3.vehicle_types.GBFSVehicleTypes;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
-import org.opentripplanner.util.HttpUtils;
-import org.slf4j.Logger;
+import org.opentripplanner.framework.io.OtpHttpClientFactory;
+import org.opentripplanner.updater.spi.HttpHeaders;
 import org.slf4j.LoggerFactory;
 
 /**
@@ -42,13 +41,12 @@ class GbfsFeedLoaderTest {
 
   public static final String LANGUAGE_NB = "nb";
   public static final String LANGUAGE_EN = "en";
-  private static final Logger LOG = LoggerFactory.getLogger(GbfsFeedLoaderTest.class);
 
   @Test
   void getV22FeedWithExplicitLanguage() {
     GbfsFeedLoader loader = new GbfsFeedLoader(
       "file:src/test/resources/gbfs/lillestrombysykkel/gbfs.json",
-      Map.of(),
+      HttpHeaders.empty(),
       LANGUAGE_NB
     );
 
@@ -59,7 +57,7 @@ class GbfsFeedLoaderTest {
   void getV22FeedWithNoLanguage() {
     GbfsFeedLoader loader = new GbfsFeedLoader(
       "file:src/test/resources/gbfs/lillestrombysykkel/gbfs.json",
-      Map.of(),
+      HttpHeaders.empty(),
       null
     );
 
@@ -73,7 +71,7 @@ class GbfsFeedLoaderTest {
       () ->
         new GbfsFeedLoader(
           "file:src/test/resources/gbfs/lillestrombysykkel/gbfs.json",
-          Map.of(),
+          HttpHeaders.empty(),
           LANGUAGE_EN
         )
     );
@@ -83,7 +81,7 @@ class GbfsFeedLoaderTest {
   void getV10FeedWithExplicitLanguage() {
     GbfsFeedLoader loader = new GbfsFeedLoader(
       "file:src/test/resources/gbfs/helsinki/gbfs.json",
-      Map.of(),
+      HttpHeaders.empty(),
       LANGUAGE_EN
     );
 
@@ -92,32 +90,62 @@ class GbfsFeedLoaderTest {
 
   @Test
   @Disabled
-  void fetchAllPublicFeeds() throws IOException {
-    InputStream is = HttpUtils.getData(
-      "https://raw.githubusercontent.com/NABSA/gbfs/master/systems.csv"
-    );
-    CsvReader reader = new CsvReader(is, StandardCharsets.UTF_8);
-    reader.readHeaders();
-    List<Exception> exceptions = new ArrayList<>();
+  void fetchAllPublicFeeds() {
+    try (OtpHttpClientFactory otpHttpClientFactory = new OtpHttpClientFactory()) {
+      var otpHttpClient = otpHttpClientFactory.create(
+        LoggerFactory.getLogger(GbfsFeedLoaderTest.class)
+      );
+      List<Exception> exceptions = otpHttpClient.getAndMap(
+        URI.create("https://raw.githubusercontent.com/NABSA/gbfs/master/systems.csv"),
+        Map.of(),
+        is -> {
+          List<Exception> cvsExceptions = new ArrayList<>();
+          CsvReader reader = new CsvReader(is, StandardCharsets.UTF_8);
+          reader.readHeaders();
+          while (reader.readRecord()) {
+            try {
+              String url = reader.get("Auto-Discovery URL");
+              new GbfsFeedLoader(url, HttpHeaders.empty(), null).update();
+            } catch (Exception e) {
+              cvsExceptions.add(e);
+            }
+          }
 
-    while (reader.readRecord()) {
-      try {
-        String url = reader.get("Auto-Discovery URL");
-        new GbfsFeedLoader(url, Map.of(), null).update();
-      } catch (Exception e) {
-        exceptions.add(e);
-      }
+          return cvsExceptions;
+        }
+      );
+
+      assertTrue(
+        exceptions.isEmpty(),
+        exceptions.stream().map(Exception::getMessage).collect(Collectors.joining("\n"))
+      );
     }
-    assertTrue(
-      exceptions.isEmpty(),
-      exceptions.stream().map(Exception::getMessage).collect(Collectors.joining("\n"))
-    );
   }
 
   @Test
   @Disabled
   void testSpin() {
-    new GbfsFeedLoader("https://gbfs.spin.pm/api/gbfs/v2_2/edmonton/gbfs", Map.of(), null).update();
+    new GbfsFeedLoader(
+      "https://gbfs.spin.pm/api/gbfs/v2_2/edmonton/gbfs",
+      HttpHeaders.empty(),
+      null
+    )
+      .update();
+  }
+
+  @Test
+  void geofencingZones() {
+    GbfsFeedLoader loader = new GbfsFeedLoader(
+      "file:src/test/resources/gbfs/tieroslo/gbfs.json",
+      HttpHeaders.empty(),
+      LANGUAGE_EN
+    );
+
+    loader.update();
+    var zones = loader.getFeed(GBFSGeofencingZones.class);
+    var features = zones.getData().getGeofencingZones().getFeatures();
+    var f = features.get(0);
+    assertNotNull(f);
   }
 
   private void validateV22Feed(GbfsFeedLoader loader) {
@@ -128,7 +156,7 @@ class GbfsFeedLoaderTest {
     assertEquals("lillestrombysykkel", systemInformation.getData().getSystemId());
     assertEquals(LANGUAGE_NB, systemInformation.getData().getLanguage());
     assertEquals("Lillestrøm bysykkel", systemInformation.getData().getName());
-    assertEquals("Europe/Oslo", systemInformation.getData().getTimezone());
+    assertEquals("Europe/Oslo", systemInformation.getData().getTimezone().value());
     assertNull(systemInformation.getData().getEmail());
     assertNull(systemInformation.getData().getOperator());
     assertNull(systemInformation.getData().getPhoneNumber());
@@ -153,7 +181,7 @@ class GbfsFeedLoaderTest {
 
     GBFSStationStatus stationStatus = loader.getFeed(GBFSStationStatus.class);
     assertNotNull(stationStatus);
-    List<org.entur.gbfs.v2_2.station_status.GBFSStation> stationStatuses = stationStatus
+    List<org.entur.gbfs.v2_3.station_status.GBFSStation> stationStatuses = stationStatus
       .getData()
       .getStations();
     assertEquals(6, stationStatuses.size());
@@ -180,7 +208,7 @@ class GbfsFeedLoaderTest {
     assertEquals("HSL_FI_Helsinki", systemInformation.getData().getSystemId());
     assertEquals(LANGUAGE_EN, systemInformation.getData().getLanguage());
     assertEquals("HSL Bikes Share", systemInformation.getData().getName());
-    assertEquals("Europe/Helsinki", systemInformation.getData().getTimezone());
+    assertEquals("Europe/Helsinki", systemInformation.getData().getTimezone().value());
     assertNull(systemInformation.getData().getEmail());
     assertNull(systemInformation.getData().getOperator());
     assertNull(systemInformation.getData().getPhoneNumber());
@@ -200,7 +228,7 @@ class GbfsFeedLoaderTest {
 
     GBFSStationStatus stationStatus = loader.getFeed(GBFSStationStatus.class);
     assertNotNull(stationStatus);
-    List<org.entur.gbfs.v2_2.station_status.GBFSStation> stationStatuses = stationStatus
+    List<org.entur.gbfs.v2_3.station_status.GBFSStation> stationStatuses = stationStatus
       .getData()
       .getStations();
     assertEquals(10, stationStatuses.size());

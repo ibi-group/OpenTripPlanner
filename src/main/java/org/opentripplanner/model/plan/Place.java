@@ -1,18 +1,19 @@
 package org.opentripplanner.model.plan;
 
-import org.opentripplanner.routing.api.request.RoutingRequest;
-import org.opentripplanner.routing.core.TraverseMode;
-import org.opentripplanner.routing.graph.Vertex;
-import org.opentripplanner.routing.vehicle_rental.VehicleRentalPlace;
-import org.opentripplanner.routing.vertextype.StreetVertex;
-import org.opentripplanner.routing.vertextype.VehicleParkingEntranceVertex;
-import org.opentripplanner.routing.vertextype.VehicleRentalPlaceVertex;
-import org.opentripplanner.transit.model.basic.I18NString;
-import org.opentripplanner.transit.model.basic.LocalizedString;
-import org.opentripplanner.transit.model.basic.WgsCoordinate;
-import org.opentripplanner.transit.model.site.FlexStopLocation;
+import org.opentripplanner.framework.geometry.WgsCoordinate;
+import org.opentripplanner.framework.i18n.I18NString;
+import org.opentripplanner.framework.i18n.LocalizedString;
+import org.opentripplanner.framework.tostring.ToStringBuilder;
+import org.opentripplanner.service.vehiclerental.model.VehicleRentalPlace;
+import org.opentripplanner.service.vehiclerental.street.VehicleRentalPlaceVertex;
+import org.opentripplanner.street.model.vertex.StreetVertex;
+import org.opentripplanner.street.model.vertex.VehicleParkingEntranceVertex;
+import org.opentripplanner.street.model.vertex.Vertex;
+import org.opentripplanner.street.search.TraverseMode;
+import org.opentripplanner.street.search.request.StreetSearchRequest;
+import org.opentripplanner.street.search.state.State;
+import org.opentripplanner.transit.model.site.AreaStop;
 import org.opentripplanner.transit.model.site.StopLocation;
-import org.opentripplanner.util.lang.ToStringBuilder;
 
 /**
  * A Place is where a journey starts or ends, or a transit stop along the way.
@@ -95,7 +96,7 @@ public class Place {
   public static Place forFlexStop(StopLocation stop, Vertex vertex) {
     var name = stop.getName();
 
-    if (stop instanceof FlexStopLocation flexArea && vertex instanceof StreetVertex s) {
+    if (stop instanceof AreaStop flexArea && vertex instanceof StreetVertex s) {
       if (flexArea.hasFallbackName()) {
         name = s.getIntersectionName();
       } else {
@@ -125,22 +126,18 @@ public class Place {
     );
   }
 
-  public static Place forVehicleParkingEntrance(
-    VehicleParkingEntranceVertex vertex,
-    RoutingRequest request
-  ) {
+  public static Place forVehicleParkingEntrance(VehicleParkingEntranceVertex vertex, State state) {
     TraverseMode traverseMode = null;
-    if (request.streetSubRequestModes.getCar()) {
+    final StreetSearchRequest request = state.getRequest();
+    if (request.mode().includesDriving()) {
       traverseMode = TraverseMode.CAR;
-    } else if (request.streetSubRequestModes.getBicycle()) {
+    } else if (request.mode().includesBiking()) {
       traverseMode = TraverseMode.BICYCLE;
     }
 
-    boolean realTime =
-      request.useVehicleParkingAvailabilityInformation &&
-      vertex
-        .getVehicleParking()
-        .hasRealTimeDataForMode(traverseMode, request.wheelchairAccessibility.enabled());
+    boolean realTime = vertex
+      .getVehicleParking()
+      .hasRealTimeDataForMode(traverseMode, request.wheelchair());
     return new Place(
       vertex.getName(),
       WgsCoordinate.creatOptionalCoordinate(vertex.getLat(), vertex.getLon()),
@@ -189,7 +186,7 @@ public class Place {
   public String toString() {
     return ToStringBuilder
       .of(Place.class)
-      .addStr("name", name.toString())
+      .addObj("name", name)
       .addObj("stop", stop)
       .addObj("coordinate", coordinate)
       .addEnum("vertexType", vertexType)

@@ -1,20 +1,28 @@
 package org.opentripplanner.ext.siri.updater.azure;
 
+import java.time.Duration;
+
 public abstract class SiriAzureUpdaterParameters {
 
   private String configRef;
   private String type;
+  private AuthenticationType authenticationType;
+  private String fullyQualifiedNamespace;
   private String serviceBusUrl;
   private String topicName;
   private String dataInitializationUrl;
   private String feedId;
   private int timeout;
 
+  private boolean fuzzyTripMatching;
+  private Duration autoDeleteOnIdle;
+  private int prefetchCount;
+
   public SiriAzureUpdaterParameters(String type) {
     this.type = type;
   }
 
-  public String getConfigRef() {
+  public String configRef() {
     return configRef;
   }
 
@@ -24,6 +32,22 @@ public abstract class SiriAzureUpdaterParameters {
 
   public String getType() {
     return type;
+  }
+
+  public AuthenticationType getAuthenticationType() {
+    return authenticationType;
+  }
+
+  public void setAuthenticationType(AuthenticationType authenticationType) {
+    this.authenticationType = authenticationType;
+  }
+
+  public String getFullyQualifiedNamespace() {
+    return fullyQualifiedNamespace;
+  }
+
+  public void setFullyQualifiedNamespace(String fullyQualifiedNamespace) {
+    this.fullyQualifiedNamespace = fullyQualifiedNamespace;
   }
 
   public String getServiceBusUrl() {
@@ -50,7 +74,7 @@ public abstract class SiriAzureUpdaterParameters {
     this.dataInitializationUrl = dataInitializationUrl;
   }
 
-  public String getFeedId() {
+  public String feedId() {
     return feedId;
   }
 
@@ -64,5 +88,29 @@ public abstract class SiriAzureUpdaterParameters {
 
   public void setTimeout(int timeout) {
     this.timeout = timeout;
+  }
+
+  public boolean isFuzzyTripMatching() {
+    return fuzzyTripMatching;
+  }
+
+  public void setFuzzyTripMatching(boolean fuzzyTripMatching) {
+    this.fuzzyTripMatching = fuzzyTripMatching;
+  }
+
+  public Duration getAutoDeleteOnIdle() {
+    return autoDeleteOnIdle;
+  }
+
+  public void setAutoDeleteOnIdle(Duration autoDeleteOnIdle) {
+    this.autoDeleteOnIdle = autoDeleteOnIdle;
+  }
+
+  public int getPrefetchCount() {
+    return prefetchCount;
+  }
+
+  public void setPrefetchCount(int prefetchCount) {
+    this.prefetchCount = prefetchCount;
   }
 }

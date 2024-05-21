@@ -7,10 +7,10 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
+import org.opentripplanner.framework.collection.MapUtils;
 import org.opentripplanner.transit.model.framework.FeedScopedId;
 import org.opentripplanner.transit.model.site.BoardingArea;
-import org.opentripplanner.transit.model.site.Stop;
-import org.opentripplanner.util.MapUtils;
+import org.opentripplanner.transit.model.site.RegularStop;
 
 /**
  * Responsible for mapping GTFS Boarding areas into the OTP model.
@@ -22,11 +22,11 @@ class BoardingAreaMapper {
   private final Map<org.onebusaway.gtfs.model.Stop, BoardingArea> mappedBoardingAreas = new HashMap<>();
 
   private final TranslationHelper translationHelper;
-  private final Function<FeedScopedId, Stop> stationLookUp;
+  private final Function<FeedScopedId, RegularStop> stationLookUp;
 
   BoardingAreaMapper(
     TranslationHelper translationHelper,
-    Function<FeedScopedId, Stop> stationLookUp
+    Function<FeedScopedId, RegularStop> stationLookUp
   ) {
     this.translationHelper = translationHelper;
     this.stationLookUp = stationLookUp;

@@ -53,7 +53,8 @@ like "program arguments".
 OpenTripPlanner is a community based open source project, and we welcome all who wish to contribute.
 There are several ways to get involved:
 
-* Join the [developer mailing list](http://groups.google.com/group/opentripplanner-dev)
+* Join the [Gitter chat room](https://gitter.im/opentripplanner/OpenTripPlanner) and the 
+  [user mailing list](http://groups.google.com/group/opentripplanner-users).
 
 * Fix typos and improve the documentation within the `/docs` directory of the project (details
   below).
@@ -62,8 +63,8 @@ There are several ways to get involved:
 
 * Create pull requests citing the relevant issue.
 
-* Join developer meetings hosted twice a week. Check the specific times
-  on [this calendar](https://calendar.google.com/calendar/u/0/embed?src=ormbltvsqb6adl80ejgudt0glc@group.calendar.google.com)
+* Join developer meetings hosted twice a week. Check the specific times and URLs 
+  on [this page](https://github.com/opentripplanner/OpenTripPlanner/blob/dev-2.x/CONTRIBUTING.md#developer-meetings)
 
 ### Branches and Branch Protection
 
@@ -133,26 +134,26 @@ how OTP is used or configured should include changes to the documentation alongs
 modifications.
 
 The documentation files are in Markdown format and are in the `/docs` directory under the root of
-the project. On every push to the master branch the documentation will be rebuilt and deployed as
-static pages to our subdomain of [ReadTheDocs](http://opentripplanner.readthedocs.org/). MkDocs is a
-Python program and should run on any major platform. See http://www.mkdocs.org/ for information on
-how to install it and how to generate a live local preview of the documentation while you're working
-on writing it.
+the project. On every push to the `dev-2.x` branch the documentation will be rebuilt and deployed as
+static pages to our subdomain of [Github Pages](https://github.com/opentripplanner/docs). 
+MkDocs is a Python program and should run on any major platform. 
+See [http://www.mkdocs.org/](http://www.mkdocs.org/) for information on how to install it and 
+how to generate a live local preview of the documentation while you're writing it.
 
 In short:
 
 ```
-$ pip install mkdocs
+$ pip install -r docs/requirements.txt
 $ mkdocs serve
 ```
 
-The OTP REST API documentation is available online in the format of:
+The OTP GTFS GraphQL API documentation is available online at 
 
-http://dev.opentripplanner.org/apidoc/x.x.x/index.html
+[https://docs.opentripplanner.org/api/dev-2.x/graphql-gtfs/](https://docs.opentripplanner.org/api/dev-2.x/graphql-gtfs/)
 
-For example, for v2.1.0:
+You can also use the interactive GraphQL API client that is built into every instance at
 
-http://dev.opentripplanner.org/apidoc/2.1.0/index.html
+[http://localhost:8080/graphiql](http://localhost:8080/graphiql)
 
 ### Debug layers
 
@@ -254,4 +255,4 @@ failure and require storing a lot of infrequently used secret information in the
 environment variables on GitHub. Our releases are currently not very frequent so we just carry out
 these steps manually by following the checklist. We aim to make a release every 6 months.
 
-Use the [Release Checklist](DevReleaseChecklist.md) to perform the release.
+Use the [Release Checklist](ReleaseChecklist.md) to perform the release.

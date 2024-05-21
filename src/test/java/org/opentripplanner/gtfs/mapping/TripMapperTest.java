@@ -11,8 +11,8 @@ import java.util.Collections;
 import org.junit.jupiter.api.Test;
 import org.onebusaway.gtfs.model.AgencyAndId;
 import org.onebusaway.gtfs.model.Trip;
-import org.opentripplanner.graph_builder.DataImportIssueStore;
-import org.opentripplanner.transit.model.basic.WheelchairAccessibility;
+import org.opentripplanner.graph_builder.issue.api.DataImportIssueStore;
+import org.opentripplanner.transit.model.basic.Accessibility;
 import org.opentripplanner.transit.model.network.BikeAccess;
 import org.opentripplanner.transit.model.timetable.Direction;
 
@@ -23,7 +23,6 @@ public class TripMapperTest {
   private static final int BIKES_ALLOWED = 1;
   private static final String BLOCK_ID = "Block Id";
   private static final int DIRECTION_ID = 1;
-  private static final String FARE_ID = "Fare Id";
   private static final String TRIP_HEADSIGN = "Trip Headsign";
   private static final String TRIP_SHORT_NAME = "Trip Short Name";
 
@@ -31,12 +30,17 @@ public class TripMapperTest {
 
   private static final Trip TRIP = new Trip();
 
-  public static final DataImportIssueStore ISSUE_STORE = DataImportIssueStore.noopIssueStore();
+  public static final DataImportIssueStore ISSUE_STORE = DataImportIssueStore.NOOP;
 
-  private final TripMapper subject = new TripMapper(
-    new RouteMapper(new AgencyMapper(FEED_ID), ISSUE_STORE),
-    new DirectionMapper(ISSUE_STORE)
-  );
+  private final TripMapper subject = defaultTripMapper();
+
+  private static TripMapper defaultTripMapper() {
+    return new TripMapper(
+      new RouteMapper(new AgencyMapper(FEED_ID), ISSUE_STORE, new TranslationHelper()),
+      new DirectionMapper(ISSUE_STORE),
+      new TranslationHelper()
+    );
+  }
 
   static {
     GtfsTestData data = new GtfsTestData();
@@ -45,7 +49,6 @@ public class TripMapperTest {
     TRIP.setBikesAllowed(BIKES_ALLOWED);
     TRIP.setBlockId(BLOCK_ID);
     TRIP.setDirectionId(Integer.toString(DIRECTION_ID));
-    TRIP.setFareId(FARE_ID);
     TRIP.setRoute(data.route);
     TRIP.setServiceId(AGENCY_AND_ID);
     TRIP.setShapeId(AGENCY_AND_ID);
@@ -55,31 +58,30 @@ public class TripMapperTest {
   }
 
   @Test
-  public void testMapCollection() throws Exception {
+  void testMapCollection() throws Exception {
     assertNull(subject.map((Collection<Trip>) null));
     assertTrue(subject.map(Collections.emptyList()).isEmpty());
     assertEquals(1, subject.map(Collections.singleton(TRIP)).size());
   }
 
   @Test
-  public void testMap() throws Exception {
+  void testMap() throws Exception {
     org.opentripplanner.transit.model.timetable.Trip result = subject.map(TRIP);
 
     assertEquals("A:1", result.getId().toString());
     assertEquals(BLOCK_ID, result.getGtfsBlockId());
     assertEquals(Direction.INBOUND, result.getDirection());
-    assertEquals(FARE_ID, result.getGtfsFareId());
     assertNotNull(result.getRoute());
     assertEquals("A:1", result.getServiceId().toString());
     assertEquals("A:1", result.getShapeId().toString());
-    assertEquals(TRIP_HEADSIGN, result.getHeadsign());
+    assertEquals(TRIP_HEADSIGN, result.getHeadsign().toString());
     assertEquals(TRIP_SHORT_NAME, result.getShortName());
-    assertEquals(WheelchairAccessibility.POSSIBLE, result.getWheelchairBoarding());
+    assertEquals(Accessibility.POSSIBLE, result.getWheelchairBoarding());
     assertEquals(BikeAccess.ALLOWED, result.getBikesAllowed());
   }
 
   @Test
-  public void testMapWithNulls() throws Exception {
+  void testMapWithNulls() throws Exception {
     Trip input = new Trip();
     input.setId(AGENCY_AND_ID);
     input.setRoute(new GtfsTestData().route);
@@ -90,22 +92,42 @@ public class TripMapperTest {
     assertNotNull(result.getRoute());
 
     assertNull(result.getGtfsBlockId());
-    assertNull(result.getGtfsFareId());
     assertNull(result.getServiceId());
     assertNull(result.getShapeId());
     assertNull(result.getHeadsign());
     assertNull(result.getShortName());
     assertEquals(Direction.UNKNOWN, result.getDirection());
-    assertEquals(WheelchairAccessibility.NO_INFORMATION, result.getWheelchairBoarding());
+    assertEquals(Accessibility.NO_INFORMATION, result.getWheelchairBoarding());
     assertEquals(BikeAccess.UNKNOWN, result.getBikesAllowed());
   }
 
-  /** Mapping the same object twice, should return the the same instance. */
+  /** Mapping the same object twice, should return the same instance. */
   @Test
-  public void testMapCache() throws Exception {
+  void testMapCache() throws Exception {
     org.opentripplanner.transit.model.timetable.Trip result1 = subject.map(TRIP);
     org.opentripplanner.transit.model.timetable.Trip result2 = subject.map(TRIP);
 
     assertSame(result1, result2);
+  }
+
+  @Test
+  void noFlexDurationModifier() {
+    var mapper = defaultTripMapper();
+    mapper.map(TRIP);
+    assertTrue(mapper.flexSafeDurationModifiers().isEmpty());
+  }
+
+  @Test
+  void flexDurationModifier() {
+    var flexTrip = new Trip();
+    flexTrip.setId(new AgencyAndId("1", "1"));
+    flexTrip.setSafeDurationFactor(1.5);
+    flexTrip.setSafeDurationOffset(600d);
+    flexTrip.setRoute(new GtfsTestData().route);
+    var mapper = defaultTripMapper();
+    var mapped = mapper.map(flexTrip);
+    var mod = mapper.flexSafeDurationModifiers().get(mapped);
+    assertEquals(1.5f, mod.coefficient());
+    assertEquals(600, mod.constant().toSeconds());
   }
 }

@@ -8,17 +8,18 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Set;
 import org.junit.jupiter.api.Test;
+import org.opentripplanner.framework.i18n.I18NString;
+import org.opentripplanner.framework.i18n.NonLocalizedString;
 import org.opentripplanner.transit.model._data.TransitModelForTest;
-import org.opentripplanner.transit.model.basic.I18NString;
-import org.opentripplanner.transit.model.basic.NonLocalizedString;
 
 class MultiModalStationTest {
 
   private static final String ID = "1";
   private static final I18NString NAME = new NonLocalizedString("name");
 
-  private static final Station STATION_1 = TransitModelForTest.station("1:1").build();
-  private static final Station STATION_2 = TransitModelForTest.station("1:2").build();
+  private static TransitModelForTest TEST_MODEL = TransitModelForTest.of();
+  private static final Station STATION_1 = TEST_MODEL.station("1:1").build();
+  private static final Station STATION_2 = TEST_MODEL.station("1:2").build();
 
   public static final Set<Station> CHILD_STATIONS = Set.of(STATION_1, STATION_2);
   private static final MultiModalStation subject = MultiModalStation

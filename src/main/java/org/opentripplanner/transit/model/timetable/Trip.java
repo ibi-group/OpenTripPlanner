@@ -3,21 +3,22 @@ package org.opentripplanner.transit.model.timetable;
 
 import static java.util.Objects.requireNonNull;
 import static java.util.Objects.requireNonNullElse;
-import static org.opentripplanner.util.lang.ObjectUtils.ifNotNull;
+import static org.opentripplanner.framework.lang.ObjectUtils.ifNotNull;
 
 import java.util.Objects;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import org.opentripplanner.framework.i18n.I18NString;
+import org.opentripplanner.framework.lang.StringUtils;
+import org.opentripplanner.transit.model.basic.Accessibility;
 import org.opentripplanner.transit.model.basic.SubMode;
 import org.opentripplanner.transit.model.basic.TransitMode;
-import org.opentripplanner.transit.model.basic.WheelchairAccessibility;
 import org.opentripplanner.transit.model.framework.AbstractTransitEntity;
 import org.opentripplanner.transit.model.framework.FeedScopedId;
 import org.opentripplanner.transit.model.framework.LogInfo;
 import org.opentripplanner.transit.model.network.BikeAccess;
 import org.opentripplanner.transit.model.network.Route;
 import org.opentripplanner.transit.model.organization.Operator;
-import org.opentripplanner.util.lang.StringUtils;
 
 public final class Trip extends AbstractTransitEntity<Trip, TripBuilder> implements LogInfo {
 
@@ -27,15 +28,14 @@ public final class Trip extends AbstractTransitEntity<Trip, TripBuilder> impleme
   private final String shortName;
   private final TransitMode mode;
   private final SubMode netexSubmode;
-  private final String headsign;
+  private final I18NString headsign;
   private final FeedScopedId shapeId;
 
   private final Direction direction;
   private final BikeAccess bikesAllowed;
-  private final WheelchairAccessibility wheelchairBoarding;
+  private final Accessibility wheelchairBoarding;
 
   private final String gtfsBlockId;
-  private final String gtfsFareId;
 
   private final String netexInternalPlanningCode;
   private final TripAlteration netexAlteration;
@@ -46,11 +46,14 @@ public final class Trip extends AbstractTransitEntity<Trip, TripBuilder> impleme
     // Route is done first, it is used as a fallback for some fields
     this.route = requireNonNull(builder.getRoute());
     this.mode = requireNonNullElse(builder.getMode(), route.getMode());
-    this.netexSubmode = SubMode.getOrBuildAndCacheForever(builder.getNetexSubmode());
+    this.netexSubmode =
+      builder.getNetexSubmode() != null
+        ? SubMode.getOrBuildAndCacheForever(builder.getNetexSubmode())
+        : route.getNetexSubmode();
     this.direction = requireNonNullElse(builder.getDirection(), Direction.UNKNOWN);
     this.bikesAllowed = requireNonNullElse(builder.getBikesAllowed(), route.getBikesAllowed());
     this.wheelchairBoarding =
-      requireNonNullElse(builder.getWheelchairBoarding(), WheelchairAccessibility.NO_INFORMATION);
+      requireNonNullElse(builder.getWheelchairBoarding(), Accessibility.NO_INFORMATION);
     this.netexAlteration = requireNonNullElse(builder.getNetexAlteration(), TripAlteration.PLANNED);
 
     // Optional fields
@@ -61,7 +64,6 @@ public final class Trip extends AbstractTransitEntity<Trip, TripBuilder> impleme
     this.headsign = builder.getHeadsign();
     this.shapeId = builder.getShapeId();
     this.gtfsBlockId = builder.getGtfsBlockId();
-    this.gtfsFareId = builder.getGtfsFareId();
     this.netexInternalPlanningCode = builder.getNetexInternalPlanningCode();
   }
 
@@ -113,7 +115,7 @@ public final class Trip extends AbstractTransitEntity<Trip, TripBuilder> impleme
   }
 
   @Nullable
-  public String getHeadsign() {
+  public I18NString getHeadsign() {
     return headsign;
   }
 
@@ -136,19 +138,13 @@ public final class Trip extends AbstractTransitEntity<Trip, TripBuilder> impleme
   }
 
   @Nonnull
-  public WheelchairAccessibility getWheelchairBoarding() {
+  public Accessibility getWheelchairBoarding() {
     return wheelchairBoarding;
   }
 
   @Nullable
   public String getGtfsBlockId() {
     return gtfsBlockId;
-  }
-
-  /** Custom extension for KCM to specify a fare per-trip */
-  @Nullable
-  public String getGtfsFareId() {
-    return gtfsFareId;
   }
 
   /**
@@ -182,8 +178,8 @@ public final class Trip extends AbstractTransitEntity<Trip, TripBuilder> impleme
     if (StringUtils.hasValue(route.getName())) {
       return route.getName();
     }
-    if (StringUtils.hasValue(headsign)) {
-      return headsign;
+    if (I18NString.hasValue(headsign)) {
+      return headsign.toString();
     }
     return mode.name();
   }
@@ -205,8 +201,7 @@ public final class Trip extends AbstractTransitEntity<Trip, TripBuilder> impleme
       Objects.equals(this.direction, other.direction) &&
       Objects.equals(this.bikesAllowed, other.bikesAllowed) &&
       Objects.equals(this.wheelchairBoarding, other.wheelchairBoarding) &&
-      Objects.equals(this.netexAlteration, other.netexAlteration) &&
-      Objects.equals(this.gtfsFareId, other.gtfsFareId)
+      Objects.equals(this.netexAlteration, other.netexAlteration)
     );
   }
 

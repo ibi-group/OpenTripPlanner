@@ -1,9 +1,10 @@
 package org.opentripplanner.model;
 
+import javax.annotation.Nullable;
 import org.locationtech.jts.geom.Coordinate;
+import org.opentripplanner.framework.lang.StringUtils;
+import org.opentripplanner.framework.tostring.ValueObjectToStringBuilder;
 import org.opentripplanner.transit.model.framework.FeedScopedId;
-import org.opentripplanner.util.lang.StringUtils;
-import org.opentripplanner.util.lang.ValueObjectToStringBuilder;
 
 /**
  * Represents a location that is to be used in a routing request. It can be either a from, to, or
@@ -19,8 +20,8 @@ public class GenericLocation {
   public final String label;
 
   /**
-   * Refers to a specific element in the OTP model. This can currently be a stop, station,
-   * multi-modal station or group of stations.
+   * Refers to a specific element in the OTP model. This can currently be a regular stop, area stop,
+   * group stop, station, multi-modal station or group of stations.
    */
   public final FeedScopedId stopId;
 
@@ -53,6 +54,7 @@ public class GenericLocation {
   /**
    * Returns this as a Coordinate object.
    */
+  @Nullable
   public Coordinate getCoordinate() {
     if (this.lat == null || this.lng == null) {
       return null;

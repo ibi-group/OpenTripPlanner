@@ -13,31 +13,34 @@ import org.junit.jupiter.api.Test;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.LineString;
-import org.opentripplanner.common.geometry.SphericalDistanceLibrary;
+import org.opentripplanner.framework.geometry.GeometryUtils;
+import org.opentripplanner.framework.geometry.SphericalDistanceLibrary;
 import org.opentripplanner.model.GenericLocation;
-import org.opentripplanner.routing.api.request.RoutingRequest;
-import org.opentripplanner.routing.edgetype.StreetEdge;
-import org.opentripplanner.routing.edgetype.StreetTraversalPermission;
-import org.opentripplanner.routing.edgetype.TemporaryEdge;
-import org.opentripplanner.routing.graph.Edge;
+import org.opentripplanner.routing.api.request.RouteRequest;
+import org.opentripplanner.routing.api.request.StreetMode;
 import org.opentripplanner.routing.graph.Graph;
-import org.opentripplanner.routing.graph.Vertex;
-import org.opentripplanner.routing.vertextype.IntersectionVertex;
-import org.opentripplanner.routing.vertextype.StreetVertex;
-import org.opentripplanner.routing.vertextype.TemporaryVertex;
+import org.opentripplanner.street.model.StreetTraversalPermission;
+import org.opentripplanner.street.model._data.StreetModelForTest;
+import org.opentripplanner.street.model.edge.Edge;
+import org.opentripplanner.street.model.edge.StreetEdgeBuilder;
+import org.opentripplanner.street.model.edge.TemporaryEdge;
+import org.opentripplanner.street.model.vertex.StreetVertex;
+import org.opentripplanner.street.model.vertex.TemporaryVertex;
+import org.opentripplanner.street.model.vertex.Vertex;
+import org.opentripplanner.street.search.TemporaryVerticesContainer;
 import org.opentripplanner.transit.model.framework.Deduplicator;
 import org.opentripplanner.transit.service.StopModel;
-import org.opentripplanner.util.geometry.GeometryUtils;
 
 public class TemporaryVerticesContainerTest {
 
   private final GeometryFactory gf = GeometryUtils.getGeometryFactory();
   // Given:
   // - a graph with 3 intersections/vertexes
-  private Graph g = new Graph(new Deduplicator());
-  private final StreetVertex a = new IntersectionVertex(g, "A", 1.0, 1.0);
-  private final StreetVertex b = new IntersectionVertex(g, "B", 0.0, 1.0);
-  private final StreetVertex c = new IntersectionVertex(g, "C", 1.0, 0.0);
+  private final Graph g = new Graph(new Deduplicator());
+
+  private final StreetVertex a = StreetModelForTest.intersectionVertex("A", 1.0, 1.0);
+  private final StreetVertex b = StreetModelForTest.intersectionVertex("B", 1.0, 0.0);
+  private final StreetVertex c = StreetModelForTest.intersectionVertex("C", 0.0, 1.0);
   private final List<Vertex> permanentVertexes = Arrays.asList(a, b, c);
   // - And travel *origin* is 0,4 degrees on the road from B to A
   private final GenericLocation from = new GenericLocation(1.0, 0.4);
@@ -48,6 +51,7 @@ public class TemporaryVerticesContainerTest {
   // - and some roads
   @BeforeEach
   public void setup() {
+    permanentVertexes.forEach(g::addVertex);
     createStreetEdge(a, b, "a -> b");
     createStreetEdge(b, a, "b -> a");
     createStreetEdge(a, c, "a -> c");
@@ -57,12 +61,12 @@ public class TemporaryVerticesContainerTest {
   @Test
   public void temporaryChangesRemovedOnClose() {
     // Given - A request
-    RoutingRequest request = new RoutingRequest();
-    request.from = from;
-    request.to = to;
+    RouteRequest request = new RouteRequest();
+    request.setFrom(from);
+    request.setTo(to);
 
     // When - the container is created
-    subject = new TemporaryVerticesContainer(g, request);
+    subject = new TemporaryVerticesContainer(g, request, StreetMode.WALK, StreetMode.WALK);
 
     // Then:
     originAndDestinationInsertedCorrect();
@@ -143,7 +147,15 @@ public class TemporaryVerticesContainerTest {
       new Coordinate[] { v0.getCoordinate(), v1.getCoordinate() }
     );
     double dist = SphericalDistanceLibrary.distance(v0.getCoordinate(), v1.getCoordinate());
-    new StreetEdge(v0, v1, geom, name, dist, StreetTraversalPermission.ALL, false);
+    new StreetEdgeBuilder<>()
+      .withFromVertex(v0)
+      .withToVertex(v1)
+      .withGeometry(geom)
+      .withName(name)
+      .withMeterLength(dist)
+      .withPermission(StreetTraversalPermission.ALL)
+      .withBack(false)
+      .buildAndConnect();
   }
 
   private void assertVertexEdgeIsNotReferencingTemporaryElements(Vertex src, Edge e, Vertex v) {

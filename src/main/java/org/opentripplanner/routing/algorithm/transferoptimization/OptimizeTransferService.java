@@ -3,14 +3,14 @@ package org.opentripplanner.routing.algorithm.transferoptimization;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import org.opentripplanner.framework.logging.Throttle;
+import org.opentripplanner.raptor.api.model.RaptorTripSchedule;
+import org.opentripplanner.raptor.api.path.RaptorPath;
 import org.opentripplanner.routing.algorithm.raptoradapter.path.PathDiff;
 import org.opentripplanner.routing.algorithm.transferoptimization.api.OptimizedPath;
 import org.opentripplanner.routing.algorithm.transferoptimization.model.MinSafeTransferTimeCalculator;
 import org.opentripplanner.routing.algorithm.transferoptimization.model.TransferWaitTimeCostCalculator;
 import org.opentripplanner.routing.algorithm.transferoptimization.services.OptimizePathDomainService;
-import org.opentripplanner.transit.raptor.api.path.Path;
-import org.opentripplanner.transit.raptor.api.transit.RaptorTripSchedule;
-import org.opentripplanner.util.logging.ThrottleLogger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,7 +20,7 @@ import org.slf4j.LoggerFactory;
 public class OptimizeTransferService<T extends RaptorTripSchedule> {
 
   private static final Logger LOG = LoggerFactory.getLogger(OptimizeTransferService.class);
-  private static final Logger OPTIMIZATION_FAILED_LOG = ThrottleLogger.throttle(LOG);
+  private static final Throttle THROTTLE_OPTIMIZATION_FAILED = Throttle.ofOneSecond();
 
   private final OptimizePathDomainService<T> optimizePathDomainService;
   private final MinSafeTransferTimeCalculator<T> minSafeTransferTimeCalculator;
@@ -42,14 +42,14 @@ public class OptimizeTransferService<T extends RaptorTripSchedule> {
     this.transferWaitTimeCostCalculator = null;
   }
 
-  public List<Path<T>> optimize(Collection<Path<T>> paths) {
+  public List<RaptorPath<T>> optimize(Collection<RaptorPath<T>> paths) {
     setup(paths);
 
     long start = LOG.isDebugEnabled() ? System.currentTimeMillis() : 0;
 
-    List<Path<T>> results = new ArrayList<>();
+    List<RaptorPath<T>> results = new ArrayList<>();
 
-    for (Path<T> path : paths) {
+    for (var path : paths) {
       results.addAll(optimize(path));
     }
 
@@ -64,7 +64,7 @@ public class OptimizeTransferService<T extends RaptorTripSchedule> {
    * Initiate calculation.
    */
   @SuppressWarnings("ConstantConditions")
-  private void setup(Collection<Path<T>> paths) {
+  private void setup(Collection<RaptorPath<T>> paths) {
     if (transferWaitTimeCostCalculator != null) {
       transferWaitTimeCostCalculator.setMinSafeTransferTime(
         minSafeTransferTimeCalculator.minSafeTransferTime(paths)
@@ -76,7 +76,7 @@ public class OptimizeTransferService<T extends RaptorTripSchedule> {
    * Optimize a single transfer, finding all possible permutations of transfers for the path and
    * filtering the list down one path, or a few equally good paths.
    */
-  private Collection<OptimizedPath<T>> optimize(Path<T> path) {
+  private Collection<OptimizedPath<T>> optimize(RaptorPath<T> path) {
     // Skip transfer optimization if no transfers exist.
     if (path.numberOfTransfersExAccessEgress() == 0) {
       return List.of(new OptimizedPath<>(path));
@@ -84,11 +84,14 @@ public class OptimizeTransferService<T extends RaptorTripSchedule> {
     try {
       return optimizePathDomainService.findBestTransitPath(path);
     } catch (RuntimeException e) {
-      OPTIMIZATION_FAILED_LOG.error(
-        "Unable to optimize transfers in path. Details: {}, path: {}",
-        e.getMessage(),
-        path,
-        e
+      THROTTLE_OPTIMIZATION_FAILED.throttle(() ->
+        LOG.warn(
+          "Unable to optimize transfers in path. Details: {}, path: {}  {}",
+          e.getMessage(),
+          path,
+          THROTTLE_OPTIMIZATION_FAILED.setupInfo(),
+          e
+        )
       );
       return List.of(new OptimizedPath<>(path));
     }

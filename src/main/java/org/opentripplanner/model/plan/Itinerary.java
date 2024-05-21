@@ -1,40 +1,57 @@
 package org.opentripplanner.model.plan;
 
-import static java.util.Locale.ROOT;
-
 import java.time.Duration;
+import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import javax.annotation.Nullable;
+import org.opentripplanner.ext.flex.FlexibleTransitLeg;
+import org.opentripplanner.framework.lang.DoubleUtils;
+import org.opentripplanner.framework.model.TimeAndCost;
+import org.opentripplanner.framework.tostring.ToStringBuilder;
 import org.opentripplanner.model.SystemNotice;
-import org.opentripplanner.routing.core.Fare;
-import org.opentripplanner.transit.raptor.api.path.PathStringBuilder;
-import org.opentripplanner.util.lang.DoubleUtils;
-import org.opentripplanner.util.lang.ToStringBuilder;
+import org.opentripplanner.model.fare.ItineraryFares;
+import org.opentripplanner.raptor.api.model.RaptorConstants;
+import org.opentripplanner.raptor.api.path.PathStringBuilder;
+import org.opentripplanner.routing.algorithm.raptoradapter.transit.cost.RaptorCostConverter;
+import org.opentripplanner.routing.api.request.RouteRequest;
+import org.opentripplanner.routing.api.request.preference.ItineraryFilterPreferences;
 
 /**
  * An Itinerary is one complete way of getting from the start location to the end location.
  */
-public class Itinerary {
+public class Itinerary implements ItinerarySortKey {
+
+  public static final int UNKNOWN = -1;
 
   /* final primitive properties */
-  private final int durationSeconds;
-  private final int transitTimeSeconds;
+  private final Duration duration;
+  private final Duration transitDuration;
   private final int numberOfTransfers;
-  private final int waitingTimeSeconds;
+  private final Duration waitingDuration;
   private final double nonTransitDistanceMeters;
   private final boolean walkOnly;
   private final boolean streetOnly;
-  private final int nonTransitTimeSeconds;
+  private final Duration nonTransitDuration;
+  private final Duration walkDuration;
+  private final double walkDistanceMeters;
 
   /* mutable primitive properties */
   private Double elevationLost = 0.0;
   private Double elevationGained = 0.0;
-  private int generalizedCost = -1;
-  private int waitTimeOptimizedCost = -1;
-  private int transferPriorityCost = -1;
+  private int generalizedCost = UNKNOWN;
+  private Integer generalizedCost2 = null;
+  private TimeAndCost accessPenalty = TimeAndCost.ZERO;
+  private TimeAndCost egressPenalty = TimeAndCost.ZERO;
+  private int waitTimeOptimizedCost = UNKNOWN;
+  private int transferPriorityCost = UNKNOWN;
   private boolean tooSloped = false;
   private Double maxSlope = null;
   private boolean arrivedAtDestinationWithRentedVehicle = false;
@@ -42,40 +59,32 @@ public class Itinerary {
   /* Sandbox experimental properties */
   private Float accessibilityScore;
 
+  private Emissions emissionsPerPerson;
+
   /* other properties */
 
   private final List<SystemNotice> systemNotices = new ArrayList<>();
   private List<Leg> legs;
 
-  private Fare fare = new Fare();
+  private ItineraryFares fare = ItineraryFares.empty();
 
   public Itinerary(List<Leg> legs) {
     setLegs(legs);
 
     // Set aggregated data
     ItinerariesCalculateLegTotals totals = new ItinerariesCalculateLegTotals(legs);
-    this.durationSeconds = totals.totalDurationSeconds;
+    this.duration = totals.totalDuration;
     this.numberOfTransfers = totals.transfers();
-    this.transitTimeSeconds = totals.transitTimeSeconds;
-    this.nonTransitTimeSeconds = totals.nonTransitTimeSeconds;
+    this.transitDuration = totals.transitDuration;
+    this.nonTransitDuration = totals.nonTransitDuration;
     this.nonTransitDistanceMeters = DoubleUtils.roundTo2Decimals(totals.nonTransitDistanceMeters);
-    this.waitingTimeSeconds = totals.waitingTimeSeconds;
+    this.walkDuration = totals.walkDuration;
+    this.walkDistanceMeters = totals.walkDistanceMeters;
+    this.waitingDuration = totals.waitingDuration;
     this.walkOnly = totals.walkOnly;
     this.streetOnly = totals.streetOnly;
     this.setElevationGained(totals.totalElevationGained);
     this.setElevationLost(totals.totalElevationLost);
-  }
-
-  /**
-   * Used to convert a list of itineraries to a SHORT human readable string.
-   *
-   * @see #toStr()
-   * <p>
-   * It is great for comparing lists of itineraries in a test: {@code
-   * assertEquals(toStr(List.of(it1)), toStr(result))}.
-   */
-  public static String toStr(List<Itinerary> list) {
-    return list.stream().map(Itinerary::toStr).collect(Collectors.joining(", "));
   }
 
   /**
@@ -86,10 +95,24 @@ public class Itinerary {
   }
 
   /**
+   * Time that the trip departs as a Java Instant type.
+   */
+  public Instant startTimeAsInstant() {
+    return firstLeg().getStartTime().toInstant();
+  }
+
+  /**
    * Time that the trip arrives.
    */
   public ZonedDateTime endTime() {
     return lastLeg().getEndTime();
+  }
+
+  /**
+   * Time that the trip arrives as a Java Instant type.
+   */
+  public Instant endTimeAsInstant() {
+    return lastLeg().getEndTime().toInstant();
   }
 
   /**
@@ -109,15 +132,20 @@ public class Itinerary {
   /**
    * This is the amount of time used to travel. {@code waitingTime} is NOT included.
    */
-  public int effectiveDurationSeconds() {
-    return getTransitTimeSeconds() + getNonTransitTimeSeconds();
+  public Duration effectiveDuration() {
+    return getTransitDuration().plus(getNonTransitDuration());
   }
 
   /**
    * Total distance in meters.
    */
   public double distanceMeters() {
-    return getLegs().stream().mapToDouble(Leg::getDistanceMeters).sum();
+    return getLegs()
+      .stream()
+      // An unknown distance is -1
+      .filter(l -> l.getDistanceMeters() > 0)
+      .mapToDouble(Leg::getDistanceMeters)
+      .sum();
   }
 
   /**
@@ -134,9 +162,11 @@ public class Itinerary {
     return isStreetOnly();
   }
 
-  /** TRUE if alt least one leg is a transit leg. */
+  /** TRUE if at least one leg is a transit leg. */
   public boolean hasTransit() {
-    return getTransitTimeSeconds() > 0;
+    return legs
+      .stream()
+      .anyMatch(l -> l instanceof ScheduledTransitLeg || l instanceof FlexibleTransitLeg);
   }
 
   public Leg firstLeg() {
@@ -149,17 +179,17 @@ public class Itinerary {
 
   /** Get the first transit leg if one exist */
   public Optional<Leg> firstTransitLeg() {
-    return getLegs().stream().filter(Leg::isTransitLeg).findFirst();
+    return getLegs().stream().filter(TransitLeg.class::isInstance).findFirst();
   }
 
   /**
    * An itinerary can be flagged for removal with a system notice.
    * <p>
-   * For example when tuning or manually testing the itinerary-filter-chain it you can enable {@link
-   * org.opentripplanner.routing.api.request.ItineraryFilterParameters#debug} and instead of
-   * removing itineraries from the result the itineraries will be tagged by the filters instead.
-   * This enables investigating, why an expected itinerary is missing from the result set. It can be
-   * also used by other filters to see the already filtered itineraries.
+   * For example when tuning or manually testing the itinerary-filter-chain it you can enable
+   * {@link ItineraryFilterPreferences#debug()} and instead of removing itineraries from the result
+   * the itineraries will be tagged by the filters instead. This enables investigating, why an
+   * expected itinerary is missing from the result set. It can be also used by other filters to see
+   * the already filtered itineraries.
    */
   public void flagForDeletion(SystemNotice notice) {
     systemNotices.add(notice);
@@ -168,12 +198,20 @@ public class Itinerary {
   /**
    * Remove all deletion flags of this itinerary, in effect undeleting it from the result.
    */
-  public void removeDeletionFlags() {
-    systemNotices.clear();
+  public void removeDeletionFlags(Set<String> removeTags) {
+    systemNotices.removeIf(it -> removeTags.contains(it.tag()));
   }
 
   public boolean isFlaggedForDeletion() {
     return !getSystemNotices().isEmpty();
+  }
+
+  /**
+   * Utility method to check if one of the attached system notices matches the
+   * given {@code tag}.
+   */
+  public boolean hasSystemNoticeTag(String tag) {
+    return systemNotices.stream().map(SystemNotice::tag).anyMatch(tag::equals);
   }
 
   public Itinerary withTimeShiftToStartAt(ZonedDateTime afterTime) {
@@ -203,6 +241,18 @@ public class Itinerary {
     return super.equals(o);
   }
 
+  /**
+   * Used to convert a list of itineraries to a SHORT human-readable string.
+   *
+   * @see #toStr()
+   * <p>
+   * It is great for comparing lists of itineraries in a test: {@code
+   * assertEquals(toStr(List.of(it1)), toStr(result))}.
+   */
+  public static String toStr(List<Itinerary> list) {
+    return list.stream().map(Itinerary::toStr).collect(Collectors.joining(", "));
+  }
+
   @Override
   public String toString() {
     return ToStringBuilder
@@ -211,18 +261,22 @@ public class Itinerary {
       .addStr("to", lastLeg().getTo().toStringShort())
       .addTime("start", firstLeg().getStartTime())
       .addTime("end", lastLeg().getEndTime())
-      .addNum("nTransfers", numberOfTransfers, -1)
-      .addDurationSec("duration", durationSeconds)
-      .addNum("generalizedCost", generalizedCost)
-      .addDurationSec("nonTransitTime", nonTransitTimeSeconds)
-      .addDurationSec("transitTime", transitTimeSeconds)
-      .addDurationSec("waitingTime", waitingTimeSeconds)
+      .addNum("nTransfers", numberOfTransfers)
+      .addDuration("duration", duration)
+      .addDuration("nonTransitTime", nonTransitDuration)
+      .addDuration("transitTime", transitDuration)
+      .addDuration("waitingTime", waitingDuration)
+      .addNum("generalizedCost", generalizedCost, UNKNOWN)
+      .addNum("generalizedCost2", generalizedCost2)
+      .addNum("waitTimeOptimizedCost", waitTimeOptimizedCost, UNKNOWN)
+      .addNum("transferPriorityCost", transferPriorityCost, UNKNOWN)
       .addNum("nonTransitDistance", nonTransitDistanceMeters, "m")
       .addBool("tooSloped", tooSloped)
       .addNum("elevationLost", elevationLost, 0.0)
       .addNum("elevationGained", elevationGained, 0.0)
       .addCol("legs", legs)
       .addObj("fare", fare)
+      .addObj("emissionsPerPerson", emissionsPerPerson)
       .toString();
   }
 
@@ -245,39 +299,41 @@ public class Itinerary {
     buf.stop(firstLeg().getFrom().name.toString());
 
     for (Leg leg : legs) {
-      buf.sep();
       if (leg.isWalkingLeg()) {
-        buf.walk((int) leg.getDuration());
-      } else if (leg.isTransitLeg()) {
+        buf.walk((int) leg.getDuration().toSeconds());
+      } else if (leg instanceof TransitLeg transitLeg) {
         buf.transit(
-          leg.getMode().name(),
-          leg.getTrip().logName(),
-          leg.getStartTime(),
-          leg.getEndTime()
+          transitLeg.getMode().name(),
+          transitLeg.getTrip().logName(),
+          transitLeg.getStartTime(),
+          transitLeg.getEndTime()
         );
-      } else {
-        buf.other(leg.getMode().name(), leg.getStartTime(), leg.getEndTime());
+      } else if (leg instanceof StreetLeg streetLeg) {
+        buf.street(streetLeg.getMode().name(), leg.getStartTime(), leg.getEndTime());
       }
-
-      buf.sep();
       buf.stop(leg.getTo().name.toString());
     }
 
-    buf.space().append(String.format(ROOT, "[ $%d ]", generalizedCost));
+    // The generalizedCost2 is printed as is, it is a special cost and the scale depends on the
+    // use-case.
+    buf.summary(
+      RaptorCostConverter.toRaptorCost(generalizedCost),
+      getGeneralizedCost2().orElse(RaptorConstants.NOT_SET)
+    );
 
     return buf.toString();
   }
 
   /** Total duration of the itinerary in seconds */
-  public int getDurationSeconds() {
-    return durationSeconds;
+  public Duration getDuration() {
+    return duration;
   }
 
   /**
    * How much time is spent on transit, in seconds.
    */
-  public int getTransitTimeSeconds() {
-    return transitTimeSeconds;
+  public Duration getTransitDuration() {
+    return transitDuration;
   }
 
   /**
@@ -290,8 +346,8 @@ public class Itinerary {
   /**
    * How much time is spent waiting for transit to arrive, in seconds.
    */
-  public int getWaitingTimeSeconds() {
-    return waitingTimeSeconds;
+  public Duration getWaitingDuration() {
+    return waitingDuration;
   }
 
   /**
@@ -331,6 +387,50 @@ public class Itinerary {
     return legs;
   }
 
+  /**
+   * Applies the transformation in {@code mapper} to all instances of {@link TransitLeg} in the
+   * legs of this Itinerary.
+   * <p>
+   * NOTE: The itinerary is mutable so the transformation is done in-place!
+   */
+  public void transformTransitLegs(Function<TransitLeg, TransitLeg> mapper) {
+    legs =
+      legs
+        .stream()
+        .map(l -> {
+          if (l instanceof TransitLeg tl) {
+            return mapper.apply(tl);
+          } else {
+            return l;
+          }
+        })
+        .toList();
+  }
+
+  public Stream<StreetLeg> getStreetLegs() {
+    return legs.stream().filter(StreetLeg.class::isInstance).map(StreetLeg.class::cast);
+  }
+
+  /**
+   * Retrieve a transit leg by its index in the itinerary, starting from 0. This is useful in test
+   * where you may assume leg N is a transit leg.
+   *
+   * @throws ClassCastException if the leg is not a TransitLeg
+   */
+  public TransitLeg getTransitLeg(int index) {
+    return (TransitLeg) legs.get(index);
+  }
+
+  /**
+   * Retrieve a street leg by its index in the itinerary, starting from 0. This is useful in test
+   * where you may assume leg N is a transit leg.
+   *
+   * @throws ClassCastException if the leg is not a StreetLeg
+   */
+  public StreetLeg getStreetLeg(int index) {
+    return (StreetLeg) legs.get(index);
+  }
+
   public void setLegs(List<Leg> legs) {
     this.legs = List.copyOf(legs);
   }
@@ -340,7 +440,7 @@ public class Itinerary {
    * accessible the itinerary is as a whole. This is not a very scientific method but just a rough
    * guidance that expresses certainty or uncertainty about the accessibility.
    * <p>
-   * An alternative to this is to use the `generalized-cost` and use that to indicate witch itineraries is the
+   * An alternative to this is to use the `generalized-cost` and use that to indicate which itineraries is the
    * best/most friendly with respect to making the journey in a wheelchair. The `generalized-cost` include, not
    * only a penalty for unknown and inaccessible boardings, but also a penalty for undesired uphill and downhill
    * street traversal.
@@ -363,8 +463,8 @@ public class Itinerary {
   /**
    * How much time is spent walking/biking/driving, in seconds.
    */
-  public int getNonTransitTimeSeconds() {
-    return nonTransitTimeSeconds;
+  public Duration getNonTransitDuration() {
+    return nonTransitDuration;
   }
 
   /**
@@ -394,7 +494,7 @@ public class Itinerary {
 
   /**
    * If a generalized cost is used in the routing algorithm, this should be the total cost computed
-   * by the algorithm. This is relevant for anyone who want to debug an search and tuning the
+   * by the algorithm. This is relevant for anyone who want to debug a search and tuning the
    * system. The unit should be equivalent to the cost of "one second of transit".
    * <p>
    * -1 indicate that the cost is not set/computed.
@@ -403,8 +503,59 @@ public class Itinerary {
     return generalizedCost;
   }
 
+  /**
+   * If a generalized cost is used in the routing algorithm, this is the cost computed plus
+   * the artificial penalty added for access/egresses. This is useful so that itineraries
+   * using only on-street legs don't have an unfair advantage over those combining access/egress with
+   * transit and using a penalty when being processed by the itinerary filter chain.
+   *
+   * @see org.opentripplanner.routing.algorithm.raptoradapter.router.street.AccessEgressPenaltyDecorator
+   */
+  @Override
+  public int getGeneralizedCostIncludingPenalty() {
+    return generalizedCost + penaltyCost(accessPenalty) + penaltyCost(egressPenalty);
+  }
+
   public void setGeneralizedCost(int generalizedCost) {
     this.generalizedCost = generalizedCost;
+  }
+
+  /**
+   * The transit router allows the usage of a second generalized-cost parameter to be used in
+   * routing. In Raptor this is called c2, but in OTP it is generalized-cost-2. What this cost
+   * represents depends on the use-case and the unit and scale is also given by the use-case.
+   * <p>
+   * Currently, the pass-through search and the transit-priority uses this. This is relevant for
+   * anyone who wants to debug a search and tune the system.
+   * <p>
+   * {@link RaptorConstants#NOT_SET} indicate that the cost is not set/computed.
+   */
+  public Optional<Integer> getGeneralizedCost2() {
+    return Optional.ofNullable(generalizedCost2);
+  }
+
+  public void setGeneralizedCost2(Integer generalizedCost2) {
+    this.generalizedCost2 = generalizedCost2;
+  }
+
+  @Nullable
+  public TimeAndCost getAccessPenalty() {
+    return accessPenalty;
+  }
+
+  public void setAccessPenalty(TimeAndCost accessPenalty) {
+    Objects.requireNonNull(accessPenalty);
+    this.accessPenalty = accessPenalty;
+  }
+
+  @Nullable
+  public TimeAndCost getEgressPenalty() {
+    return egressPenalty;
+  }
+
+  public void setEgressPenalty(TimeAndCost egressPenalty) {
+    Objects.requireNonNull(egressPenalty);
+    this.egressPenalty = egressPenalty;
   }
 
   /**
@@ -463,7 +614,7 @@ public class Itinerary {
   }
 
   /**
-   * If {@link org.opentripplanner.routing.api.request.RoutingRequest#allowKeepingRentedVehicleAtDestination}
+   * If {@link RouteRequest#allowArrivingInRentalVehicleAtDestination}
    * is set than it is possible to end a trip without dropping off the rented bicycle.
    */
   public boolean isArrivedAtDestinationWithRentedVehicle() {
@@ -477,13 +628,77 @@ public class Itinerary {
   }
 
   /**
-   * The cost of this trip
+   * Get the index of a leg when you want to reference it in an API response, for example when you
+   * want to say that a fare is valid for legs 2 and 3.
+   * <p>
+   * Return {@link #UNKNOWN} if not found.
    */
-  public Fare getFare() {
+  public int getLegIndex(Leg leg) {
+    var index = legs.indexOf(leg);
+    // the filter pipeline can also modify the identity of Leg instances. that's why we not only
+    // check that but also the start and end point as a replacement for the identity.
+    if (index > -1) {
+      return index;
+    } else {
+      for (int i = 0; i < legs.size() - 1; i++) {
+        var currentLeg = legs.get(i);
+        if (
+          currentLeg.getFrom().sameLocation(leg.getFrom()) &&
+          currentLeg.getTo().sameLocation(leg.getTo())
+        ) {
+          return i;
+        }
+      }
+      return UNKNOWN;
+    }
+  }
+
+  /**
+   * The fare products of this itinerary.
+   */
+  public ItineraryFares getFares() {
     return fare;
   }
 
-  public void setFare(Fare fare) {
+  public void setFare(ItineraryFares fare) {
     this.fare = fare;
+  }
+
+  public List<ScheduledTransitLeg> getScheduledTransitLegs() {
+    return getLegs()
+      .stream()
+      .filter(ScheduledTransitLeg.class::isInstance)
+      .map(ScheduledTransitLeg.class::cast)
+      .toList();
+  }
+
+  /**
+   * The emissions of this itinerary.
+   */
+  public void setEmissionsPerPerson(Emissions emissionsPerPerson) {
+    this.emissionsPerPerson = emissionsPerPerson;
+  }
+
+  @Nullable
+  public Emissions getEmissionsPerPerson() {
+    return this.emissionsPerPerson;
+  }
+
+  /**
+   * How much walking this itinerary contains, in meters.
+   */
+  public double walkDistanceMeters() {
+    return walkDistanceMeters;
+  }
+
+  /**
+   * How long the walking is contained in this itinerary.
+   */
+  public Duration walkDuration() {
+    return walkDuration;
+  }
+
+  private static int penaltyCost(TimeAndCost penalty) {
+    return penalty.cost().toSeconds();
   }
 }

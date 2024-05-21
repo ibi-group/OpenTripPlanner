@@ -14,6 +14,7 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Queue;
+import org.opentripplanner.framework.time.ServiceDateUtils;
 import org.opentripplanner.model.PickDrop;
 import org.opentripplanner.model.StopTimesInPattern;
 import org.opentripplanner.model.Timetable;
@@ -23,7 +24,6 @@ import org.opentripplanner.transit.model.site.StopLocation;
 import org.opentripplanner.transit.model.timetable.Trip;
 import org.opentripplanner.transit.model.timetable.TripTimes;
 import org.opentripplanner.transit.service.TransitService;
-import org.opentripplanner.util.time.ServiceDateUtils;
 
 public class StopTimesHelper {
 
@@ -52,6 +52,10 @@ public class StopTimesHelper {
     ArrivalDeparture arrivalDeparture,
     boolean includeCancelledTrips
   ) {
+    if (numberOfDepartures <= 0) {
+      return List.of();
+    }
+
     List<StopTimesInPattern> result = new ArrayList<>();
 
     // Fetch all patterns, including those from realtime sources
@@ -87,7 +91,8 @@ public class StopTimesHelper {
     TransitService transitService,
     StopLocation stop,
     LocalDate serviceDate,
-    ArrivalDeparture arrivalDeparture
+    ArrivalDeparture arrivalDeparture,
+    boolean includeCancellations
   ) {
     List<StopTimesInPattern> ret = new ArrayList<>();
 
@@ -106,7 +111,13 @@ public class StopTimesHelper {
           if (skipByPickUpDropOff(pattern, arrivalDeparture, i)) {
             continue;
           }
+          if (skipByStopCancellation(pattern, includeCancellations, i)) {
+            continue;
+          }
           for (TripTimes t : tt.getTripTimes()) {
+            if (skipByTripCancellation(t, includeCancellations)) {
+              continue;
+            }
             if (servicesRunning.contains(t.getServiceCode())) {
               stopTimes.times.add(new TripTimeOnDate(t, i, pattern, serviceDate, midnight));
             }
@@ -140,7 +151,8 @@ public class StopTimesHelper {
     Instant startTime,
     Duration timeRange,
     int numberOfDepartures,
-    ArrivalDeparture arrivalDeparture
+    ArrivalDeparture arrivalDeparture,
+    boolean includeCancellations
   ) {
     Queue<TripTimeOnDate> pq = listTripTimeShortsForPatternAtStop(
       transitService,
@@ -150,7 +162,7 @@ public class StopTimesHelper {
       timeRange,
       numberOfDepartures,
       arrivalDeparture,
-      false,
+      includeCancellations,
       true
     );
 
@@ -191,7 +203,7 @@ public class StopTimesHelper {
     List<LocalDate> serviceDates = startDate.datesUntil(endDate.plusDays(1)).toList();
 
     // The bounded priority Q is used to keep a sorted short list of trip times. We can not
-    // relay on the trip times to be in order because of real-time updates. This code can
+    // rely on the trip times to be in order because of real-time updates. This code can
     // probably be optimized, and the trip search in the Raptor search does almost the same
     // thing. This is no part of a routing request, but is a used frequently in some
     // operation like Entur for "departure boards" (apps, widgets, screens on platforms, and
@@ -287,6 +299,10 @@ public class StopTimesHelper {
   }
 
   public static boolean skipByTripCancellation(TripTimes tripTimes, boolean includeCancellations) {
+    if (tripTimes.isDeleted()) {
+      return true;
+    }
+
     return (
       (tripTimes.isCanceled() || tripTimes.getTrip().getNetexAlteration().isCanceledOrReplaced()) &&
       !includeCancellations

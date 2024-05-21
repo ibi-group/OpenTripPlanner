@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.opentripplanner.model.PathTransfer;
 import org.opentripplanner.routing.algorithm.raptoradapter.transit.Transfer;
-import org.opentripplanner.transit.model.site.Stop;
+import org.opentripplanner.transit.model.site.RegularStop;
 import org.opentripplanner.transit.service.StopModel;
 import org.opentripplanner.transit.service.TransitModel;
 
@@ -20,10 +20,9 @@ class TransfersMapper {
     for (int i = 0; i < stopModel.stopIndexSize(); ++i) {
       var stop = stopModel.stopByIndex(i);
       ArrayList<Transfer> list = new ArrayList<>();
-      transferByStopIndex.add(list);
 
       for (PathTransfer pathTransfer : transitModel.getTransfersByStop(stop)) {
-        if (pathTransfer.to instanceof Stop) {
+        if (pathTransfer.to instanceof RegularStop) {
           int toStopIndex = pathTransfer.to.getIndex();
           Transfer newTransfer;
           if (pathTransfer.getEdges() != null) {
@@ -36,7 +35,12 @@ class TransfersMapper {
           list.add(newTransfer);
         }
       }
+
+      // Create a copy to compact and make the inner lists immutable
+      transferByStopIndex.add(List.copyOf(list));
     }
-    return transferByStopIndex;
+
+    // Return an immutable copy
+    return List.copyOf(transferByStopIndex);
   }
 }

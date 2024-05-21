@@ -5,7 +5,7 @@ import com.google.common.collect.Multimap;
 import java.util.Collection;
 import java.util.Map;
 import javax.annotation.Nullable;
-import org.opentripplanner.graph_builder.DataImportIssueStore;
+import org.opentripplanner.graph_builder.issue.api.DataImportIssueStore;
 import org.opentripplanner.model.StopTime;
 import org.opentripplanner.netex.index.api.ReadOnlyHierarchicalMap;
 import org.opentripplanner.netex.mapping.support.FeedScopedIdFactory;
@@ -114,10 +114,6 @@ class NoticeAssignmentMapper {
       }
     }
     return noticiesByEntity;
-  }
-
-  private StopTimeKey lookupStopTimeKey(String timeTablePassingTimeId) {
-    return stopTimesByNetexId.get(timeTablePassingTimeId).getId();
   }
 
   @Nullable

@@ -1,7 +1,7 @@
 package org.opentripplanner.graph_builder.services.ned;
 
+import org.geotools.api.coverage.Coverage;
 import org.geotools.coverage.grid.GridCoverage2D;
-import org.opengis.coverage.Coverage;
 import org.opentripplanner.routing.graph.Graph;
 
 /**
@@ -14,6 +14,13 @@ import org.opentripplanner.routing.graph.Graph;
 public interface ElevationGridCoverageFactory {
   /** Creates a new coverage instance from files already fetched */
   Coverage getGridCoverage();
+
+  /**
+   * Unit conversion multiplier for elevation values. No conversion needed if the elevation values
+   * are defined in meters in the source data. If, for example, decimetres are used in the source
+   * data, this should be set to 0.1 in build-config.json.
+   */
+  double elevationUnitMultiplier();
 
   void checkInputs();
 

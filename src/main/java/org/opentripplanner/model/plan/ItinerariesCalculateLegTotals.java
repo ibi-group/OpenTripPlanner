@@ -8,12 +8,14 @@ import java.util.List;
  */
 class ItinerariesCalculateLegTotals {
 
-  int totalDurationSeconds = 0;
-  int transitTimeSeconds = 0;
+  Duration totalDuration = Duration.ZERO;
+  Duration transitDuration = Duration.ZERO;
   int nTransitLegs = 0;
-  int nonTransitTimeSeconds = 0;
+  Duration nonTransitDuration = Duration.ZERO;
   double nonTransitDistanceMeters = 0.0;
-  int waitingTimeSeconds;
+  Duration walkDuration = Duration.ZERO;
+  double walkDistanceMeters = 0.0;
+  Duration waitingDuration = Duration.ZERO;
   boolean walkOnly = true;
   boolean streetOnly = true;
   double totalElevationGained = 0.0;
@@ -31,34 +33,42 @@ class ItinerariesCalculateLegTotals {
   }
 
   private void calculate(List<Leg> legs) {
-    totalDurationSeconds =
-      (int) Duration
-        .between(legs.get(0).getStartTime(), legs.get(legs.size() - 1).getEndTime())
-        .toSeconds();
+    totalDuration = Duration.between(legs.getFirst().getStartTime(), legs.getLast().getEndTime());
 
     for (Leg leg : legs) {
-      long dt = leg.getDuration();
+      Duration dt = leg.getDuration();
 
       if (leg.isTransitLeg()) {
-        transitTimeSeconds += dt;
+        transitDuration = transitDuration.plus(dt);
         if (!leg.isInterlinedWithPreviousLeg()) {
           ++nTransitLegs;
         }
       } else if (leg.isStreetLeg()) {
-        nonTransitTimeSeconds += dt;
+        nonTransitDuration = nonTransitDuration.plus(dt);
         nonTransitDistanceMeters += leg.getDistanceMeters();
+
+        if (leg.isWalkingLeg()) {
+          walkDuration = walkDuration.plus(leg.getDuration());
+          walkDistanceMeters = walkDistanceMeters + leg.getDistanceMeters();
+        }
+      } else if (leg instanceof UnknownTransitPathLeg unknownTransitPathLeg) {
+        nTransitLegs += unknownTransitPathLeg.getNumberOfTransfers() + 1;
       }
+
       if (!leg.isWalkingLeg()) {
         walkOnly = false;
       }
+
       if (!leg.isStreetLeg()) {
         this.streetOnly = false;
       }
-      if (leg.getElevationGained() != null && leg.getElevationLost() != null) {
-        this.totalElevationGained += leg.getElevationGained();
-        this.totalElevationLost += leg.getElevationLost();
+
+      if (leg.getElevationProfile() != null) {
+        var p = leg.getElevationProfile();
+        this.totalElevationGained += p.elevationGained();
+        this.totalElevationLost += p.elevationLost();
       }
     }
-    this.waitingTimeSeconds = totalDurationSeconds - (transitTimeSeconds + nonTransitTimeSeconds);
+    this.waitingDuration = totalDuration.minus(transitDuration).minus(nonTransitDuration);
   }
 }

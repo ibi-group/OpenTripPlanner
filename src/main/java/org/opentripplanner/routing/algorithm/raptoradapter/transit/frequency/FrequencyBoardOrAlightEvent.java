@@ -1,16 +1,17 @@
 package org.opentripplanner.routing.algorithm.raptoradapter.transit.frequency;
 
 import java.time.LocalDate;
+import javax.annotation.Nonnull;
+import org.opentripplanner.raptor.api.model.RaptorTransferConstraint;
+import org.opentripplanner.raptor.api.model.RaptorTripPattern;
+import org.opentripplanner.raptor.spi.RaptorBoardOrAlightEvent;
+import org.opentripplanner.raptor.spi.RaptorTripScheduleSearch;
 import org.opentripplanner.routing.algorithm.raptoradapter.transit.TripSchedule;
 import org.opentripplanner.routing.algorithm.raptoradapter.transit.cost.DefaultTripSchedule;
-import org.opentripplanner.transit.model.basic.WheelchairAccessibility;
-import org.opentripplanner.transit.model.framework.FeedScopedId;
+import org.opentripplanner.routing.algorithm.raptoradapter.transit.request.TripPatternForDates;
+import org.opentripplanner.transit.model.basic.Accessibility;
 import org.opentripplanner.transit.model.network.TripPattern;
 import org.opentripplanner.transit.model.timetable.TripTimes;
-import org.opentripplanner.transit.raptor.api.transit.RaptorTransferConstraint;
-import org.opentripplanner.transit.raptor.api.transit.RaptorTripPattern;
-import org.opentripplanner.transit.raptor.api.transit.RaptorTripScheduleBoardOrAlightEvent;
-import org.opentripplanner.transit.raptor.api.transit.RaptorTripScheduleSearch;
 
 /**
  * Represents a result of a {@link RaptorTripScheduleSearch}, with materialized {@link TripTimes}.
@@ -28,24 +29,23 @@ import org.opentripplanner.transit.raptor.api.transit.RaptorTripScheduleSearch;
  * internal OTP transit model.
  */
 abstract class FrequencyBoardOrAlightEvent<T extends DefaultTripSchedule>
-  implements RaptorTripScheduleBoardOrAlightEvent<T>, TripSchedule {
+  implements RaptorBoardOrAlightEvent<T>, TripSchedule {
 
-  protected final RaptorTripPattern raptorTripPattern;
+  protected final TripPatternForDates raptorTripPattern;
   protected final TripTimes tripTimes;
-  protected final TripPattern pattern;
   protected final int stopPositionInPattern;
+  protected final int earliestDepartureTime;
   protected final int departureTime;
   protected final int offset;
   protected final int headway;
   protected final LocalDate serviceDate;
-  private final WheelchairAccessibility wheelChairBoarding;
-  private final FeedScopedId routeId;
+  private final Accessibility wheelChairBoarding;
 
   public FrequencyBoardOrAlightEvent(
-    RaptorTripPattern raptorTripPattern,
+    TripPatternForDates raptorTripPattern,
     TripTimes tripTimes,
-    TripPattern pattern,
     int stopPositionInPattern,
+    int earliestDepartureTime,
     int departureTime,
     int offset,
     int headway,
@@ -53,41 +53,51 @@ abstract class FrequencyBoardOrAlightEvent<T extends DefaultTripSchedule>
   ) {
     this.raptorTripPattern = raptorTripPattern;
     this.tripTimes = tripTimes;
-    this.pattern = pattern;
     this.stopPositionInPattern = stopPositionInPattern;
+    this.earliestDepartureTime = earliestDepartureTime;
     this.departureTime = departureTime;
     this.offset = offset;
     this.headway = headway;
     this.serviceDate = serviceDate;
-    this.routeId = pattern.getRoute().getId();
     this.wheelChairBoarding = tripTimes.getWheelchairAccessibility();
   }
 
   /* RaptorTripScheduleBoardOrAlightEvent implementation */
 
   @Override
-  public int getTripIndex() {
+  public int tripIndex() {
     return tripTimes.getDepartureTime(0) + offset;
   }
 
   @Override
-  public T getTrip() {
+  public T trip() {
     return (T) this;
   }
 
   @Override
-  public int getStopPositionInPattern() {
+  public int stopPositionInPattern() {
     return stopPositionInPattern;
   }
 
   @Override
-  public int getTime() {
+  public int time() {
     return departureTime + offset;
   }
 
   @Override
-  public RaptorTransferConstraint getTransferConstraint() {
+  public int earliestBoardTime() {
+    return earliestDepartureTime;
+  }
+
+  @Override
+  @Nonnull
+  public RaptorTransferConstraint transferConstraint() {
     return RaptorTransferConstraint.REGULAR_TRANSFER;
+  }
+
+  @Override
+  public boolean empty() {
+    return false;
   }
 
   /* RaptorTripSchedule implementation */
@@ -110,7 +120,7 @@ abstract class FrequencyBoardOrAlightEvent<T extends DefaultTripSchedule>
 
   @Override
   public int transitReluctanceFactorIndex() {
-    return pattern.getMode().ordinal();
+    return raptorTripPattern.transitReluctanceFactorIndex();
   }
 
   /* TripSchedule implementation */
@@ -122,7 +132,7 @@ abstract class FrequencyBoardOrAlightEvent<T extends DefaultTripSchedule>
 
   @Override
   public TripPattern getOriginalTripPattern() {
-    return pattern;
+    return raptorTripPattern.getTripPattern().getPattern();
   }
 
   @Override
@@ -141,12 +151,7 @@ abstract class FrequencyBoardOrAlightEvent<T extends DefaultTripSchedule>
   }
 
   @Override
-  public WheelchairAccessibility wheelchairBoarding() {
+  public Accessibility wheelchairBoarding() {
     return wheelChairBoarding;
-  }
-
-  @Override
-  public FeedScopedId routeId() {
-    return routeId;
   }
 }

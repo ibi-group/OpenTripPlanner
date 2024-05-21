@@ -1,13 +1,14 @@
 package org.opentripplanner.routing.algorithm.transferoptimization.model;
 
-import static org.opentripplanner.util.time.DurationUtils.durationInSeconds;
+import static org.opentripplanner.framework.time.DurationUtils.durationInSeconds;
 
 import java.util.Collection;
 import java.util.function.ToIntFunction;
-import org.opentripplanner.transit.raptor.api.path.Path;
-import org.opentripplanner.transit.raptor.api.path.TransitPathLeg;
-import org.opentripplanner.transit.raptor.api.transit.RaptorSlackProvider;
-import org.opentripplanner.transit.raptor.api.transit.RaptorTripSchedule;
+import org.opentripplanner.framework.lang.IntUtils;
+import org.opentripplanner.raptor.api.model.RaptorTripSchedule;
+import org.opentripplanner.raptor.api.path.RaptorPath;
+import org.opentripplanner.raptor.api.path.TransitPathLeg;
+import org.opentripplanner.raptor.spi.RaptorSlackProvider;
 
 /**
  * This is a calculator to calculate a min-safe-transfer-time. The min-safe-transfer-time is used to
@@ -86,7 +87,7 @@ public class MinSafeTransferTimeCalculator<T extends RaptorTripSchedule> {
       return MIN_SAFE_TRANSFER_TIME_LIMIT_UPPER_BOUND;
     }
     int minTransitTime = list.stream().mapToInt(transitTimeSeconds).min().getAsInt();
-    int minSafeTransitTime = (int) Math.round(minTransitTime * P / 100.0);
+    int minSafeTransitTime = IntUtils.round(minTransitTime * P / 100.0);
     return bound(
       minSafeTransitTime,
       MIN_SAFE_TRANSFER_TIME_LIMIT_LOWER_BOUND,
@@ -94,8 +95,8 @@ public class MinSafeTransferTimeCalculator<T extends RaptorTripSchedule> {
     );
   }
 
-  public int minSafeTransferTime(Collection<Path<T>> paths) {
-    ToIntFunction<Path<T>> totalTransitTimeOp = p ->
+  public int minSafeTransferTime(Collection<RaptorPath<T>> paths) {
+    ToIntFunction<RaptorPath<T>> totalTransitTimeOp = p ->
       p.transitLegs().mapToInt(this::durationIncludingSlack).sum();
 
     return minSafeTransferTimeOp(paths, totalTransitTimeOp);

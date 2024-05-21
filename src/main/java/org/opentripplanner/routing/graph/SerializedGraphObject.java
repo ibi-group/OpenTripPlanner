@@ -16,20 +16,26 @@ import java.io.Serializable;
 import java.util.Collection;
 import java.util.List;
 import javax.annotation.Nullable;
-import org.opentripplanner.common.geometry.CompactElevationProfile;
 import org.opentripplanner.datastore.api.DataSource;
+import org.opentripplanner.ext.emissions.EmissionsDataModel;
+import org.opentripplanner.ext.stopconsolidation.StopConsolidationRepository;
+import org.opentripplanner.framework.application.OtpAppException;
+import org.opentripplanner.framework.geometry.CompactElevationProfile;
+import org.opentripplanner.framework.lang.OtpNumberFormat;
+import org.opentripplanner.framework.logging.ProgressTracker;
+import org.opentripplanner.graph_builder.issue.api.DataImportIssueSummary;
 import org.opentripplanner.model.projectinfo.GraphFileHeader;
 import org.opentripplanner.model.projectinfo.OtpProjectInfo;
 import org.opentripplanner.routing.graph.kryosupport.KryoBuilder;
+import org.opentripplanner.service.worldenvelope.WorldEnvelopeRepository;
 import org.opentripplanner.standalone.config.BuildConfig;
 import org.opentripplanner.standalone.config.RouterConfig;
+import org.opentripplanner.street.model.StreetLimitationParameters;
+import org.opentripplanner.street.model.edge.Edge;
+import org.opentripplanner.street.model.vertex.Vertex;
 import org.opentripplanner.transit.model.basic.SubMode;
 import org.opentripplanner.transit.model.network.RoutingTripPattern;
-import org.opentripplanner.transit.model.site.StopLocation;
 import org.opentripplanner.transit.service.TransitModel;
-import org.opentripplanner.util.OtpAppException;
-import org.opentripplanner.util.lang.OtpNumberFormat;
-import org.opentripplanner.util.logging.ProgressTracker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -50,6 +56,7 @@ public class SerializedGraphObject implements Serializable {
 
   public final Graph graph;
   public final TransitModel transitModel;
+  public final WorldEnvelopeRepository worldEnvelopeRepository;
   private final Collection<Edge> edges;
 
   /**
@@ -67,23 +74,35 @@ public class SerializedGraphObject implements Serializable {
    */
   private final List<SubMode> allTransitSubModes;
 
-  private final int stopLocationCounter;
+  public final DataImportIssueSummary issueSummary;
+  public final StopConsolidationRepository stopConsolidationRepository;
   private final int routingTripPatternCounter;
+  public final EmissionsDataModel emissionsDataModel;
+  public final StreetLimitationParameters streetLimitationParameters;
 
   public SerializedGraphObject(
     Graph graph,
     TransitModel transitModel,
+    WorldEnvelopeRepository worldEnvelopeRepository,
     BuildConfig buildConfig,
-    RouterConfig routerConfig
+    RouterConfig routerConfig,
+    DataImportIssueSummary issueSummary,
+    EmissionsDataModel emissionsDataModel,
+    StopConsolidationRepository stopConsolidationRepository,
+    StreetLimitationParameters streetLimitationParameters
   ) {
     this.graph = graph;
     this.edges = graph.getEdges();
     this.transitModel = transitModel;
+    this.worldEnvelopeRepository = worldEnvelopeRepository;
     this.buildConfig = buildConfig;
     this.routerConfig = routerConfig;
+    this.issueSummary = issueSummary;
+    this.emissionsDataModel = emissionsDataModel;
     this.allTransitSubModes = SubMode.listAllCachedSubModes();
-    this.stopLocationCounter = StopLocation.indexCounter();
     this.routingTripPatternCounter = RoutingTripPattern.indexCounter();
+    this.stopConsolidationRepository = stopConsolidationRepository;
+    this.streetLimitationParameters = streetLimitationParameters;
   }
 
   public static void verifyTheOutputGraphIsWritableIfDataSourceExist(DataSource graphOutput) {
@@ -159,7 +178,6 @@ public class SerializedGraphObject implements Serializable {
       Kryo kryo = KryoBuilder.create();
       SerializedGraphObject serObj = (SerializedGraphObject) kryo.readClassAndObject(input);
       SubMode.deserializeSubModeCache(serObj.allTransitSubModes);
-      StopLocation.initIndexCounter(serObj.stopLocationCounter);
       RoutingTripPattern.initIndexCounter(serObj.routingTripPatternCounter);
       CompactElevationProfile.setDistanceBetweenSamplesM(
         serObj.graph.getDistanceBetweenElevationSamples()
@@ -171,11 +189,15 @@ public class SerializedGraphObject implements Serializable {
       logSerializationCompleteStatus(serObj.graph, serObj.transitModel);
       return serObj;
     } catch (IOException e) {
-      LOG.error("Exception while loading graph: {}", e.getLocalizedMessage(), e);
+      LOG.error("IO exception while loading graph: {}", e.getLocalizedMessage(), e);
       return null;
     } catch (KryoException ke) {
+      if (ke.getCause() instanceof IOException) {
+        LOG.error("IO exception while loading graph: {}", ke.getLocalizedMessage(), ke);
+        return null;
+      }
       LOG.warn(
-        "Exception while loading graph: {}\n{}",
+        "Deserialization exception while loading graph: {}\n{}",
         sourceDescription,
         ke.getLocalizedMessage()
       );
@@ -222,7 +244,7 @@ public class SerializedGraphObject implements Serializable {
   }
 
   private void save(OutputStream outputStream, String graphName, long size) {
-    LOG.info("Writing graph " + graphName + " ...");
+    LOG.info("Writing graph {}  ...", graphName);
     outputStream = wrapOutputStreamWithProgressTracker(outputStream, size);
     Kryo kryo = KryoBuilder.create();
     Output output = new Output(outputStream);
@@ -237,11 +259,17 @@ public class SerializedGraphObject implements Serializable {
   private static void logSerializationCompleteStatus(Graph graph, TransitModel transitModel) {
     var f = new OtpNumberFormat();
     var nStops = f.formatNumber(transitModel.getStopModel().stopIndexSize());
+    var nTransfers = f.formatNumber(transitModel.getTransferService().listAll().size());
     var nPatterns = f.formatNumber(transitModel.getAllTripPatterns().size());
     var nVertices = f.formatNumber(graph.countVertices());
     var nEdges = f.formatNumber(graph.countEdges());
 
     LOG.info("Graph loaded.   |V|={} |E|={}", nVertices, nEdges);
-    LOG.info("Transit loaded. |Stops|={} |Patterns|={}", nStops, nPatterns);
+    LOG.info(
+      "Transit loaded. |Stops|={} |Patterns|={} |ConstrainedTransfers|={}",
+      nStops,
+      nPatterns,
+      nTransfers
+    );
   }
 }

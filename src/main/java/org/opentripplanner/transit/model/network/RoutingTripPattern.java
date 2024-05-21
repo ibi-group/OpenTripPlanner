@@ -3,18 +3,19 @@ package org.opentripplanner.transit.model.network;
 import java.io.Serializable;
 import java.util.BitSet;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.opentripplanner.raptor.api.model.RaptorTripPattern;
+import org.opentripplanner.routing.algorithm.raptoradapter.api.DefaultTripPattern;
 import org.opentripplanner.transit.model.site.StopLocation;
-import org.opentripplanner.transit.raptor.api.transit.RaptorTripPattern;
 
 /**
  * The split between TripPattern and RoutingTripPattern is done for the following technical reasons:
  *  - The RTP is accessed frequently during the Raptor search, and we want it to be as small as
  *    possible to load/access it in the cache and CPU for performance reasons.
  *  - Also, we deduplicate these so a RTP can be reused by more than one TP.
- *  - This also provide explicit documentation on witch fields are used during a search and witch
+ *  - This also provide explicit documentation on which fields are used during a search and which
  *    are not.
  */
-public class RoutingTripPattern implements RaptorTripPattern, Serializable {
+public class RoutingTripPattern implements DefaultTripPattern, Serializable {
 
   private static final AtomicInteger INDEX_COUNTER = new AtomicInteger(0);
   private final int index;
@@ -24,6 +25,7 @@ public class RoutingTripPattern implements RaptorTripPattern, Serializable {
   private final BitSet alightingPossible;
   private final BitSet wheelchairAccessible;
   private final int slackIndex;
+  private final int transitReluctanceFactorIndex;
 
   RoutingTripPattern(TripPattern pattern, TripPatternBuilder builder) {
     this.pattern = pattern;
@@ -42,6 +44,7 @@ public class RoutingTripPattern implements RaptorTripPattern, Serializable {
     }
 
     this.slackIndex = builder.slackIndex();
+    this.transitReluctanceFactorIndex = builder.transitReluctanceFactorIndex();
   }
 
   /**
@@ -78,7 +81,7 @@ public class RoutingTripPattern implements RaptorTripPattern, Serializable {
   }
 
   /**
-   * See {@link org.opentripplanner.transit.raptor.api.transit.RaptorTripPattern#stopIndex(int)}
+   * See {@link RaptorTripPattern#stopIndex(int)}
    */
   public int stopIndex(int stopPositionInPattern) {
     return stopIndexes[stopPositionInPattern];
@@ -98,8 +101,23 @@ public class RoutingTripPattern implements RaptorTripPattern, Serializable {
   }
 
   @Override
+  public int priorityGroupId() {
+    // TODO C2 - Implement this.
+    throw new UnsupportedOperationException();
+  }
+
+  public int transitReluctanceFactorIndex() {
+    return transitReluctanceFactorIndex;
+  }
+
+  @Override
+  public Route route() {
+    return pattern.getRoute();
+  }
+
+  @Override
   public String debugInfo() {
-    return pattern.logName() + " @" + index;
+    return pattern.logName() + " #" + index;
   }
 
   @Override

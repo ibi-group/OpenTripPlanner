@@ -6,10 +6,10 @@ import java.util.List;
 import java.util.function.Function;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Envelope;
-import org.opentripplanner.common.geometry.SphericalDistanceLibrary;
+import org.opentripplanner.framework.geometry.SphericalDistanceLibrary;
 import org.opentripplanner.transit.model.basic.TransitMode;
 import org.opentripplanner.transit.model.framework.FeedScopedId;
-import org.opentripplanner.transit.model.site.Stop;
+import org.opentripplanner.transit.model.site.RegularStop;
 import org.opentripplanner.transit.service.TransitService;
 
 /**
@@ -18,9 +18,9 @@ import org.opentripplanner.transit.service.TransitService;
  */
 public class DirectGraphFinder implements GraphFinder {
 
-  private final Function<Envelope, Collection<Stop>> queryNearbyStops;
+  private final Function<Envelope, Collection<RegularStop>> queryNearbyStops;
 
-  public DirectGraphFinder(Function<Envelope, Collection<Stop>> queryNearbyStops) {
+  public DirectGraphFinder(Function<Envelope, Collection<RegularStop>> queryNearbyStops) {
     this.queryNearbyStops = queryNearbyStops;
   }
 
@@ -29,15 +29,14 @@ public class DirectGraphFinder implements GraphFinder {
    * independent of streets. If the origin vertex is a StopVertex, the result will include it.
    */
   @Override
-  public List<NearbyStop> findClosestStops(double lat, double lon, double radiusMeters) {
+  public List<NearbyStop> findClosestStops(Coordinate coordinate, double radiusMeters) {
     List<NearbyStop> stopsFound = new ArrayList<>();
-    Coordinate coordinate = new Coordinate(lon, lat);
     Envelope envelope = new Envelope(coordinate);
     envelope.expandBy(
       SphericalDistanceLibrary.metersToLonDegrees(radiusMeters, coordinate.y),
       SphericalDistanceLibrary.metersToDegrees(radiusMeters)
     );
-    for (Stop it : queryNearbyStops.apply(envelope)) {
+    for (RegularStop it : queryNearbyStops.apply(envelope)) {
       double distance = Math.round(
         SphericalDistanceLibrary.distance(coordinate, it.getCoordinate().asJtsCoordinate())
       );
@@ -61,6 +60,7 @@ public class DirectGraphFinder implements GraphFinder {
     List<TransitMode> filterByModes,
     List<PlaceType> filterByPlaceTypes,
     List<FeedScopedId> filterByStops,
+    List<FeedScopedId> filterByStations,
     List<FeedScopedId> filterByRoutes,
     List<String> filterByBikeRentalStations,
     TransitService transitService
