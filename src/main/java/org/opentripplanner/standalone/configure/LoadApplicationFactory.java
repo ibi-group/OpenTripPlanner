@@ -31,7 +31,7 @@ import org.opentripplanner.transit.service.TransitModel;
     GsDataSourceModule.class,
     WorldEnvelopeRepositoryModule.class,
     StopConsolidationRepositoryModule.class,
-    AwsDataSourceModule.class
+    AwsDataSourceModule.class,
   }
 )
 public interface LoadApplicationFactory {

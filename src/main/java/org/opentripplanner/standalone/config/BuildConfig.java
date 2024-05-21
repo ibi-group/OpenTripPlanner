@@ -6,6 +6,7 @@ import static org.opentripplanner.standalone.config.framework.json.OtpVersion.V2
 import static org.opentripplanner.standalone.config.framework.json.OtpVersion.V2_1;
 import static org.opentripplanner.standalone.config.framework.json.OtpVersion.V2_2;
 import static org.opentripplanner.standalone.config.framework.json.OtpVersion.V2_5;
+import static org.opentripplanner.standalone.config.framework.json.OtpVersion.V2_6;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.MissingNode;
@@ -132,6 +133,8 @@ public class BuildConfig implements OtpDataStoreConfig {
   private final Pattern demLocalFilePattern;
 
   private final String gsCredentials;
+  private final String s3Region;
+  private final String s3CredentialsProfile;
 
   private final URI streetGraph;
 
@@ -576,6 +579,32 @@ Netex data is also often supplied in a ZIP file.
             """
         )
         .asString(null);
+    s3Region =
+      root
+        .of("s3")
+        .since(V2_6)
+        .summary("S3 Region name for AWS S3")
+        .description(
+          """
+            The region used in accessing AWS S3 recources. US_WEST2, etc.
+          """
+        )
+        .asString(null);
+
+    s3CredentialsProfile =
+      root
+        .of("s3")
+        .since(V2_6)
+        .summary("Local file system path to the AWS Credentials Profile file.")
+        .description(
+          """
+            This file contains the credentials that the AWS SDK will use to connect to an S3 bucket hosted on AWS.
+            
+            This is a path to a file on the local file system, not a URI.
+          """
+        )
+        .asString(null);
+
     graph =
       root
         .of("graph")
@@ -638,6 +667,16 @@ Netex data is also often supplied in a ZIP file.
   @Override
   public URI reportDirectory() {
     return buildReportDir;
+  }
+
+  @Override
+  public String s3Region() {
+    return null;
+  }
+
+  @Override
+  public String s3CredentialsProfile() {
+    return null;
   }
 
   @Override
