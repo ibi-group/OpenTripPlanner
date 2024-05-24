@@ -591,6 +591,7 @@ public class OsmModule implements GraphBuilderModule {
 
     // If this is a street crossing (denoted with the tag "footway:crossing"),
     // add a crossing indication in the edge name.
+    // TODO: i18n.
     String editedName = name.toString();
     if (way.isMarkedCrossing()) {
       // Scan the nodes of this way to find the intersecting street.
@@ -604,6 +605,7 @@ public class OsmModule implements GraphBuilderModule {
         } else if (otherWay.isOneWayForwardDriving()) {
           editedName = "crossing over turn lane";
         } else {
+          // Default on using the OSM way ID, which should not happen.
           editedName = String.format("crossing %s", wayId);
         }
       }
@@ -719,11 +721,17 @@ public class OsmModule implements GraphBuilderModule {
           .toList();
     }
 
+    return getIntersectingStreet(way, osmStreets);
+  }
+
+  public static Optional<OSMWay> getIntersectingStreet(OSMWay way, List<OSMWay> streets) {
     TLongList nodeRefs = way.getNodeRefs();
     if (nodeRefs.size() >= 3) {
-      // Exclude the first and last node which are on the sidewalk.
+      // There needs to be at least three nodes: 2 extremities that are on the sidewalk,
+      // and one somewhere in the middle that joins the crossing with the street.
+      // We exclude the first and last node which are on the sidewalk.
       long[] nodeRefsArray = nodeRefs.toArray(1, nodeRefs.size() - 2);
-      return osmStreets
+      return streets
         .stream()
         .filter(w -> Arrays.stream(nodeRefsArray).anyMatch(nid -> w.getNodeRefs().contains(nid)))
         .findFirst();

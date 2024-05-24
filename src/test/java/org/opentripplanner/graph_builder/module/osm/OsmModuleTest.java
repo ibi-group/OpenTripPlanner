@@ -381,5 +381,24 @@ public class OsmModuleTest {
     }
   }
 
+  @Test
+  void testGetIntersectingStreet() {
+    OSMWay way = new OSMWay();
+    way.getNodeRefs().add(new long[] { 10001, 10002, 10003, 10004 });
+    OSMWay street = new OSMWay();
+    street.setId(50001);
+    street.getNodeRefs().add(new long[] { 20001, 20002, 20003, 10002, 20004, 20005 });
+    OSMWay otherStreet = new OSMWay();
+    otherStreet.setId(50002);
+    otherStreet.getNodeRefs().add(new long[] { 30001, 30002, 30003, 30004, 30005 });
+
+    var intersectingStreet = OsmModule.getIntersectingStreet(way, List.of(street, otherStreet));
+    assertTrue(intersectingStreet.isPresent());
+    assertEquals(50001, intersectingStreet.get().getId());
+
+    var intersectingStreet2 = OsmModule.getIntersectingStreet(way, List.of(otherStreet));
+    assertFalse(intersectingStreet2.isPresent());
+  }
+
   private record VertexPair(Vertex v0, Vertex v1) {}
 }
