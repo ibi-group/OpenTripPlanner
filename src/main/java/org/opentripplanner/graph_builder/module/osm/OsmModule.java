@@ -709,18 +709,19 @@ public class OsmModule implements GraphBuilderModule {
     return seb.buildAndConnect();
   }
 
+  public static List<OSMWay> getStreets(Collection<OSMWay> ways) {
+    return ways
+      .stream()
+      .filter(w -> !w.isFootway())
+      // Keep named streets, service roads, and slip/turn lanes.
+      .filter(w -> w.hasTag("name") || w.isServiceRoad() || w.isOneWayForwardDriving())
+      .toList();
+  }
+
   private Optional<OSMWay> getIntersectingStreet(OSMWay way) {
     if (osmStreets == null) {
-      osmStreets =
-        osmdb
-          .getWays()
-          .stream()
-          .filter(w -> !w.isFootway())
-          // Keep named streets, service roads, and slip/turn lanes.
-          .filter(w -> w.hasTag("name") || w.isServiceRoad() || w.isOneWayForwardDriving())
-          .toList();
+      osmStreets = getStreets(osmdb.getWays());
     }
-
     return getIntersectingStreet(way, osmStreets);
   }
 

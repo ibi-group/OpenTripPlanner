@@ -400,5 +400,24 @@ public class OsmModuleTest {
     assertFalse(intersectingStreet2.isPresent());
   }
 
+  @Test
+  void testGetStreets() {
+    OSMWay footway = new OSMWay();
+    footway.addTag("highway", "footway");
+    OSMWay street = new OSMWay();
+    street.addTag("highway", "primary");
+    street.addTag("name", "3rd Street");
+    OSMWay serviceRoad = new OSMWay();
+    serviceRoad.addTag("highway", "service");
+    OSMWay otherStreet = new OSMWay();
+    otherStreet.addTag("highway", "trunk");
+    otherStreet.addTag("oneway", "true");
+    OSMWay blankPath = new OSMWay();
+
+    List<OSMWay> streets = OsmModule.getStreets(List.of(street, footway, serviceRoad, otherStreet, blankPath));
+    assertEquals(3, streets.size());
+    assertTrue(streets.containsAll(List.of(serviceRoad, street, otherStreet)));
+  }
+
   private record VertexPair(Vertex v0, Vertex v1) {}
 }
