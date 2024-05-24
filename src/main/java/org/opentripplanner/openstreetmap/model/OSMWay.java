@@ -157,6 +157,20 @@ public class OSMWay extends OSMWithTags {
     return "service".equals(getTag("highway"));
   }
 
+  /** Whether this way is connected to the given way through their extremities. */
+  public boolean isAdjacentTo(OSMWay way) {
+    long wayFirstNode = way.nodes.get(0);
+    long wayLastNode = way.nodes.get(way.nodes.size() - 1);
+
+    long firstNode = nodes.get(0);
+    long lastNode = nodes.get(nodes.size() - 1);
+
+    return firstNode == wayFirstNode && lastNode != wayLastNode ||
+      firstNode == wayLastNode && lastNode != wayFirstNode ||
+      lastNode == wayFirstNode && firstNode != wayLastNode ||
+      lastNode == wayLastNode && firstNode != wayFirstNode;
+  }
+
   /**
    * Given a set of {@code permissions} check if it can really be applied to both directions
    * of the way and return the permissions for both cases.

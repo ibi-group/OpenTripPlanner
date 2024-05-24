@@ -743,6 +743,22 @@ public class OsmModule implements GraphBuilderModule {
     return Optional.empty();
   }
 
+  /** Determines whether a way is a continuation (i.e. connects through end nodes) of marked crossing. */
+  public static boolean isContinuationOfMarkedCrossing(OSMWay way, Collection<OSMWay> ways) {
+    int adjacentWayCount = 0;
+    boolean markedCrossingFound = false;
+
+    for (OSMWay w : ways) {
+      if (way.isAdjacentTo(w)) {
+        adjacentWayCount++;
+        if (!markedCrossingFound && w.isMarkedCrossing()) {
+          markedCrossingFound = true;
+        }
+      }
+    }
+    return markedCrossingFound && adjacentWayCount == 1;
+  }
+
   private float getMaxCarSpeed() {
     float maxSpeed = 0f;
     for (OsmProvider provider : providers) {

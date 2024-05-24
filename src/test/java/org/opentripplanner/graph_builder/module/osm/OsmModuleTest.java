@@ -419,5 +419,33 @@ public class OsmModuleTest {
     assertTrue(streets.containsAll(List.of(serviceRoad, street, otherStreet)));
   }
 
+  @Test
+  void testIsContinuationOfMarkedCrossing() {
+    OSMWay footway = new OSMWay();
+    footway.addTag("highway", "footway");
+    footway.getNodeRefs().add(new long[] { 10001, 10000, 10002 });
+
+    OSMWay crossing = new OSMWay();
+    crossing.getNodeRefs().add(new long[] { 10002, 10003, 10004 });
+    crossing.addTag("highway", "footway");
+    crossing.addTag("footway", "crossing");
+    crossing.addTag("crossing", "marked");
+
+    OSMWay otherCrossing = new OSMWay();
+    otherCrossing.getNodeRefs().add(new long[] { 10003, 10001, 10004 });
+    otherCrossing.addTag("highway", "footway");
+    otherCrossing.addTag("footway", "crossing");
+    otherCrossing.addTag("crossing", "unmarked");
+
+    // If more than one footway are adjacent to the crossing, there is no continuation.
+    OSMWay otherFootway = new OSMWay();
+    otherFootway.addTag("highway", "footway");
+    otherFootway.getNodeRefs().add(new long[] { 10002, 10006 });
+
+    assertTrue(OsmModule.isContinuationOfMarkedCrossing(footway, List.of(footway, crossing, otherCrossing)));
+    assertFalse(OsmModule.isContinuationOfMarkedCrossing(footway, List.of(footway, otherCrossing)));
+    assertFalse(OsmModule.isContinuationOfMarkedCrossing(footway, List.of(footway, crossing, otherFootway)));
+  }
+
   private record VertexPair(Vertex v0, Vertex v1) {}
 }
