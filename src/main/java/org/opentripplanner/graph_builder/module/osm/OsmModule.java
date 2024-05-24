@@ -709,6 +709,7 @@ public class OsmModule implements GraphBuilderModule {
     return seb.buildAndConnect();
   }
 
+  /** Gets the streets from a collection of OSM ways. */
   public static List<OSMWay> getStreets(Collection<OSMWay> ways) {
     return ways
       .stream()
@@ -718,6 +719,7 @@ public class OsmModule implements GraphBuilderModule {
       .toList();
   }
 
+  /** Gets the intersecting street, if any, for the given way using ways in osmdb. */
   private Optional<OSMWay> getIntersectingStreet(OSMWay way) {
     if (osmStreets == null) {
       osmStreets = getStreets(osmdb.getWays());
@@ -725,6 +727,7 @@ public class OsmModule implements GraphBuilderModule {
     return getIntersectingStreet(way, osmStreets);
   }
 
+  /** Gets the intersecting street, if any, for the given way and candidate streets. */
   public static Optional<OSMWay> getIntersectingStreet(OSMWay way, List<OSMWay> streets) {
     TLongList nodeRefs = way.getNodeRefs();
     if (nodeRefs.size() >= 3) {
