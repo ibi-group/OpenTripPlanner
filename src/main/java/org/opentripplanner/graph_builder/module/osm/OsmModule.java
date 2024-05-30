@@ -68,6 +68,9 @@ public class OsmModule implements GraphBuilderModule {
   private Map<String, MobilityProfileData> mobilityProfileData;
   private HashSet<String> mappedMobilityProfileEntries;
   private List<OSMWay> osmStreets;
+  private List<OSMWay> osmFootways;
+  private OSMWay lastQueriedCrossing;
+  private OSMWay lastIntersectingStreetFound;
   private final StreetLimitationParameters streetLimitationParameters;
 
   OsmModule(
@@ -724,7 +727,16 @@ public class OsmModule implements GraphBuilderModule {
     if (osmStreets == null) {
       osmStreets = getStreets(osmdb.getWays());
     }
-    return getIntersectingStreet(way, osmStreets);
+
+    // Perf: If the same way is queried again, return the previously found intersecting street.
+    if (way == lastQueriedCrossing) {
+      return Optional.ofNullable(lastIntersectingStreetFound);
+    }
+
+    lastQueriedCrossing = way;
+    Optional<OSMWay> intersectingStreetOptional = getIntersectingStreet(way, osmStreets);
+    lastIntersectingStreetFound = intersectingStreetOptional.orElse(null);
+    return intersectingStreetOptional;
   }
 
   /** Gets the intersecting street, if any, for the given way and candidate streets. */
