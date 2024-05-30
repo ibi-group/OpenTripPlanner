@@ -146,10 +146,11 @@ public class OSMWay extends OSMWithTags {
   }
 
   public boolean isMarkedCrossing() {
+    String crossingMarkingsTag = getTag("crossing:markings");
     return (
       "crossing".equals(getTag("footway")) &&
-      "yes".equals(getTag("crossing:markings")) ||
-      "marked".equals(getTag("crossing"))
+        (crossingMarkingsTag != null && !"no".equals(crossingMarkingsTag) ||
+        "marked".equals(getTag("crossing")))
     );
   }
 

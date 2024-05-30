@@ -11,7 +11,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.opentripplanner.openstreetmap.wayproperty.specifier.WayTestData;
 
-public class OSMWayTest {
+class OSMWayTest {
 
   @Test
   void testIsBicycleDismountForced() {
@@ -182,6 +182,8 @@ public class OSMWayTest {
       Arguments.of(createFootway("crossing", "crossing", "marked"), true),
       Arguments.of(createFootway("crossing", "crossing", "other"), false),
       Arguments.of(createFootway("crossing", "crossing:markings", "yes"), true),
+      Arguments.of(createFootway("crossing", "crossing:markings", "marking-details"), true),
+      Arguments.of(createFootway("crossing", "crossing:markings", null), false),
       Arguments.of(createFootway("crossing", "crossing:markings", "no"), false)
     );
   }
