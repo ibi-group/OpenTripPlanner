@@ -5,6 +5,7 @@ import static org.opentripplanner.client.model.RequestMode.WALK;
 
 import java.util.List;
 import java.util.Set;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.opentripplanner.client.model.Coordinate;
@@ -32,6 +33,7 @@ public class DenverSmokeTest {
   }
 
   @Test
+  @Disabled("There seem to be no vehicle positions in their feed anymore.")
   public void vehiclePositions() {
     SmokeTest.assertThereArePatternsWithVehiclePositions();
   }
