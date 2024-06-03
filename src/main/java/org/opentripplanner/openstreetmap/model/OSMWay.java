@@ -149,8 +149,11 @@ public class OSMWay extends OSMWithTags {
     String crossingMarkingsTag = getTag("crossing:markings");
     return (
       "crossing".equals(getTag("footway")) &&
-        (crossingMarkingsTag != null && !"no".equals(crossingMarkingsTag) ||
-        "marked".equals(getTag("crossing")))
+      (
+        crossingMarkingsTag != null &&
+        !"no".equals(crossingMarkingsTag) ||
+        "marked".equals(getTag("crossing"))
+      )
     );
   }
 
@@ -166,10 +169,16 @@ public class OSMWay extends OSMWithTags {
     long firstNode = nodes.get(0);
     long lastNode = nodes.get(nodes.size() - 1);
 
-    return firstNode == wayFirstNode && lastNode != wayLastNode ||
-      firstNode == wayLastNode && lastNode != wayFirstNode ||
-      lastNode == wayFirstNode && firstNode != wayLastNode ||
-      lastNode == wayLastNode && firstNode != wayFirstNode;
+    return (
+      firstNode == wayFirstNode &&
+      lastNode != wayLastNode ||
+      firstNode == wayLastNode &&
+      lastNode != wayFirstNode ||
+      lastNode == wayFirstNode &&
+      firstNode != wayLastNode ||
+      lastNode == wayLastNode &&
+      firstNode != wayFirstNode
+    );
   }
 
   /**

@@ -415,7 +415,9 @@ public class OsmModuleTest {
     otherStreet.addTag("oneway", "true");
     OSMWay blankPath = new OSMWay();
 
-    List<OSMWay> streets = OsmModule.getStreets(List.of(street, footway, serviceRoad, otherStreet, blankPath));
+    List<OSMWay> streets = OsmModule.getStreets(
+      List.of(street, footway, serviceRoad, otherStreet, blankPath)
+    );
     assertEquals(3, streets.size());
     assertTrue(streets.containsAll(List.of(serviceRoad, street, otherStreet)));
   }
@@ -443,9 +445,14 @@ public class OsmModuleTest {
     otherFootway.addTag("highway", "footway");
     otherFootway.getNodeRefs().add(new long[] { 10002, 10006 });
 
-    assertEquals(crossing, OsmModule.getContinuedMarkedCrossing(footway, List.of(footway, crossing, otherCrossing)));
+    assertEquals(
+      crossing,
+      OsmModule.getContinuedMarkedCrossing(footway, List.of(footway, crossing, otherCrossing))
+    );
     assertNull(OsmModule.getContinuedMarkedCrossing(footway, List.of(footway, otherCrossing)));
-    assertNull(OsmModule.getContinuedMarkedCrossing(footway, List.of(footway, crossing, otherFootway)));
+    assertNull(
+      OsmModule.getContinuedMarkedCrossing(footway, List.of(footway, crossing, otherFootway))
+    );
   }
 
   private record VertexPair(Vertex v0, Vertex v1) {}

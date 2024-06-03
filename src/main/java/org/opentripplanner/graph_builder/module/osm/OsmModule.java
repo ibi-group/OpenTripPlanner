@@ -771,10 +771,7 @@ public class OsmModule implements GraphBuilderModule {
 
   /** Gets the footways from a collection of OSM ways. */
   public static List<OSMWay> getFootways(Collection<OSMWay> ways) {
-    return ways
-      .stream()
-      .filter(OSMWay::isFootway)
-      .toList();
+    return ways.stream().filter(OSMWay::isFootway).toList();
   }
 
   /**

@@ -86,9 +86,12 @@ class StatesToWalkStepsMapperTest {
   @ParameterizedTest
   @MethodSource("createIsOnSameStreetCases")
   void testIsOnSameStreet(List<String> streets, boolean expected, String message) {
-    List<WalkStepBuilder> steps = streets.stream().map(
-      s -> s != null ? WalkStep.builder().withDirectionText(I18NString.of(s)) : WalkStep.builder()
-    ).toList();
+    List<WalkStepBuilder> steps = streets
+      .stream()
+      .map(s ->
+        s != null ? WalkStep.builder().withDirectionText(I18NString.of(s)) : WalkStep.builder()
+      )
+      .toList();
 
     int lastIndex = steps.size() - 1;
     WalkStepBuilder threeBack = steps.get(lastIndex - 2);
@@ -103,7 +106,11 @@ class StatesToWalkStepsMapperTest {
       Arguments.of(List.of("Street1", "Street2", "Street3"), false, "Is not a zig-zag"),
       Arguments.of(List.of("Street1", "Street2", "Street1"), true, "Is a zig-zag"),
       Arguments.of(List.of("Street1", "crossing over Street2", "Street1"), false, "Is a crossing"),
-      Arguments.of(List.of("crossing over turn lane", "Street1", "crossing over turn lane"), false, "Is many crossings"),
+      Arguments.of(
+        List.of("crossing over turn lane", "Street1", "crossing over turn lane"),
+        false,
+        "Is many crossings"
+      ),
       Arguments.of(Lists.newArrayList(null, null, null), false, "Is not a zig-zag")
     );
   }
