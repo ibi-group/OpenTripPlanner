@@ -71,6 +71,8 @@ public class OsmModule implements GraphBuilderModule {
   private List<OSMWay> osmFootways;
   private OSMWay lastQueriedCrossing;
   private OSMWay lastIntersectingStreetFound;
+  private OSMWay lastQueriedCrossingExtension;
+  private OSMWay lastAdjacentCrossingFound;
   private final StreetLimitationParameters streetLimitationParameters;
 
   OsmModule(
@@ -736,13 +738,13 @@ public class OsmModule implements GraphBuilderModule {
 
   /** Gets the intersecting street, if any, for the given way using ways in osmdb. */
   private Optional<OSMWay> getIntersectingStreet(OSMWay way) {
-    if (osmStreets == null) {
-      osmStreets = getStreets(osmdb.getWays());
-    }
-
     // Perf: If the same way is queried again, return the previously found intersecting street.
     if (way == lastQueriedCrossing) {
       return Optional.ofNullable(lastIntersectingStreetFound);
+    }
+
+    if (osmStreets == null) {
+      osmStreets = getStreets(osmdb.getWays());
     }
 
     lastQueriedCrossing = way;
@@ -795,19 +797,19 @@ public class OsmModule implements GraphBuilderModule {
   }
 
   /** Determines whether a way is a continuation (i.e. connects through end nodes) of marked crossing. */
-  public static boolean isContinuationOfMarkedCrossing(OSMWay way, Collection<OSMWay> ways) {
+  public static OSMWay getContinuedMarkedCrossing(OSMWay way, Collection<OSMWay> ways) {
     int adjacentWayCount = 0;
-    boolean markedCrossingFound = false;
+    OSMWay markedCrossing = null;
 
     for (OSMWay w : ways) {
       if (way.isAdjacentTo(w)) {
         adjacentWayCount++;
-        if (!markedCrossingFound && w.isMarkedCrossing()) {
-          markedCrossingFound = true;
+        if (markedCrossing == null && w.isMarkedCrossing()) {
+          markedCrossing = w;
         }
       }
     }
-    return markedCrossingFound && adjacentWayCount == 1;
+    return adjacentWayCount == 1 ? markedCrossing : null;
   }
 
   private float getMaxCarSpeed() {
