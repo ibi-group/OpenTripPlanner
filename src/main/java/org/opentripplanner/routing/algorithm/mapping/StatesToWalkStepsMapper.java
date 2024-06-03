@@ -288,8 +288,7 @@ public class StatesToWalkStepsMapper {
         WalkStepBuilder twoBack = steps.get(lastIndex - 1);
         WalkStepBuilder lastStep = steps.get(lastIndex);
         boolean isOnSameStreet =
-          !lastStep.directionTextNoParens().startsWith("crossing") &&
-          lastStep.directionTextNoParens().equals(threeBack.directionTextNoParens());
+          isOnSameStreet(lastStep, twoBack, threeBack);
         if (twoBack.distance() < MAX_ZAG_DISTANCE && isOnSameStreet) {
           if (isUTurn(twoBack, lastStep)) {
             steps.remove(lastIndex - 1);
@@ -316,6 +315,19 @@ public class StatesToWalkStepsMapper {
     lastAngle = DirectionUtils.getLastAngle(geom);
 
     current.addEdge(edge);
+  }
+
+  public static boolean isOnSameStreet(WalkStepBuilder lastStep, WalkStepBuilder twoBack, WalkStepBuilder threeBack) {
+    String lastStepName = lastStep.directionTextNoParens();
+    String twoBackStepName = twoBack.directionTextNoParens();
+    String threeBackStepName = threeBack.directionTextNoParens();
+    if (lastStepName == null || twoBackStepName == null || threeBackStepName == null) return false;
+
+    // Keep an explicit instruction when crossing to the other side of the same street.
+    // (An instruction can be given to cross at a particular location because others may not be accessible, practical, etc.)
+    return !lastStepName.startsWith("crossing") &&
+      !twoBackStepName.startsWith("crossing") &&
+      lastStepName.equals(threeBackStepName);
   }
 
   @Nonnull
