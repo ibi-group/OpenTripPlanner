@@ -7,6 +7,7 @@ import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Envelope;
 import org.opentripplanner.astar.spi.AStarRequest;
 import org.opentripplanner.ext.dataoverlay.routing.DataOverlayContext;
+import org.opentripplanner.ext.mobilityprofile.MobilityProfile;
 import org.opentripplanner.framework.geometry.SphericalDistanceLibrary;
 import org.opentripplanner.model.GenericLocation;
 import org.opentripplanner.routing.api.request.RouteRequest;
@@ -49,6 +50,8 @@ public class StreetSearchRequest implements AStarRequest {
 
   private DataOverlayContext dataOverlayContext;
 
+  private MobilityProfile mobilityProfile;
+
   /**
    * Constructor only used for creating a default instance.
    */
@@ -74,6 +77,7 @@ public class StreetSearchRequest implements AStarRequest {
     this.fromEnvelope = createEnvelope(from);
     this.to = builder.to;
     this.toEnvelope = createEnvelope(to);
+    this.mobilityProfile = builder.mobilityProfile;
   }
 
   @Nonnull
@@ -160,6 +164,10 @@ public class StreetSearchRequest implements AStarRequest {
       (fromEnvelope != null && fromEnvelope.intersects(vertex.getCoordinate())) ||
       (toEnvelope != null && toEnvelope.intersects(vertex.getCoordinate()))
     );
+  }
+
+  public MobilityProfile mobilityProfile() {
+    return mobilityProfile;
   }
 
   @Nullable

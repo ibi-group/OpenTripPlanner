@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.function.Consumer;
 import javax.annotation.Nullable;
+import org.opentripplanner.ext.mobilityprofile.MobilityProfile;
 import org.opentripplanner.framework.collection.ListSection;
 import org.opentripplanner.framework.time.DateUtils;
 import org.opentripplanner.framework.tostring.ToStringBuilder;
@@ -81,6 +82,8 @@ public class RouteRequest implements Cloneable, Serializable {
 
   private boolean wheelchair = false;
 
+  private MobilityProfile mobilityProfile = null;
+
   /* CONSTRUCTORS */
 
   /** Constructor for options; modes defaults to walk and transit */
@@ -125,6 +128,21 @@ public class RouteRequest implements Cloneable, Serializable {
 
   public void setWheelchair(boolean wheelchair) {
     this.wheelchair = wheelchair;
+  }
+
+  /**
+   * Applicable mobility profile for street routing
+   */
+  public MobilityProfile mobilityProfile() {
+    return mobilityProfile;
+  }
+
+  public void setMobilityProfile(MobilityProfile profile) {
+    this.mobilityProfile = profile;
+  }
+
+  public void setMobilityProfileFromString(String profile) {
+    this.mobilityProfile = MobilityProfile.fromString(profile);
   }
 
   /**

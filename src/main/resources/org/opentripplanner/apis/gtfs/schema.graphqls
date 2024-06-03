@@ -3216,6 +3216,8 @@ type QueryType {
         "Preferences for vehicle parking"
         parking: VehicleParkingInput
 
+        mobilityProfile: String
+
         ## Deprecated fields, none of these have any effect on the routing anymore
 
         """

@@ -2,6 +2,8 @@ package org.opentripplanner.street.model.edge;
 
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.LineString;
+import org.opentripplanner.ext.mobilityprofile.MobilityProfileRouting;
+import org.opentripplanner.framework.i18n.LocalizedString;
 
 public final class TemporaryPartialStreetEdge extends StreetEdge implements TemporaryEdge {
 
@@ -29,6 +31,20 @@ public final class TemporaryPartialStreetEdge extends StreetEdge implements Temp
       .addRentalRestriction(builder.parentEdge().getToVertex().rentalRestrictions());
     this.parentEdge = builder.parentEdge();
     this.geometry = super.getGeometry();
+    this.profileCost = MobilityProfileRouting.getProRatedProfileCosts(this);
+    if (!this.profileCost.isEmpty()) {
+      float ratio = (float) (getDistanceMeters() / getParentEdge().getDistanceMeters());
+      this.setName(
+          new LocalizedString(
+            String.format(
+              "%s tmp r%4.3f l%4.3f",
+              builder.parentEdge().getName(),
+              ratio,
+              getDistanceMeters()
+            )
+          )
+        );
+    }
   }
 
   /**
