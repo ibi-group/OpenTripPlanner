@@ -3,6 +3,7 @@ package org.opentripplanner.graph_builder.module.osm;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 import static org.opentripplanner.openstreetmap.wayproperty.WayPropertiesBuilder.withModes;
@@ -442,9 +443,9 @@ public class OsmModuleTest {
     otherFootway.addTag("highway", "footway");
     otherFootway.getNodeRefs().add(new long[] { 10002, 10006 });
 
-    assertTrue(OsmModule.isContinuationOfMarkedCrossing(footway, List.of(footway, crossing, otherCrossing)));
-    assertFalse(OsmModule.isContinuationOfMarkedCrossing(footway, List.of(footway, otherCrossing)));
-    assertFalse(OsmModule.isContinuationOfMarkedCrossing(footway, List.of(footway, crossing, otherFootway)));
+    assertEquals(crossing, OsmModule.getContinuedMarkedCrossing(footway, List.of(footway, crossing, otherCrossing)));
+    assertNull(OsmModule.getContinuedMarkedCrossing(footway, List.of(footway, otherCrossing)));
+    assertNull(OsmModule.getContinuedMarkedCrossing(footway, List.of(footway, crossing, otherFootway)));
   }
 
   private record VertexPair(Vertex v0, Vertex v1) {}
