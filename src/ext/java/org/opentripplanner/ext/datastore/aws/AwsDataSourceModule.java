@@ -7,7 +7,7 @@ import javax.inject.Singleton;
 import org.opentripplanner.datastore.api.AmazonS3DSRepository;
 import org.opentripplanner.datastore.api.OtpDataStoreConfig;
 import org.opentripplanner.datastore.base.DataSourceRepository;
-import org.opentripplanner.util.OTPFeature;
+import org.opentripplanner.framework.application.OTPFeature;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,8 +20,8 @@ public class AwsDataSourceModule {
   @Singleton
   @Nullable
   @AmazonS3DSRepository
-  DataSourceRepository provideGoogleStorageDataSourceRepository(OtpDataStoreConfig c) {
-    if (OTPFeature.AmazonAwsS3Storage.isOff()) {
+  DataSourceRepository provideS3DataSourceRepository(OtpDataStoreConfig c) {
+    if (OTPFeature.S3Storage.isOff()) {
       return null;
     }
     LOG.info("Amazon AWS S3 Storage Support enabled - S3 resources detected.");

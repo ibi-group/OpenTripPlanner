@@ -9,10 +9,10 @@ import org.opentripplanner.datastore.OtpDataStore;
 import org.opentripplanner.framework.text.FileSizeToTextConverter;
 
 /**
- * A data source is generalized type to represent an file, database blob or unit that OTP read or
- * write to.
+ * A data source is generalized type to represent a file, database blob, or unit that OTP can read
+ * or write to.
  * <p>
- * The data source instance contain metadata like {@code name}, {@code description}, {@code type}
+ * The data source instance contains metadata like {@code name}, {@code description}, {@code type}
  * and so on. To access (read from or write to) a datasource the methods {@link #asInputStream()}
  * and {@link #asOutputStream()} will open a connection to the underlying data source and make it
  * available for reading/writing.

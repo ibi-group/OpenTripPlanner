@@ -1,5 +1,6 @@
 package org.opentripplanner.ext.datastore.aws;
 
+import java.net.URI;
 import java.util.Collection;
 import java.util.List;
 import org.opentripplanner.datastore.api.CompositeDataSource;
@@ -16,6 +17,11 @@ public class AwsDirectoryDataSource extends AbstractAwsDataSource implements Com
 
   AwsDirectoryDataSource(S3Client s3Client, S3Object object, FileType type) {
     super(s3Client, object, type);
+  }
+
+  @Override
+  public URI uri() {
+    return null;
   }
 
   @Override

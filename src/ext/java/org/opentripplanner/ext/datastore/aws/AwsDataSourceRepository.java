@@ -8,11 +8,14 @@ import org.opentripplanner.datastore.api.CompositeDataSource;
 import org.opentripplanner.datastore.api.DataSource;
 import org.opentripplanner.datastore.api.FileType;
 import org.opentripplanner.datastore.base.DataSourceRepository;
-import org.opentripplanner.datastore.base.ZipStreamDataSourceDecorator;
-import org.opentripplanner.util.lang.StringUtils;
+import org.opentripplanner.datastore.file.ZipStreamDataSourceDecorator;
+import org.opentripplanner.framework.lang.StringUtils;
 import software.amazon.awssdk.auth.credentials.ProfileCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
+import software.amazon.awssdk.services.s3.model.HeadObjectResponse;
+import software.amazon.awssdk.services.s3.model.S3Exception;
 
 /**
  * This data store uses the local file system to access in-/out- data files.
@@ -33,7 +36,7 @@ public class AwsDataSourceRepository implements DataSourceRepository {
 
   @Override
   public String description() {
-    return "Google Cloud Storage";
+    return "S3 Cloud Storage";
   }
 
   @Override
@@ -65,8 +68,7 @@ public class AwsDataSourceRepository implements DataSourceRepository {
   }
 
   private DataSource createSource(S3Object object, FileType type) {
-    /* TODO Check if object exist */
-    boolean exist = true;
+    var exist = objectExists(object);
 
     if (exist) {
       return new AwsFileDataSource(s3Client, object, type);
@@ -81,8 +83,7 @@ public class AwsDataSourceRepository implements DataSourceRepository {
     }
 
     if (object.name().endsWith(".zip")) {
-      /* TODO */
-      boolean exist = true;
+      boolean exist = objectExists(object);
 
       if (exist) {
         throw new IllegalArgumentException(type.text() + " not found: " + object.toUriString());
@@ -104,5 +105,24 @@ public class AwsDataSourceRepository implements DataSourceRepository {
       }
     }
     return builder.build();
+  }
+
+  private boolean objectExists(S3Object object) {
+    try {
+      HeadObjectRequest headObjectRequest = HeadObjectRequest
+        .builder()
+        .bucket(object.bucket())
+        .key(object.name())
+        .build();
+      HeadObjectResponse headObjectResponse = s3Client.headObject(headObjectRequest);
+      return true;
+    } catch (S3Exception e) {
+      if (e.statusCode() == 404) {
+        return false;
+      } else {
+        // Handle other possible exceptions, such as access denied or network issues
+        throw new RuntimeException("Failed to check if object exists", e);
+      }
+    }
   }
 }

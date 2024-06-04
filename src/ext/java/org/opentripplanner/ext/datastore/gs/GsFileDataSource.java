@@ -15,7 +15,7 @@ import org.opentripplanner.datastore.file.DirectoryDataSource;
 import org.opentripplanner.datastore.file.ZipFileDataSource;
 
 /**
- * This class is a wrapper around and EXISTING Google Cloud Store bucket blob. It can be read and
+ * This class is a wrapper around an EXISTING Google Cloud Store bucket blob. It can be read and
  * overwritten.
  * <p>
  * Reading compressed blobs is supported. The only format supported is gzip (extension .gz).
