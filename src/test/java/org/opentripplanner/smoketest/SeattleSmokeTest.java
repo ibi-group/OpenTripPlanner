@@ -167,6 +167,8 @@ public class SeattleSmokeTest {
     assertEquals("Olive Way & 6th Ave", stop.name());
     assertEquals("kcm:1040", stop.id());
     assertEquals("1040", stop.code().get());
+
+    SmokeTest.assertThatAllTransitLegsHaveFareProducts(plan);
   }
 
   static List<TripPlanParameters> buildCombinations() {
