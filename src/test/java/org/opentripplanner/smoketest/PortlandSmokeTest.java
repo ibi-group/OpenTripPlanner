@@ -9,7 +9,6 @@ import static org.opentripplanner.client.model.RequestMode.WALK;
 import java.io.IOException;
 import java.util.List;
 import java.util.Set;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -62,7 +61,6 @@ public class PortlandSmokeTest {
   }
 
   @Nested
-  @Disabled("Disabled because it seems that the rental services have closed for the winter")
   class GeofencingZones {
 
     /**
