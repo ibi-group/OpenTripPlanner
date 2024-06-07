@@ -52,7 +52,7 @@ public class SeattleSmokeTest {
       List.of("WALK", "BUS", "WALK")
     );
 
-    SmokeTest.assertThatAllTransitLegsHaveFareProducts(plan);
+    SmokeTest.assertThatAllTransitLegsHaveFareProductsHigherThanZero(plan);
   }
 
   @Nested
