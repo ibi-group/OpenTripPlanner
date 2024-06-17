@@ -18,11 +18,11 @@ jobs:
       matrix:
         locations:
           - name: seattle
-            sleep: 15
+            sleep: 30
           - name: atlanta
             sleep: 15
           - name: houston
-            sleep: 15
+            sleep: 30
           - name: denver
             sleep: 15
           - name: septa
