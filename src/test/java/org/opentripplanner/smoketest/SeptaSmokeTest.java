@@ -9,7 +9,6 @@ import static org.opentripplanner.client.model.RequestMode.WALK;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.opentripplanner.client.model.Coordinate;
@@ -67,13 +66,11 @@ public class SeptaSmokeTest {
   }
 
   @Test
-  @Disabled("The indego feed is 404ing")
   public void bikeRentalStations() {
     SmokeTest.assertThatThereAreVehicleRentalStations();
   }
 
   @Test
-  @Disabled("The indego feed is 404ing")
   public void routeWithBikeRental() {
     SmokeTest.basicRouteTest(
       new SmokeTestRequest(pierceStreet, templeUniversity, Set.of(BICYCLE_RENT)),

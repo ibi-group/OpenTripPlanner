@@ -40,7 +40,7 @@ public class PortlandSmokeTest {
       List.of("WALK", "TRAM", "WALK")
     );
 
-    SmokeTest.assertThatAllTransitLegsHaveFareProducts(plan);
+    SmokeTest.assertThatAllTransitLegsHaveFareProductsHigherThanZero(plan);
   }
 
   static List<TripPlanParameters> buildCombinations() {
@@ -58,11 +58,11 @@ public class PortlandSmokeTest {
   public void accessibleRouting(TripPlanParameters params) throws IOException {
     var tripPlan = SmokeTest.API_CLIENT.plan(params);
     assertFalse(tripPlan.transitItineraries().isEmpty());
-    SmokeTest.assertThatAllTransitLegsHaveFareProducts(tripPlan);
+    SmokeTest.assertThatAllTransitLegsHaveFareProductsHigherThanZero(tripPlan);
   }
 
   @Nested
-  @Disabled("Disabled because it seems that the rental services have closed for the winter")
+  @Disabled("Bird doesn't have scooters, Lime doesn't have geofencing zones")
   class GeofencingZones {
 
     /**

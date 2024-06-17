@@ -5,28 +5,33 @@ import org.opentripplanner.routing.api.request.framework.TimePenalty;
 import org.opentripplanner.street.model.vertex.Vertex;
 
 /**
- * A calculator to delegates the main computation to another instance and applies a duration
- * modifier afterward.
+ * A calculator to delegates the main computation to another instance and applies a time penalty
+ * afterward.
  */
 public class TimePenaltyCalculator implements FlexPathCalculator {
 
   private final FlexPathCalculator delegate;
-  private final TimePenalty factors;
+  private final TimePenalty penalty;
 
   public TimePenaltyCalculator(FlexPathCalculator delegate, TimePenalty penalty) {
     this.delegate = delegate;
-    this.factors = penalty;
+    this.penalty = penalty;
   }
 
   @Nullable
   @Override
-  public FlexPath calculateFlexPath(Vertex fromv, Vertex tov, int fromStopIndex, int toStopIndex) {
-    var path = delegate.calculateFlexPath(fromv, tov, fromStopIndex, toStopIndex);
+  public FlexPath calculateFlexPath(
+    Vertex fromv,
+    Vertex tov,
+    int boardStopPosition,
+    int alightStopPosition
+  ) {
+    var path = delegate.calculateFlexPath(fromv, tov, boardStopPosition, alightStopPosition);
 
     if (path == null) {
       return null;
     } else {
-      return path.withDurationModifier(factors);
+      return path.withTimePenalty(penalty);
     }
   }
 }

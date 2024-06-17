@@ -32,7 +32,7 @@ public class HoustonSmokeTest {
       List.of("WALK", "BUS", "WALK", "TRAM", "WALK")
     );
 
-    SmokeTest.assertThatAllTransitLegsHaveFareProducts(plan);
+    SmokeTest.assertThatAllTransitLegsHaveFareProductsHigherThanZero(plan);
   }
 
   @Test
@@ -43,7 +43,7 @@ public class HoustonSmokeTest {
       List.of("WALK", "BUS", "WALK", "BUS", "WALK")
     );
 
-    SmokeTest.assertThatAllTransitLegsHaveFareProducts(plan);
+    SmokeTest.assertThatAllTransitLegsHaveFareProductsHigherThanZero(plan);
   }
 
   @Test

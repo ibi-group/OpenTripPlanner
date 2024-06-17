@@ -14,6 +14,7 @@ import java.util.List;
 import org.opentripplanner.client.OtpApiClient;
 import org.opentripplanner.client.model.FareProductUse;
 import org.opentripplanner.client.model.Itinerary;
+import org.opentripplanner.client.model.Leg;
 import org.opentripplanner.client.model.TripPlan;
 import org.opentripplanner.client.model.VehicleRentalStation;
 import org.opentripplanner.client.parameters.TripPlanParameters;
@@ -116,7 +117,19 @@ public class SmokeTest {
     }
   }
 
-  static void assertThatAllTransitLegsHaveFareProducts(TripPlan plan) {
+  static void assertThatAllTransitLegsHaveFareProductsHigherThanZero(TripPlan plan) {
+    final var transitLegs = assertThatAllTransitLegsHaveFareProducts(plan);
+
+    var fareProducts = transitLegs
+      .stream()
+      .flatMap(l -> l.fareProducts().stream().map(FareProductUse::product));
+    assertTrue(
+      fareProducts.anyMatch(fp -> fp.price().amount().floatValue() > 0),
+      "There were no fare product with a price higher than 0."
+    );
+  }
+
+  static List<Leg> assertThatAllTransitLegsHaveFareProducts(TripPlan plan) {
     var transitLegs = plan
       .transitItineraries()
       .stream()
@@ -133,13 +146,6 @@ public class SmokeTest {
         leg.fareProducts().size()
       );
     });
-
-    var fareProducts = transitLegs
-      .stream()
-      .flatMap(l -> l.fareProducts().stream().map(FareProductUse::product));
-    assertTrue(
-      fareProducts.anyMatch(fp -> fp.price().amount().floatValue() > 0),
-      "There were no fare product with a price higher than 0."
-    );
+    return transitLegs;
   }
 }
