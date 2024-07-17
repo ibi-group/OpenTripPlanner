@@ -1334,7 +1334,7 @@ public class StreetEdge
     // (assuming a pre-determined travel speed for each profile)
     // and the travel speed for that profile is used to overwrite the time calculated above.
     if (mobilityProfile != null) {
-      if (profileCost != null) {
+      if (profileCost != null && !profileCost.isEmpty()) {
         var defaultTravelHours = MobilityProfileRouting.computeTravelHours(
           getEffectiveWalkDistance(),
           mobilityProfile
