@@ -224,4 +224,8 @@ public class OSMWay extends OSMWithTags {
   public String url() {
     return String.format("https://www.openstreetmap.org/way/%d", getId());
   }
+
+  public boolean isTransitPlatform() {
+    return "platform".equals(getTag("railway")) || "platform".equals(getTag("public_transport"));
+  }
 }

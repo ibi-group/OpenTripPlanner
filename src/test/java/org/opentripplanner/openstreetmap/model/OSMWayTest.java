@@ -187,4 +187,25 @@ class OSMWayTest {
       Arguments.of(createFootway("crossing", "crossing:markings", "no"), false)
     );
   }
+
+  private static OSMWay createPlatform(String kind) {
+    var osm = new OSMWay();
+    osm.addTag(kind, "platform");
+    return osm;
+  }
+
+  @ParameterizedTest
+  @MethodSource("createTransitPlatformCases")
+  void transitPlatform(OSMWay way, boolean result) {
+    assertEquals(result, way.isTransitPlatform());
+  }
+
+  static Stream<Arguments> createTransitPlatformCases() {
+    return Stream.of(
+      Arguments.of(createGenericHighway(), false),
+      Arguments.of(createGenericFootway(), false),
+      Arguments.of(createPlatform("railway"), true),
+      Arguments.of(createPlatform("public_transport"), true)
+    );
+  }
 }
