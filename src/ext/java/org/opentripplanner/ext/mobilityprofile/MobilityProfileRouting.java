@@ -57,7 +57,9 @@ public class MobilityProfileRouting {
     OSMWay way,
     StreetTraversalPermission permissions
   ) {
-    return way.isFootway() || way.isTransitPlatform() ? permissions : permissions.remove(StreetTraversalPermission.PEDESTRIAN);
+    return way.isFootway() || way.isTransitPlatform()
+      ? permissions
+      : permissions.remove(StreetTraversalPermission.PEDESTRIAN);
   }
 
   /** Multiplies profile costs by the distance ratio between the given edge and its parent. */
