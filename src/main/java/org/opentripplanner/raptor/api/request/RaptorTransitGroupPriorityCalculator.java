@@ -2,7 +2,7 @@ package org.opentripplanner.raptor.api.request;
 
 import org.opentripplanner.raptor.api.model.DominanceFunction;
 
-public interface RaptorTransitGroupCalculator {
+public interface RaptorTransitGroupPriorityCalculator {
   /**
    * Merge in the transit group id with an existing set. Note! Both the set
    * and the group id type is {@code int}.
@@ -11,7 +11,7 @@ public interface RaptorTransitGroupCalculator {
    * @param boardingGroupId the transit group id to add to the given set.
    * @return the new computed set of groupIds
    */
-  int mergeGroupIds(int currentGroupIds, int boardingGroupId);
+  int mergeInGroupId(int currentGroupIds, int boardingGroupId);
 
   /**
    * This is the dominance function to use for comparing transit-groups.

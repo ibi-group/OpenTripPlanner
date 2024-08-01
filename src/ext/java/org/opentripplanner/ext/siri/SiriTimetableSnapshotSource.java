@@ -23,8 +23,8 @@ import org.opentripplanner.transit.model.timetable.RealTimeTripTimes;
 import org.opentripplanner.transit.model.timetable.Trip;
 import org.opentripplanner.transit.model.timetable.TripTimes;
 import org.opentripplanner.transit.service.DefaultTransitService;
+import org.opentripplanner.transit.service.TransitEditorService;
 import org.opentripplanner.transit.service.TransitModel;
-import org.opentripplanner.transit.service.TransitService;
 import org.opentripplanner.updater.TimetableSnapshotSourceParameters;
 import org.opentripplanner.updater.spi.DataValidationExceptionMapper;
 import org.opentripplanner.updater.spi.UpdateError;
@@ -56,9 +56,13 @@ public class SiriTimetableSnapshotSource implements TimetableSnapshotProvider {
    * messages.
    */
   private final SiriTripPatternCache tripPatternCache;
-  private final TransitModel transitModel;
 
-  private final TransitService transitService;
+  /**
+   * Long-lived transit editor service that has access to the timetable snapshot buffer.
+   * This differs from the usual use case where the transit service refers to the latest published
+   * timetable snapshot.
+   */
+  private final TransitEditorService transitEditorService;
 
   private final TimetableSnapshotManager snapshotManager;
 
@@ -72,10 +76,10 @@ public class SiriTimetableSnapshotSource implements TimetableSnapshotProvider {
         parameters,
         () -> LocalDate.now(transitModel.getTimeZone())
       );
-    this.transitModel = transitModel;
-    this.transitService = new DefaultTransitService(transitModel);
+    this.transitEditorService =
+      new DefaultTransitService(transitModel, getTimetableSnapshotBuffer());
     this.tripPatternCache =
-      new SiriTripPatternCache(tripPatternIdGenerator, transitService::getPatternForTrip);
+      new SiriTripPatternCache(tripPatternIdGenerator, transitEditorService::getPatternForTrip);
 
     transitModel.initTimetableSnapshotProvider(this);
   }
@@ -104,26 +108,22 @@ public class SiriTimetableSnapshotSource implements TimetableSnapshotProvider {
 
     List<Result<UpdateSuccess, UpdateError>> results = new ArrayList<>();
 
-    snapshotManager.withLock(() -> {
-      if (incrementality == FULL_DATASET) {
-        // Remove all updates from the buffer
-        snapshotManager.clearBuffer(feedId);
-      }
+    if (incrementality == FULL_DATASET) {
+      // Remove all updates from the buffer
+      snapshotManager.clearBuffer(feedId);
+    }
 
-      for (var etDelivery : updates) {
-        for (var estimatedJourneyVersion : etDelivery.getEstimatedJourneyVersionFrames()) {
-          var journeys = estimatedJourneyVersion.getEstimatedVehicleJourneies();
-          LOG.debug("Handling {} EstimatedVehicleJourneys.", journeys.size());
-          for (EstimatedVehicleJourney journey : journeys) {
-            results.add(apply(journey, transitModel, fuzzyTripMatcher, entityResolver));
-          }
+    for (var etDelivery : updates) {
+      for (var estimatedJourneyVersion : etDelivery.getEstimatedJourneyVersionFrames()) {
+        var journeys = estimatedJourneyVersion.getEstimatedVehicleJourneies();
+        LOG.debug("Handling {} EstimatedVehicleJourneys.", journeys.size());
+        for (EstimatedVehicleJourney journey : journeys) {
+          results.add(apply(journey, transitEditorService, fuzzyTripMatcher, entityResolver));
         }
       }
+    }
 
-      LOG.debug("message contains {} trip updates", updates.size());
-
-      snapshotManager.purgeAndCommit();
-    });
+    LOG.debug("message contains {} trip updates", updates.size());
 
     return UpdateResult.ofResults(results);
   }
@@ -133,9 +133,13 @@ public class SiriTimetableSnapshotSource implements TimetableSnapshotProvider {
     return snapshotManager.getTimetableSnapshot();
   }
 
+  private TimetableSnapshot getTimetableSnapshotBuffer() {
+    return snapshotManager.getTimetableSnapshotBuffer();
+  }
+
   private Result<UpdateSuccess, UpdateError> apply(
     EstimatedVehicleJourney journey,
-    TransitModel transitModel,
+    TransitEditorService transitService,
     @Nullable SiriFuzzyTripMatcher fuzzyTripMatcher,
     EntityResolver entityResolver
   ) {
@@ -147,7 +151,7 @@ public class SiriTimetableSnapshotSource implements TimetableSnapshotProvider {
         result =
           new AddedTripBuilder(
             journey,
-            transitModel,
+            transitService,
             entityResolver,
             tripPatternIdGenerator::generateUniqueTripPatternId
           )
@@ -197,11 +201,7 @@ public class SiriTimetableSnapshotSource implements TimetableSnapshotProvider {
    * Snapshot timetable is used as source if initialised, trip patterns scheduled timetable if not.
    */
   private Timetable getCurrentTimetable(TripPattern tripPattern, LocalDate serviceDate) {
-    TimetableSnapshot timetableSnapshot = getTimetableSnapshot();
-    if (timetableSnapshot != null) {
-      return timetableSnapshot.resolve(tripPattern, serviceDate);
-    }
-    return tripPattern.getScheduledTimetable();
+    return getTimetableSnapshotBuffer().resolve(tripPattern, serviceDate);
   }
 
   private Result<TripUpdate, UpdateError> handleModifiedTrip(
@@ -230,7 +230,7 @@ public class SiriTimetableSnapshotSource implements TimetableSnapshotProvider {
 
     if (trip != null) {
       // Found exact match
-      pattern = transitService.getPatternForTrip(trip);
+      pattern = transitEditorService.getPatternForTrip(trip);
     } else if (fuzzyTripMatcher != null) {
       // No exact match found - search for trips based on arrival-times/stop-patterns
       TripAndPattern tripAndPattern = fuzzyTripMatcher.match(
@@ -265,7 +265,7 @@ public class SiriTimetableSnapshotSource implements TimetableSnapshotProvider {
       pattern,
       estimatedVehicleJourney,
       serviceDate,
-      transitModel.getTimeZone(),
+      transitEditorService.getTimeZone(),
       entityResolver
     )
       .build();
@@ -312,7 +312,7 @@ public class SiriTimetableSnapshotSource implements TimetableSnapshotProvider {
   private boolean markScheduledTripAsDeleted(Trip trip, final LocalDate serviceDate) {
     boolean success = false;
 
-    final TripPattern pattern = transitService.getPatternForTrip(trip);
+    final TripPattern pattern = transitEditorService.getPatternForTrip(trip);
 
     if (pattern != null) {
       // Mark scheduled trip times for this trip in this pattern as deleted
@@ -330,5 +330,12 @@ public class SiriTimetableSnapshotSource implements TimetableSnapshotProvider {
     }
 
     return success;
+  }
+
+  /**
+   * Flush pending changes in the timetable snapshot buffer and publish a new snapshot.
+   */
+  public void flushBuffer() {
+    snapshotManager.purgeAndCommit();
   }
 }
