@@ -27,7 +27,7 @@ public class OsmImpedanceUpdater extends PollingGraphUpdater {
   private final HttpHeaders headers;
   private final OtpHttpClient otpHttpClient;
   private WriteToGraphCallback saveResultOnGraph;
-  private Map<String, MobilityProfileData> previousImpedances;
+  private Map<String, MobilityProfileData> previousImpedances = Map.of();
 
   public OsmImpedanceUpdater(
     OsmImpedanceUpdaterParameters config

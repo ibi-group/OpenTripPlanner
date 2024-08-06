@@ -19,6 +19,7 @@ import org.opentripplanner.transit.service.TransitModel;
 import org.opentripplanner.updater.GraphUpdaterManager;
 import org.opentripplanner.updater.UpdatersParameters;
 import org.opentripplanner.updater.alert.GtfsRealtimeAlertsUpdater;
+import org.opentripplanner.updater.impedance.OsmImpedanceUpdater;
 import org.opentripplanner.updater.spi.GraphUpdater;
 import org.opentripplanner.updater.trip.MqttGtfsRealtimeUpdater;
 import org.opentripplanner.updater.trip.PollingTripUpdater;
@@ -199,6 +200,10 @@ public class UpdaterConfigurator {
     }
     for (var configItem : updatersParameters.getSiriAzureSXUpdaterParameters()) {
       updaters.add(new SiriAzureSXUpdater(configItem, transitModel));
+    }
+
+    for (var configItem : updatersParameters.getOsmImpedanceUpdaterParameters()) {
+      updaters.add(new OsmImpedanceUpdater(configItem));
     }
 
     return updaters;

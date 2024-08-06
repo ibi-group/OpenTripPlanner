@@ -8,6 +8,7 @@ import org.opentripplanner.ext.siri.updater.azure.SiriAzureETUpdaterParameters;
 import org.opentripplanner.ext.siri.updater.azure.SiriAzureSXUpdaterParameters;
 import org.opentripplanner.ext.vehiclerentalservicedirectory.api.VehicleRentalServiceDirectoryFetcherParameters;
 import org.opentripplanner.updater.alert.GtfsRealtimeAlertsUpdaterParameters;
+import org.opentripplanner.updater.impedance.OsmImpedanceUpdaterParameters;
 import org.opentripplanner.updater.trip.MqttGtfsRealtimeUpdaterParameters;
 import org.opentripplanner.updater.trip.PollingTripUpdaterParameters;
 import org.opentripplanner.updater.vehicle_parking.VehicleParkingUpdaterParameters;
@@ -40,4 +41,6 @@ public interface UpdatersParameters {
   List<SiriAzureETUpdaterParameters> getSiriAzureETUpdaterParameters();
 
   List<SiriAzureSXUpdaterParameters> getSiriAzureSXUpdaterParameters();
+
+  List<OsmImpedanceUpdaterParameters> getOsmImpedanceUpdaterParameters();
 }
