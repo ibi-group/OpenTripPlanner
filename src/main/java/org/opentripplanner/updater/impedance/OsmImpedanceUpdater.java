@@ -78,7 +78,7 @@ public class OsmImpedanceUpdater extends PollingGraphUpdater {
     @Nonnull MobilityProfileData profileData1,
     @Nonnull MobilityProfileData profileData2
   ) {
-    return profileData1.costs().equals(profileData2.costs());
+    return profileData1.equals(profileData2);
   }
 
   /**
@@ -95,7 +95,8 @@ public class OsmImpedanceUpdater extends PollingGraphUpdater {
 
       // Include entries that exist in both sets and that were modified in newImpedances.
       // Include entries introduced in newImpedances not in existingImpedances.
-      if (!existingImpedances.containsKey(key) || !areSameImpedances(entry.getValue(), existingImpedances.get(key))) {
+      var existingImpedance = existingImpedances.get(key);
+      if (existingImpedance == null || !areSameImpedances(entry.getValue(), existingImpedance)) {
         result.put(key, entry.getValue());
       }
     }
