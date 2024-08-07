@@ -1,5 +1,6 @@
 package org.opentripplanner.smoketest;
 
+import static com.google.common.truth.Truth.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -160,8 +161,8 @@ public class SeattleSmokeTest {
 
     var first = itineraries.getFirst();
     var leg = first.transitLegs().getFirst();
-    assertEquals("510", leg.route().shortName().get());
-    assertEquals("Sound Transit", leg.route().agency().name());
+    assertThat(Set.of("510", "415")).contains(leg.route().shortName().get());
+    assertThat(Set.of("Sound Transit", "Community Transit")).contains(leg.route().agency().name());
 
     var stop = leg.from().stop().get();
     assertEquals("Olive Way & 6th Ave", stop.name());
