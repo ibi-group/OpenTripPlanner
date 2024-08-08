@@ -568,7 +568,10 @@ public class OsmModule implements GraphBuilderModule {
     I18NString name = params.edgeNamer().getNameForWay(way, label);
     float carSpeed = way.getOsmProvider().getOsmTagMapper().getCarSpeedForWay(way, back);
 
-    StreetTraversalPermission perms = MobilityProfileRouting.adjustPedestrianPermissions(way, permissions);
+    StreetTraversalPermission perms = MobilityProfileRouting.adjustPedestrianPermissions(
+      way,
+      permissions
+    );
     String startId = startEndpoint.getLabel().toString();
     String endId = endEndpoint.getLabel().toString();
     String profileKey = "";
@@ -618,16 +621,12 @@ public class OsmModule implements GraphBuilderModule {
     }
 
     // For testing, indicate the OSM node ids (remove prefixes).
-    String nameWithNodeIds = String.format(
-      "%s (%s)",
-      editedName,
-      profileKey
-    );
+    String nameWithNodeIds = String.format("%s (%s)", editedName, profileKey);
     if (DEBUG_STREET_NAMES) {
       seb.withName(nameWithNodeIds);
     }
 
-/*
+    /*
     // Lookup costs by mobility profile, if any were defined.
     // Note that edges are bidirectional, so we check that mobility data exist in both directions.
     if (mobilityProfileData != null) {

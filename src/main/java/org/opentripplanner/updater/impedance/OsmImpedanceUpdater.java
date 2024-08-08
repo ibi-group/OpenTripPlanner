@@ -29,9 +29,7 @@ public class OsmImpedanceUpdater extends PollingGraphUpdater {
   private WriteToGraphCallback saveResultOnGraph;
   private Map<String, MobilityProfileData> previousImpedances = Map.of();
 
-  public OsmImpedanceUpdater(
-    OsmImpedanceUpdaterParameters config
-  ) {
+  public OsmImpedanceUpdater(OsmImpedanceUpdaterParameters config) {
     super(config);
     this.url = config.url();
     this.headers = HttpHeaders.of().add(config.headers()).build();
@@ -61,12 +59,17 @@ public class OsmImpedanceUpdater extends PollingGraphUpdater {
       );
 
       // Filter out which rows have been updated since previous poll.
-      Map<String, MobilityProfileData> changedImpedances = getChangedImpedances(impedances, previousImpedances);
+      Map<String, MobilityProfileData> changedImpedances = getChangedImpedances(
+        impedances,
+        previousImpedances
+      );
       previousImpedances = impedances;
 
       // Handle update in graph writer runnable
       if (!changedImpedances.isEmpty()) {
-        saveResultOnGraph.execute((graph, transitModel) -> updateHandler.update(graph, changedImpedances));
+        saveResultOnGraph.execute((graph, transitModel) ->
+          updateHandler.update(graph, changedImpedances)
+        );
       } else {
         LOG.error("Impedance data unchanged (not updating graph).");
       }
@@ -111,11 +114,14 @@ public class OsmImpedanceUpdater extends PollingGraphUpdater {
       // Include entries that were removed in newImpedances, but mark them as empty map.
       if (!newImpedances.containsKey(key)) {
         MobilityProfileData removedData = entry.getValue();
-        result.put(key, new MobilityProfileData(
-          removedData.lengthInMeters(),
-          removedData.fromNode(),
-          removedData.toNode(),
-          Map.of())
+        result.put(
+          key,
+          new MobilityProfileData(
+            removedData.lengthInMeters(),
+            removedData.fromNode(),
+            removedData.toNode(),
+            Map.of()
+          )
         );
       }
     }

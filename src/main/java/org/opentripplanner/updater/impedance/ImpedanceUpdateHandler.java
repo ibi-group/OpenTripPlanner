@@ -37,7 +37,10 @@ public class ImpedanceUpdateHandler {
       .toList();
 
     for (StreetEdge se : walkableEdges) {
-      if (se.getFromVertex() instanceof OsmVertex osmFrom && se.getToVertex() instanceof OsmVertex osmTo) {
+      if (
+        se.getFromVertex() instanceof OsmVertex osmFrom &&
+        se.getToVertex() instanceof OsmVertex osmTo
+      ) {
         var impedance = impedances.get(se.profileKey);
         if (impedance != null) {
           String symbol = "★";
@@ -46,7 +49,8 @@ public class ImpedanceUpdateHandler {
           // Create pro-rated impedance data for split edges.
           if (osmFrom.nodeId != impedance.fromNode() || osmTo.nodeId != impedance.toNode()) {
             double ratio = se.getDistanceMeters() / impedance.lengthInMeters();
-            proRatedCosts = MobilityProfileRouting.getProRatedProfileCosts(impedance.costs(), (float)ratio);
+            proRatedCosts =
+              MobilityProfileRouting.getProRatedProfileCosts(impedance.costs(), (float) ratio);
             symbol = "☆";
           }
 
@@ -60,6 +64,10 @@ public class ImpedanceUpdateHandler {
       }
     }
 
-    LOG.info("{} new impedance entries imported into graph in {} seconds.", count, (System.currentTimeMillis() - start) / 1000);
+    LOG.info(
+      "{} new impedance entries imported into graph in {} seconds.",
+      count,
+      (System.currentTimeMillis() - start) / 1000
+    );
   }
 }

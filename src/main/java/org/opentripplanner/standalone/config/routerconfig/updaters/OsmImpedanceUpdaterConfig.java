@@ -7,6 +7,7 @@ import org.opentripplanner.standalone.config.framework.json.NodeAdapter;
 import org.opentripplanner.updater.impedance.OsmImpedanceUpdaterParameters;
 
 public class OsmImpedanceUpdaterConfig {
+
   public static OsmImpedanceUpdaterParameters create(String configRef, NodeAdapter c) {
     return new OsmImpedanceUpdaterParameters(
       configRef,
