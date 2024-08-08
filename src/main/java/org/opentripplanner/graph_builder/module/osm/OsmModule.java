@@ -129,10 +129,6 @@ public class OsmModule implements GraphBuilderModule {
     return elevationData;
   }
 
-  public void setMobilityProfileData(Map<String, MobilityProfileData> mobilityProfileData) {
-    this.mobilityProfileData = mobilityProfileData;
-  }
-
   private void build() {
     var parkingProcessor = new ParkingProcessor(
       graph,
@@ -197,29 +193,6 @@ public class OsmModule implements GraphBuilderModule {
     params.edgeNamer().postprocess();
 
     normalizer.applySafetyFactors();
-
-    listUnusedMobilityCosts();
-  }
-
-  /**
-   * Lists unused entries from the mobility profile data.
-   */
-  private void listUnusedMobilityCosts() {
-    if (mobilityProfileData != null) {
-      List<String> unusedEntries = mobilityProfileData
-        .keySet()
-        .stream()
-        .filter(key -> !mappedMobilityProfileEntries.contains(key))
-        .toList();
-
-      if (!unusedEntries.isEmpty()) {
-        StringBuilder sb = new StringBuilder();
-        for (var entry : unusedEntries) {
-          sb.append(String.format("%n- %s", entry));
-        }
-        LOG.warn("{} mobility profile entries were not used:{}", unusedEntries.size(), sb);
-      }
-    }
   }
 
   /**
@@ -587,15 +560,25 @@ public class OsmModule implements GraphBuilderModule {
     LineString geometry,
     boolean back
   ) {
+    final boolean DEBUG_STREET_NAMES = true;
+
     long wayId = way.getId();
     String label = "way " + wayId + " from " + index;
     label = label.intern();
     I18NString name = params.edgeNamer().getNameForWay(way, label);
     float carSpeed = way.getOsmProvider().getOsmTagMapper().getCarSpeedForWay(way, back);
 
-    StreetTraversalPermission perms = mobilityProfileData != null
-      ? MobilityProfileRouting.adjustPedestrianPermissions(way, permissions)
-      : permissions;
+    StreetTraversalPermission perms = MobilityProfileRouting.adjustPedestrianPermissions(way, permissions);
+    String startId = startEndpoint.getLabel().toString();
+    String endId = endEndpoint.getLabel().toString();
+    String profileKey = "";
+    try {
+      long startShortId = Long.parseLong(startId.replace("osm:node:", ""), 10);
+      long endShortId = Long.parseLong(endId.replace("osm:node:", ""), 10);
+      profileKey = getProfileKey(way, startShortId, endShortId);
+    } catch (NumberFormatException nfe) {
+      LOG.warn("Unable to extract OSM nodes for way {}, {}=>{}", wayId, startId, endId);
+    }
 
     StreetEdgeBuilder<?> seb = new StreetEdgeBuilder<>()
       .withFromVertex(startEndpoint)
@@ -611,7 +594,7 @@ public class OsmModule implements GraphBuilderModule {
       .withSlopeOverride(way.getOsmProvider().getWayPropertySet().getSlopeOverride(way))
       .withStairs(way.isSteps())
       .withWheelchairAccessible(way.isWheelchairAccessible())
-      .withOsmWayId(wayId)
+      .withProfileKey(profileKey)
       .withBogusName(way.hasNoName());
 
     // If this is a street crossing (denoted with the tag "footway:crossing"),
@@ -634,6 +617,17 @@ public class OsmModule implements GraphBuilderModule {
       }
     }
 
+    // For testing, indicate the OSM node ids (remove prefixes).
+    String nameWithNodeIds = String.format(
+      "%s (%s)",
+      editedName,
+      profileKey
+    );
+    if (DEBUG_STREET_NAMES) {
+      seb.withName(nameWithNodeIds);
+    }
+
+/*
     // Lookup costs by mobility profile, if any were defined.
     // Note that edges are bidirectional, so we check that mobility data exist in both directions.
     if (mobilityProfileData != null) {
@@ -711,7 +705,7 @@ public class OsmModule implements GraphBuilderModule {
           seb.withName(nameWithNodeIds);
 
           // Keep tab of node pairs for which mobility profile costs have been mapped.
-          mappedMobilityProfileEntries.add(key);
+          mappedMobilityProfileEntries.add(profileKey);
         }
       } catch (NumberFormatException nfe) {
         // Don't do anything related to mobility profiles if node ids are non-numerical.
@@ -724,7 +718,30 @@ public class OsmModule implements GraphBuilderModule {
       }
     }
 
+
+ */
     return seb.buildAndConnect();
+  }
+
+  /** *
+   * Obtains the correct key for this OSM way.
+   */
+  private static String getProfileKey(OSMWay way, long startShortId, long endShortId) {
+    long wayId = way.getId();
+    TLongList nodeRefs = way.getNodeRefs();
+    //List<String> nodes = Arrays.stream(nodeRefs.toArray()).mapToObj(Long::toString).toList() ;
+    //System.out.printf("%s: %s%n", wayId, String.join(",", nodes));
+    int startIndex = nodeRefs.indexOf(startShortId);
+    int endIndex = nodeRefs.indexOf(endShortId);
+    boolean isReverse = endIndex < startIndex;
+
+    // Use the start and end nodes of the OSM way per the OSM data to lookup the mobility costs.
+    long wayFromId = nodeRefs.get(0);
+    long wayToId = nodeRefs.get(nodeRefs.size() - 1);
+    String key = isReverse
+      ? MobilityProfileParser.getKey(wayId, wayToId, wayFromId)
+      : MobilityProfileParser.getKey(wayId, wayFromId, wayToId);
+    return key;
   }
 
   /** Gets the streets from a collection of OSM ways. */

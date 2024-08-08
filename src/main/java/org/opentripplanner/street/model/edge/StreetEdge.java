@@ -91,7 +91,7 @@ public class StreetEdge
   private float bicycleSafetyFactor;
 
   /** The OSM Way ID that this object is created or derived from. */
-  public long osmWayId;
+  public String profileKey;
 
   /** A map of cost based on a mobility profile. Implemented as HashMap for serialization. */
   public Map<MobilityProfile, Float> profileCost = new HashMap<>();
@@ -158,7 +158,7 @@ public class StreetEdge
     outAngle = lineStringInOutAngles.outAngle();
     elevationExtension = builder.streetElevationExtension();
     profileCost = builder.profileCosts();
-    osmWayId = builder.osmWayId();
+    profileKey = builder.profileKey();
   }
 
   public StreetEdgeBuilder<?> toBuilder() {

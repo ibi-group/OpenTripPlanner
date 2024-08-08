@@ -42,7 +42,7 @@ public class StreetEdgeBuilder<B extends StreetEdgeBuilder<B>> {
   private short flags;
   private StreetElevationExtension streetElevationExtension;
   private Map<MobilityProfile, Float> profileCosts = new EnumMap<>(MobilityProfile.class);
-  private long osmWayId;
+  private String profileKey;
 
   public StreetEdgeBuilder() {
     this.defaultLength = true;
@@ -65,7 +65,7 @@ public class StreetEdgeBuilder<B extends StreetEdgeBuilder<B>> {
     this.bicycleSafetyFactor = original.getBicycleSafetyFactor();
     this.flags = original.getFlags();
     this.profileCosts = original.profileCost;
-    this.osmWayId = original.osmWayId;
+    this.profileKey = original.profileKey;
   }
 
   public StreetEdge buildAndConnect() {
@@ -264,13 +264,13 @@ public class StreetEdgeBuilder<B extends StreetEdgeBuilder<B>> {
     return profileCosts;
   }
 
-  public B withOsmWayId(long wayId) {
-    this.osmWayId = wayId;
+  public B withProfileKey(String key) {
+    this.profileKey = key;
     return instance();
   }
 
-  public long osmWayId() {
-    return osmWayId;
+  public String profileKey() {
+    return profileKey;
   }
 
   @SuppressWarnings("unchecked")

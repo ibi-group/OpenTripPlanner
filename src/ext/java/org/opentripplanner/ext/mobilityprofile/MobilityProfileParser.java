@@ -46,13 +46,8 @@ public class MobilityProfileParser {
   }
 
   /** Helper to build a key of the form "id:from=>to" for an OSM way. */
-  public static String getKey(String id, String from, String to) {
-    return String.format("%s:%s=>%s", id, from, to);
-  }
-
-  /** Helper to build a key of the form "id:from=>to" for an OSM way. */
-  public static String getKey(String id, long from, long to) {
-    return String.format("%s:%d=>%d", id, from, to);
+  public static String getKey(long id, long from, long to) {
+    return String.format("%d:%d=>%d", id, from, to);
   }
 
   private static void parseRow(
@@ -65,7 +60,8 @@ public class MobilityProfileParser {
       long fromNode = Long.parseLong(reader.get("Upstream Node"), 10);
       long toNode = Long.parseLong(reader.get("Downstream Node"), 10);
       String id = reader.get("Way Id");
-      String key = getKey(id, fromNode, toNode);
+      long osmWayId = Long.parseLong(id, 10);
+      String key = getKey(osmWayId, fromNode, toNode);
       float lengthMeters = ONE_MILE_IN_METERS * Float.parseFloat(reader.get("Link Length"));
 
       var weightMap = new EnumMap<MobilityProfile, Float>(MobilityProfile.class);
