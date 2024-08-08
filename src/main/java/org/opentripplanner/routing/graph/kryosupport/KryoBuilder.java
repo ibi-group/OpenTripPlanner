@@ -3,7 +3,6 @@ package org.opentripplanner.routing.graph.kryosupport;
 import com.conveyal.kryo.TIntArrayListSerializer;
 import com.conveyal.kryo.TIntIntHashMapSerializer;
 import com.esotericsoftware.kryo.Kryo;
-import com.esotericsoftware.kryo.serializers.EnumMapSerializer;
 import com.esotericsoftware.kryo.serializers.ExternalizableSerializer;
 import com.esotericsoftware.kryo.util.DefaultInstantiatorStrategy;
 import com.google.common.collect.ArrayListMultimap;
@@ -13,13 +12,11 @@ import de.javakaffee.kryoserializers.guava.HashMultimapSerializer;
 import gnu.trove.impl.hash.TPrimitiveHash;
 import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.hash.TIntIntHashMap;
-import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.objenesis.strategy.SerializingInstantiatorStrategy;
-import org.opentripplanner.ext.mobilityprofile.MobilityProfile;
 import org.opentripplanner.kryo.BuildConfigSerializer;
 import org.opentripplanner.kryo.RouterConfigSerializer;
 import org.opentripplanner.kryo.UnmodifiableCollectionsSerializer;
@@ -68,7 +65,6 @@ public final class KryoBuilder {
     kryo.register(RouterConfig.class, new RouterConfigSerializer());
     kryo.register(BuildConfig.class, new BuildConfigSerializer());
     kryo.register(AtomicInteger.class, new AtomicIntegerSerializer());
-    kryo.register(EnumMap.class, new EnumMapSerializer(MobilityProfile.class));
 
     UnmodifiableCollectionsSerializer.registerSerializers(kryo);
     // Instantiation strategy: how should Kryo make new instances of objects when they are deserialized?
