@@ -560,8 +560,6 @@ public class OsmModule implements GraphBuilderModule {
     LineString geometry,
     boolean back
   ) {
-    final boolean DEBUG_STREET_NAMES = true;
-
     long wayId = way.getId();
     String label = "way " + wayId + " from " + index;
     label = label.intern();
@@ -618,12 +616,6 @@ public class OsmModule implements GraphBuilderModule {
       } else if ("sidewalk".equals(editedName) || "path".equals(editedName)) {
         editedName = String.format("%s %s", editedName, wayId);
       }
-    }
-
-    // For testing, indicate the OSM node ids (remove prefixes).
-    String nameWithNodeIds = String.format("%s (%s)", editedName, profileKey);
-    if (DEBUG_STREET_NAMES) {
-      seb.withName(nameWithNodeIds);
     }
 
     /*
