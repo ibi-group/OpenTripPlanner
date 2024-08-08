@@ -7,7 +7,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -16,8 +15,6 @@ import javax.annotation.Nonnull;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.LineString;
-import org.opentripplanner.ext.mobilityprofile.MobilityProfile;
-import org.opentripplanner.ext.mobilityprofile.MobilityProfileData;
 import org.opentripplanner.ext.mobilityprofile.MobilityProfileParser;
 import org.opentripplanner.ext.mobilityprofile.MobilityProfileRouting;
 import org.opentripplanner.framework.geometry.GeometryUtils;
@@ -65,8 +62,6 @@ public class OsmModule implements GraphBuilderModule {
   private final SafetyValueNormalizer normalizer;
   private final VertexGenerator vertexGenerator;
   private final OsmDatabase osmdb;
-  private Map<String, MobilityProfileData> mobilityProfileData;
-  private HashSet<String> mappedMobilityProfileEntries;
   private List<OSMWay> osmStreets;
   private List<OSMWay> osmFootways;
   private OSMWay lastQueriedCrossing;
@@ -161,8 +156,6 @@ public class OsmModule implements GraphBuilderModule {
 
     // figure out which nodes that are actually intersections
     vertexGenerator.initIntersectionNodes();
-
-    mappedMobilityProfileEntries = new HashSet<>();
 
     buildBasicGraph();
     buildWalkableAreas(!params.areaVisibility());
@@ -615,102 +608,10 @@ public class OsmModule implements GraphBuilderModule {
         seb.withBogusName(false);
       } else if ("sidewalk".equals(editedName) || "path".equals(editedName)) {
         editedName = String.format("%s %s", editedName, wayId);
+        // seb.withName(editedName);
       }
     }
 
-    /*
-    // Lookup costs by mobility profile, if any were defined.
-    // Note that edges are bidirectional, so we check that mobility data exist in both directions.
-    if (mobilityProfileData != null) {
-      String startId = startEndpoint.getLabel().toString();
-      String endId = endEndpoint.getLabel().toString();
-
-      try {
-        long startShortId = Long.parseLong(startId.replace("osm:node:", ""), 10);
-        long endShortId = Long.parseLong(endId.replace("osm:node:", ""), 10);
-
-        // For testing, indicate the OSM node ids (remove prefixes).
-        String nameWithNodeIds = String.format(
-          "%s (%s, %s→%s)",
-          editedName,
-          wayId,
-          startShortId,
-          endShortId
-        );
-
-        seb.withName(nameWithNodeIds);
-
-        String wayIdStr = Long.toString(wayId, 10);
-        TLongList nodeRefs = way.getNodeRefs();
-        int startIndex = nodeRefs.indexOf(startShortId);
-        int endIndex = nodeRefs.indexOf(endShortId);
-        boolean isReverse = endIndex < startIndex;
-
-        // Use the start and end nodes of the OSM way per the OSM data to lookup the mobility costs.
-        long wayFromId = nodeRefs.get(0);
-        long wayToId = nodeRefs.get(nodeRefs.size() - 1);
-        String key = isReverse
-          ? MobilityProfileParser.getKey(wayIdStr, wayToId, wayFromId)
-          : MobilityProfileParser.getKey(wayIdStr, wayFromId, wayToId);
-
-        var edgeMobilityCostMap = mobilityProfileData.get(key);
-        if (edgeMobilityCostMap != null) {
-          // Check whether the nodes for this way match the nodes from mobility profile data.
-          if (
-            startShortId == edgeMobilityCostMap.fromNode() &&
-            endShortId == edgeMobilityCostMap.toNode() ||
-            startShortId == edgeMobilityCostMap.toNode() &&
-            endShortId == edgeMobilityCostMap.fromNode()
-          ) {
-            // If the from/to nodes match, then assign the cost directly
-            seb.withProfileCosts(edgeMobilityCostMap.costs());
-
-            // Append an indication that this edge uses a full profile cost.
-            nameWithNodeIds = String.format("%s ☑", nameWithNodeIds);
-            // System.out.printf("Way (full length): %s size %d%n", nameWithNodeIds, edgeMobilityCostMap.costs().size());
-            System.out.printf(
-              "%s %f%n",
-              nameWithNodeIds,
-              edgeMobilityCostMap.costs().get(MobilityProfile.WCHAIRE)
-            );
-          } else {
-            // Otherwise, pro-rate the cost to the length of the edge.
-            float ratio = (float) (length / edgeMobilityCostMap.lengthInMeters());
-
-            Map<MobilityProfile, Float> proRatedProfileCosts = MobilityProfileRouting.getProRatedProfileCosts(
-              edgeMobilityCostMap.costs(),
-              ratio
-            );
-            seb.withProfileCosts(proRatedProfileCosts);
-
-            // Append an indication that this edge uses a partial profile cost.
-            nameWithNodeIds = String.format("%s r%4.3f l%4.3f", nameWithNodeIds, ratio, length);
-            // System.out.printf("Way (partial): %s size %d%n", nameWithNodeIds, proRatedProfileCosts.size());
-            System.out.printf(
-              "%s %f%n",
-              nameWithNodeIds,
-              proRatedProfileCosts.get(MobilityProfile.WCHAIRE)
-            );
-          }
-
-          seb.withName(nameWithNodeIds);
-
-          // Keep tab of node pairs for which mobility profile costs have been mapped.
-          mappedMobilityProfileEntries.add(profileKey);
-        }
-      } catch (NumberFormatException nfe) {
-        // Don't do anything related to mobility profiles if node ids are non-numerical.
-        LOG.info(
-          "Not applying mobility costs for link {}:{}→{}",
-          wayId,
-          startEndpoint.getLabel(),
-          endEndpoint.getLabel()
-        );
-      }
-    }
-
-
- */
     return seb.buildAndConnect();
   }
 
@@ -720,8 +621,7 @@ public class OsmModule implements GraphBuilderModule {
   private static String getProfileKey(OSMWay way, long startShortId, long endShortId) {
     long wayId = way.getId();
     TLongList nodeRefs = way.getNodeRefs();
-    //List<String> nodes = Arrays.stream(nodeRefs.toArray()).mapToObj(Long::toString).toList() ;
-    //System.out.printf("%s: %s%n", wayId, String.join(",", nodes));
+
     int startIndex = nodeRefs.indexOf(startShortId);
     int endIndex = nodeRefs.indexOf(endShortId);
     boolean isReverse = endIndex < startIndex;
@@ -729,10 +629,9 @@ public class OsmModule implements GraphBuilderModule {
     // Use the start and end nodes of the OSM way per the OSM data to lookup the mobility costs.
     long wayFromId = nodeRefs.get(0);
     long wayToId = nodeRefs.get(nodeRefs.size() - 1);
-    String key = isReverse
+    return isReverse
       ? MobilityProfileParser.getKey(wayId, wayToId, wayFromId)
       : MobilityProfileParser.getKey(wayId, wayFromId, wayToId);
-    return key;
   }
 
   /** Gets the streets from a collection of OSM ways. */
