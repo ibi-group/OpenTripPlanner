@@ -38,7 +38,7 @@ public class OsmImpedanceUpdater extends PollingGraphUpdater {
 
     this.updateHandler = new ImpedanceUpdateHandler();
     this.otpHttpClient = new OtpHttpClientFactory().create(LOG);
-    LOG.info("Creating real-time alert updater running every {}: {}", pollingPeriod(), url);
+    LOG.info("Creating impedance updater running every {}: {}", pollingPeriod(), url);
   }
 
   @Override
@@ -65,7 +65,11 @@ public class OsmImpedanceUpdater extends PollingGraphUpdater {
       previousImpedances = impedances;
 
       // Handle update in graph writer runnable
-      saveResultOnGraph.execute((graph, transitModel) -> updateHandler.update(graph, changedImpedances));
+      if (!changedImpedances.isEmpty()) {
+        saveResultOnGraph.execute((graph, transitModel) -> updateHandler.update(graph, changedImpedances));
+      } else {
+        LOG.error("Impedance data unchanged (not updating graph).");
+      }
     } catch (Exception e) {
       LOG.error("Error parsing impedance data from {}", url, e);
     }
