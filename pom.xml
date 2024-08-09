@@ -61,13 +61,13 @@
         <geotools.version>31.3</geotools.version>
         <google.dagger.version>2.51.1</google.dagger.version>
         <jackson.version>2.17.2</jackson.version>
-        <jersey.version>3.1.7</jersey.version>
+        <jersey.version>3.1.8</jersey.version>
         <junit.version>5.10.3</junit.version>
         <micrometer.version>1.13.2</micrometer.version>
         <netcdf4.version>5.6.0</netcdf4.version>
         <logback.version>1.5.6</logback.version>
         <lucene.version>9.11.1</lucene.version>
-        <slf4j.version>2.0.13</slf4j.version>
+        <slf4j.version>2.0.14</slf4j.version>
         <netex-java-model.version>2.0.15</netex-java-model.version>
         <siri-java-model.version>1.27</siri-java-model.version>
         <jaxb-runtime.version>4.0.5</jaxb-runtime.version>
@@ -584,7 +584,7 @@
         <dependency>
             <groupId>net.logstash.logback</groupId>
             <artifactId>logstash-logback-encoder</artifactId>
-            <version>7.4</version>
+            <version>8.0</version>
         </dependency>
 
         <!-- dependency injection -->
