@@ -33,7 +33,7 @@ public final class TemporaryPartialStreetEdge extends StreetEdge implements Temp
     this.geometry = super.getGeometry();
     this.profileCost = MobilityProfileRouting.getProRatedProfileCosts(this);
     this.profileKey = builder.profileKey();
-    if (this.profileCost != null && !this.profileCost.isEmpty()) {
+    if (this.hasProfileCost()) {
       float ratio = (float) (getDistanceMeters() / getParentEdge().getDistanceMeters());
       this.setName(
           new LocalizedString(

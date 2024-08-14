@@ -707,7 +707,7 @@ public class StreetEdge
     seb1.withMilliMeterLength(l1);
     seb2.withMilliMeterLength(l2);
 
-    if (profileCost != null && !profileCost.isEmpty()) {
+    if (hasProfileCost()) {
       float ratio1 = (float) l1 / length_mm;
       float ratio2 = (float) l2 / length_mm;
       seb1.withProfileCosts(MobilityProfileRouting.getProRatedProfileCosts(profileCost, ratio1));
@@ -729,6 +729,10 @@ public class StreetEdge
     var splitEdges = new SplitStreetEdge(se1, se2);
     copyRestrictionsToSplitEdges(this, splitEdges);
     return splitEdges;
+  }
+
+  public boolean hasProfileCost() {
+    return profileCost != null && !profileCost.isEmpty();
   }
 
   /** Split this street edge and return the resulting street edges. The original edge is kept. */
@@ -1339,7 +1343,7 @@ public class StreetEdge
     // (assuming a pre-determined travel speed for each profile)
     // and the travel speed for that profile is used to overwrite the time calculated above.
     if (mobilityProfile != null) {
-      if (profileCost != null && !profileCost.isEmpty()) {
+      if (hasProfileCost()) {
         var defaultTravelHours = MobilityProfileRouting.computeTravelHours(
           getEffectiveWalkDistance(),
           mobilityProfile
