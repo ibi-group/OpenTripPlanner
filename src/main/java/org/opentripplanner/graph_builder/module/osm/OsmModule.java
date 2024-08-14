@@ -16,7 +16,6 @@ import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.LineString;
 import org.opentripplanner.ext.mobilityprofile.MobilityProfileParser;
-import org.opentripplanner.ext.mobilityprofile.MobilityProfileRouting;
 import org.opentripplanner.framework.geometry.GeometryUtils;
 import org.opentripplanner.framework.geometry.SphericalDistanceLibrary;
 import org.opentripplanner.framework.i18n.I18NString;
@@ -559,10 +558,6 @@ public class OsmModule implements GraphBuilderModule {
     I18NString name = params.edgeNamer().getNameForWay(way, label);
     float carSpeed = way.getOsmProvider().getOsmTagMapper().getCarSpeedForWay(way, back);
 
-    StreetTraversalPermission perms = MobilityProfileRouting.adjustPedestrianPermissions(
-      way,
-      permissions
-    );
     String startId = startEndpoint.getLabel().toString();
     String endId = endEndpoint.getLabel().toString();
     String profileKey = "";
@@ -580,7 +575,7 @@ public class OsmModule implements GraphBuilderModule {
       .withGeometry(geometry)
       .withName(name)
       .withMeterLength(length)
-      .withPermission(perms)
+      .withPermission(permissions)
       .withBack(back)
       .withCarSpeed(carSpeed)
       .withLink(way.isLink())
