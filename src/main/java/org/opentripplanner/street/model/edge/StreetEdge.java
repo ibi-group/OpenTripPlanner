@@ -94,7 +94,7 @@ public class StreetEdge
   public String profileKey;
 
   /** A map of cost based on a mobility profile. Implemented as HashMap for serialization. */
-  public Map<MobilityProfile, Float> profileCost = new HashMap<>();
+  public transient Map<MobilityProfile, Float> profileCost = new HashMap<>();
 
   /**
    * walkSafetyFactor = length * walkSafetyFactor. For example, a 100m street with a safety
@@ -707,7 +707,7 @@ public class StreetEdge
     seb1.withMilliMeterLength(l1);
     seb2.withMilliMeterLength(l2);
 
-    if (!profileCost.isEmpty()) {
+    if (profileCost != null && !profileCost.isEmpty()) {
       float ratio1 = (float) l1 / length_mm;
       float ratio2 = (float) l2 / length_mm;
       seb1.withProfileCosts(MobilityProfileRouting.getProRatedProfileCosts(profileCost, ratio1));

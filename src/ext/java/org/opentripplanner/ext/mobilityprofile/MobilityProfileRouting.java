@@ -3,6 +3,7 @@ package org.opentripplanner.ext.mobilityprofile;
 import static java.util.Map.entry;
 
 import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.Map;
 import org.opentripplanner.openstreetmap.model.OSMWay;
 import org.opentripplanner.street.model.StreetTraversalPermission;
@@ -67,8 +68,11 @@ public class MobilityProfileRouting {
     TemporaryPartialStreetEdge tmpEdge
   ) {
     StreetEdge parentEdge = tmpEdge.getParentEdge();
-    float ratio = (float) (tmpEdge.getDistanceMeters() / parentEdge.getDistanceMeters());
-    return getProRatedProfileCosts(parentEdge.profileCost, ratio);
+    if (parentEdge.profileCost != null) {
+      float ratio = (float) (tmpEdge.getDistanceMeters() / parentEdge.getDistanceMeters());
+      return getProRatedProfileCosts(parentEdge.profileCost, ratio);
+    }
+    return new HashMap<>();
   }
 
   public static Map<MobilityProfile, Float> getProRatedProfileCosts(

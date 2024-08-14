@@ -200,7 +200,7 @@ public class StatesToWalkStepsMapper {
 
       // G-MAP-specific: Overwrite the name on short street edges so they are merged with longer street
       // sections to clean up turn-by-turn instructions.
-      if (edge instanceof StreetEdge streetEdge && !streetEdge.profileCost.isEmpty()) {
+      if (edge instanceof StreetEdge streetEdge && streetEdge.profileCost != null && !streetEdge.profileCost.isEmpty()) {
         if (shouldOverwriteCurrentDirectionText(edge, direction)) {
           // HACK: If the instruction is "continue", the current street name is bogus and its length is very short (< 10 meters)
           // but not the next edge one, use the next street name and don't start a new step.
