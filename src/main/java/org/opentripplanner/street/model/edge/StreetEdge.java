@@ -90,7 +90,7 @@ public class StreetEdge
    */
   private float bicycleSafetyFactor;
 
-  /** The OSM Way ID that this object is created or derived from. */
+  /** The key to the mobility profile data for this street edge. */
   public String profileKey;
 
   /** A map of cost based on a mobility profile. Implemented as HashMap for serialization. */
