@@ -566,7 +566,7 @@ public class OsmModule implements GraphBuilderModule {
       long endShortId = Long.parseLong(endId.replace("osm:node:", ""), 10);
       profileKey = getProfileKey(way, startShortId, endShortId);
     } catch (NumberFormatException nfe) {
-      LOG.warn("Unable to extract OSM nodes for way {}, {}=>{}", wayId, startId, endId);
+      LOG.warn("Unable to extract OSM nodes for way {} {}, {}=>{}", name, wayId, startId, endId);
     }
 
     StreetEdgeBuilder<?> seb = new StreetEdgeBuilder<>()
