@@ -51,12 +51,14 @@ public class OsmImpedanceUpdater extends PollingGraphUpdater {
 
   @Override
   protected void runPolling() {
+    LOG.info("Fetching mobility impedances...");
     try {
       final Map<String, MobilityProfileData> impedances = otpHttpClient.getAndMap(
         URI.create(url),
         this.headers.asMap(),
         MobilityProfileParser::parseData
       );
+      LOG.info("Fetched mobility impedances.");
 
       // Filter out which rows have been updated since previous poll.
       Map<String, MobilityProfileData> changedImpedances = getChangedImpedances(
@@ -74,6 +76,7 @@ public class OsmImpedanceUpdater extends PollingGraphUpdater {
         LOG.error("Impedance data unchanged (not updating graph).");
       }
     } catch (Exception e) {
+      // Download errors, including timeouts, will be caught here.
       LOG.error("Error parsing impedance data from {}", url, e);
     }
   }
