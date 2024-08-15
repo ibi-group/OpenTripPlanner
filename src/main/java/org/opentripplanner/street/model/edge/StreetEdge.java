@@ -648,19 +648,23 @@ public class StreetEdge
   public SplitStreetEdge splitDestructively(SplitterVertex v) {
     SplitLineString geoms = GeometryUtils.splitGeometryAtPoint(getGeometry(), v.getCoordinate());
 
+    // Instance where props are copied
     StreetEdgeBuilder<?> seb1 = new StreetEdgeBuilder<>()
       .withFromVertex((StreetVertex) fromv)
       .withToVertex(v)
       .withGeometry(geoms.beginning())
       .withName(name)
+      .withProfileKey(profileKey)
       .withPermission(permission)
       .withBack(isBack());
 
+    // Instance where props are copied
     StreetEdgeBuilder<?> seb2 = new StreetEdgeBuilder<>()
       .withFromVertex(v)
       .withToVertex((StreetVertex) tov)
       .withGeometry(geoms.ending())
       .withName(name)
+      .withProfileKey(profileKey)
       .withPermission(permission)
       .withBack(isBack());
 
@@ -746,27 +750,58 @@ public class StreetEdge
     StreetEdge e1 = null;
     StreetEdge e2 = null;
 
+    // TODO: refactor
+    // we have this code implemented in both directions, because splits are fudged half a millimeter
+    // when the length of this is odd. We want to make sure the lengths of the split streets end up
+    // exactly the same as their backStreets so that if they are split again the error does not accumulate
+    // and so that the order in which they are split does not matter.
+    int l1 = defaultMillimeterLength(geoms.beginning());
+    int l2 = defaultMillimeterLength(geoms.ending());
+    if (!isBack()) {
+      // cast before the divide so that the sum is promoted
+      double frac = (double) l1 / (l1 + l2);
+      l1 = (int) (length_mm * frac);
+      l2 = length_mm - l1;
+    } else {
+      // cast before the divide so that the sum is promoted
+      double frac = (double) l2 / (l1 + l2);
+      l2 = (int) (length_mm * frac);
+      l1 = length_mm - l2;
+    }
+
     if (direction == LinkingDirection.OUTGOING || direction == LinkingDirection.BOTH_WAYS) {
+      // Instance where props are copied
       var seb1 = new TemporaryPartialStreetEdgeBuilder()
         .withParentEdge(this)
         .withFromVertex((StreetVertex) fromv)
         .withToVertex(v)
         .withGeometry(geoms.beginning())
         .withName(name)
+        .withProfileKey(profileKey)
         .withBack(isBack());
+      if (hasProfileCost()) {
+        float ratio = (float) l1 / length_mm;
+        seb1.withProfileCosts(MobilityProfileRouting.getProRatedProfileCosts(profileCost, ratio));
+      }
       copyPropertiesToSplitEdge(seb1, 0, defaultMillimeterLength(geoms.beginning()) / 1000.0);
       e1 = seb1.buildAndConnect();
       copyRentalRestrictionsToSplitEdge(e1);
       tempEdges.addEdge(e1);
     }
     if (direction == LinkingDirection.INCOMING || direction == LinkingDirection.BOTH_WAYS) {
+      // Instance where props are copied
       var seb2 = new TemporaryPartialStreetEdgeBuilder()
         .withParentEdge(this)
         .withFromVertex(v)
         .withToVertex((StreetVertex) tov)
         .withGeometry(geoms.ending())
         .withName(name)
+        .withProfileKey(profileKey)
         .withBack(isBack());
+      if (hasProfileCost()) {
+        float ratio = (float) l2 / length_mm;
+        seb2.withProfileCosts(MobilityProfileRouting.getProRatedProfileCosts(profileCost, ratio));
+      }
       copyPropertiesToSplitEdge(
         seb2,
         getDistanceMeters() - defaultMillimeterLength(geoms.ending()) / 1000.0,
@@ -807,12 +842,14 @@ public class StreetEdge
       double lengthRatio = partial.getLength() / parent.getLength();
       double length = getDistanceMeters() * lengthRatio;
 
+      // Instance where props are copied
       var tpseb = new TemporaryPartialStreetEdgeBuilder()
         .withParentEdge(this)
         .withFromVertex(from)
         .withToVertex(to)
         .withGeometry(partial)
         .withName(getName())
+        .withProfileKey(profileKey)
         .withMeterLength(length);
       copyPropertiesToSplitEdge(tpseb, start, start + length);
       TemporaryPartialStreetEdge se = tpseb.buildAndConnect();
