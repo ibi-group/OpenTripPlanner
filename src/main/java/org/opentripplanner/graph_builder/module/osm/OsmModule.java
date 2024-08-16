@@ -16,6 +16,7 @@ import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.LineString;
 import org.opentripplanner.ext.mobilityprofile.MobilityProfileParser;
+import org.opentripplanner.ext.mobilityprofile.MobilityProfileRouting;
 import org.opentripplanner.framework.geometry.GeometryUtils;
 import org.opentripplanner.framework.geometry.SphericalDistanceLibrary;
 import org.opentripplanner.framework.i18n.I18NString;
@@ -569,13 +570,17 @@ public class OsmModule implements GraphBuilderModule {
       LOG.warn("Unable to extract OSM nodes for way {} {}, {}=>{}", name, wayId, startId, endId);
     }
 
+    StreetTraversalPermission perms = params.preventWalkingOnRoads()
+      ? MobilityProfileRouting.adjustPedestrianPermissions(way, permissions)
+      : permissions;
+
     StreetEdgeBuilder<?> seb = new StreetEdgeBuilder<>()
       .withFromVertex(startEndpoint)
       .withToVertex(endEndpoint)
       .withGeometry(geometry)
       .withName(name)
       .withMeterLength(length)
-      .withPermission(permissions)
+      .withPermission(perms)
       .withBack(back)
       .withCarSpeed(carSpeed)
       .withLink(way.isLink())

@@ -185,6 +185,8 @@ public class BuildConfig implements OtpDataStoreConfig {
 
   public final URI stopConsolidation;
 
+  public final boolean preventWalkingOnRoads;
+
   /**
    * Set all parameters from the given Jackson JSON tree, applying defaults. Supplying
    * MissingNode.getInstance() will cause all the defaults to be applied. This could be done
@@ -611,6 +613,14 @@ Netex data is also often supplied in a ZIP file.
           "Name of the CSV-formatted file in the build directory which contains the configuration for stop consolidation."
         )
         .asUri(null);
+
+    preventWalkingOnRoads =
+      root
+        .of("preventWalkingOnRoads")
+        .since(V2_5)
+        .summary("Determines whether to prevent pedestrian routing on roads or not.")
+        .description("True to prevent pedestrian routing on roads.")
+        .asBoolean(false);
 
     osmDefaults = OsmConfig.mapOsmDefaults(root, "osmDefaults");
     osm = OsmConfig.mapOsmConfig(root, "osm", osmDefaults);

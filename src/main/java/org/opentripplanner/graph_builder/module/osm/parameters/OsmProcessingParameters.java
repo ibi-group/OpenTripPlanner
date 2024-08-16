@@ -21,7 +21,8 @@ public record OsmProcessingParameters(
   boolean areaVisibility,
   boolean platformEntriesLinking,
   boolean staticParkAndRide,
-  boolean staticBikeParkAndRide
+  boolean staticBikeParkAndRide,
+  boolean preventWalkingOnRoads
 ) {
   public OsmProcessingParameters {
     boardingAreaRefTags = Set.copyOf(Objects.requireNonNull(boardingAreaRefTags));

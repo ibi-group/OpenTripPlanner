@@ -85,6 +85,7 @@ public class GraphBuilderModules {
       .withBoardingAreaRefTags(config.boardingLocationTags)
       .withIssueStore(issueStore)
       .withStreetLimitationParameters(streetLimitationParameters)
+      .withPreventWalkingOnRoads(config.preventWalkingOnRoads)
       .build();
   }
 

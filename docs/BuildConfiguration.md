@@ -37,6 +37,7 @@ Sections follow that describe particular settings in more depth.
 | [osmCacheDataInMem](#osmCacheDataInMem)                                  |  `boolean`  | If OSM data should be cached in memory during processing.                                                                                                      | *Optional* | `false`                           |  2.0  |
 | [osmNaming](#osmNaming)                                                  |    `enum`   | A custom OSM namer to use.                                                                                                                                     | *Optional* | `"default"`                       |  1.5  |
 | platformEntriesLinking                                                   |  `boolean`  | Link unconnected entries to public transport platforms.                                                                                                        | *Optional* | `false`                           |  2.0  |
+| [preventWalkingOnRoads](#preventWalkingOnRoads)                          |  `boolean`  | Determines whether to prevent pedestrian routing on roads or not.                                                                                              | *Optional* | `false`                           |  2.5  |
 | [readCachedElevations](#readCachedElevations)                            |  `boolean`  | Whether to read cached elevation data.                                                                                                                         | *Optional* | `true`                            |  2.0  |
 | staticBikeParkAndRide                                                    |  `boolean`  | Whether we should create bike P+R stations from OSM data.                                                                                                      | *Optional* | `false`                           |  1.5  |
 | staticParkAndRide                                                        |  `boolean`  | Whether we should create car P+R stations from OSM data.                                                                                                       | *Optional* | `true`                            |  1.5  |
@@ -527,6 +528,15 @@ data, and to `false` to read the stream from the source each time.
 **Enum values:** `default` | `portland` | `sidewalks`
 
 A custom OSM namer to use.
+
+<h3 id="preventWalkingOnRoads">preventWalkingOnRoads</h3>
+
+**Since version:** `2.5` ∙ **Type:** `boolean` ∙ **Cardinality:** `Optional` ∙ **Default value:** `false`   
+**Path:** / 
+
+Determines whether to prevent pedestrian routing on roads or not.
+
+True to prevent pedestrian routing on roads.
 
 <h3 id="readCachedElevations">readCachedElevations</h3>
 
