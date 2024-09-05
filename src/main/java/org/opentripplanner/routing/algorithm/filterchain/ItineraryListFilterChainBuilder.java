@@ -19,6 +19,7 @@ import org.opentripplanner.model.plan.Itinerary;
 import org.opentripplanner.model.plan.ItinerarySortKey;
 import org.opentripplanner.model.plan.SortOrder;
 import org.opentripplanner.model.plan.paging.cursor.PageCursorInput;
+import org.opentripplanner.raptor.api.model.SearchDirection;
 import org.opentripplanner.routing.algorithm.filterchain.api.GroupBySimilarity;
 import org.opentripplanner.routing.algorithm.filterchain.api.TransitGeneralizedCostFilterParams;
 import org.opentripplanner.routing.algorithm.filterchain.filters.street.RemoveBikeRentalWithMostlyWalking;
@@ -105,6 +106,8 @@ public class ItineraryListFilterChainBuilder {
 
   @Sandbox
   private ItineraryDecorator stopConsolidationDecorator;
+
+  private SearchDirection searchDirection = SearchDirection.FORWARD;
 
   public ItineraryListFilterChainBuilder(SortOrder sortOrder) {
     this.sortOrder = sortOrder;
@@ -259,13 +262,15 @@ public class ItineraryListFilterChainBuilder {
    */
   public ItineraryListFilterChainBuilder withSearchWindow(
     @Nullable Instant earliestDepartureTime,
-    Duration searchWindow
+    Duration searchWindow,
+    SearchDirection searchDirection
   ) {
     if (earliestDepartureTime != null) {
       Objects.requireNonNull(searchWindow);
     }
     this.earliestDepartureTime = earliestDepartureTime;
     this.searchWindow = searchWindow;
+    this.searchDirection = Objects.requireNonNull(searchDirection);
     return this;
   }
 
@@ -466,7 +471,7 @@ public class ItineraryListFilterChainBuilder {
       if (earliestDepartureTime != null) {
         addRemoveFilter(
           filters,
-          new OutsideSearchWindowFilter(earliestDepartureTime, searchWindow)
+          new OutsideSearchWindowFilter(earliestDepartureTime, searchWindow, searchDirection)
         );
       }
 

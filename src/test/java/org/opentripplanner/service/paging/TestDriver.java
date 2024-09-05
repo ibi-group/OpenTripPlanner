@@ -12,6 +12,7 @@ import org.opentripplanner.model.plan.ItinerarySortKey;
 import org.opentripplanner.model.plan.SortOrder;
 import org.opentripplanner.model.plan.paging.cursor.PageCursor;
 import org.opentripplanner.model.plan.paging.cursor.PageCursorInput;
+import org.opentripplanner.raptor.api.model.SearchDirection;
 import org.opentripplanner.routing.algorithm.filterchain.filters.system.NumItinerariesFilter;
 import org.opentripplanner.routing.algorithm.filterchain.filters.system.OutsideSearchWindowFilter;
 import org.opentripplanner.routing.algorithm.filterchain.filters.system.PagingFilter;
@@ -148,7 +149,7 @@ final class TestDriver {
     List<Itinerary> kept = all;
 
     // Filter search-window
-    var swFilter = new OutsideSearchWindowFilter(edt, searchWindow);
+    var swFilter = new OutsideSearchWindowFilter(edt, searchWindow, SearchDirection.FORWARD);
     kept = swFilter.removeMatchesForTest(kept);
 
     // Simulate Raptor - apply LAT filtering done by raptor

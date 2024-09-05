@@ -2,8 +2,10 @@ package org.opentripplanner.routing.algorithm.filterchain.filters.system;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Objects;
 import java.util.function.Predicate;
 import org.opentripplanner.model.plan.Itinerary;
+import org.opentripplanner.raptor.api.model.SearchDirection;
 import org.opentripplanner.routing.algorithm.filterchain.framework.spi.RemoveItineraryFlagger;
 
 /**
@@ -21,10 +23,16 @@ public class OutsideSearchWindowFilter implements RemoveItineraryFlagger {
 
   private final Instant earliestDepartureTime;
   private final Instant latestDepartureTime;
+  private final SearchDirection searchDirection;
 
-  public OutsideSearchWindowFilter(Instant earliestDepartureTime, Duration searchWindow) {
+  public OutsideSearchWindowFilter(
+    Instant earliestDepartureTime,
+    Duration searchWindow,
+    SearchDirection searchDirection
+  ) {
     this.earliestDepartureTime = earliestDepartureTime;
     this.latestDepartureTime = earliestDepartureTime.plus(searchWindow);
+    this.searchDirection = Objects.requireNonNull(searchDirection);
   }
 
   @Override
@@ -35,8 +43,14 @@ public class OutsideSearchWindowFilter implements RemoveItineraryFlagger {
   @Override
   public Predicate<Itinerary> shouldBeFlaggedForRemoval() {
     return it -> {
-      var time = it.startTime().toInstant();
-      return time.isBefore(earliestDepartureTime) || !time.isBefore(latestDepartureTime);
+      var startTime = it.startTime().toInstant();
+      if (it.isOnStreetAndFlexOnly() && searchDirection.isInReverse()) {
+        return startTime.isBefore(latestDepartureTime);
+      } else {
+        return (
+          startTime.isBefore(earliestDepartureTime) || !startTime.isBefore(latestDepartureTime)
+        );
+      }
     };
   }
 

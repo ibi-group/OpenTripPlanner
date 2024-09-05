@@ -10,6 +10,7 @@ import org.opentripplanner.ext.ridehailing.DecorateWithRideHailing;
 import org.opentripplanner.ext.stopconsolidation.DecorateConsolidatedStopNames;
 import org.opentripplanner.framework.application.OTPFeature;
 import org.opentripplanner.model.plan.paging.cursor.PageCursorInput;
+import org.opentripplanner.raptor.api.model.SearchDirection;
 import org.opentripplanner.routing.algorithm.filterchain.ItineraryListFilterChain;
 import org.opentripplanner.routing.algorithm.filterchain.ItineraryListFilterChainBuilder;
 import org.opentripplanner.routing.algorithm.filterchain.api.GroupBySimilarity;
@@ -88,7 +89,11 @@ public class RouteRequestToFilterChainMapper {
         context.transitService().getTransitAlertService(),
         context.transitService()::getMultiModalStationForStation
       )
-      .withSearchWindow(earliestDepartureTimeUsed, searchWindowUsed)
+      .withSearchWindow(
+        earliestDepartureTimeUsed,
+        searchWindowUsed,
+        request.arriveBy() ? SearchDirection.REVERSE : SearchDirection.FORWARD
+      )
       .withPageCursorInputSubscriber(pageCursorInputSubscriber)
       .withRemoveWalkAllTheWayResults(removeWalkAllTheWayResults)
       .withRemoveTransitIfWalkingIsBetter(true)

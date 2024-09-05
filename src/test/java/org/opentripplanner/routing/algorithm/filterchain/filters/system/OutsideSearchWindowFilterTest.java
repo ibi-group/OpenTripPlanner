@@ -16,6 +16,7 @@ import org.opentripplanner.model.SystemNotice;
 import org.opentripplanner.model.plan.Itinerary;
 import org.opentripplanner.model.plan.PlanTestConstants;
 import org.opentripplanner.model.plan.TestItineraryBuilder;
+import org.opentripplanner.raptor.api.model.SearchDirection;
 
 public class OutsideSearchWindowFilterTest implements PlanTestConstants {
 
@@ -41,7 +42,8 @@ public class OutsideSearchWindowFilterTest implements PlanTestConstants {
     List<Itinerary> expected = flaggedForRemoval ? input : List.of();
     var subject = new OutsideSearchWindowFilter(
       TestItineraryBuilder.newTime(TimeUtils.time(edt)).toInstant(),
-      SEARCH_WINDOW_10m
+      SEARCH_WINDOW_10m,
+      SearchDirection.FORWARD
     );
     var result = subject.flagForRemoval(input);
     assertEquals(expected, result, description);
