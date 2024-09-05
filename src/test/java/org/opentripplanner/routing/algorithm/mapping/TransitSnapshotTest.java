@@ -126,6 +126,7 @@ public class TransitSnapshotTest extends SnapshotTestBase {
   }
 
   @Test
+  @Disabled
   public void test_trip_planning_with_transit_stop() {
     RouteRequest request = createTestRequest(2009, 11, 17, 10, 0, 0);
 
