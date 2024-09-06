@@ -399,6 +399,7 @@ public class RouteRequest implements Cloneable, Serializable {
   /**
    * Whether the trip should depart at dateTime (false, the default), or arrive at dateTime.
    */
+  @Deprecated
   public boolean arriveBy() {
     return arriveBy;
   }

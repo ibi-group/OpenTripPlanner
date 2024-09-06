@@ -162,6 +162,9 @@ public class Itinerary implements ItinerarySortKey {
     return isStreetOnly();
   }
 
+  /**
+   * Does this itinerary contain only street or flex legs?
+   */
   public boolean isOnStreetAndFlexOnly() {
     return legs.stream().allMatch(l -> l.isStreetLeg() || l.isFlexibleTrip());
   }

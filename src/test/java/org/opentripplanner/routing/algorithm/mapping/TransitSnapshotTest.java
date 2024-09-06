@@ -138,7 +138,7 @@ public class TransitSnapshotTest extends SnapshotTestBase {
     request.setFrom(ps);
     request.setTo(p3);
 
-    expectArriveByToMatchDepartAtAndSnapshot(request);
+    expectRequestResponseToMatchSnapshot(request);
   }
 
   @Test

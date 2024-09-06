@@ -18,7 +18,7 @@ import org.opentripplanner.model.plan.PlanTestConstants;
 import org.opentripplanner.model.plan.TestItineraryBuilder;
 import org.opentripplanner.routing.api.request.SearchDirection;
 
-public class OutsideSearchWindowFilterTest implements PlanTestConstants {
+class OutsideSearchWindowFilterTest implements PlanTestConstants {
 
   private static final Duration SEARCH_WINDOW_10m = Duration.ofMinutes(10);
   private final int startTime = TimeUtils.time("09:30");
@@ -38,7 +38,7 @@ public class OutsideSearchWindowFilterTest implements PlanTestConstants {
 
   @ParameterizedTest(name = "{0}, edt: {1}, sw: 10m, expects flagged for removal: {2}")
   @MethodSource("filterOnSearchWindowTestCases")
-  public void filterOnSearchWindow(String description, String edt, boolean flaggedForRemoval) {
+  void filterOnSearchWindow(String description, String edt, boolean flaggedForRemoval) {
     List<Itinerary> expected = flaggedForRemoval ? input : List.of();
     var subject = new OutsideSearchWindowFilter(
       TestItineraryBuilder.newTime(TimeUtils.time(edt)).toInstant(),
