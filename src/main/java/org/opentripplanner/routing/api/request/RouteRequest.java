@@ -398,6 +398,9 @@ public class RouteRequest implements Cloneable, Serializable {
 
   /**
    * Whether the trip should depart at dateTime (false, the default), or arrive at dateTime.
+   * <p>
+   * Deprecated, because I want to replace it with {@link RouteRequest#searchDirection()} in a
+   * follow-up PR.
    */
   @Deprecated
   public boolean arriveBy() {

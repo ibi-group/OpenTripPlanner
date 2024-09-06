@@ -52,7 +52,7 @@ public class OutsideSearchWindowFilter implements RemoveItineraryFlagger {
       // end up time-shifted right up to the arrive by time.
       // further reading: https://github.com/opentripplanner/OpenTripPlanner/issues/6046
       if (it.isOnStreetAndFlexOnly() && searchDirection.isArriveBy()) {
-        return startTime.isBefore(latestDepartureTime);
+        return startTime.isBefore(earliestDepartureTime);
       } else {
         return (
           startTime.isBefore(earliestDepartureTime) || !startTime.isBefore(latestDepartureTime)
