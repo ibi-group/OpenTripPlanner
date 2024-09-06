@@ -404,6 +404,17 @@ public class RouteRequest implements Cloneable, Serializable {
   }
 
   /**
+   * The search direction of the request, aka arrive by/depart at.
+   */
+  public SearchDirection searchDirection() {
+    if (arriveBy) {
+      return SearchDirection.ARRIVE_BY;
+    } else {
+      return SearchDirection.DEPART_AT;
+    }
+  }
+
+  /**
    * The maximum number of itineraries to return. In OTP1 this parameter terminates the search, but
    * in OTP2 it crops the list of itineraries AFTER the search is complete. This parameter is a post
    * search filter function. A side effect from reducing the result is that OTP2 cannot guarantee to

@@ -19,7 +19,6 @@ import org.opentripplanner.model.plan.Itinerary;
 import org.opentripplanner.model.plan.ItinerarySortKey;
 import org.opentripplanner.model.plan.SortOrder;
 import org.opentripplanner.model.plan.paging.cursor.PageCursorInput;
-import org.opentripplanner.raptor.api.model.SearchDirection;
 import org.opentripplanner.routing.algorithm.filterchain.api.GroupBySimilarity;
 import org.opentripplanner.routing.algorithm.filterchain.api.TransitGeneralizedCostFilterParams;
 import org.opentripplanner.routing.algorithm.filterchain.filters.street.RemoveBikeRentalWithMostlyWalking;
@@ -52,6 +51,7 @@ import org.opentripplanner.routing.algorithm.filterchain.framework.sort.SortOrde
 import org.opentripplanner.routing.algorithm.filterchain.framework.spi.ItineraryDecorator;
 import org.opentripplanner.routing.algorithm.filterchain.framework.spi.ItineraryListFilter;
 import org.opentripplanner.routing.algorithm.filterchain.framework.spi.RemoveItineraryFlagger;
+import org.opentripplanner.routing.api.request.SearchDirection;
 import org.opentripplanner.routing.api.request.framework.CostLinearFunction;
 import org.opentripplanner.routing.api.request.preference.ItineraryFilterDebugProfile;
 import org.opentripplanner.routing.services.TransitAlertService;
@@ -107,7 +107,7 @@ public class ItineraryListFilterChainBuilder {
   @Sandbox
   private ItineraryDecorator stopConsolidationDecorator;
 
-  private SearchDirection searchDirection = SearchDirection.FORWARD;
+  private SearchDirection searchDirection = SearchDirection.DEPART_AT;
 
   public ItineraryListFilterChainBuilder(SortOrder sortOrder) {
     this.sortOrder = sortOrder;

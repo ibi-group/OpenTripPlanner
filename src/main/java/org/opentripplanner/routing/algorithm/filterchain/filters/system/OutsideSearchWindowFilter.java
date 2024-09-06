@@ -5,8 +5,8 @@ import java.time.Instant;
 import java.util.Objects;
 import java.util.function.Predicate;
 import org.opentripplanner.model.plan.Itinerary;
-import org.opentripplanner.raptor.api.model.SearchDirection;
 import org.opentripplanner.routing.algorithm.filterchain.framework.spi.RemoveItineraryFlagger;
+import org.opentripplanner.routing.api.request.SearchDirection;
 
 /**
  * This filter will remove all itineraries that are outside the search-window. In some
@@ -44,7 +44,14 @@ public class OutsideSearchWindowFilter implements RemoveItineraryFlagger {
   public Predicate<Itinerary> shouldBeFlaggedForRemoval() {
     return it -> {
       var startTime = it.startTime().toInstant();
-      if (it.isOnStreetAndFlexOnly() && searchDirection.isInReverse()) {
+      // for arrive by searches the street/flex-only results are treated differently:
+      // arrive-by transit result are filtered by their departure time and whether they don't depart
+      // after the end of the computed search window which is dependent on the heuristic's minimum
+      // transit time.
+      // this doesn't work because street/flex-only can be shorter than the transit ones and often
+      // end up time-shifted right up to the arrive by time.
+      // further reading: https://github.com/opentripplanner/OpenTripPlanner/issues/6046
+      if (it.isOnStreetAndFlexOnly() && searchDirection.isArriveBy()) {
         return startTime.isBefore(latestDepartureTime);
       } else {
         return (

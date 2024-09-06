@@ -29,9 +29,9 @@ import org.opentripplanner.model.plan.Itinerary;
 import org.opentripplanner.model.plan.Place;
 import org.opentripplanner.model.plan.PlanTestConstants;
 import org.opentripplanner.model.plan.TestItineraryBuilder;
-import org.opentripplanner.raptor.api.model.SearchDirection;
 import org.opentripplanner.routing.alertpatch.StopCondition;
 import org.opentripplanner.routing.algorithm.filterchain.api.GroupBySimilarity;
+import org.opentripplanner.routing.api.request.SearchDirection;
 import org.opentripplanner.routing.api.request.framework.CostLinearFunction;
 import org.opentripplanner.routing.api.response.RoutingError;
 import org.opentripplanner.routing.api.response.RoutingErrorCode;
@@ -86,7 +86,7 @@ public class ItineraryListFilterChainTest implements PlanTestConstants {
       .withSearchWindow(
         TestItineraryBuilder.newTime(T11_00).toInstant(),
         SW_D10m,
-        SearchDirection.FORWARD
+        SearchDirection.DEPART_AT
       )
       .build();
     var result = chain.filter(List.of(i1, i2, i3));
@@ -113,7 +113,7 @@ public class ItineraryListFilterChainTest implements PlanTestConstants {
   public void testDebugFilterChain() {
     // Given a filter-chain with debugging enabled
     ItineraryListFilterChain chain = createBuilder(false, true, 3)
-      .withSearchWindow(newTime(T11_00).toInstant(), SW_D10m, SearchDirection.FORWARD)
+      .withSearchWindow(newTime(T11_00).toInstant(), SW_D10m, SearchDirection.DEPART_AT)
       .build();
 
     // Walk first, then transit sorted on arrival-time
@@ -208,7 +208,7 @@ public class ItineraryListFilterChainTest implements PlanTestConstants {
       .withSearchWindow(
         Instant.from(newTime(T11_00)),
         Duration.ofMinutes(5),
-        SearchDirection.FORWARD
+        SearchDirection.DEPART_AT
       )
       .build();
 
