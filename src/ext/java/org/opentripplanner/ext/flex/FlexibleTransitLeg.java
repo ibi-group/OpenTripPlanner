@@ -112,11 +112,6 @@ public class FlexibleTransitLeg implements TransitLeg {
   }
 
   @Override
-  public boolean isFlexibleTrip() {
-    return true;
-  }
-
-  @Override
   public double getDistanceMeters() {
     return DoubleUtils.roundTo2Decimals(edge.getDistanceMeters());
   }

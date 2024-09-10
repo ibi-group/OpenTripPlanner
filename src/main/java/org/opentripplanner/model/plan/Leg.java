@@ -245,15 +245,6 @@ public interface Leg {
   }
 
   /**
-   * Whether this Leg describes a flexible trip. The reason we need this is that FlexTrip does not
-   * inherit from Trip, so that the information that the Trip is flexible would be lost when
-   * creating this object.
-   */
-  default boolean isFlexibleTrip() {
-    return false;
-  }
-
-  /**
    * Is this a frequency-based trip with non-strict departure times?
    */
   default Boolean getNonExactFrequency() {

@@ -2,6 +2,7 @@ package org.opentripplanner.ext.flex;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.opentripplanner.routing.api.request.StreetMode.FLEXIBLE;
 import static org.opentripplanner.street.search.TraverseMode.WALK;
@@ -96,7 +97,7 @@ public class FlexIntegrationTest {
     var flex = itin.getTransitLeg(3);
     assertEquals(BUS, flex.getMode());
     assertEquals("Zone 2", flex.getRoute().getShortName());
-    assertTrue(flex.isFlexibleTrip());
+    assertInstanceOf(FlexibleTransitLeg.class, flex);
     assertEquals(
       "corner of Story Place Southwest and service road (part of Flex Zone 2)",
       flex.getFrom().name.toString()
@@ -132,7 +133,7 @@ public class FlexIntegrationTest {
     var finalFlex = itin.getTransitLeg(4);
     assertEquals(BUS, finalFlex.getMode());
     assertEquals("Zone 2", finalFlex.getRoute().getShortName());
-    assertTrue(finalFlex.isFlexibleTrip());
+    assertInstanceOf(FlexibleTransitLeg.class, finalFlex);
     assertEquals("2021-12-02T15:00-05:00[America/New_York]", finalFlex.getStartTime().toString());
     assertEquals("2021-12-02T15:30-05:00[America/New_York]", finalFlex.getEndTime().toString());
   }
@@ -151,7 +152,7 @@ public class FlexIntegrationTest {
       "Should contain only flex itineraries"
     );
 
-    var itin = itineraries.get(0);
+    var itin = itineraries.getFirst();
 
     // walk, flex
     assertEquals(2, itin.getLegs().size());
@@ -164,7 +165,7 @@ public class FlexIntegrationTest {
     var flex = itin.getTransitLeg(1);
     assertEquals(BUS, flex.getMode());
     assertEquals("Zone 2", flex.getRoute().getShortName());
-    assertTrue(flex.isFlexibleTrip());
+    assertInstanceOf(FlexibleTransitLeg.class, flex);
 
     assertEquals("Transfer Point for Route 30", flex.getFrom().name.toString());
     assertEquals("Destination (part of Flex Zone 2)", flex.getTo().name.toString());
