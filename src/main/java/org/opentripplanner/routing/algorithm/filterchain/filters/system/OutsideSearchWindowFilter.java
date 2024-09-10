@@ -2,11 +2,9 @@ package org.opentripplanner.routing.algorithm.filterchain.filters.system;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Objects;
 import java.util.function.Predicate;
 import org.opentripplanner.model.plan.Itinerary;
 import org.opentripplanner.routing.algorithm.filterchain.framework.spi.RemoveItineraryFlagger;
-import org.opentripplanner.routing.api.request.SearchDirection;
 
 /**
  * This filter will remove all itineraries that are outside the search-window. In some
@@ -23,16 +21,16 @@ public class OutsideSearchWindowFilter implements RemoveItineraryFlagger {
 
   private final Instant earliestDepartureTime;
   private final Instant latestDepartureTime;
-  private final SearchDirection searchDirection;
+  private final boolean isArriveBy;
 
   public OutsideSearchWindowFilter(
     Instant earliestDepartureTime,
     Duration searchWindow,
-    SearchDirection searchDirection
+    boolean isArriveBy
   ) {
     this.earliestDepartureTime = earliestDepartureTime;
     this.latestDepartureTime = earliestDepartureTime.plus(searchWindow);
-    this.searchDirection = Objects.requireNonNull(searchDirection);
+    this.isArriveBy = isArriveBy;
   }
 
   @Override
@@ -51,7 +49,7 @@ public class OutsideSearchWindowFilter implements RemoveItineraryFlagger {
       // this doesn't work because street/flex-only can be shorter than the transit ones and often
       // end up time-shifted right up to the arrive by time.
       // further reading: https://github.com/opentripplanner/OpenTripPlanner/issues/6046
-      if (it.isOnStreetAndFlexOnly() && searchDirection.isArriveBy()) {
+      if (it.isOnStreetAndFlexOnly() && isArriveBy) {
         return startTime.isBefore(earliestDepartureTime);
       } else {
         return (

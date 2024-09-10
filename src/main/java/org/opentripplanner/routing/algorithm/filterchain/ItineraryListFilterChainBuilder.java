@@ -51,7 +51,6 @@ import org.opentripplanner.routing.algorithm.filterchain.framework.sort.SortOrde
 import org.opentripplanner.routing.algorithm.filterchain.framework.spi.ItineraryDecorator;
 import org.opentripplanner.routing.algorithm.filterchain.framework.spi.ItineraryListFilter;
 import org.opentripplanner.routing.algorithm.filterchain.framework.spi.RemoveItineraryFlagger;
-import org.opentripplanner.routing.api.request.SearchDirection;
 import org.opentripplanner.routing.api.request.framework.CostLinearFunction;
 import org.opentripplanner.routing.api.request.preference.ItineraryFilterDebugProfile;
 import org.opentripplanner.routing.services.TransitAlertService;
@@ -107,7 +106,7 @@ public class ItineraryListFilterChainBuilder {
   @Sandbox
   private ItineraryDecorator stopConsolidationDecorator;
 
-  private SearchDirection searchDirection = SearchDirection.DEPART_AT;
+  private boolean isArriveBy = false;
 
   public ItineraryListFilterChainBuilder(SortOrder sortOrder) {
     this.sortOrder = sortOrder;
@@ -263,14 +262,14 @@ public class ItineraryListFilterChainBuilder {
   public ItineraryListFilterChainBuilder withSearchWindow(
     @Nullable Instant earliestDepartureTime,
     Duration searchWindow,
-    SearchDirection searchDirection
+    boolean isArriveBy
   ) {
     if (earliestDepartureTime != null) {
       Objects.requireNonNull(searchWindow);
     }
     this.earliestDepartureTime = earliestDepartureTime;
     this.searchWindow = searchWindow;
-    this.searchDirection = Objects.requireNonNull(searchDirection);
+    this.isArriveBy = isArriveBy;
     return this;
   }
 
@@ -471,7 +470,7 @@ public class ItineraryListFilterChainBuilder {
       if (earliestDepartureTime != null) {
         addRemoveFilter(
           filters,
-          new OutsideSearchWindowFilter(earliestDepartureTime, searchWindow, searchDirection)
+          new OutsideSearchWindowFilter(earliestDepartureTime, searchWindow, isArriveBy)
         );
       }
 

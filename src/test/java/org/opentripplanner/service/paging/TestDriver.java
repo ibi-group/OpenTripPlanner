@@ -15,7 +15,6 @@ import org.opentripplanner.model.plan.paging.cursor.PageCursorInput;
 import org.opentripplanner.routing.algorithm.filterchain.filters.system.NumItinerariesFilter;
 import org.opentripplanner.routing.algorithm.filterchain.filters.system.OutsideSearchWindowFilter;
 import org.opentripplanner.routing.algorithm.filterchain.filters.system.PagingFilter;
-import org.opentripplanner.routing.api.request.SearchDirection;
 
 /**
  * This class simulate/mock the context the paging is operating in.
@@ -149,7 +148,7 @@ final class TestDriver {
     List<Itinerary> kept = all;
 
     // Filter search-window
-    var swFilter = new OutsideSearchWindowFilter(edt, searchWindow, SearchDirection.DEPART_AT);
+    var swFilter = new OutsideSearchWindowFilter(edt, searchWindow, false);
     kept = swFilter.removeMatchesForTest(kept);
 
     // Simulate Raptor - apply LAT filtering done by raptor
