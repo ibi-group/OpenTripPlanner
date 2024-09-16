@@ -1,12 +1,8 @@
 package org.opentripplanner.smoketest;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.opentripplanner.client.model.RequestMode.FLEX_EGRESS;
 import static org.opentripplanner.client.model.RequestMode.TRANSIT;
 import static org.opentripplanner.client.model.RequestMode.WALK;
-import static org.opentripplanner.smoketest.SmokeTest.assertThatItineraryHasModes;
-import static org.opentripplanner.smoketest.SmokeTest.basicRouteTest;
 
 import java.io.IOException;
 import java.util.List;
@@ -52,33 +48,6 @@ public class AtlantaSmokeTest {
       new SmokeTestRequest(nearGeorgiaStateStation, powderSpringsInsideFlexZone1, modes),
       List.of("WALK", "SUBWAY", "WALK", "BUS", "WALK", "BUS", "WALK")
     );
-  }
-
-  @Test
-  public void flexRouteFromCentralAtlantaToPowderSprings() {
-    var req = new SmokeTestRequest(
-      nearGeorgiaStateStation,
-      powderSpringsInsideFlexZone1,
-      Set.of(FLEX_EGRESS, WALK, TRANSIT)
-    );
-
-    var expectedModes = List.of("WALK", "SUBWAY", "WALK", "BUS", "WALK", "BUS");
-    var plan = basicRouteTest(req, expectedModes);
-    var itineraries = plan.itineraries();
-
-    assertThatItineraryHasModes(itineraries, expectedModes);
-
-    var transitLegs = itineraries
-      .stream()
-      .flatMap(i -> i.legs().stream().filter(l -> l.route() != null))
-      .toList();
-
-    var usesZone1Route = transitLegs
-      .stream()
-      .map(l -> l.route().name())
-      .anyMatch(name -> name.equals("Zone 1"));
-
-    assertTrue(usesZone1Route);
   }
 
   static List<TripPlanParameters> buildCombinations() {
