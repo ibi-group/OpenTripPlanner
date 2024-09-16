@@ -42,7 +42,7 @@ public class OutsideSearchWindowFilter implements RemoveItineraryFlagger {
   public Predicate<Itinerary> shouldBeFlaggedForRemoval() {
     return it -> {
       var startTime = it.startTime().toInstant();
-      // for arrive by searches the street/flex-only results are treated differently:
+      // for arrive by searches, the street/flex-only results are treated differently:
       // arrive-by transit result are filtered by their departure time and whether they don't depart
       // after the end of the computed search window which is dependent on the heuristic's minimum
       // transit time.
