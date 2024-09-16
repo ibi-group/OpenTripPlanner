@@ -15,13 +15,17 @@ import org.opentripplanner.routing.algorithm.filterchain.framework.spi.RemoveIti
  * Itineraries matching the start(earliest-departure-time) are included and itineraries matching
  * the end(latest-departure-time) are not. The filter is {@code [inclusive, exclusive]}.
  * <p>
- * For arrive by searches, the street/flex-only results are treated differently:
+ * Arrive-by searches results are treated differently:
+ * <p>
  * Arrive-by transit result are filtered by their departure time and whether they don't depart
  * after the end of the computed search window which is dependent on the heuristic's minimum
- * transit time.
- * This doesn't work because street/flex-only can be shorter than the transit ones and often
- * end up time-shifted right up to the arrive by time.
+ * transit time. This is identical to the depart-at searches.
+ * </p>
+ * This doesn't work for street/flex-only because they can be shorter than the transit ones and often
+ * end up time-shifted right up to the arrive-by time.
  * <p>
+ * For that reason the arrive-by street/flex-only results are only checked if they start after the
+ * latest-departure-time.
  * <a href="https://github.com/opentripplanner/OpenTripPlanner/issues/6046">Further reading.</a>
  */
 public class OutsideSearchWindowFilter implements RemoveItineraryFlagger {
