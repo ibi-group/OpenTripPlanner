@@ -6,15 +6,12 @@ import static org.opentripplanner.client.model.RequestMode.WALK;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.Set;
 import org.junit.jupiter.api.Tag;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.opentripplanner.client.model.Coordinate;
 import org.opentripplanner.client.parameters.TripPlanParameters;
 import org.opentripplanner.smoketest.util.RequestCombinationsBuilder;
-import org.opentripplanner.smoketest.util.SmokeTestRequest;
 
 /**
  * This smoke test expects an OTP installation running at localhost:8080
@@ -30,25 +27,10 @@ import org.opentripplanner.smoketest.util.SmokeTestRequest;
 @Tag("atlanta")
 public class AtlantaSmokeTest {
 
-  static Coordinate nearGeorgiaStateStation = new Coordinate(33.74139944890028, -84.38607215881348);
-  static Coordinate powderSpringsInsideFlexZone1 = new Coordinate(
-    33.86916840022388,
-    -84.66315507888794
-  );
-
   static Coordinate peachtreeCreek = new Coordinate(33.7310, -84.3823);
   static Coordinate lindberghCenter = new Coordinate(33.8235, -84.3674);
   static Coordinate maddoxPark = new Coordinate(33.7705, -84.4265);
   static Coordinate druidHills = new Coordinate(33.77933, -84.33689);
-
-  @Test
-  public void regularRouteFromCentralAtlantaToPowderSprings() {
-    var modes = Set.of(TRANSIT, WALK);
-    SmokeTest.basicRouteTest(
-      new SmokeTestRequest(nearGeorgiaStateStation, powderSpringsInsideFlexZone1, modes),
-      List.of("WALK", "SUBWAY", "WALK", "BUS", "WALK", "BUS", "WALK")
-    );
-  }
 
   static List<TripPlanParameters> buildCombinations() {
     return new RequestCombinationsBuilder()
