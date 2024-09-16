@@ -7,7 +7,7 @@ import org.opentripplanner.model.plan.Itinerary;
 import org.opentripplanner.routing.algorithm.filterchain.framework.spi.RemoveItineraryFlagger;
 
 /**
- * This filter will remove all itineraries that are outside the search-window. In some
+ * This filter will remove all depart-at itineraries that are outside the search-window. In some
  * cases the access is time-shifted after the end of the search-window. These results
  * should appear again when paging to the next page. Hence, this filter will remove
  * such itineraries. The same is true for when paging to the previous page for arriveBy=true.
@@ -17,11 +17,11 @@ import org.opentripplanner.routing.algorithm.filterchain.framework.spi.RemoveIti
  * <p>
  * Arrive-by searches results are treated differently:
  * <p>
- * Arrive-by transit result are filtered by their departure time and whether they don't depart
+ * Transit result are also filtered by their departure time and whether they don't depart
  * after the end of the computed search window which is dependent on the heuristic's minimum
  * transit time. This is identical to the depart-at searches.
  * </p>
- * This doesn't work for street/flex-only because they can be shorter than the transit ones and often
+ * However, it doesn't work for street/flex-only because they can be shorter than the transit ones and often
  * end up time-shifted right up to the arrive-by time.
  * <p>
  * For that reason the arrive-by street/flex-only results are only checked if they start after the
