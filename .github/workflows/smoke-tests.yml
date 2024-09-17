@@ -17,8 +17,8 @@ jobs:
     strategy:
       matrix:
         locations:
-          #- name: seattle
-          #  sleep: 30
+          - name: seattle
+            sleep: 30
           - name: atlanta
             sleep: 15
           - name: houston
