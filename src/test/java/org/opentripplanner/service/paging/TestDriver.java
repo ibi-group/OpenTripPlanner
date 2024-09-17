@@ -148,7 +148,7 @@ final class TestDriver {
     List<Itinerary> kept = all;
 
     // Filter search-window
-    var swFilter = new OutsideSearchWindowFilter(edt, searchWindow);
+    var swFilter = new OutsideSearchWindowFilter(edt, searchWindow, false);
     kept = swFilter.removeMatchesForTest(kept);
 
     // Simulate Raptor - apply LAT filtering done by raptor

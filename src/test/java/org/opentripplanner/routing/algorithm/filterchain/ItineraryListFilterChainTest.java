@@ -82,7 +82,7 @@ public class ItineraryListFilterChainTest implements PlanTestConstants {
   @Test
   public void testFilterChainWithSearchWindowFilterSet() {
     ItineraryListFilterChain chain = createBuilder(false, false, 10)
-      .withSearchWindow(TestItineraryBuilder.newTime(T11_00).toInstant(), SW_D10m)
+      .withSearchWindow(TestItineraryBuilder.newTime(T11_00).toInstant(), SW_D10m, false)
       .build();
     var result = chain.filter(List.of(i1, i2, i3));
     assertEquals(toStr(List.of(i1)), toStr(result));
@@ -108,7 +108,7 @@ public class ItineraryListFilterChainTest implements PlanTestConstants {
   public void testDebugFilterChain() {
     // Given a filter-chain with debugging enabled
     ItineraryListFilterChain chain = createBuilder(false, true, 3)
-      .withSearchWindow(newTime(T11_00).toInstant(), SW_D10m)
+      .withSearchWindow(newTime(T11_00).toInstant(), SW_D10m, false)
       .build();
 
     // Walk first, then transit sorted on arrival-time
@@ -200,7 +200,7 @@ public class ItineraryListFilterChainTest implements PlanTestConstants {
   void routingErrorsOutsideWindowTest() {
     var chain = createBuilder(false, false, 20)
       .withRemoveWalkAllTheWayResults(true)
-      .withSearchWindow(Instant.from(newTime(T11_00)), Duration.ofMinutes(5))
+      .withSearchWindow(Instant.from(newTime(T11_00)), Duration.ofMinutes(5), false)
       .build();
 
     Itinerary bus = newItinerary(A).bus(21, T11_06, T11_23, E).build();

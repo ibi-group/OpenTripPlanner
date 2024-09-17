@@ -106,6 +106,8 @@ public class ItineraryListFilterChainBuilder {
   @Sandbox
   private ItineraryDecorator stopConsolidationDecorator;
 
+  private boolean isArriveBy = false;
+
   public ItineraryListFilterChainBuilder(SortOrder sortOrder) {
     this.sortOrder = sortOrder;
   }
@@ -259,13 +261,15 @@ public class ItineraryListFilterChainBuilder {
    */
   public ItineraryListFilterChainBuilder withSearchWindow(
     @Nullable Instant earliestDepartureTime,
-    Duration searchWindow
+    Duration searchWindow,
+    boolean isArriveBy
   ) {
     if (earliestDepartureTime != null) {
       Objects.requireNonNull(searchWindow);
     }
     this.earliestDepartureTime = earliestDepartureTime;
     this.searchWindow = searchWindow;
+    this.isArriveBy = isArriveBy;
     return this;
   }
 
@@ -466,7 +470,7 @@ public class ItineraryListFilterChainBuilder {
       if (earliestDepartureTime != null) {
         addRemoveFilter(
           filters,
-          new OutsideSearchWindowFilter(earliestDepartureTime, searchWindow)
+          new OutsideSearchWindowFilter(earliestDepartureTime, searchWindow, isArriveBy)
         );
       }
 
