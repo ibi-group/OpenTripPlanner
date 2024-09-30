@@ -1,5 +1,6 @@
 package org.opentripplanner.ext.stopconsolidation;
 
+import java.util.ArrayList;
 import java.util.Objects;
 import org.opentripplanner.ext.stopconsolidation.model.ConsolidatedStopLeg;
 import org.opentripplanner.model.plan.Itinerary;
@@ -11,17 +12,19 @@ import org.opentripplanner.routing.algorithm.filterchain.framework.spi.Itinerary
  * then replaces it with the appropriate, agency-specific stop name. This is so that the physical
  * signage and in-vehicle display matches what OTP returns as a board/alight stop name.
  */
-public class DecorateConsolidatedStopNames implements ItineraryDecorator {
+public class DecorateConsolidatedStops implements ItineraryDecorator {
 
+  private static final int MAX_CHOP_WALK_DISTANCE = 40;
   private final StopConsolidationService service;
 
-  public DecorateConsolidatedStopNames(StopConsolidationService service) {
+  public DecorateConsolidatedStops(StopConsolidationService service) {
     this.service = Objects.requireNonNull(service);
   }
 
   @Override
   public void decorate(Itinerary itinerary) {
     replaceConsolidatedStops(itinerary);
+    removeWalkLegs(itinerary);
   }
 
   /**
@@ -51,11 +54,43 @@ public class DecorateConsolidatedStopNames implements ItineraryDecorator {
     });
   }
 
+  private void removeWalkLegs(Itinerary itinerary) {
+    var legs = new ArrayList<>(itinerary.getLegs());
+    var first = legs.getFirst();
+    if (
+      service.isPartOfConsolidatedStop(first.getTo().stop) &&
+      first.isWalkingLeg() &&
+      first.getDistanceMeters() < MAX_CHOP_WALK_DISTANCE
+    ) {
+      legs.removeFirst();
+    }
+    var last = legs.getLast();
+    if (
+      service.isPartOfConsolidatedStop(last.getFrom().stop) &&
+      last.isWalkingLeg() &&
+      last.getDistanceMeters() < MAX_CHOP_WALK_DISTANCE
+    ) {
+      legs.removeLast();
+    }
+
+    var transfersRemoved = legs
+      .stream()
+      .filter(l ->
+        !l.isWalkingLeg() ||
+        !(l.getDistanceMeters() < MAX_CHOP_WALK_DISTANCE) ||
+        !service.isPartOfConsolidatedStop(l.getFrom().stop) ||
+        !service.isPartOfConsolidatedStop(l.getFrom().stop)
+      )
+      .toList();
+
+    itinerary.setLegs(transfersRemoved);
+  }
+
   /**
    * Figures out if the from/to stops are part of a consolidated stop group and therefore
    * some stops need to be replaced.
    * <p>
-   * Please consult the Javadoc of {@link DecorateConsolidatedStopNames#replaceConsolidatedStops(Itinerary)}
+   * Please consult the Javadoc of {@link DecorateConsolidatedStops#replaceConsolidatedStops(Itinerary)}
    * for details of this idiosyncratic business logic and in particular why the logic is not the same
    * for the from/to stops.
    */

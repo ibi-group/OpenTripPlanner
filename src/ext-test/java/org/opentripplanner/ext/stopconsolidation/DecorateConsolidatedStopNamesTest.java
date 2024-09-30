@@ -42,7 +42,7 @@ class DecorateConsolidatedStopNamesTest {
     repo.addGroups(groups);
 
     var service = new DefaultStopConsolidationService(repo, transitModel);
-    var filter = new DecorateConsolidatedStopNames(service);
+    var filter = new DecorateConsolidatedStops(service);
 
     var itinerary = TestItineraryBuilder
       .newItinerary(Place.forStop(STOP_C))
