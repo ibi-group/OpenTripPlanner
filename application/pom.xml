@@ -170,6 +170,12 @@
             <version>2.3.0</version>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.opentripplanner</groupId>
+            <artifactId>otp-client</artifactId>
+            <version>0.1.4</version>
+            <scope>test</scope>
+        </dependency>
         <!-- Provides some shared serializers for Kryo. Introduces transitive dependencies on Trove, and Kryo. -->
         <!-- Also provides classes for testing that a round trip through serialization reproduces the same network. -->
         <dependency>
