@@ -8,10 +8,10 @@ import org.opentripplanner.ext.mobilityprofile.MobilityProfileData;
 import org.opentripplanner.ext.mobilityprofile.MobilityProfileParser;
 import org.opentripplanner.framework.io.OtpHttpClient;
 import org.opentripplanner.framework.io.OtpHttpClientFactory;
-import org.opentripplanner.framework.tostring.ToStringBuilder;
 import org.opentripplanner.updater.spi.HttpHeaders;
 import org.opentripplanner.updater.spi.PollingGraphUpdater;
 import org.opentripplanner.updater.spi.WriteToGraphCallback;
+import org.opentripplanner.utils.tostring.ToStringBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,13 +40,13 @@ public class OsmImpedanceUpdater extends PollingGraphUpdater {
   }
 
   @Override
-  public void setGraphUpdaterManager(WriteToGraphCallback saveResultOnGraph) {
-    this.saveResultOnGraph = saveResultOnGraph;
+  public String toString() {
+    return ToStringBuilder.of(this.getClass()).addStr("url", url).toString();
   }
 
   @Override
-  public String toString() {
-    return ToStringBuilder.of(this.getClass()).addStr("url", url).toString();
+  public void setup(WriteToGraphCallback writeToGraphCallback) {
+    this.saveResultOnGraph = writeToGraphCallback;
   }
 
   @Override
@@ -69,8 +69,8 @@ public class OsmImpedanceUpdater extends PollingGraphUpdater {
 
       // Handle update in graph writer runnable
       if (!changedImpedances.isEmpty()) {
-        saveResultOnGraph.execute((graph, transitModel) ->
-          updateHandler.update(graph, changedImpedances)
+        saveResultOnGraph.execute((rtUpdateContext) ->
+          updateHandler.update(rtUpdateContext.graph(), changedImpedances)
         );
       } else {
         LOG.error("Impedance data unchanged (not updating graph).");

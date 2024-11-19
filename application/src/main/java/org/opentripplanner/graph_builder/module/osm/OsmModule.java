@@ -61,12 +61,12 @@ public class OsmModule implements GraphBuilderModule {
   private final SafetyValueNormalizer normalizer;
   private final VertexGenerator vertexGenerator;
   private final OsmDatabase osmdb;
-  private List<OSMWay> osmStreets;
-  private List<OSMWay> osmFootways;
-  private OSMWay lastQueriedCrossing;
-  private OSMWay lastIntersectingStreetFound;
-  private OSMWay lastQueriedCrossingExtension;
-  private OSMWay lastAdjacentCrossingFound;
+  private List<OsmWay> osmStreets;
+  private List<OsmWay> osmFootways;
+  private OsmWay lastQueriedCrossing;
+  private OsmWay lastIntersectingStreetFound;
+  private OsmWay lastQueriedCrossingExtension;
+  private OsmWay lastAdjacentCrossingFound;
   private final StreetLimitationParameters streetLimitationParameters;
 
   OsmModule(
@@ -523,11 +523,11 @@ public class OsmModule implements GraphBuilderModule {
     return new StreetEdgePair(street, backStreet);
   }
 
-  private String getCrossingName(OSMWay way, String defaultName) {
+  private String getCrossingName(OsmWay way, String defaultName) {
     // Scan the nodes of this way to find the intersecting street.
     var otherWayOpt = getIntersectingStreet(way);
     if (otherWayOpt.isPresent()) {
-      OSMWay otherWay = otherWayOpt.get();
+      OsmWay otherWay = otherWayOpt.get();
       if (otherWay.hasTag("name")) {
         return String.format("crossing over %s", otherWay.getTag("name"));
       } else if (otherWay.isServiceRoad()) {
@@ -599,7 +599,7 @@ public class OsmModule implements GraphBuilderModule {
       seb.withName(editedName);
       seb.withBogusName(false);
     } else {
-      OSMWay continuedCrossing = getContinuedMarkedCrossing(way);
+      OsmWay continuedCrossing = getContinuedMarkedCrossing(way);
       if (continuedCrossing != null) {
         // Change the name of this segment to the name of the crossing.
         editedName = getCrossingName(continuedCrossing, editedName);
@@ -617,7 +617,7 @@ public class OsmModule implements GraphBuilderModule {
   /** *
    * Obtains the correct key for this OSM way.
    */
-  private static String getProfileKey(OSMWay way, long startShortId, long endShortId) {
+  private static String getProfileKey(OsmWay way, long startShortId, long endShortId) {
     long wayId = way.getId();
     TLongList nodeRefs = way.getNodeRefs();
 
@@ -634,7 +634,7 @@ public class OsmModule implements GraphBuilderModule {
   }
 
   /** Gets the streets from a collection of OSM ways. */
-  public static List<OSMWay> getStreets(Collection<OSMWay> ways) {
+  public static List<OsmWay> getStreets(Collection<OsmWay> ways) {
     return ways
       .stream()
       .filter(w -> !w.isFootway())
@@ -644,7 +644,7 @@ public class OsmModule implements GraphBuilderModule {
   }
 
   /** Gets the intersecting street, if any, for the given way using ways in osmdb. */
-  private Optional<OSMWay> getIntersectingStreet(OSMWay way) {
+  private Optional<OsmWay> getIntersectingStreet(OsmWay way) {
     // Perf: If the same way is queried again, return the previously found intersecting street.
     if (way == lastQueriedCrossing) {
       return Optional.ofNullable(lastIntersectingStreetFound);
@@ -655,13 +655,13 @@ public class OsmModule implements GraphBuilderModule {
     }
 
     lastQueriedCrossing = way;
-    Optional<OSMWay> intersectingStreetOptional = getIntersectingStreet(way, osmStreets);
+    Optional<OsmWay> intersectingStreetOptional = getIntersectingStreet(way, osmStreets);
     lastIntersectingStreetFound = intersectingStreetOptional.orElse(null);
     return intersectingStreetOptional;
   }
 
   /** Gets the intersecting street, if any, for the given way and candidate streets. */
-  public static Optional<OSMWay> getIntersectingStreet(OSMWay way, List<OSMWay> streets) {
+  public static Optional<OsmWay> getIntersectingStreet(OsmWay way, List<OsmWay> streets) {
     TLongList nodeRefs = way.getNodeRefs();
     if (nodeRefs.size() >= 3) {
       // There needs to be at least three nodes: 2 extremities that are on the sidewalk,
@@ -677,15 +677,15 @@ public class OsmModule implements GraphBuilderModule {
   }
 
   /** Gets the footways from a collection of OSM ways. */
-  public static List<OSMWay> getFootways(Collection<OSMWay> ways) {
-    return ways.stream().filter(OSMWay::isFootway).toList();
+  public static List<OsmWay> getFootways(Collection<OsmWay> ways) {
+    return ways.stream().filter(OsmWay::isFootway).toList();
   }
 
   /**
    *  Determines whether a way is a continuation (connects through end nodes) of a marked crossing,
    *  using the footways from osmdb.
    */
-  private OSMWay getContinuedMarkedCrossing(OSMWay way) {
+  private OsmWay getContinuedMarkedCrossing(OsmWay way) {
     // Perf: If the same way is queried again, return the previously found intersecting street.
     if (way == lastQueriedCrossingExtension) {
       return lastAdjacentCrossingFound;
@@ -701,11 +701,11 @@ public class OsmModule implements GraphBuilderModule {
   }
 
   /** Determines whether a way is a continuation (i.e. connects through end nodes) of marked crossing. */
-  public static OSMWay getContinuedMarkedCrossing(OSMWay way, Collection<OSMWay> ways) {
+  public static OsmWay getContinuedMarkedCrossing(OsmWay way, Collection<OsmWay> ways) {
     int adjacentWayCount = 0;
-    OSMWay markedCrossing = null;
+    OsmWay markedCrossing = null;
 
-    for (OSMWay w : ways) {
+    for (OsmWay w : ways) {
       if (way.isAdjacentTo(w)) {
         adjacentWayCount++;
         if (markedCrossing == null && w.isMarkedCrossing()) {

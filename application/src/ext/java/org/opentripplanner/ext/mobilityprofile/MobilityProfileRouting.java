@@ -5,7 +5,7 @@ import static java.util.Map.entry;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.Map;
-import org.opentripplanner.openstreetmap.model.OSMWay;
+import org.opentripplanner.osm.model.OsmWay;
 import org.opentripplanner.street.model.StreetTraversalPermission;
 import org.opentripplanner.street.model.edge.StreetEdge;
 import org.opentripplanner.street.model.edge.TemporaryPartialStreetEdge;
@@ -55,7 +55,7 @@ public class MobilityProfileRouting {
   }
 
   public static StreetTraversalPermission adjustPedestrianPermissions(
-    OSMWay way,
+    OsmWay way,
     StreetTraversalPermission permissions
   ) {
     return way.isFootway() || way.isTransitPlatform()

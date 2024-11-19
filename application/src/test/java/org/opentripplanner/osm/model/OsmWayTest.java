@@ -9,10 +9,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.opentripplanner.openstreetmap.wayproperty.specifier.WayTestData;
 import org.opentripplanner.osm.wayproperty.specifier.WayTestData;
 
-public class OsmWayTest {
+class OsmWayTest {
 
   @Test
   void testIsBicycleDismountForced() {
@@ -182,19 +181,19 @@ public class OsmWayTest {
     assertFalse(escalator.isEscalator());
   }
 
-  private static OSMWay createGenericHighway() {
-    var osm = new OSMWay();
+  private static OsmWay createGenericHighway() {
+    var osm = new OsmWay();
     osm.addTag("highway", "primary");
     return osm;
   }
 
-  private static OSMWay createGenericFootway() {
-    var osm = new OSMWay();
+  private static OsmWay createGenericFootway() {
+    var osm = new OsmWay();
     osm.addTag("highway", "footway");
     return osm;
   }
 
-  private static OSMWay createFootway(
+  private static OsmWay createFootway(
     String footwayValue,
     String crossingTag,
     String crossingValue
@@ -215,14 +214,14 @@ public class OsmWayTest {
   void serviceRoad() {
     assertFalse(createGenericHighway().isServiceRoad());
 
-    var osm2 = new OSMWay();
+    var osm2 = new OsmWay();
     osm2.addTag("highway", "service");
     assertTrue(osm2.isServiceRoad());
   }
 
   @ParameterizedTest
   @MethodSource("createCrossingCases")
-  void markedCrossing(OSMWay way, boolean result) {
+  void markedCrossing(OsmWay way, boolean result) {
     assertEquals(result, way.isMarkedCrossing());
   }
 
@@ -239,15 +238,15 @@ public class OsmWayTest {
     );
   }
 
-  private static OSMWay createPlatform(String kind) {
-    var osm = new OSMWay();
+  private static OsmWay createPlatform(String kind) {
+    var osm = new OsmWay();
     osm.addTag(kind, "platform");
     return osm;
   }
 
   @ParameterizedTest
   @MethodSource("createTransitPlatformCases")
-  void transitPlatform(OSMWay way, boolean result) {
+  void transitPlatform(OsmWay way, boolean result) {
     assertEquals(result, way.isTransitPlatform());
   }
 

@@ -178,7 +178,7 @@ public class OsmWay extends OsmWithTags {
   }
 
   /** Whether this way is connected to the given way through their extremities. */
-  public boolean isAdjacentTo(OSMWay way) {
+  public boolean isAdjacentTo(OsmWay way) {
     long wayFirstNode = way.nodes.get(0);
     long wayLastNode = way.nodes.get(way.nodes.size() - 1);
 
