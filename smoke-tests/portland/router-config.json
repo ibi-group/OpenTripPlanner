@@ -24,7 +24,7 @@
       "type": "vehicle-rental",
       "frequency": "90s",
       "sourceType": "gbfs",
-      "url": "https://gbfs.spin.pm/api/gbfs/v2_3/portland/gbfs",
+      "url": "https://data.lime.bike/api/partners/v2/gbfs/portland/gbfs.json",
       "geofencingZones": "true"
     }
   ]

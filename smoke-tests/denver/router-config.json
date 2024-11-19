@@ -2,7 +2,7 @@
   "updaters": [
     {
       "type": "vehicle-positions",
-      "url": "https://www.rtd-denver.com/files/gtfs-rt/VehiclePosition.pb",
+      "url": "https://www.rtd-denver.com/api/download?feedType=gtfs-rt&filename=VehiclePosition.pb",
       "feedId": "denver"
     }
   ]
