@@ -382,12 +382,12 @@ public class OsmModuleTest {
 
   @Test
   void testGetIntersectingStreet() {
-    OSMWay way = new OSMWay();
+    OsmWay way = new OsmWay();
     way.getNodeRefs().add(new long[] { 10001, 10002, 10003, 10004 });
-    OSMWay street = new OSMWay();
+    OsmWay street = new OsmWay();
     street.setId(50001);
     street.getNodeRefs().add(new long[] { 20001, 20002, 20003, 10002, 20004, 20005 });
-    OSMWay otherStreet = new OSMWay();
+    OsmWay otherStreet = new OsmWay();
     otherStreet.setId(50002);
     otherStreet.getNodeRefs().add(new long[] { 30001, 30002, 30003, 30004, 30005 });
 
@@ -401,19 +401,19 @@ public class OsmModuleTest {
 
   @Test
   void testGetStreets() {
-    OSMWay footway = new OSMWay();
+    OsmWay footway = new OsmWay();
     footway.addTag("highway", "footway");
-    OSMWay street = new OSMWay();
+    OsmWay street = new OsmWay();
     street.addTag("highway", "primary");
     street.addTag("name", "3rd Street");
-    OSMWay serviceRoad = new OSMWay();
+    OsmWay serviceRoad = new OsmWay();
     serviceRoad.addTag("highway", "service");
-    OSMWay otherStreet = new OSMWay();
+    OsmWay otherStreet = new OsmWay();
     otherStreet.addTag("highway", "trunk");
     otherStreet.addTag("oneway", "true");
-    OSMWay blankPath = new OSMWay();
+    OsmWay blankPath = new OsmWay();
 
-    List<OSMWay> streets = OsmModule.getStreets(
+    List<OsmWay> streets = OsmModule.getStreets(
       List.of(street, footway, serviceRoad, otherStreet, blankPath)
     );
     assertEquals(3, streets.size());
@@ -422,24 +422,24 @@ public class OsmModuleTest {
 
   @Test
   void testIsContinuationOfMarkedCrossing() {
-    OSMWay footway = new OSMWay();
+    OsmWay footway = new OsmWay();
     footway.addTag("highway", "footway");
     footway.getNodeRefs().add(new long[] { 10001, 10000, 10002 });
 
-    OSMWay crossing = new OSMWay();
+    OsmWay crossing = new OsmWay();
     crossing.getNodeRefs().add(new long[] { 10002, 10003, 10004 });
     crossing.addTag("highway", "footway");
     crossing.addTag("footway", "crossing");
     crossing.addTag("crossing", "marked");
 
-    OSMWay otherCrossing = new OSMWay();
+    OsmWay otherCrossing = new OsmWay();
     otherCrossing.getNodeRefs().add(new long[] { 10003, 10001, 10004 });
     otherCrossing.addTag("highway", "footway");
     otherCrossing.addTag("footway", "crossing");
     otherCrossing.addTag("crossing", "unmarked");
 
     // If more than one footway are adjacent to the crossing, there is no continuation.
-    OSMWay otherFootway = new OSMWay();
+    OsmWay otherFootway = new OsmWay();
     otherFootway.addTag("highway", "footway");
     otherFootway.getNodeRefs().add(new long[] { 10002, 10006 });
 
