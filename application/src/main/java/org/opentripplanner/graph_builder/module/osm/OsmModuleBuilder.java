@@ -26,6 +26,7 @@ public class OsmModuleBuilder {
   private boolean staticBikeParkAndRide = false;
   private int maxAreaNodes;
   private StreetLimitationParameters streetLimitationParameters = new StreetLimitationParameters();
+  private boolean preventWalkingOnRoads;
 
   OsmModuleBuilder(Collection<OsmProvider> providers, Graph graph) {
     this.providers = providers;
@@ -77,6 +78,11 @@ public class OsmModuleBuilder {
     return this;
   }
 
+  public OsmModuleBuilder withPreventWalkingOnRoads(boolean value) {
+    this.preventWalkingOnRoads = value;
+    return this;
+  }
+
   public OsmModule build() {
     return new OsmModule(
       providers,
@@ -90,7 +96,8 @@ public class OsmModuleBuilder {
         areaVisibility,
         platformEntriesLinking,
         staticParkAndRide,
-        staticBikeParkAndRide
+        staticBikeParkAndRide,
+        preventWalkingOnRoads
       )
     );
   }

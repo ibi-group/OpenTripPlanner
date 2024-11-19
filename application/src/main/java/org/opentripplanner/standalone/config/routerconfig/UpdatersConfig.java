@@ -4,6 +4,7 @@ import static org.opentripplanner.standalone.config.framework.json.OtpVersion.V1
 import static org.opentripplanner.standalone.config.framework.json.OtpVersion.V2_2;
 import static org.opentripplanner.standalone.config.routerconfig.UpdatersConfig.Type.BIKE_RENTAL;
 import static org.opentripplanner.standalone.config.routerconfig.UpdatersConfig.Type.MQTT_GTFS_RT_UPDATER;
+import static org.opentripplanner.standalone.config.routerconfig.UpdatersConfig.Type.OSM_IMPEDANCE_UPDATER;
 import static org.opentripplanner.standalone.config.routerconfig.UpdatersConfig.Type.REAL_TIME_ALERTS;
 import static org.opentripplanner.standalone.config.routerconfig.UpdatersConfig.Type.SIRI_AZURE_ET_UPDATER;
 import static org.opentripplanner.standalone.config.routerconfig.UpdatersConfig.Type.SIRI_AZURE_SX_UPDATER;
@@ -28,6 +29,7 @@ import org.opentripplanner.ext.vehiclerentalservicedirectory.api.VehicleRentalSe
 import org.opentripplanner.standalone.config.framework.json.NodeAdapter;
 import org.opentripplanner.standalone.config.routerconfig.updaters.GtfsRealtimeAlertsUpdaterConfig;
 import org.opentripplanner.standalone.config.routerconfig.updaters.MqttGtfsRealtimeUpdaterConfig;
+import org.opentripplanner.standalone.config.routerconfig.updaters.OsmImpedanceUpdaterConfig;
 import org.opentripplanner.standalone.config.routerconfig.updaters.PollingTripUpdaterConfig;
 import org.opentripplanner.standalone.config.routerconfig.updaters.SiriETGooglePubsubUpdaterConfig;
 import org.opentripplanner.standalone.config.routerconfig.updaters.SiriETUpdaterConfig;
@@ -41,6 +43,7 @@ import org.opentripplanner.standalone.config.sandbox.VehicleRentalServiceDirecto
 import org.opentripplanner.updater.TimetableSnapshotSourceParameters;
 import org.opentripplanner.updater.UpdatersParameters;
 import org.opentripplanner.updater.alert.GtfsRealtimeAlertsUpdaterParameters;
+import org.opentripplanner.updater.impedance.OsmImpedanceUpdaterParameters;
 import org.opentripplanner.updater.siri.updater.SiriETUpdaterParameters;
 import org.opentripplanner.updater.siri.updater.SiriSXUpdaterParameters;
 import org.opentripplanner.updater.siri.updater.google.SiriETGooglePubsubUpdaterParameters;
@@ -202,6 +205,11 @@ public class UpdatersConfig implements UpdatersParameters {
     return getParameters(SIRI_AZURE_SX_UPDATER);
   }
 
+  @Override
+  public List<OsmImpedanceUpdaterParameters> getOsmImpedanceUpdaterParameters() {
+    return getParameters(OSM_IMPEDANCE_UPDATER);
+  }
+
   private <T> List<T> getParameters(Type key) {
     return (List<T>) configList.get(key);
   }
@@ -217,6 +225,7 @@ public class UpdatersConfig implements UpdatersParameters {
     MQTT_GTFS_RT_UPDATER(MqttGtfsRealtimeUpdaterConfig::create),
     REAL_TIME_ALERTS(GtfsRealtimeAlertsUpdaterConfig::create),
     VEHICLE_POSITIONS(VehiclePositionsUpdaterConfig::create),
+    OSM_IMPEDANCE_UPDATER(OsmImpedanceUpdaterConfig::create),
     SIRI_ET_UPDATER(SiriETUpdaterConfig::create),
     SIRI_ET_GOOGLE_PUBSUB_UPDATER(SiriETGooglePubsubUpdaterConfig::create),
     SIRI_SX_UPDATER(SiriSXUpdaterConfig::create),

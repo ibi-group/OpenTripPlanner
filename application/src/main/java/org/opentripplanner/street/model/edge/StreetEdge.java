@@ -4,13 +4,17 @@ import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Stream;
 import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.geom.impl.PackedCoordinateSequence;
+import org.opentripplanner.ext.mobilityprofile.MobilityProfile;
+import org.opentripplanner.ext.mobilityprofile.MobilityProfileRouting;
 import org.opentripplanner.framework.geometry.CompactLineStringUtils;
 import org.opentripplanner.framework.geometry.DirectionUtils;
 import org.opentripplanner.framework.geometry.GeometryUtils;
@@ -63,6 +67,7 @@ public class StreetEdge
   static final int BICYCLE_NOTHRUTRAFFIC = 7;
   static final int WALK_NOTHRUTRAFFIC = 8;
   static final int CLASS_LINK = 9;
+  public static final long DEFAULT_LARGE_COST = 10000;
 
   private StreetEdgeCostExtension costExtension;
 
@@ -83,6 +88,12 @@ public class StreetEdge
    * safety factor of 1.0.
    */
   private float bicycleSafetyFactor;
+
+  /** The key to the mobility profile data for this street edge. */
+  public String profileKey;
+
+  /** A map of cost based on a mobility profile. Implemented as HashMap for serialization. */
+  public transient Map<MobilityProfile, Float> profileCost = new HashMap<>();
 
   /**
    * walkSafetyFactor = length * walkSafetyFactor. For example, a 100m street with a safety
@@ -145,6 +156,8 @@ public class StreetEdge
     inAngle = lineStringInOutAngles.inAngle();
     outAngle = lineStringInOutAngles.outAngle();
     elevationExtension = builder.streetElevationExtension();
+    profileCost = builder.profileCosts();
+    profileKey = builder.profileKey();
   }
 
   public StreetEdgeBuilder<?> toBuilder() {
@@ -447,8 +460,13 @@ public class StreetEdge
     this.name = name;
   }
 
+  @Override
   public boolean hasBogusName() {
     return BitSetUtils.get(flags, HASBOGUSNAME_FLAG_INDEX);
+  }
+
+  public void setBogusName(boolean bogusName) {
+    flags = BitSetUtils.set(flags, HASBOGUSNAME_FLAG_INDEX, bogusName);
   }
 
   public LineString getGeometry() {
@@ -625,19 +643,23 @@ public class StreetEdge
   public SplitStreetEdge splitDestructively(SplitterVertex v) {
     SplitLineString geoms = GeometryUtils.splitGeometryAtPoint(getGeometry(), v.getCoordinate());
 
+    // Instance where props are copied
     StreetEdgeBuilder<?> seb1 = new StreetEdgeBuilder<>()
       .withFromVertex((StreetVertex) fromv)
       .withToVertex(v)
       .withGeometry(geoms.beginning())
       .withName(name)
+      .withProfileKey(profileKey)
       .withPermission(permission)
       .withBack(isBack());
 
+    // Instance where props are copied
     StreetEdgeBuilder<?> seb2 = new StreetEdgeBuilder<>()
       .withFromVertex(v)
       .withToVertex((StreetVertex) tov)
       .withGeometry(geoms.ending())
       .withName(name)
+      .withProfileKey(profileKey)
       .withPermission(permission)
       .withBack(isBack());
 
@@ -684,6 +706,16 @@ public class StreetEdge
     seb1.withMilliMeterLength(l1);
     seb2.withMilliMeterLength(l2);
 
+    if (hasProfileCost()) {
+      float ratio1 = (float) l1 / length_mm;
+      float ratio2 = (float) l2 / length_mm;
+      seb1.withProfileCosts(MobilityProfileRouting.getProRatedProfileCosts(profileCost, ratio1));
+      seb2.withProfileCosts(MobilityProfileRouting.getProRatedProfileCosts(profileCost, ratio2));
+
+      seb1.withName(String.format("%s split r%4.3f l%4.3f", name, ratio1, l1 / 1000.0));
+      seb2.withName(String.format("%s split r%4.3f l%4.3f", name, ratio2, l2 / 1000.0));
+    }
+
     copyPropertiesToSplitEdge(seb1, 0, l1 / 1000.0);
     copyPropertiesToSplitEdge(seb2, l1 / 1000.0, getDistanceMeters());
 
@@ -698,6 +730,10 @@ public class StreetEdge
     return splitEdges;
   }
 
+  public boolean hasProfileCost() {
+    return profileCost != null && !profileCost.isEmpty();
+  }
+
   /** Split this street edge and return the resulting street edges. The original edge is kept. */
   public SplitStreetEdge splitNonDestructively(
     SplitterVertex v,
@@ -709,27 +745,58 @@ public class StreetEdge
     StreetEdge e1 = null;
     StreetEdge e2 = null;
 
+    // TODO: refactor
+    // we have this code implemented in both directions, because splits are fudged half a millimeter
+    // when the length of this is odd. We want to make sure the lengths of the split streets end up
+    // exactly the same as their backStreets so that if they are split again the error does not accumulate
+    // and so that the order in which they are split does not matter.
+    int l1 = defaultMillimeterLength(geoms.beginning());
+    int l2 = defaultMillimeterLength(geoms.ending());
+    if (!isBack()) {
+      // cast before the divide so that the sum is promoted
+      double frac = (double) l1 / (l1 + l2);
+      l1 = (int) (length_mm * frac);
+      l2 = length_mm - l1;
+    } else {
+      // cast before the divide so that the sum is promoted
+      double frac = (double) l2 / (l1 + l2);
+      l2 = (int) (length_mm * frac);
+      l1 = length_mm - l2;
+    }
+
     if (direction == LinkingDirection.OUTGOING || direction == LinkingDirection.BOTH_WAYS) {
+      // Instance where props are copied
       var seb1 = new TemporaryPartialStreetEdgeBuilder()
         .withParentEdge(this)
         .withFromVertex((StreetVertex) fromv)
         .withToVertex(v)
         .withGeometry(geoms.beginning())
         .withName(name)
+        .withProfileKey(profileKey)
         .withBack(isBack());
+      if (hasProfileCost()) {
+        float ratio = (float) l1 / length_mm;
+        seb1.withProfileCosts(MobilityProfileRouting.getProRatedProfileCosts(profileCost, ratio));
+      }
       copyPropertiesToSplitEdge(seb1, 0, defaultMillimeterLength(geoms.beginning()) / 1000.0);
       e1 = seb1.buildAndConnect();
       copyRentalRestrictionsToSplitEdge(e1);
       tempEdges.addEdge(e1);
     }
     if (direction == LinkingDirection.INCOMING || direction == LinkingDirection.BOTH_WAYS) {
+      // Instance where props are copied
       var seb2 = new TemporaryPartialStreetEdgeBuilder()
         .withParentEdge(this)
         .withFromVertex(v)
         .withToVertex((StreetVertex) tov)
         .withGeometry(geoms.ending())
         .withName(name)
+        .withProfileKey(profileKey)
         .withBack(isBack());
+      if (hasProfileCost()) {
+        float ratio = (float) l2 / length_mm;
+        seb2.withProfileCosts(MobilityProfileRouting.getProRatedProfileCosts(profileCost, ratio));
+      }
       copyPropertiesToSplitEdge(
         seb2,
         getDistanceMeters() - defaultMillimeterLength(geoms.ending()) / 1000.0,
@@ -770,12 +837,14 @@ public class StreetEdge
       double lengthRatio = partial.getLength() / parent.getLength();
       double length = getDistanceMeters() * lengthRatio;
 
+      // Instance where props are copied
       var tpseb = new TemporaryPartialStreetEdgeBuilder()
         .withParentEdge(this)
         .withFromVertex(from)
         .withToVertex(to)
         .withGeometry(partial)
         .withName(getName())
+        .withProfileKey(profileKey)
         .withMeterLength(length);
       copyPropertiesToSplitEdge(tpseb, start, start + length);
       TemporaryPartialStreetEdge se = tpseb.buildAndConnect();
@@ -1098,7 +1167,8 @@ public class StreetEdge
           traverseMode,
           speed,
           walkingBike,
-          s0.getRequest().wheelchair()
+          s0.getRequest().wheelchair(),
+          s0.getRequest().mobilityProfile()
         );
         default -> otherTraversalCosts(preferences, traverseMode, walkingBike, speed);
       };
@@ -1254,7 +1324,8 @@ public class StreetEdge
     TraverseMode traverseMode,
     double speed,
     boolean walkingBike,
-    boolean wheelchair
+    boolean wheelchair,
+    MobilityProfile mobilityProfile
   ) {
     double time, weight;
     if (wheelchair) {
@@ -1293,6 +1364,25 @@ public class StreetEdge
           walkingBike,
           isStairs()
         );
+    }
+
+    // G-MAP-specific: Tabulated weights for known paths are provided through profileCost
+    // (assuming a pre-determined travel speed for each profile)
+    // and the travel speed for that profile is used to overwrite the time calculated above.
+    if (mobilityProfile != null) {
+      if (hasProfileCost()) {
+        var defaultTravelHours = MobilityProfileRouting.computeTravelHours(
+          getEffectiveWalkDistance(),
+          mobilityProfile
+        );
+        time = defaultTravelHours * 3600;
+        // Impedance of the path is in seconds, so it already matches other OTP weights
+        // for compatibility with street/transit transitions.
+        weight = profileCost.getOrDefault(mobilityProfile, (float) weight);
+      } else {
+        // For non-tabulated ways, use the calculated travel time above but assign a high weight.
+        weight = DEFAULT_LARGE_COST * 10.0;
+      }
     }
 
     return new TraversalCosts(time, weight);

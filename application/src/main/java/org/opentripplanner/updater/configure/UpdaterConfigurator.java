@@ -18,6 +18,7 @@ import org.opentripplanner.updater.DefaultRealTimeUpdateContext;
 import org.opentripplanner.updater.GraphUpdaterManager;
 import org.opentripplanner.updater.UpdatersParameters;
 import org.opentripplanner.updater.alert.GtfsRealtimeAlertsUpdater;
+import org.opentripplanner.updater.impedance.OsmImpedanceUpdater;
 import org.opentripplanner.updater.siri.SiriTimetableSnapshotSource;
 import org.opentripplanner.updater.siri.updater.SiriETUpdater;
 import org.opentripplanner.updater.siri.updater.SiriSXUpdater;
@@ -220,6 +221,10 @@ public class UpdaterConfigurator {
     }
     for (var configItem : updatersParameters.getSiriAzureSXUpdaterParameters()) {
       updaters.add(new SiriAzureSXUpdater(configItem, timetableRepository));
+    }
+
+    for (var configItem : updatersParameters.getOsmImpedanceUpdaterParameters()) {
+      updaters.add(new OsmImpedanceUpdater(configItem));
     }
 
     return updaters;

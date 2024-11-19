@@ -1,12 +1,17 @@
 package org.opentripplanner.osm.model;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.opentripplanner.osm.wayproperty.specifier.WayTestData;
 
-public class OsmWayTest {
+class OsmWayTest {
 
   @Test
   void testIsBicycleDismountForced() {
@@ -174,6 +179,84 @@ public class OsmWayTest {
 
     escalator.addTag("conveying", "whoknows?");
     assertFalse(escalator.isEscalator());
+  }
+
+  private static OsmWay createGenericHighway() {
+    var osm = new OsmWay();
+    osm.addTag("highway", "primary");
+    return osm;
+  }
+
+  private static OsmWay createGenericFootway() {
+    var osm = new OsmWay();
+    osm.addTag("highway", "footway");
+    return osm;
+  }
+
+  private static OsmWay createFootway(
+    String footwayValue,
+    String crossingTag,
+    String crossingValue
+  ) {
+    var osm = createGenericFootway();
+    osm.addTag("footway", footwayValue);
+    osm.addTag(crossingTag, crossingValue);
+    return osm;
+  }
+
+  @Test
+  void footway() {
+    assertFalse(createGenericHighway().isFootway());
+    assertTrue(createGenericFootway().isFootway());
+  }
+
+  @Test
+  void serviceRoad() {
+    assertFalse(createGenericHighway().isServiceRoad());
+
+    var osm2 = new OsmWay();
+    osm2.addTag("highway", "service");
+    assertTrue(osm2.isServiceRoad());
+  }
+
+  @ParameterizedTest
+  @MethodSource("createCrossingCases")
+  void markedCrossing(OsmWay way, boolean result) {
+    assertEquals(result, way.isMarkedCrossing());
+  }
+
+  static Stream<Arguments> createCrossingCases() {
+    return Stream.of(
+      Arguments.of(createGenericFootway(), false),
+      Arguments.of(createFootway("whatever", "unused", "unused"), false),
+      Arguments.of(createFootway("crossing", "crossing", "marked"), true),
+      Arguments.of(createFootway("crossing", "crossing", "other"), false),
+      Arguments.of(createFootway("crossing", "crossing:markings", "yes"), true),
+      Arguments.of(createFootway("crossing", "crossing:markings", "marking-details"), true),
+      Arguments.of(createFootway("crossing", "crossing:markings", null), false),
+      Arguments.of(createFootway("crossing", "crossing:markings", "no"), false)
+    );
+  }
+
+  private static OsmWay createPlatform(String kind) {
+    var osm = new OsmWay();
+    osm.addTag(kind, "platform");
+    return osm;
+  }
+
+  @ParameterizedTest
+  @MethodSource("createTransitPlatformCases")
+  void transitPlatform(OsmWay way, boolean result) {
+    assertEquals(result, way.isTransitPlatform());
+  }
+
+  static Stream<Arguments> createTransitPlatformCases() {
+    return Stream.of(
+      Arguments.of(createGenericHighway(), false),
+      Arguments.of(createGenericFootway(), false),
+      Arguments.of(createPlatform("railway"), true),
+      Arguments.of(createPlatform("public_transport"), true)
+    );
   }
 
   private OsmWay getClosedPolygon() {

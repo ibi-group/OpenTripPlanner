@@ -1383,6 +1383,8 @@ type QueryType {
     between transit stops. Default value: 120
     """
     minTransferTime: Int,
+    "Mobility profile for obtaining itineraries according to one's mobility limitations."
+    mobilityProfile: String,
     "The weight multipliers for transit modes. WALK, BICYCLE, CAR, TRANSIT and LEG_SWITCH are not included."
     modeWeight: InputModeWeight,
     "Penalty (in seconds) for using a non-preferred transfer. Default value: 180"

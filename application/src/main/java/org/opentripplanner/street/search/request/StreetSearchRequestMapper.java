@@ -12,7 +12,8 @@ public class StreetSearchRequestMapper {
       .withPreferences(opt.preferences())
       .withWheelchair(opt.wheelchair())
       .withFrom(opt.from())
-      .withTo(opt.to());
+      .withTo(opt.to())
+      .withMobilityProfile(opt.mobilityProfile());
   }
 
   public static StreetSearchRequestBuilder mapToTransferRequest(RouteRequest opt) {

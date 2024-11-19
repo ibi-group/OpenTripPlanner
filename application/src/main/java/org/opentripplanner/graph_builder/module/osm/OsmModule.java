@@ -2,15 +2,20 @@ package org.opentripplanner.graph_builder.module.osm;
 
 import com.google.common.collect.Iterables;
 import gnu.trove.iterator.TLongIterator;
+import gnu.trove.list.TLongList;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.LineString;
+import org.opentripplanner.ext.mobilityprofile.MobilityProfileParser;
+import org.opentripplanner.ext.mobilityprofile.MobilityProfileRouting;
 import org.opentripplanner.framework.geometry.GeometryUtils;
 import org.opentripplanner.framework.geometry.SphericalDistanceLibrary;
 import org.opentripplanner.framework.i18n.I18NString;
@@ -56,6 +61,12 @@ public class OsmModule implements GraphBuilderModule {
   private final SafetyValueNormalizer normalizer;
   private final VertexGenerator vertexGenerator;
   private final OsmDatabase osmdb;
+  private List<OsmWay> osmStreets;
+  private List<OsmWay> osmFootways;
+  private OsmWay lastQueriedCrossing;
+  private OsmWay lastIntersectingStreetFound;
+  private OsmWay lastQueriedCrossingExtension;
+  private OsmWay lastAdjacentCrossingFound;
   private final StreetLimitationParameters streetLimitationParameters;
 
   OsmModule(
@@ -512,6 +523,25 @@ public class OsmModule implements GraphBuilderModule {
     return new StreetEdgePair(street, backStreet);
   }
 
+  private String getCrossingName(OsmWay way, String defaultName) {
+    // Scan the nodes of this way to find the intersecting street.
+    var otherWayOpt = getIntersectingStreet(way);
+    if (otherWayOpt.isPresent()) {
+      OsmWay otherWay = otherWayOpt.get();
+      if (otherWay.hasTag("name")) {
+        return String.format("crossing over %s", otherWay.getTag("name"));
+      } else if (otherWay.isServiceRoad()) {
+        return "crossing over service road";
+      } else if (otherWay.isOneWayForwardDriving()) {
+        return "crossing over turn lane";
+      } else {
+        // Default on using the OSM way ID, which should not happen.
+        return String.format("crossing %s", way.getId());
+      }
+    }
+    return defaultName;
+  }
+
   private StreetEdge getEdgeForStreet(
     IntersectionVertex startEndpoint,
     IntersectionVertex endEndpoint,
@@ -522,10 +552,26 @@ public class OsmModule implements GraphBuilderModule {
     LineString geometry,
     boolean back
   ) {
-    String label = "way " + way.getId() + " from " + index;
+    long wayId = way.getId();
+    String label = "way " + wayId + " from " + index;
     label = label.intern();
     I18NString name = params.edgeNamer().getNameForWay(way, label);
     float carSpeed = way.getOsmProvider().getOsmTagMapper().getCarSpeedForWay(way, back);
+
+    String startId = startEndpoint.getLabel().toString();
+    String endId = endEndpoint.getLabel().toString();
+    String profileKey = "";
+    try {
+      long startShortId = Long.parseLong(startId.replace("osm:node:", ""), 10);
+      long endShortId = Long.parseLong(endId.replace("osm:node:", ""), 10);
+      profileKey = getProfileKey(way, startShortId, endShortId);
+    } catch (NumberFormatException nfe) {
+      LOG.warn("Unable to extract OSM nodes for way {} {}, {}=>{}", name, wayId, startId, endId);
+    }
+
+    StreetTraversalPermission perms = params.preventWalkingOnRoads()
+      ? MobilityProfileRouting.adjustPedestrianPermissions(way, permissions)
+      : permissions;
 
     StreetEdgeBuilder<?> seb = new StreetEdgeBuilder<>()
       .withFromVertex(startEndpoint)
@@ -533,7 +579,7 @@ public class OsmModule implements GraphBuilderModule {
       .withGeometry(geometry)
       .withName(name)
       .withMeterLength(length)
-      .withPermission(permissions)
+      .withPermission(perms)
       .withBack(back)
       .withCarSpeed(carSpeed)
       .withLink(way.isLink())
@@ -541,9 +587,133 @@ public class OsmModule implements GraphBuilderModule {
       .withSlopeOverride(way.getOsmProvider().getWayPropertySet().getSlopeOverride(way))
       .withStairs(way.isSteps())
       .withWheelchairAccessible(way.isWheelchairAccessible())
+      .withProfileKey(profileKey)
       .withBogusName(way.hasNoName());
 
+    // If this is a street crossing (denoted with the tag "footway:crossing"),
+    // add a crossing indication in the edge name.
+    // TODO: i18n.
+    String editedName = name.toString();
+    if (way.isMarkedCrossing()) {
+      editedName = getCrossingName(way, editedName);
+      seb.withName(editedName);
+      seb.withBogusName(false);
+    } else {
+      OsmWay continuedCrossing = getContinuedMarkedCrossing(way);
+      if (continuedCrossing != null) {
+        // Change the name of this segment to the name of the crossing.
+        editedName = getCrossingName(continuedCrossing, editedName);
+        seb.withName(editedName);
+        seb.withBogusName(false);
+      } else if ("sidewalk".equals(editedName) || "path".equals(editedName)) {
+        editedName = String.format("%s %s", editedName, wayId);
+        // seb.withName(editedName);
+      }
+    }
+
     return seb.buildAndConnect();
+  }
+
+  /** *
+   * Obtains the correct key for this OSM way.
+   */
+  private static String getProfileKey(OsmWay way, long startShortId, long endShortId) {
+    long wayId = way.getId();
+    TLongList nodeRefs = way.getNodeRefs();
+
+    int startIndex = nodeRefs.indexOf(startShortId);
+    int endIndex = nodeRefs.indexOf(endShortId);
+    boolean isReverse = endIndex < startIndex;
+
+    // Use the start and end nodes of the OSM way per the OSM data to lookup the mobility costs.
+    long wayFromId = nodeRefs.get(0);
+    long wayToId = nodeRefs.get(nodeRefs.size() - 1);
+    return isReverse
+      ? MobilityProfileParser.getKey(wayId, wayToId, wayFromId)
+      : MobilityProfileParser.getKey(wayId, wayFromId, wayToId);
+  }
+
+  /** Gets the streets from a collection of OSM ways. */
+  public static List<OsmWay> getStreets(Collection<OsmWay> ways) {
+    return ways
+      .stream()
+      .filter(w -> !w.isFootway())
+      // Keep named streets, service roads, and slip/turn lanes.
+      .filter(w -> w.hasTag("name") || w.isServiceRoad() || w.isOneWayForwardDriving())
+      .toList();
+  }
+
+  /** Gets the intersecting street, if any, for the given way using ways in osmdb. */
+  private Optional<OsmWay> getIntersectingStreet(OsmWay way) {
+    // Perf: If the same way is queried again, return the previously found intersecting street.
+    if (way == lastQueriedCrossing) {
+      return Optional.ofNullable(lastIntersectingStreetFound);
+    }
+
+    if (osmStreets == null) {
+      osmStreets = getStreets(osmdb.getWays());
+    }
+
+    lastQueriedCrossing = way;
+    Optional<OsmWay> intersectingStreetOptional = getIntersectingStreet(way, osmStreets);
+    lastIntersectingStreetFound = intersectingStreetOptional.orElse(null);
+    return intersectingStreetOptional;
+  }
+
+  /** Gets the intersecting street, if any, for the given way and candidate streets. */
+  public static Optional<OsmWay> getIntersectingStreet(OsmWay way, List<OsmWay> streets) {
+    TLongList nodeRefs = way.getNodeRefs();
+    if (nodeRefs.size() >= 3) {
+      // There needs to be at least three nodes: 2 extremities that are on the sidewalk,
+      // and one somewhere in the middle that joins the crossing with the street.
+      // We exclude the first and last node which are on the sidewalk.
+      long[] nodeRefsArray = nodeRefs.toArray(1, nodeRefs.size() - 2);
+      return streets
+        .stream()
+        .filter(w -> Arrays.stream(nodeRefsArray).anyMatch(nid -> w.getNodeRefs().contains(nid)))
+        .findFirst();
+    }
+    return Optional.empty();
+  }
+
+  /** Gets the footways from a collection of OSM ways. */
+  public static List<OsmWay> getFootways(Collection<OsmWay> ways) {
+    return ways.stream().filter(OsmWay::isFootway).toList();
+  }
+
+  /**
+   *  Determines whether a way is a continuation (connects through end nodes) of a marked crossing,
+   *  using the footways from osmdb.
+   */
+  private OsmWay getContinuedMarkedCrossing(OsmWay way) {
+    // Perf: If the same way is queried again, return the previously found intersecting street.
+    if (way == lastQueriedCrossingExtension) {
+      return lastAdjacentCrossingFound;
+    }
+
+    if (osmFootways == null) {
+      osmFootways = getFootways(osmdb.getWays());
+    }
+
+    lastQueriedCrossingExtension = way;
+    lastAdjacentCrossingFound = getContinuedMarkedCrossing(way, osmFootways);
+    return lastAdjacentCrossingFound;
+  }
+
+  /** Determines whether a way is a continuation (i.e. connects through end nodes) of marked crossing. */
+  public static OsmWay getContinuedMarkedCrossing(OsmWay way, Collection<OsmWay> ways) {
+    int adjacentWayCount = 0;
+    OsmWay markedCrossing = null;
+
+    for (OsmWay w : ways) {
+      if (way.isAdjacentTo(w)) {
+        adjacentWayCount++;
+        if (markedCrossing == null && w.isMarkedCrossing()) {
+          markedCrossing = w;
+        }
+      }
+    }
+    return adjacentWayCount == 1 ? markedCrossing : null;
   }
 
   private float getMaxCarSpeed() {

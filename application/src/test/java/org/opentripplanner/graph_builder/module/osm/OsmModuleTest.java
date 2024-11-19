@@ -3,6 +3,7 @@ package org.opentripplanner.graph_builder.module.osm;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 import static org.opentripplanner.osm.wayproperty.WayPropertiesBuilder.withModes;
@@ -377,6 +378,79 @@ public class OsmModuleTest {
     for (GraphPath<State, Edge, Vertex> path : pathList) {
       assertFalse(path.states.isEmpty());
     }
+  }
+
+  @Test
+  void testGetIntersectingStreet() {
+    OsmWay way = new OsmWay();
+    way.getNodeRefs().add(new long[] { 10001, 10002, 10003, 10004 });
+    OsmWay street = new OsmWay();
+    street.setId(50001);
+    street.getNodeRefs().add(new long[] { 20001, 20002, 20003, 10002, 20004, 20005 });
+    OsmWay otherStreet = new OsmWay();
+    otherStreet.setId(50002);
+    otherStreet.getNodeRefs().add(new long[] { 30001, 30002, 30003, 30004, 30005 });
+
+    var intersectingStreet = OsmModule.getIntersectingStreet(way, List.of(street, otherStreet));
+    assertTrue(intersectingStreet.isPresent());
+    assertEquals(50001, intersectingStreet.get().getId());
+
+    var intersectingStreet2 = OsmModule.getIntersectingStreet(way, List.of(otherStreet));
+    assertFalse(intersectingStreet2.isPresent());
+  }
+
+  @Test
+  void testGetStreets() {
+    OsmWay footway = new OsmWay();
+    footway.addTag("highway", "footway");
+    OsmWay street = new OsmWay();
+    street.addTag("highway", "primary");
+    street.addTag("name", "3rd Street");
+    OsmWay serviceRoad = new OsmWay();
+    serviceRoad.addTag("highway", "service");
+    OsmWay otherStreet = new OsmWay();
+    otherStreet.addTag("highway", "trunk");
+    otherStreet.addTag("oneway", "true");
+    OsmWay blankPath = new OsmWay();
+
+    List<OsmWay> streets = OsmModule.getStreets(
+      List.of(street, footway, serviceRoad, otherStreet, blankPath)
+    );
+    assertEquals(3, streets.size());
+    assertTrue(streets.containsAll(List.of(serviceRoad, street, otherStreet)));
+  }
+
+  @Test
+  void testIsContinuationOfMarkedCrossing() {
+    OsmWay footway = new OsmWay();
+    footway.addTag("highway", "footway");
+    footway.getNodeRefs().add(new long[] { 10001, 10000, 10002 });
+
+    OsmWay crossing = new OsmWay();
+    crossing.getNodeRefs().add(new long[] { 10002, 10003, 10004 });
+    crossing.addTag("highway", "footway");
+    crossing.addTag("footway", "crossing");
+    crossing.addTag("crossing", "marked");
+
+    OsmWay otherCrossing = new OsmWay();
+    otherCrossing.getNodeRefs().add(new long[] { 10003, 10001, 10004 });
+    otherCrossing.addTag("highway", "footway");
+    otherCrossing.addTag("footway", "crossing");
+    otherCrossing.addTag("crossing", "unmarked");
+
+    // If more than one footway are adjacent to the crossing, there is no continuation.
+    OsmWay otherFootway = new OsmWay();
+    otherFootway.addTag("highway", "footway");
+    otherFootway.getNodeRefs().add(new long[] { 10002, 10006 });
+
+    assertEquals(
+      crossing,
+      OsmModule.getContinuedMarkedCrossing(footway, List.of(footway, crossing, otherCrossing))
+    );
+    assertNull(OsmModule.getContinuedMarkedCrossing(footway, List.of(footway, otherCrossing)));
+    assertNull(
+      OsmModule.getContinuedMarkedCrossing(footway, List.of(footway, crossing, otherFootway))
+    );
   }
 
   private record VertexPair(Vertex v0, Vertex v1) {}

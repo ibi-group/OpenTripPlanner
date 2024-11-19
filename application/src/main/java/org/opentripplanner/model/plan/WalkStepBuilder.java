@@ -120,10 +120,10 @@ public class WalkStepBuilder {
 
   @Nullable
   public String directionTextNoParens() {
-    var str = directionText.toString();
-    if (str == null) {
-      return null; //Avoid null reference exceptions with pathways which don't have names
+    if (directionText == null) {
+      return null; // Avoid null reference exceptions with pathways which don't have names
     }
+    var str = directionText.toString();
     int idx = str.indexOf('(');
     if (idx > 0) {
       return str.substring(0, idx - 1);
