@@ -7,7 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.EnumMap;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
-import org.opentripplanner.openstreetmap.model.OSMWay;
+import org.opentripplanner.osm.model.OsmWay;
 import org.opentripplanner.street.model.StreetTraversalPermission;
 import org.opentripplanner.street.model.edge.StreetEdge;
 import org.opentripplanner.street.model.edge.StreetEdgeBuilder;
@@ -33,21 +33,21 @@ class MobilityProfileRoutingTest {
     assertFalse(createServiceWay().isFootway());
   }
 
-  private static OSMWay createServiceWay() {
-    OSMWay serviceWay = new OSMWay();
+  private static OsmWay createServiceWay() {
+    OsmWay serviceWay = new OsmWay();
     serviceWay.addTag("highway", "service");
     return serviceWay;
   }
 
-  private static OSMWay createFootway() {
-    OSMWay footway = new OSMWay();
+  private static OsmWay createFootway() {
+    OsmWay footway = new OsmWay();
     footway.addTag("highway", "footway");
     return footway;
   }
 
   @Test
   void canRemoveWalkPermissionOnNonFootway() {
-    OSMWay serviceWay = createServiceWay();
+    OsmWay serviceWay = createServiceWay();
     StreetTraversalPermission permissions = StreetTraversalPermission.ALL;
     assertEquals(
       StreetTraversalPermission.BICYCLE_AND_CAR,
@@ -57,7 +57,7 @@ class MobilityProfileRoutingTest {
 
   @Test
   void canPreserveWalkPermissionOnFootway() {
-    OSMWay footway = createFootway();
+    OsmWay footway = createFootway();
     StreetTraversalPermission permissions = StreetTraversalPermission.ALL;
     assertEquals(
       StreetTraversalPermission.ALL,
