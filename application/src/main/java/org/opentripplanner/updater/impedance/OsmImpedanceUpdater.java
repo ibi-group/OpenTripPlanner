@@ -25,7 +25,6 @@ public class OsmImpedanceUpdater extends PollingGraphUpdater {
   private final String url;
   private final ImpedanceUpdateHandler updateHandler;
   private final HttpHeaders headers;
-  private final OtpHttpClient otpHttpClient;
   private WriteToGraphCallback saveResultOnGraph;
   private Map<String, MobilityProfileData> previousImpedances = Map.of();
 
@@ -35,7 +34,6 @@ public class OsmImpedanceUpdater extends PollingGraphUpdater {
     this.headers = HttpHeaders.of().add(config.headers()).build();
 
     this.updateHandler = new ImpedanceUpdateHandler();
-    this.otpHttpClient = new OtpHttpClientFactory().create(LOG);
     LOG.info("Creating impedance updater running every {}: {}", pollingPeriod(), url);
   }
 
@@ -52,7 +50,8 @@ public class OsmImpedanceUpdater extends PollingGraphUpdater {
   @Override
   protected void runPolling() {
     LOG.info("Fetching mobility impedances...");
-    try {
+    try (OtpHttpClientFactory clientFactory = new OtpHttpClientFactory()) {
+      OtpHttpClient otpHttpClient = clientFactory.create(LOG);
       final Map<String, MobilityProfileData> impedances = otpHttpClient.getAndMap(
         URI.create(url),
         this.headers.asMap(),
@@ -69,8 +68,8 @@ public class OsmImpedanceUpdater extends PollingGraphUpdater {
 
       // Handle update in graph writer runnable
       if (!changedImpedances.isEmpty()) {
-        saveResultOnGraph.execute((rtUpdateContext) ->
-          updateHandler.update(rtUpdateContext.graph(), changedImpedances)
+        saveResultOnGraph.execute(updateContext ->
+          updateHandler.update(updateContext.graph(), changedImpedances)
         );
       } else {
         LOG.error("Impedance data unchanged (not updating graph).");
