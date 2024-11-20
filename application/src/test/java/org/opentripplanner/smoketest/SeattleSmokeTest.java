@@ -36,6 +36,7 @@ import org.opentripplanner.smoketest.util.SmokeTestRequest;
 public class SeattleSmokeTest {
 
   private static final String CCSWW_ROUTE = "Volunteer Services: Northwest";
+  static final Coordinate LYNNWOOD_STA = new Coordinate(47.8154272,-122.2940715);
   static final Coordinate SODO = new Coordinate(47.5811, -122.3290);
   static final Coordinate CLYDE_HILL = new Coordinate(47.6316, -122.2173);
 

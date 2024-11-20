@@ -36,7 +36,7 @@ public class SmokeTest {
 
   public static final OtpApiClient API_CLIENT = new OtpApiClient(
     ZoneId.of("America/New_York"),
-    "http://localhost:8080"
+    System.getenv().getOrDefault("OTP_API_URL", "https://sound-transit-qa-otp.ibi-transit.com/")
   );
 
   /**
