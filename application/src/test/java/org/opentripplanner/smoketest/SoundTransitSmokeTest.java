@@ -34,10 +34,11 @@ public class SoundTransitSmokeTest {
       .withFarePrice(2.75f)
       .assertMatches();
 
-    plan = SmokeTest.basicRouteTest(
-      new SmokeTestRequest(LYNNWOOD_STA, SODO, modes),
-      List.of("WALK", "TRAM", "WALK")
-    );
+    plan =
+      SmokeTest.basicRouteTest(
+        new SmokeTestRequest(LYNNWOOD_STA, SODO, modes),
+        List.of("WALK", "TRAM", "WALK")
+      );
 
     SmokeTestItinerary
       .from(plan)
