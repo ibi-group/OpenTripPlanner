@@ -51,7 +51,7 @@ public class ImpedanceUpdateHandler {
         count++;
 
         // Amend the name with an indication that impedances were applied
-        se.setName(I18NString.of(String.format("%s%s", se.getName(), symbol)));
+        // se.setName(I18NString.of(String.format("%s%s", se.getName(), symbol)));
       }
     }
 
