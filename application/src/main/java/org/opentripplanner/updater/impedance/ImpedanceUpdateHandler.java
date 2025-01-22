@@ -49,7 +49,6 @@ public class ImpedanceUpdateHandler {
         // Update profile costs for this StreetEdge object if an impedance entry was found.
         se.profileCost = proRatedCosts;
         count++;
-
         // Amend the name with an indication that impedances were applied
         // se.setName(I18NString.of(String.format("%s%s", se.getName(), symbol)));
       }
