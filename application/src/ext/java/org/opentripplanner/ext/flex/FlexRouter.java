@@ -9,6 +9,7 @@ import java.util.Collection;
 import java.util.List;
 import javax.annotation.Nullable;
 import org.opentripplanner.astar.model.GraphPath;
+import org.opentripplanner.ext.flex.filter.FlexTripFilter;
 import org.opentripplanner.ext.flex.flexpathcalculator.DirectFlexPathCalculator;
 import org.opentripplanner.ext.flex.flexpathcalculator.FlexPathCalculator;
 import org.opentripplanner.ext.flex.flexpathcalculator.StreetFlexPathCalculator;
@@ -52,11 +53,13 @@ public class FlexRouter {
   private final int requestedTime;
   private final int requestedBookingTime;
   private final List<FlexServiceDate> dates;
+  private final FlexTripFilter flexTripFilter;
 
   public FlexRouter(
     Graph graph,
     TransitService transitService,
     FlexParameters flexParameters,
+    FlexTripFilter filters,
     Instant requestedTime,
     @Nullable Instant requestedBookingTime,
     int additionalPastSearchDays,
@@ -70,6 +73,7 @@ public class FlexRouter {
     this.streetAccesses = streetAccesses;
     this.streetEgresses = egressTransfers;
     this.flexIndex = transitService.getFlexIndex();
+    this.flexTripFilter = filters;
     this.callbackService = new CallbackAdapter();
     this.graphPathToItineraryMapper =
       new GraphPathToItineraryMapper(
@@ -114,7 +118,8 @@ public class FlexRouter {
       callbackService,
       accessFlexPathCalculator,
       egressFlexPathCalculator,
-      flexParameters.maxTransferDuration()
+      flexParameters.maxTransferDuration(),
+      flexTripFilter
     )
       .calculateDirectFlexPaths(streetAccesses, streetEgresses, dates, requestedTime, arriveBy);
 
@@ -139,7 +144,8 @@ public class FlexRouter {
     return new FlexAccessFactory(
       callbackService,
       accessFlexPathCalculator,
-      flexParameters.maxTransferDuration()
+      flexParameters.maxTransferDuration(),
+      flexTripFilter
     )
       .createFlexAccesses(streetAccesses, dates);
   }
@@ -149,7 +155,8 @@ public class FlexRouter {
     return new FlexEgressFactory(
       callbackService,
       egressFlexPathCalculator,
-      flexParameters.maxTransferDuration()
+      flexParameters.maxTransferDuration(),
+      flexTripFilter
     )
       .createFlexEgresses(streetEgresses, dates);
   }

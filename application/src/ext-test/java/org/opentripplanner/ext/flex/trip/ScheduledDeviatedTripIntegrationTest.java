@@ -21,6 +21,7 @@ import org.opentripplanner.ext.fares.DecorateWithFare;
 import org.opentripplanner.ext.flex.FlexIntegrationTestData;
 import org.opentripplanner.ext.flex.FlexParameters;
 import org.opentripplanner.ext.flex.FlexRouter;
+import org.opentripplanner.ext.flex.filter.FlexTripFilter;
 import org.opentripplanner.framework.application.OTPFeature;
 import org.opentripplanner.framework.geometry.EncodedPolyline;
 import org.opentripplanner.framework.i18n.I18NString;
@@ -104,6 +105,7 @@ class ScheduledDeviatedTripIntegrationTest {
       graph,
       new DefaultTransitService(timetableRepository),
       FlexParameters.defaultValues(),
+      FlexTripFilter.ALLOW_ALL,
       OffsetDateTime.parse("2021-11-12T10:15:24-05:00").toInstant(),
       null,
       1,
