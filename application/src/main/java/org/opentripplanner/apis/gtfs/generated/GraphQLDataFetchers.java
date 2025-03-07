@@ -1261,6 +1261,8 @@ public class GraphQLDataFetchers {
 
     public DataFetcher<String> label();
 
+    public DataFetcher<java.time.OffsetDateTime> lastUpdate();
+
     public DataFetcher<Long> lastUpdated();
 
     public DataFetcher<Double> lat();
