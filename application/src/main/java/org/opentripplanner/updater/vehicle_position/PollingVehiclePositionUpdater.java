@@ -68,17 +68,15 @@ public class PollingVehiclePositionUpdater extends PollingGraphUpdater {
     // Get update lists from update source
     List<VehiclePosition> updates = vehiclePositionSource.getPositions();
 
-    if (updates != null) {
-      // Handle updating trip positions via graph writer runnable
-      var runnable = new VehiclePositionUpdaterRunnable(
-        realtimeVehicleRepository,
-        vehiclePositionFeatures,
-        feedId,
-        fuzzyTripMatching,
-        updates
-      );
-      saveResultOnGraph.execute(runnable);
-    }
+    // Handle updating trip positions via graph writer runnable
+    var runnable = new VehiclePositionUpdaterRunnable(
+      realtimeVehicleRepository,
+      vehiclePositionFeatures,
+      feedId,
+      fuzzyTripMatching,
+      updates
+    );
+    saveResultOnGraph.execute(runnable);
   }
 
   @Override
