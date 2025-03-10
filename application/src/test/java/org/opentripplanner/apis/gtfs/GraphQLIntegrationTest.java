@@ -289,14 +289,14 @@ class GraphQLIntegrationTest {
     var occypancyVehicle = RealtimeVehicle
       .builder()
       .withTrip(trip)
-      .withTime(Instant.MAX)
+      .withTime(SERVICE_DATE.atStartOfDay(BERLIN).plusHours(16).toInstant())
       .withVehicleId(id("vehicle-1"))
       .withOccupancyStatus(FEW_SEATS_AVAILABLE)
       .build();
     var positionVehicle = RealtimeVehicle
       .builder()
       .withTrip(trip)
-      .withTime(Instant.MIN)
+      .withTime(SERVICE_DATE.atStartOfDay(BERLIN).plusHours(19).toInstant())
       .withVehicleId(id("vehicle-2"))
       .withLabel("vehicle2")
       .withCoordinates(new WgsCoordinate(60.0, 80.0))
