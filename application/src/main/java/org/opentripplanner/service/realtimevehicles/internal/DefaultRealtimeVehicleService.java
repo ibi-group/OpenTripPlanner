@@ -27,8 +27,7 @@ public class DefaultRealtimeVehicleService
    * This multimap is immutable and therefore thread-safe. It is updated using the copy-on-write
    * pattern so data races are avoided. This is re-enforced with the variable being volatile.
    */
-  private volatile ImmutableListMultimap<TripPattern, RealtimeVehicle> vehicles =
-    ImmutableListMultimap.of();
+  private volatile ImmutableListMultimap<TripPattern, RealtimeVehicle> vehicles = ImmutableListMultimap.of();
 
   private final TransitService transitService;
 

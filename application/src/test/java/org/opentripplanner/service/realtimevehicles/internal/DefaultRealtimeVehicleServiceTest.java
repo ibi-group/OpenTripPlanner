@@ -38,7 +38,8 @@ class DefaultRealtimeVehicleServiceTest {
     .withStopPattern(STOP_PATTERN)
     .build();
   private static final Instant TIME = Instant.ofEpochSecond(1000);
-  private static final RealtimeVehicle VEHICLE = RealtimeVehicle.builder()
+  private static final RealtimeVehicle VEHICLE = RealtimeVehicle
+    .builder()
     .withTime(TIME)
     .withCoordinates(GREENWICH)
     .build();
