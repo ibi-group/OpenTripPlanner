@@ -2,6 +2,7 @@ package org.opentripplanner.apis.gtfs;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.fail;
+import static org.opentripplanner._support.time.ZoneIds.BERLIN;
 import static org.opentripplanner.model.plan.PlanTestConstants.D10m;
 import static org.opentripplanner.model.plan.PlanTestConstants.T11_00;
 import static org.opentripplanner.model.plan.PlanTestConstants.T11_01;
@@ -23,6 +24,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
@@ -138,6 +140,8 @@ class GraphQLIntegrationTest {
   static final Instant ALERT_END_TIME = ALERT_START_TIME.plus(1, ChronoUnit.DAYS);
   private static final int TEN_MINUTES = 10 * 60;
 
+  private static final LocalDate SERVICE_DATE = LocalDate.of(2024, 1, 1);
+
   private static GraphQLRequestContext context;
 
   private static final Deduplicator DEDUPLICATOR = new Deduplicator();
@@ -188,7 +192,7 @@ class GraphQLIntegrationTest {
       .build();
     timetableRepository.addAgency(agency);
 
-    timetableRepository.initTimeZone(ZoneIds.BERLIN);
+    timetableRepository.initTimeZone(BERLIN);
     timetableRepository.index();
     var routes = Arrays
       .stream(TransitMode.values())
