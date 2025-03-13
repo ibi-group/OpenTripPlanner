@@ -55,17 +55,20 @@ class DefaultRealtimeVehicleServiceTest {
   @Test
   void clearFeed() {
     var service = service();
-    service.setRealtimeVehicles(FEED_ID, ImmutableListMultimap.of(PATTERN1, VEHICLE));
-    service.setRealtimeVehicles(FEED_ID, ImmutableListMultimap.of());
+    service.setRealtimeVehiclesForFeed(FEED_ID, ImmutableListMultimap.of(PATTERN1, VEHICLE));
+    service.setRealtimeVehiclesForFeed(FEED_ID, ImmutableListMultimap.of());
     assertThat(service.getRealtimeVehicles(PATTERN1)).isEmpty();
   }
 
   @Test
   void keepOtherFeeds() {
     var service = service();
-    service.setRealtimeVehicles(FEED_ID, ImmutableListMultimap.of(PATTERN1, VEHICLE));
-    service.setRealtimeVehicles(PATTERN2.getFeedId(), ImmutableListMultimap.of(PATTERN2, VEHICLE));
-    service.setRealtimeVehicles(FEED_ID, ImmutableListMultimap.of());
+    service.setRealtimeVehiclesForFeed(FEED_ID, ImmutableListMultimap.of(PATTERN1, VEHICLE));
+    service.setRealtimeVehiclesForFeed(
+      PATTERN2.getFeedId(),
+      ImmutableListMultimap.of(PATTERN2, VEHICLE)
+    );
+    service.setRealtimeVehiclesForFeed(FEED_ID, ImmutableListMultimap.of());
     assertEquals(List.of(VEHICLE), service.getRealtimeVehicles(PATTERN2));
   }
 
@@ -73,7 +76,7 @@ class DefaultRealtimeVehicleServiceTest {
   void originalPattern() {
     var service = service();
 
-    service.setRealtimeVehicles(FEED_ID, ImmutableListMultimap.of(PATTERN1, VEHICLE));
+    service.setRealtimeVehiclesForFeed(FEED_ID, ImmutableListMultimap.of(PATTERN1, VEHICLE));
     var updates = service.getRealtimeVehicles(PATTERN1);
     assertEquals(List.of(VEHICLE), updates);
   }
@@ -86,7 +89,7 @@ class DefaultRealtimeVehicleServiceTest {
       .withOriginalTripPattern(PATTERN1)
       .withCreatedByRealtimeUpdater(true)
       .build();
-    service.setRealtimeVehicles(FEED_ID, ImmutableListMultimap.of(realtimePattern, VEHICLE));
+    service.setRealtimeVehiclesForFeed(FEED_ID, ImmutableListMultimap.of(realtimePattern, VEHICLE));
     var updates = service.getRealtimeVehicles(PATTERN1);
     assertEquals(List.of(VEHICLE), updates);
   }
