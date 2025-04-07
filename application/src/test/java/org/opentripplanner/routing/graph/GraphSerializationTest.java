@@ -174,6 +174,7 @@ public class GraphSerializationTest {
       "dateTime",
       "notesForEdge",
       "uniqueMatchers",
+      "linker",
       // for some reason the object differ struggles with ImmutableSetMultimap
       "stopVerticesByParentId"
     );
