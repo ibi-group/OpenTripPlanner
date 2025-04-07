@@ -106,7 +106,7 @@ public class LinkStopToPlatformTest {
     }
 
     timetableRepository.index();
-    graph.index(timetableRepository.getSiteRepository());
+    graph.index();
 
     for (RegularStop s : transitStops) {
       var v = TransitStopVertex.of().withStop(s).build();

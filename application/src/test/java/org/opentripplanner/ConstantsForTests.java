@@ -186,7 +186,7 @@ public class ConstantsForTests {
         List.of(new RouteRequest())
       ).buildGraph();
 
-      graph.index(timetableRepository.getSiteRepository());
+      graph.index();
 
       return new TestOtpModel(graph, timetableRepository);
     } catch (Exception e) {
@@ -331,7 +331,7 @@ public class ConstantsForTests {
     module.buildGraph();
 
     timetableRepository.index();
-    graph.index(timetableRepository.getSiteRepository());
+    graph.index();
   }
 
   private static void addPortlandVehicleRentals(Graph graph) {

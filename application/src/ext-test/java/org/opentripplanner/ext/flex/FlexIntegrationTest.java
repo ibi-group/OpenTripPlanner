@@ -26,7 +26,6 @@ import org.opentripplanner.gtfs.graphbuilder.GtfsBundle;
 import org.opentripplanner.gtfs.graphbuilder.GtfsModule;
 import org.opentripplanner.model.GenericLocation;
 import org.opentripplanner.model.calendar.ServiceDateInterval;
-import org.opentripplanner.model.modes.ExcludeAllTransitFilter;
 import org.opentripplanner.model.plan.Itinerary;
 import org.opentripplanner.routing.api.RoutingService;
 import org.opentripplanner.routing.api.request.RouteRequest;
@@ -211,7 +210,7 @@ public class FlexIntegrationTest {
     ).buildGraph();
 
     timetableRepository.index();
-    graph.index(timetableRepository.getSiteRepository());
+    graph.index();
   }
 
   private Itinerary getItinerary(GenericLocation from, GenericLocation to, int index) {
