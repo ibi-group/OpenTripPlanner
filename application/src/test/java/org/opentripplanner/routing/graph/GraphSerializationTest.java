@@ -173,7 +173,9 @@ public class GraphSerializationTest {
       "realtimeRaptorTransitData",
       "dateTime",
       "notesForEdge",
-      "uniqueMatchers"
+      "uniqueMatchers",
+      // for some reason the object differ struggles with ImmutableSetMultimap
+      "stopVerticesByParentId"
     );
     // Edges have very detailed String representation including lat/lon coordinates and OSM IDs. They should be unique.
     objectDiffer.setKeyExtractor("turnRestrictions", Object::toString);
