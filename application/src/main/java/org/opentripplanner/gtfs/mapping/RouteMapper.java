@@ -84,7 +84,7 @@ class RouteMapper {
     lhs.withBikesAllowed(BikeAccessMapper.mapForRoute(rhs));
     if (rhs.getNetworkId() != null) {
       var networkId = GroupOfRoutes.of(
-        new FeedScopedId(rhs.getId().getAgencyId(), rhs.getNetworkId())
+        idFactory.createId(rhs.getNetworkId())
       ).build();
       lhs.getGroupsOfRoutes().add(networkId);
     }
