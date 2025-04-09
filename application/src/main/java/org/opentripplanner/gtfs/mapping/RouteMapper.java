@@ -83,9 +83,7 @@ class RouteMapper {
     lhs.withTextColor(rhs.getTextColor());
     lhs.withBikesAllowed(BikeAccessMapper.mapForRoute(rhs));
     if (rhs.getNetworkId() != null) {
-      var networkId = GroupOfRoutes.of(
-        idFactory.createId(rhs.getNetworkId())
-      ).build();
+      var networkId = GroupOfRoutes.of(idFactory.createId(rhs.getNetworkId())).build();
       lhs.getGroupsOfRoutes().add(networkId);
     }
 

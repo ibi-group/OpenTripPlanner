@@ -24,7 +24,7 @@ import org.opentripplanner.transit.model.organization.Branding;
 class RouteMapperTest {
 
   private static final String FEED_ID = "A";
-  
+
   private static final Agency AGENCY = new GtfsTestData().agency;
 
   private static final AgencyAndId ROUTE_ID = new AgencyAndId(FEED_ID, "1");
