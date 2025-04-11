@@ -5,6 +5,7 @@ import java.util.Collection;
 import java.util.Currency;
 import java.util.List;
 import java.util.Optional;
+import org.opentripplanner.ext.fares.impl.gtfs.DefaultFareService;
 import org.opentripplanner.ext.fares.model.FareRuleSet;
 import org.opentripplanner.model.fare.FareProduct;
 import org.opentripplanner.model.fare.ItineraryFare;
@@ -86,14 +87,11 @@ public class HighestFareInFreeTransferWindowFareService extends DefaultFareServi
       currentTransferWindowCost = Money.max(currentTransferWindowCost, rideCost.orElse(zero));
     }
     cost = cost.plus(currentTransferWindowCost);
-    var fp = new FareProduct(
+    var fp = FareProduct.of(
       new FeedScopedId("fares", fareType.name()),
       fareType.name(),
-      cost,
-      null,
-      null,
-      null
-    );
+      cost
+    ).build();
     var fare = ItineraryFare.empty();
     if (cost.greaterThan(zero)) {
       fare.addItineraryProducts(List.of(fp));

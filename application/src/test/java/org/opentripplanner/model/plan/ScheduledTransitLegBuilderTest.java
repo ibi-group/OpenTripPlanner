@@ -4,7 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.opentripplanner.ext.fares.impl.FareModelForTest.FARE_PRODUCT_USE;
+import static org.opentripplanner.ext.fares.impl._support.FareModelForTest.FARE_PRODUCT_USE;
 import static org.opentripplanner.transit.model._data.TimetableRepositoryForTest.id;
 
 import java.time.LocalDate;
@@ -12,7 +12,6 @@ import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.opentripplanner._support.time.ZoneIds;
-import org.opentripplanner.ext.fares.impl.FareModelForTest;
 import org.opentripplanner.framework.i18n.I18NString;
 import org.opentripplanner.routing.alertpatch.TransitAlert;
 import org.opentripplanner.transit.model._data.TimetableRepositoryForTest;

@@ -42,11 +42,11 @@ import org.locationtech.jts.geom.Coordinate;
 import org.opentripplanner._support.text.I18NStrings;
 import org.opentripplanner._support.time.ZoneIds;
 import org.opentripplanner.ext.fares.ItineraryFaresDecorator;
-import org.opentripplanner.ext.fares.impl.DefaultFareService;
+import org.opentripplanner.ext.fares.impl.gtfs.DefaultFareService;
 import org.opentripplanner.framework.geometry.WgsCoordinate;
 import org.opentripplanner.framework.i18n.I18NString;
 import org.opentripplanner.framework.i18n.NonLocalizedString;
-import org.opentripplanner.framework.model.Grams;
+import org.opentripplanner.framework.model.Gram;
 import org.opentripplanner.graph_builder.issue.api.DataImportIssueStore;
 import org.opentripplanner.model.FeedInfo;
 import org.opentripplanner.model.RealTimeTripUpdate;
@@ -392,7 +392,7 @@ class GraphQLIntegrationTest {
 
     i1 = i1.copyOf().withAccessibilityScore(0.5f).build();
 
-    var emissions = new Emissions(new Grams(123.0));
+    var emissions = new Emissions(new Gram(123.0));
     i1 = i1.copyOf().withEmissionsPerPerson(emissions).build();
 
     var alerts = ListUtils.combine(List.of(alert), getTransitAlert(entitySelector));
@@ -538,14 +538,10 @@ class GraphQLIntegrationTest {
   }
 
   private static FareProduct fareProduct(String name) {
-    return new FareProduct(
-      id(name),
-      name,
-      Money.euros(10),
-      null,
-      new RiderCategory(id("senior-citizens"), "Senior citizens", null),
-      new FareMedium(id("oyster"), "TfL Oyster Card")
-    );
+    return FareProduct.of(id(name), name, Money.euros(10))
+      .withCategory(new RiderCategory(id("senior-citizens"), "Senior citizens", null))
+      .withMedium(new FareMedium(id("oyster"), "TfL Oyster Card"))
+      .build();
   }
 
   /**

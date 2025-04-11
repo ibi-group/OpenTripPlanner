@@ -1,25 +1,29 @@
 package org.opentripplanner.gtfs.mapping;
 
-import static org.opentripplanner.gtfs.mapping.AgencyAndIdMapper.mapAgencyAndId;
-
 import java.time.Duration;
 import java.util.Collection;
+import java.util.List;
 import java.util.Objects;
+import javax.annotation.Nullable;
 import org.opentripplanner.ext.fares.model.FareTransferRule;
 import org.opentripplanner.graph_builder.issue.api.DataImportIssueStore;
+import org.opentripplanner.model.fare.FareProduct;
 import org.opentripplanner.transit.model.framework.FeedScopedId;
 
-public class FareTransferRuleMapper {
+class FareTransferRuleMapper {
 
   public final int MISSING_VALUE = -999;
 
+  private final IdFactory idFactory;
   private final DataImportIssueStore issueStore;
   private final FareProductMapper fareProductMapper;
 
-  public FareTransferRuleMapper(
+  FareTransferRuleMapper(
+    IdFactory idFactory,
     FareProductMapper fareProductMapper,
     DataImportIssueStore issueStore
   ) {
+    this.idFactory = idFactory;
     this.fareProductMapper = fareProductMapper;
     this.issueStore = issueStore;
   }
@@ -31,30 +35,36 @@ public class FareTransferRuleMapper {
   }
 
   private FareTransferRule doMap(org.onebusaway.gtfs.model.FareTransferRule rhs) {
-    var fareProductId = mapAgencyAndId(rhs.getFareProductId());
-    var products = fareProductMapper.getByFareProductId(fareProductId);
-    if (products.isEmpty()) {
-      issueStore.add(
-        "UnknownFareProductId",
-        "Fare product with id %s referenced by fare transfer rule with id %s not found.".formatted(
-            fareProductId,
-            rhs.getId()
-          )
-      );
-      return null;
-    }
+    var fareProductId = idFactory.createId(rhs.getFareProductId());
+    final var products = findFareProducts(fareProductId, rhs.getId());
 
     Duration duration = null;
     if (rhs.getDurationLimit() != MISSING_VALUE) {
       duration = Duration.ofSeconds(rhs.getDurationLimit());
     }
     return new FareTransferRule(
-      new FeedScopedId(fareProductId.getFeedId(), rhs.getId()),
-      AgencyAndIdMapper.mapAgencyAndId(rhs.getFromLegGroupId()),
-      AgencyAndIdMapper.mapAgencyAndId(rhs.getToLegGroupId()),
+      idFactory.createId(rhs.getId()),
+      idFactory.createId(rhs.getFromLegGroupId()),
+      idFactory.createId(rhs.getToLegGroupId()),
       rhs.getTransferCount(),
       duration,
       products
     );
+  }
+
+  private Collection<FareProduct> findFareProducts(
+    @Nullable FeedScopedId fareProductId,
+    String ruleId
+  ) {
+    if (fareProductId == null) {
+      return List.of();
+    }
+    var products = fareProductMapper.getByFareProductId(fareProductId);
+    if (products.isEmpty()) {
+      throw new IllegalArgumentException(
+        "Cannot find fare product '%s' for transfer rule '%s'".formatted(fareProductId, ruleId)
+      );
+    }
+    return products;
   }
 }

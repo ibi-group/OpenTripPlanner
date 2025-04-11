@@ -9,7 +9,7 @@ import static org.opentripplanner.standalone.config.framework.json.JsonSupport.j
 
 import java.util.Set;
 import org.junit.jupiter.api.Test;
-import org.opentripplanner.ext.fares.impl.DefaultFareService;
+import org.opentripplanner.ext.fares.impl.gtfs.DefaultFareService;
 import org.opentripplanner.standalone.config.framework.json.NodeAdapter;
 
 public class BuildConfigTest {

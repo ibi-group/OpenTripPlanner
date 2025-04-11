@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
+import org.opentripplanner.ext.fares.impl.gtfs.DefaultFareService;
 import org.opentripplanner.ext.fares.model.FareRuleSet;
 import org.opentripplanner.model.fare.FareProduct;
 import org.opentripplanner.model.fare.ItineraryFare;
@@ -403,14 +404,11 @@ public class AtlantaFareService extends DefaultFareService {
     for (ATLTransfer transfer : transfers) {
       cost = cost.plus(transfer.getTotal());
     }
-    var fareProduct = new FareProduct(
+    var fareProduct = FareProduct.of(
       new FeedScopedId(FEED_ID, fareType.name()),
       fareType.name(),
-      cost,
-      null,
-      null,
-      null
-    );
+      cost
+    ).build();
     var fare = ItineraryFare.empty();
     fare.addItineraryProducts(List.of(fareProduct));
     return fare;
