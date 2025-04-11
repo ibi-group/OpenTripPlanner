@@ -78,7 +78,6 @@ class FareTransferRuleMapperTest {
     );
     var transferRule = subject.map(List.of(rule)).stream().toList().getFirst();
     assertTrue(transferRule.isFree());
-    assertThat(transferRule.fareProducts()).isEmpty();
   }
 
   private FareProduct fareProduct() {

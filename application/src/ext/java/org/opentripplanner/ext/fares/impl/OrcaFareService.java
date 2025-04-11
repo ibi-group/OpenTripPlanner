@@ -537,7 +537,6 @@ public class OrcaFareService extends DefaultFareService {
     }
     var duration = Duration.ZERO;
     var fareProduct = FareProduct.of(id, "rideCost", totalFare)
-      .withValidity(duration)
       .withCategory(riderCategory)
       .withMedium(medium)
       .build();
@@ -545,7 +544,6 @@ public class OrcaFareService extends DefaultFareService {
     // If a transfer was used, then also add a transfer fare product.
     if (transferDiscount.isPositive()) {
       var transferFareProduct = FareProduct.of(id, "transfer", transferDiscount)
-        .withValidity(duration)
         .withCategory(riderCategory)
         .withMedium(medium)
         .build();
