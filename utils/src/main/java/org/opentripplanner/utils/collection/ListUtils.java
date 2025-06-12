@@ -5,6 +5,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
 import javax.annotation.Nullable;
@@ -90,5 +91,26 @@ public class ListUtils {
       throw new IllegalArgumentException("The list must have at least " + minLimit + " elements.");
     }
     return list;
+  }
+
+  /**
+   * Take a list of items and split it into a list of "overlapping" pairs. For example
+   * [A,B,C,D] becomes [[A,B],[B,C],[C,D]].
+   */
+  public static <T> List<Pair<T>> partitionIntoOverlappingPairs(List<T> input) {
+    var output = new ArrayList<Pair<T>>(input.size());
+    for (int i = 0; i < input.size() - 1; i++) {
+      T first = input.get(i);
+      T second = input.get(i + 1);
+      output.add(new Pair<>(first, second));
+    }
+    return output;
+  }
+
+  public record Pair<T>(T first, T second) {
+    public Pair {
+      Objects.requireNonNull(first);
+      Objects.requireNonNull(second);
+    }
   }
 }

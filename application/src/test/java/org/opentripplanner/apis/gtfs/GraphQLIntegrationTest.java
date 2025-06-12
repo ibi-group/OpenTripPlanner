@@ -42,7 +42,7 @@ import org.locationtech.jts.geom.Coordinate;
 import org.opentripplanner._support.text.I18NStrings;
 import org.opentripplanner._support.time.ZoneIds;
 import org.opentripplanner.ext.fares.ItineraryFaresDecorator;
-import org.opentripplanner.ext.fares.impl.DefaultFareService;
+import org.opentripplanner.ext.fares.impl.gtfs.DefaultFareService;
 import org.opentripplanner.framework.geometry.WgsCoordinate;
 import org.opentripplanner.framework.i18n.I18NString;
 import org.opentripplanner.framework.i18n.NonLocalizedString;
@@ -52,6 +52,7 @@ import org.opentripplanner.model.RealTimeTripUpdate;
 import org.opentripplanner.model.TimetableSnapshot;
 import org.opentripplanner.model.calendar.CalendarServiceData;
 import org.opentripplanner.model.fare.FareMedium;
+import org.opentripplanner.model.fare.FareOffer.DefaultFareOffer;
 import org.opentripplanner.model.fare.FareProduct;
 import org.opentripplanner.model.fare.ItineraryFare;
 import org.opentripplanner.model.fare.RiderCategory;
@@ -385,8 +386,8 @@ class GraphQLIntegrationTest {
     fares.addItineraryProducts(List.of(dayPass));
 
     var singleTicket = fareProduct("single-ticket");
-    fares.addFareProduct(railLeg, singleTicket);
-    fares.addFareProduct(busLeg, singleTicket);
+    fares.addFareProduct(railLeg, new DefaultFareOffer(singleTicket));
+    fares.addFareProduct(busLeg, new DefaultFareOffer(singleTicket));
 
     i1 = ItineraryFaresDecorator.decorateItineraryWithFare(i1, fares);
 
@@ -428,7 +429,7 @@ class GraphQLIntegrationTest {
     defaultVehicleRentalService.addVehicleRentalStation(RENTAL_VEHICLE_1);
     defaultVehicleRentalService.addVehicleRentalStation(RENTAL_VEHICLE_2);
 
-    var routeRequest = new RouteRequest();
+    var routeRequest = RouteRequest.defaultValue();
     context = new GraphQLRequestContext(
       new TestRoutingService(List.of(i1)),
       transitService,

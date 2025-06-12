@@ -26,7 +26,7 @@ import org.onebusaway.gtfs.model.StopAreaElement;
 import org.onebusaway.gtfs.serialization.GtfsReader;
 import org.onebusaway.gtfs.services.GenericMutableDao;
 import org.onebusaway.gtfs.services.GtfsMutableRelationalDao;
-import org.opentripplanner.ext.fares.impl.DefaultFareServiceFactory;
+import org.opentripplanner.ext.fares.impl.gtfs.DefaultFareServiceFactory;
 import org.opentripplanner.ext.flex.FlexTripsMapper;
 import org.opentripplanner.framework.application.OTPFeature;
 import org.opentripplanner.graph_builder.issue.api.DataImportIssueStore;
@@ -338,7 +338,6 @@ public class GtfsModule implements GraphBuilderModule {
       if (entityClass == Agency.class) {
         for (Agency agency : reader.getAgencies()) {
           String agencyId = agency.getId();
-          LOG.info("This Agency has the ID {}", agencyId);
           // Somehow, when the agency's id field is missing, OBA replaces it with the agency's name.
           // TODO Figure out how and why this is happening.
           if (agencyId == null || agencyIdsSeen.contains(gtfsFeedId + agencyId)) {

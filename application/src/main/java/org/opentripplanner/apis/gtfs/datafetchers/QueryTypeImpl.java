@@ -34,8 +34,8 @@ import org.opentripplanner.apis.gtfs.mapping.routerequest.LegacyRouteRequestMapp
 import org.opentripplanner.apis.gtfs.mapping.routerequest.RouteRequestMapper;
 import org.opentripplanner.apis.gtfs.support.filter.PatternByDateFilterUtil;
 import org.opentripplanner.apis.gtfs.support.time.LocalDateRangeUtil;
-import org.opentripplanner.ext.fares.impl.DefaultFareService;
-import org.opentripplanner.ext.fares.impl.GtfsFaresService;
+import org.opentripplanner.ext.fares.impl.gtfs.DefaultFareService;
+import org.opentripplanner.ext.fares.impl.gtfs.GtfsFaresService;
 import org.opentripplanner.ext.fares.model.FareRuleSet;
 import org.opentripplanner.graph_builder.issue.api.DataImportIssueStore;
 import org.opentripplanner.gtfs.mapping.DirectionMapper;
@@ -974,7 +974,7 @@ public class QueryTypeImpl implements GraphQLDataFetchers.GraphQLQueryType {
     RoutingResponse res = context.routingService().route(request);
     return DataFetcherResult.<RoutingResponse>newResult()
       .data(res)
-      .localContext(Map.of("locale", request.locale()))
+      .localContext(Map.of("locale", request.preferences().locale()))
       .build();
   }
 

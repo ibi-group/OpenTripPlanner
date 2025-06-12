@@ -497,6 +497,31 @@ type DepartureRow implements Node & PlaceInterface {
   ): [Stoptime]
 }
 
+"""
+A (possibly discounted) fare product that requires another fare product to be purchased previously
+in order to be valid.
+
+For example, when taking the train into a city, you might get a discounted "transfer fare" when
+switching to the bus for the second leg.
+"""
+type DependentFareProduct implements FareProduct {
+  "The fare product is _not_ valid without purchasing at least _one of"
+  dependencies(filter: DependentFareProductFilter = ALL): [FareProduct!]!
+  id: String!
+  """
+  The 'medium' that this product applies to, for example "Oyster Card" or "Berlin Ticket App".
+    
+  This communicates to riders that a specific way of buying or keeping this product is required.
+  """
+  medium: FareMedium
+  "Human readable name of the product, for example example \"Day pass\" or \"Single ticket\"."
+  name: String!
+  "The price of the product"
+  price: Money!
+  "The category of riders this product applies to, for example students or pensioners."
+  riderCategory: RiderCategory
+}
+
 type Emissions {
   "CO₂ emissions in grams."
   co2: Grams
@@ -3075,6 +3100,22 @@ enum CyclingOptimizationType {
   SHORTEST_DURATION
 }
 
+"""
+Dependent fare products can lead to many combinations of fares, however it is often not useful
+information to the passenger.
+
+This enum allows filtering of the dependencies.
+
+Since it is recognised that this is not covered well in the specification, it is discussed here:
+https://github.com/google/transit/pull/423
+"""
+enum DependentFareProductFilter {
+  "Show all dependencies"
+  ALL
+  "Show only dependencies where the rider category and medium is the same es the main fare product."
+  MATCH_CATEGORY_AND_MEDIUM
+}
+
 "Entities, which are relevant for a feed and can contain alerts"
 enum FeedAlertType {
   "Alerts affecting the feed's agencies"
@@ -4603,6 +4644,52 @@ input TransferPreferencesInput {
   slack: Duration
 }
 
+"""
+A collection of selectors for what routes/agencies should be included in or excluded from the search.
+
+The `include` is always applied to select the initial set, then `exclude` to remove elements.
+If only `exclude` is present, the exclude is applied to the existing set of results.
+
+Therefore, if an entity is both included _and_ excluded the exclusion takes precedence.
+"""
+input TransitFilterInput {
+  """
+  A list of selectors for what routes/agencies should be excluded during search.
+    
+  In order to be excluded, a route/agency has to match with at least one selector.
+    
+  An empty list or a list containing `null` is forbidden.
+  """
+  exclude: [TransitFilterSelectInput!]
+  """
+  A list of selectors for what routes/agencies should be allowed during the search.
+    
+  If route/agency matches with at least one selector it will be included.
+    
+  An empty list or a list containing `null` is forbidden.
+  """
+  include: [TransitFilterSelectInput!]
+}
+
+"""
+A list of selectors for including or excluding entities from the routing results. Null
+means everything is allowed to be returned and empty lists are not allowed.
+"""
+input TransitFilterSelectInput @oneOf {
+  """
+  Set of ids for agencies that should be included in/excluded from the search.
+    
+  Format: `FeedId:AgencyId`
+  """
+  agencies: [String!]
+  """
+  Set of ids for routes that should be included in/excluded from the search.
+    
+  Format: `FeedId:AgencyId`
+  """
+  routes: [String!]
+}
+
 "Costs related to using a transit mode."
 input TransitModePreferenceCostInput {
   "A cost multiplier of transit leg travel time."
@@ -4618,6 +4705,57 @@ input TransitPreferencesInput {
   can be found under the street mode preferences.
   """
   board: BoardPreferencesInput
+  """
+  A list of filters for which trips should be included or excluded. A trip will be considered in the
+  result if it is included by at least one filter and isn't excluded by another one at the same time.
+    
+  An empty list of filters or no value means that all trips should be included.
+    
+  **AND/OR Logic**
+    
+  Several filters can be defined and form an OR-condition.
+    
+  The following example means "include all trips with `F:route1` _or_ `F:agency1`":
+    
+  ```
+  filters: [
+    {
+      include: {
+        routes: ["F:route1"]
+      }
+    },
+    { 
+      include: {
+        agencies: ["F:agency1"]
+      }
+    }
+  }]
+  ```
+    
+  The following example means "include all trips of `F:agency1` _and_ exclude `F:route1`":
+    
+  ```
+  filters: [
+    {
+      include: {
+        agencies: ["F:agency1"]
+      },
+      exclude: {
+        routes: ["F:route1"]
+      }
+    }
+  ]
+  ```
+    
+  Be aware of the following pitfalls:
+    - It is easy to construct AND-conditions that can lead to zero results.
+    - OR-conditions that have an element which consists of only an exclude are likely to be
+      unwanted and may lead to unexpected results.
+    
+  **Note**: This parameter also interacts with the modes set in `modes.transit` by forming
+  an AND-condition.
+  """
+  filters: [TransitFilterInput!]
   "Preferences related to cancellations and real-time."
   timetable: TimetablePreferencesInput
   "Preferences related to transfers between transit vehicles (typically between stops)."
