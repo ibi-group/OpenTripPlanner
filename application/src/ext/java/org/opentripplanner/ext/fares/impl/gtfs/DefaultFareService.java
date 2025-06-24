@@ -21,9 +21,8 @@ import org.opentripplanner.ext.fares.impl.HighestFareInFreeTransferWindowFareSer
 import org.opentripplanner.ext.fares.model.FareAttribute;
 import org.opentripplanner.ext.fares.model.FareRuleSet;
 import org.opentripplanner.ext.flex.FlexibleTransitLeg;
-import org.opentripplanner.model.fare.FareOffer.DefaultFareOffer;
+import org.opentripplanner.model.fare.FareOffer;
 import org.opentripplanner.model.fare.FareProduct;
-import org.opentripplanner.model.fare.FareProductUse;
 import org.opentripplanner.model.fare.ItineraryFare;
 import org.opentripplanner.model.plan.Itinerary;
 import org.opentripplanner.model.plan.Leg;
@@ -180,7 +179,7 @@ public class DefaultFareService implements FareService {
   ) {
     FareSearch r = performSearch(fareType, legs, fareRules);
 
-    Multimap<Leg, FareProductUse> fareProductUses = LinkedHashMultimap.create();
+    Multimap<Leg, FareOffer> fareProductUses = LinkedHashMultimap.create();
     int start = 0;
     int end = legs.size() - 1;
     while (start <= end) {
@@ -218,13 +217,8 @@ public class DefaultFareService implements FareService {
       }
 
       if (!applicableLegs.isEmpty()) {
-        var use = new FareProductUse(
-          product.uniqueInstanceId(applicableLegs.getFirst().startTime()),
-          new DefaultFareOffer(product)
-        );
-        applicableLegs.forEach(leg -> {
-          fareProductUses.put(leg, use);
-        });
+        var offer = FareOffer.of(applicableLegs.getFirst().startTime(), product);
+        applicableLegs.forEach(leg -> fareProductUses.put(leg, offer));
       }
 
       start = via + 1;
