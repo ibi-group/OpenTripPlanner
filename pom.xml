@@ -88,6 +88,9 @@
         <plugin.prettier.goal>write</plugin.prettier.goal>
         <plugin.prettier.skip>false</plugin.prettier.skip>
         <skip-source-and-javadoc>true</skip-source-and-javadoc>
+
+        <junit.tags.included></junit.tags.included>
+        <junit.tags.excluded>smoke-test</junit.tags.excluded>
     </properties>
 
     <distributionManagement>
@@ -130,6 +133,9 @@
                 <configuration>
                     <!-- Target Java version -->
                     <release>21</release>
+                    <compilerArgs>
+                        <arg>-parameters</arg>
+                    </compilerArgs>
                 </configuration>
             </plugin>
             <plugin>
@@ -252,6 +258,8 @@
                         <printStderrOnSuccess>false</printStderrOnSuccess>
                         <theme>UNICODE</theme>
                     </statelessTestsetInfoReporter>
+                    <excludedGroups>${junit.tags.excluded}</excludedGroups>
+                    <groups>${junit.tags.included}</groups>
                 </configuration>
             </plugin>
             <!-- code coverage report -->

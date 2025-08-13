@@ -50,3 +50,8 @@ graph.obj
 
 # draw.io backup files
 *.svg.bkp
+
+smoke-tests/*.jar
+smoke-tests/**/*.obj
+smoke-tests/**/*.pbf
+smoke-tests/**/*.zip
