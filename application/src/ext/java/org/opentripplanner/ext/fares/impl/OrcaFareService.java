@@ -3,10 +3,12 @@ package org.opentripplanner.ext.fares.impl;
 import static org.opentripplanner.transit.model.basic.Money.ZERO_USD;
 import static org.opentripplanner.transit.model.basic.Money.usDollars;
 
+import com.google.common.collect.LinkedHashMultimap;
 import com.google.common.collect.Lists;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.ZonedDateTime;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Currency;
 import java.util.HashMap;
@@ -21,6 +23,7 @@ import org.opentripplanner.framework.i18n.I18NString;
 import org.opentripplanner.model.fare.FareMedium;
 import org.opentripplanner.model.fare.FareOffer;
 import org.opentripplanner.model.fare.FareProduct;
+import org.opentripplanner.model.fare.FareProductUse;
 import org.opentripplanner.model.fare.ItineraryFare;
 import org.opentripplanner.model.fare.RiderCategory;
 import org.opentripplanner.model.plan.Leg;
@@ -32,6 +35,7 @@ import org.opentripplanner.transit.model.network.Route;
 public class OrcaFareService extends DefaultFareService {
 
   private static final Duration MAX_TRANSFER_DISCOUNT_DURATION = Duration.ofHours(2);
+  private final Map<String, TransferData> perAgencyTransferDiscount = new HashMap<>();
 
   public static final String COMM_TRANS_AGENCY_ID = "29";
   public static final String COMM_TRANS_FLEX_AGENCY_ID = "4969";
@@ -61,6 +65,8 @@ public class OrcaFareService extends DefaultFareService {
 
   protected enum TransferType {
     ORCA_INTERAGENCY_TRANSFER,
+    KCM_PAPER_TRANSFER,
+    KT_PAPER_TRANSFER,
     SAME_AGENCY_TRANSFER,
     NO_TRANSFER,
   }
@@ -96,6 +102,16 @@ public class OrcaFareService extends DefaultFareService {
         return TransferType.SAME_AGENCY_TRANSFER;
       }
       return TransferType.NO_TRANSFER;
+    }
+
+    private record FareProductTime(ZonedDateTime startTime, FareProduct fareProduct) {
+      public boolean isValidAt(ZonedDateTime checkTime) {
+        Duration validity = fareProduct.validity();
+        if (validity == null) {
+          return false;
+        }
+        return startTime.plus(validity).isAfter(checkTime);
+      }
     }
 
     /**
@@ -444,13 +460,9 @@ public class OrcaFareService extends DefaultFareService {
     Collection<FareRuleSet> fareRules
   ) {
     var fare = ItineraryFare.empty();
-    Money cost = Money.ZERO_USD;
-    var orcaFareDiscount = new TransferData();
-    HashMap<String, TransferData> perAgencyTransferDiscount = new HashMap<>();
-
+    var purcahsedFareProducts = new ArrayList<RideType.FareProductTime>();
     for (Leg leg : legs) {
       RideType rideType = getRideType(leg);
-      assert rideType != null;
       Optional<Money> singleLegPrice = getRidePrice(leg, FareType.regular, fareRules);
       Optional<Money> optionalLegFare = singleLegPrice.flatMap(slp ->
         getLegFare(fareType, rideType, slp, leg)
@@ -461,50 +473,87 @@ public class OrcaFareService extends DefaultFareService {
       }
       Money legFare = optionalLegFare.get();
 
+      var validFareProducts = purcahsedFareProducts
+        .stream()
+        .filter(fp -> fp.isValidAt(leg.startTime()))
+        .toList();
+
       var transferType = rideType.getTransferType(fareType);
       if (transferType == TransferType.ORCA_INTERAGENCY_TRANSFER) {
         // Important to get transfer discount before calculating next leg price
-        var transferDiscount = orcaFareDiscount.getTransferDiscount();
-        var discountedFare = orcaFareDiscount.getDiscountedLegPrice(leg, legFare);
-        addLegFareProduct(
-          leg,
-          fare,
-          fareType,
-          discountedFare,
-          legFare.greaterThan(ZERO_USD) ? transferDiscount : ZERO_USD
+        var validOrcaFareProducts = validFareProducts
+          .stream()
+          .filter(fp -> fp.fareProduct.medium().equals(ELECTRONIC_MEDIUM));
+        var totalAlreadyPurchased = validOrcaFareProducts.reduce(
+          ZERO_USD,
+          (subtotal, el) -> subtotal.plus(el.fareProduct().price()),
+          Money::plus
         );
-        cost = cost.plus(discountedFare);
-      } else if (transferType == TransferType.SAME_AGENCY_TRANSFER) {
-        TransferData transferData;
-        if (perAgencyTransferDiscount.containsKey(leg.agency().getName())) {
-          transferData = perAgencyTransferDiscount.get(leg.agency().getName());
-        } else {
-          transferData = new TransferData();
-          perAgencyTransferDiscount.put(leg.agency().getName(), transferData);
+        var additionalFareRequired = legFare.minus(totalAlreadyPurchased);
+        fare.addFareProductUses(
+          createFareProductUseMap(
+            leg,
+            validFareProducts
+              .stream()
+              .filter(fp -> fp.fareProduct.medium().equals(ELECTRONIC_MEDIUM))
+          )
+        );
+
+        if (additionalFareRequired.isPositive()) {
+          // Create a new fare product for the additional amount required
+          var newFareProduct = FareProduct.of(
+            new FeedScopedId(FEED_ID, "orcaFare"),
+            "ORCA Fare",
+            additionalFareRequired
+          )
+            .withMedium(ELECTRONIC_MEDIUM)
+            .build();
+
+          fare.addFareProduct(leg, newFareProduct);
+          purcahsedFareProducts.add(new RideType.FareProductTime(leg.startTime(), newFareProduct));
         }
-        var transferDiscount = transferData.getTransferDiscount();
-        var discountedFare = transferData.getDiscountedLegPrice(leg, legFare);
-        addLegFareProduct(
-          leg,
-          fare,
-          fareType,
-          discountedFare,
-          legFare.greaterThan(ZERO_USD) ? transferDiscount : ZERO_USD
-        );
-        cost = cost.plus(discountedFare);
+      } else if (transferType == TransferType.SAME_AGENCY_TRANSFER) {
+        // Generate medium ID for the agency's cash transfer
+        var mediumId = String.format("%sCashTransfer", leg.agency().getName());
+        var agencyTransferMedium = new FareMedium(new FeedScopedId(FEED_ID, mediumId), mediumId);
+
+        // Look for existing fare products with this medium ID
+        var validAgencyFareProducts = validFareProducts
+          .stream()
+          .filter(fp -> fp.fareProduct.medium().equals(agencyTransferMedium));
+
+        fare.addFareProductUses(createFareProductUseMap(leg, validAgencyFareProducts));
+
+        // Check if we have any valid agency transfer products
+        var hasValidTransfer = validFareProducts
+          .stream()
+          .anyMatch(fp -> fp.fareProduct.medium().equals(agencyTransferMedium));
+
+        if (!hasValidTransfer) {
+          // Create a new fare product for this agency transfer
+          var newFareProduct = FareProduct.of(
+            new FeedScopedId(FEED_ID, mediumId),
+            String.format("%s Cash Transfer", leg.agency().getName()),
+            legFare
+          )
+            .withMedium(agencyTransferMedium)
+            .build();
+
+          fare.addFareProduct(leg, newFareProduct);
+          purcahsedFareProducts.add(new RideType.FareProductTime(leg.startTime(), newFareProduct));
+        }
       } else {
-        // If not using Orca, add the agency's default price for this leg.
-        addLegFareProduct(leg, fare, fareType, legFare, Money.ZERO_USD);
-        cost = cost.plus(legFare);
+        // Create a generic fare product for this leg
+        var genericFareProduct = FareProduct.of(
+          new FeedScopedId(FEED_ID, String.format("%sFare", leg.agency().getName())),
+          String.format("%s Fare", leg.agency().getName()),
+          legFare
+        )
+          .withMedium(usesOrca(fareType) ? ELECTRONIC_MEDIUM : CASH_MEDIUM)
+          .build();
+
+        fare.addFareProduct(leg, genericFareProduct);
       }
-    }
-    if (cost.fractionalAmount().floatValue() < Float.MAX_VALUE) {
-      var fp = FareProduct.of(
-        new FeedScopedId(FEED_ID, fareType.name()),
-        fareType.name(),
-        cost
-      ).build();
-      fare.addItineraryProducts(List.of(fp));
     }
     return fare;
   }
@@ -602,5 +651,22 @@ public class OrcaFareService extends DefaultFareService {
       name = fareType.toString();
     }
     return new RiderCategory(new FeedScopedId(FEED_ID, name), name, null);
+  }
+
+  /**
+   * Utility function to create a multimap of fare product uses for a leg from a stream of fare product times.
+   */
+  private static LinkedHashMultimap<Leg, FareProductUse> createFareProductUseMap(
+    Leg leg,
+    java.util.stream.Stream<RideType.FareProductTime> fareProductTimes
+  ) {
+    var fareProductUses = LinkedHashMultimap.<Leg, FareProductUse>create();
+    fareProductTimes.forEach(fpt ->
+      fareProductUses.put(
+        leg,
+        new FareProductUse(fpt.fareProduct.uniqueInstanceId(fpt.startTime), fpt.fareProduct)
+      )
+    );
+    return fareProductUses;
   }
 }
