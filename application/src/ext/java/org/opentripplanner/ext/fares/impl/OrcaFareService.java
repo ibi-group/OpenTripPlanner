@@ -487,11 +487,13 @@ public class OrcaFareService extends DefaultFareService {
 
         if (additionalFareRequired.isPositive()) {
           // Create a new fare product for the additional amount required
+          var riderCategory = getRiderCategory(fareType);
           var newFareProduct = FareProduct.of(
             new FeedScopedId(FEED_ID, "orcaFare"),
             "ORCA Fare",
             additionalFareRequired
           )
+            .withCategory(riderCategory)
             .withMedium(ELECTRONIC_MEDIUM)
             .build();
 
@@ -519,11 +521,13 @@ public class OrcaFareService extends DefaultFareService {
 
         if (!hasValidTransfer) {
           // Create a new fare product for this agency transfer
+          var riderCategory = getRiderCategory(fareType);
           var newFareProduct = FareProduct.of(
             new FeedScopedId(FEED_ID, mediumId),
             String.format("%s Cash Transfer", leg.agency().getName()),
             legFare
           )
+            .withCategory(riderCategory)
             .withMedium(agencyTransferMedium)
             .build();
 
@@ -533,11 +537,13 @@ public class OrcaFareService extends DefaultFareService {
         }
       } else {
         // Create a generic fare product for this leg
+        var riderCategory = getRiderCategory(fareType);
         var genericFareProduct = FareProduct.of(
           new FeedScopedId(FEED_ID, String.format("%sFare", leg.agency().getName())),
           String.format("%s Fare", leg.agency().getName()),
           legFare
         )
+          .withCategory(riderCategory)
           .withMedium(usesOrca(fareType) ? ELECTRONIC_MEDIUM : CASH_MEDIUM)
           .build();
 
