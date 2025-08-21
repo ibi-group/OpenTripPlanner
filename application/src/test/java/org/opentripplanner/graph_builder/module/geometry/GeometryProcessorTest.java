@@ -5,7 +5,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.opentripplanner.transit.model._data.TimetableRepositoryForTest.id;
 
 import java.util.List;
-import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 import org.opentripplanner.graph_builder.issue.service.DefaultDataImportIssueStore;
 import org.opentripplanner.model.ShapePoint;
@@ -31,9 +30,7 @@ class GeometryProcessorTest {
     var invalidRef = id("unknown");
     var trip = TimetableRepositoryForTest.trip("t").withShapeId(invalidRef).build();
 
-    var stopTimes = IntStream.range(0, 3)
-      .mapToObj(index -> testModel.stopTime(trip, index, testModel.stop("s" + index).build()))
-      .toList();
+    var stopTimes = testModel.stopTimesEvery5Minutes(3, trip, "8:00");
     builder.getStopTimesSortedByTrip().put(trip, stopTimes);
 
     var processor = new GeometryProcessor(builder, 150, issueStore);
