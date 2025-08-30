@@ -60,10 +60,6 @@ public class OrcaFareService extends DefaultFareService {
 
   private static final LocalDate KITSAP_FAST_FERRY_CHANGE_DATE = LocalDate.of(2025, 10, 1);
 
-  private static final LocalDate SEPT_FARE_CHANGE_DATE = LocalDate.of(2025, 9, 1);
-
-  private static final LocalDate KITSAP_FAST_FERRY_CHANGE_DATE = LocalDate.of(2025, 10, 1);
-
   protected enum TransferType {
     ORCA_INTERAGENCY_TRANSFER,
     SAME_AGENCY_TRANSFER,
