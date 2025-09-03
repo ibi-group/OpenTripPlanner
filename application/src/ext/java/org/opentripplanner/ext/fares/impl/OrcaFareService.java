@@ -513,7 +513,7 @@ public class OrcaFareService extends DefaultFareService {
         }
       } else if (transferType == TransferType.SAME_AGENCY_TRANSFER) {
         // Generate medium ID for the agency's cash transfer
-        var mediumId = String.format("%sCashTransfer", leg.agency().getName());
+        var mediumId = "cash";
         var agencyTransferMedium = new FareMedium(new FeedScopedId(FEED_ID, mediumId), mediumId);
 
         // Look for existing fare products with this medium ID
