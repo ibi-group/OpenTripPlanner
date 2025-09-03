@@ -481,8 +481,9 @@ public class OrcaFareService extends DefaultFareService {
         // Important to get transfer discount before calculating next leg price
         var validOrcaFareProducts = validFareProducts
           .stream()
-          .filter(fp -> fp.fareProduct().medium().equals(ELECTRONIC_MEDIUM));
-        var totalAlreadyPurchased = validOrcaFareProducts.reduce(
+          .filter(fp -> fp.fareProduct().medium().equals(ELECTRONIC_MEDIUM))
+          .toList();
+        var totalAlreadyPurchased = validOrcaFareProducts.stream().reduce(
           ZERO_USD,
           (subtotal, el) -> subtotal.plus(el.fareProduct().price()),
           Money::plus
@@ -503,11 +504,13 @@ public class OrcaFareService extends DefaultFareService {
             "ORCA Fare",
             additionalFareRequired
           )
+            .withValidity(Duration.ofHours(2))
             .withCategory(riderCategory)
             .withMedium(ELECTRONIC_MEDIUM)
             .build();
 
-          var newFareOffer = FareOffer.of(leg.startTime(), newFareProduct);
+          var dependencies = validOrcaFareProducts.stream().map(FareOffer::fareProduct).toList();
+          var newFareOffer = FareOffer.of(leg.startTime(), newFareProduct, dependencies);
           fare.addFareProduct(leg, newFareOffer);
           purchasedFareProducts.add(newFareOffer);
         }
@@ -519,15 +522,14 @@ public class OrcaFareService extends DefaultFareService {
         // Look for existing fare products with this medium ID
         var validAgencyFareProducts = validFareProducts
           .stream()
-          .filter(fp -> fp.fareProduct().medium().equals(agencyTransferMedium));
+          .filter(fp -> fp.fareProduct().medium().equals(agencyTransferMedium))
+          .toList();
 
         // Add existing valid agency fare products to this leg
         validAgencyFareProducts.forEach(fp -> fare.addFareProduct(leg, fp));
 
         // Check if we have any valid agency transfer products
-        var hasValidTransfer = validFareProducts
-          .stream()
-          .anyMatch(fp -> fp.fareProduct().medium().equals(agencyTransferMedium));
+        var hasValidTransfer = !validAgencyFareProducts.isEmpty();
 
         if (!hasValidTransfer) {
           // Create a new fare product for this agency transfer
