@@ -471,6 +471,22 @@ public class OrcaFareService extends DefaultFareService {
       }
       Money legFare = optionalLegFare.get();
 
+      if (legFare.equals(Money.ZERO_USD)) {
+        var riderCategory = getRiderCategory(fareType);
+        var zeroFareProduct = FareProduct.of(
+          new FeedScopedId(FEED_ID, "freeFare"),
+          "Free Fare",
+          Money.ZERO_USD
+        )
+          .withCategory(riderCategory)
+          .withMedium(usesOrca(fareType) ? ELECTRONIC_MEDIUM : CASH_MEDIUM)
+          .build();
+
+        var zeroFareOffer = FareOffer.of(leg.startTime(), zeroFareProduct);
+        fare.addFareProduct(leg, zeroFareOffer);
+        continue;
+      }
+
       var validFareProducts = purchasedFareProducts
         .stream()
         .filter(fp -> isValidAt(fp, leg.startTime()))
