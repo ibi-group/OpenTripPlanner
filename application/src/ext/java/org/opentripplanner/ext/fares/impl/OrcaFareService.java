@@ -499,11 +499,9 @@ public class OrcaFareService extends DefaultFareService {
           .stream()
           .filter(fp -> fp.fareProduct().medium().equals(ELECTRONIC_MEDIUM))
           .toList();
-        var totalAlreadyPurchased = validOrcaFareProducts.stream().reduce(
-          ZERO_USD,
-          (subtotal, el) -> subtotal.plus(el.fareProduct().price()),
-          Money::plus
-        );
+        var totalAlreadyPurchased = validOrcaFareProducts
+          .stream()
+          .reduce(ZERO_USD, (subtotal, el) -> subtotal.plus(el.fareProduct().price()), Money::plus);
         var additionalFareRequired = legFare.minus(totalAlreadyPurchased);
 
         // Add existing valid ORCA fare products to this leg
