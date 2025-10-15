@@ -11,15 +11,21 @@ import org.slf4j.Logger;
 /**
  * Base class for namers that use a geo buffer to query geo features.
  */
-class EdgeProcessorWithBuffer {
+class BufferedEdgeProcessor {
 
-  public static void applyNames(
-    Collection<EdgeOnLevel> unnamedEdges,
-    AssignNameToEdge assigner,
-    int bufferMeters,
-    String type,
-    Logger logger
-  ) {
+  private final String type;
+  private final Logger logger;
+  private final int bufferMeters;
+  private final AssignNameToEdge assigner;
+
+  BufferedEdgeProcessor(int bufferMeters, String type, Logger logger, AssignNameToEdge assigner) {
+    this.type = type;
+    this.logger = logger;
+    this.bufferMeters = bufferMeters;
+    this.assigner = assigner;
+  }
+
+  public void applyNames(Collection<EdgeOnLevel> unnamedEdges) {
     ProgressTracker progress = ProgressTracker.track(
       String.format("Assigning names to %s", type),
       500,

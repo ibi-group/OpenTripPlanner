@@ -42,14 +42,19 @@ import org.slf4j.LoggerFactory;
  * the corner, like https://www.openstreetmap.org/way/1059101564. These cases are, however, detected
  * by the above algorithm and the sidewalk name remains the same.
  */
-public class SidewalkNamer implements EdgeNamer, AssignNameToEdge {
+public class SidewalkNamer implements EdgeNamer {
 
   private static final Logger LOG = LoggerFactory.getLogger(SidewalkNamer.class);
   private static final double MIN_PERCENT_IN_BUFFER = .85;
   private static final int BUFFER_METERS = 25;
 
+  private final BufferedEdgeProcessor processor;
   private StreetEdgeIndex streetIndex = new StreetEdgeIndex();
   private Collection<EdgeOnLevel> unnamedSidewalks = new ArrayList<>();
+
+  public SidewalkNamer() {
+    processor = new BufferedEdgeProcessor(BUFFER_METERS, "sidewalks", LOG, this::assignNameToEdge);
+  }
 
   @Override
   public I18NString name(OsmEntity way) {
@@ -77,7 +82,7 @@ public class SidewalkNamer implements EdgeNamer, AssignNameToEdge {
 
   @Override
   public void finalizeNames() {
-    EdgeProcessorWithBuffer.applyNames(unnamedSidewalks, this, BUFFER_METERS, "sidewalks", LOG);
+    processor.applyNames(unnamedSidewalks);
 
     // Set the indices to null so they can be garbage-collected
     streetIndex = null;
@@ -87,7 +92,6 @@ public class SidewalkNamer implements EdgeNamer, AssignNameToEdge {
   /**
    * The actual logic for naming individual sidewalk edges.
    */
-  @Override
   public boolean assignNameToEdge(EdgeOnLevel sidewalkOnLevel, Geometry buffer) {
     var sidewalk = sidewalkOnLevel.edge();
     var sidewalkLength = SphericalDistanceLibrary.length(sidewalk.getGeometry());

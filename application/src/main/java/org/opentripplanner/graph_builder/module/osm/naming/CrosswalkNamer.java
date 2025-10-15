@@ -33,14 +33,19 @@ import org.slf4j.LoggerFactory;
  *        e.g. <a href="https://www.openstreetmap.org/way/1139062913">...</a>),
  *        use "crossing over turn lane".
  */
-public class CrosswalkNamer implements EdgeNamer, AssignNameToEdge {
+public class CrosswalkNamer implements EdgeNamer {
 
   private static final Logger LOG = LoggerFactory.getLogger(CrosswalkNamer.class);
   private static final int BUFFER_METERS = 25;
+  private final BufferedEdgeProcessor processor; //=
 
   private StreetEdgeIndex streetIndex = new StreetEdgeIndex();
   private StreetEdgeIndex sidewalkIndex = new StreetEdgeIndex();
   private Collection<EdgeOnLevel> unnamedCrosswalks = new ArrayList<>();
+
+  public CrosswalkNamer() {
+    processor = new BufferedEdgeProcessor(BUFFER_METERS, "crosswalks", LOG, this::assignNameToEdge);
+  }
 
   @Override
   public I18NString name(OsmEntity way) {
@@ -71,7 +76,7 @@ public class CrosswalkNamer implements EdgeNamer, AssignNameToEdge {
 
   @Override
   public void finalizeNames() {
-    EdgeProcessorWithBuffer.applyNames(unnamedCrosswalks, this, BUFFER_METERS, "crosswalks", LOG);
+    processor.applyNames(unnamedCrosswalks);
 
     // Set the indices to null so they can be garbage-collected
     streetIndex = null;
@@ -83,7 +88,6 @@ public class CrosswalkNamer implements EdgeNamer, AssignNameToEdge {
    * The actual logic for naming individual crosswalk edges.
    * This will also name adjacent sidewalks on each end if they are the only adjacent sidewalks to a crosswalk.
    */
-  @Override
   public boolean assignNameToEdge(EdgeOnLevel crosswalkOnLevel, Geometry buffer) {
     var crosswalk = crosswalkOnLevel.edge();
     OsmWay way = crosswalkOnLevel.way();
