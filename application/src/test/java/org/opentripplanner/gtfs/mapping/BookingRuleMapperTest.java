@@ -1,5 +1,6 @@
 package org.opentripplanner.gtfs.mapping;
 
+import static com.google.common.truth.Truth.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.time.Duration;
@@ -88,8 +89,21 @@ class BookingRuleMapperTest {
   }
 
   @Test
-  void mapCacheReturnsSameInstanceForSameRule() {
+  void minimumBookingNotice() {
+    var mapper = new BookingRuleMapper();
     var rule = rule("A", "4");
+    rule.setPriorNoticeDurationMin(1);
+    rule.setPriorNoticeStartDay(2);
+    rule.setPriorNoticeStartTime(10);
+
+    var mapped = mapper.map(rule);
+    assertThat(mapped.getMinimumBookingNotice()).hasValue(Duration.ofMinutes(1));
+    assertThat(mapped.getEarliestBookingTime()).isNotNull();
+  }
+
+  @Test
+  void mapCacheReturnsSameInstanceForSameRule() {
+    var rule = rule("A", "5");
     var r1 = subject.map(rule);
     var r2 = subject.map(rule);
     assertSame(r1, r2);

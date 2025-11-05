@@ -60,22 +60,10 @@ public class BookingInfo implements Serializable {
 
     // Ensure that earliestBookingTime/latestBookingTime is not set at the same time as
     // minimumBookingNotice/maximumBookingNotice
-    if (builder.earliestBookingTime != null || builder.latestBookingTime != null) {
-      this.earliestBookingTime = builder.earliestBookingTime;
-      this.latestBookingTime = builder.latestBookingTime;
-      this.minimumBookingNotice = null;
-      this.maximumBookingNotice = null;
-    } else if (builder.minimumBookingNotice != null || builder.maximumBookingNotice != null) {
-      this.earliestBookingTime = null;
-      this.latestBookingTime = null;
-      this.minimumBookingNotice = builder.minimumBookingNotice;
-      this.maximumBookingNotice = builder.maximumBookingNotice;
-    } else {
-      this.earliestBookingTime = null;
-      this.latestBookingTime = null;
-      this.minimumBookingNotice = null;
-      this.maximumBookingNotice = null;
-    }
+    this.earliestBookingTime = builder.earliestBookingTime;
+    this.latestBookingTime = builder.latestBookingTime;
+    this.minimumBookingNotice = builder.minimumBookingNotice;
+    this.maximumBookingNotice = builder.maximumBookingNotice;
   }
 
   public static BookingInfoBuilder of() {
