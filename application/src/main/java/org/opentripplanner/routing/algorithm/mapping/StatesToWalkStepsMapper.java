@@ -49,6 +49,7 @@ public class StatesToWalkStepsMapper {
   private final List<State> states;
   private final WalkStep previous;
   private final List<WalkStepBuilder> steps = new ArrayList<>();
+  private final EntranceResolver entranceResolver;
 
   private WalkStepBuilder current = null;
   private double lastAngle = 0;
@@ -74,11 +75,13 @@ public class StatesToWalkStepsMapper {
     List<State> states,
     WalkStep previousStep,
     StreetNotesService streetNotesService,
+    EntranceResolver entranceResolver,
     double ellipsoidToGeoidDifference
   ) {
     this.states = states;
     this.previous = previousStep;
     this.streetNotesService = streetNotesService;
+    this.entranceResolver = entranceResolver;
     this.ellipsoidToGeoidDifference = ellipsoidToGeoidDifference;
   }
 
@@ -157,7 +160,8 @@ public class StatesToWalkStepsMapper {
       return;
     } else if (edge instanceof StreetTransitEntranceLink link) {
       var direction = relativeDirectionForTransitLink(link);
-      createAndSaveStep(backState, forwardState, link.getName(), direction, edge, link.entrance());
+      var entrance = entranceResolver.getEntrance(link.entrance());
+      createAndSaveStep(backState, forwardState, link.getName(), direction, edge, entrance);
       return;
     }
 

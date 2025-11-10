@@ -18,6 +18,7 @@ import org.opentripplanner.framework.i18n.I18NString;
 import org.opentripplanner.model.plan.walkstep.RelativeDirection;
 import org.opentripplanner.model.plan.walkstep.WalkStep;
 import org.opentripplanner.model.plan.walkstep.WalkStepBuilder;
+import org.opentripplanner.routing.graphfinder.NoopSiteResolver;
 import org.opentripplanner.routing.services.notes.StreetNotesService;
 import org.opentripplanner.street.search.state.TestStateBuilder;
 import org.opentripplanner.transit.model.framework.FeedScopedId;
@@ -94,7 +95,13 @@ class StatesToWalkStepsMapperTest {
   private static List<WalkStep> buildWalkSteps(TestStateBuilder builder) {
     var result = builder.build();
     var path = new GraphPath<>(result);
-    var mapper = new StatesToWalkStepsMapper(path.states, null, new StreetNotesService(), 0);
+    var mapper = new StatesToWalkStepsMapper(
+      path.states,
+      null,
+      new StreetNotesService(),
+      new NoopSiteResolver(),
+      0
+    );
     return mapper.generateWalkSteps();
   }
 

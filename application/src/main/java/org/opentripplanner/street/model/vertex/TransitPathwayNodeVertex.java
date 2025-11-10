@@ -6,11 +6,7 @@ import org.opentripplanner.transit.model.framework.FeedScopedId;
 
 public class TransitPathwayNodeVertex extends StationElementVertex {
 
-
   public TransitPathwayNodeVertex(FeedScopedId id, WgsCoordinate coordinate, I18NString name) {
-    super(
-      id, coordinate.longitude(), coordinate.latitude(), name
-    );
+    super(id, coordinate.longitude(), coordinate.latitude(), name);
   }
-
 }

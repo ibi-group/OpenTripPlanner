@@ -35,7 +35,14 @@ public class VertexFactory {
   }
 
   public TransitBoardingAreaVertex transitBoardingArea(BoardingArea ba) {
-    return addToGraph(new TransitBoardingAreaVertex(ba.getId(), ba.getCoordinate(), ba.getName(), ba.getWheelchairAccessibility()));
+    return addToGraph(
+      new TransitBoardingAreaVertex(
+        ba.getId(),
+        ba.getCoordinate(),
+        ba.getName(),
+        ba.getWheelchairAccessibility()
+      )
+    );
   }
 
   public ElevatorVertex elevator(Vertex sourceVertex, String label, String levelName) {
@@ -136,15 +143,26 @@ public class VertexFactory {
   }
 
   public TransitPathwayNodeVertex transitPathwayNode(PathwayNode node) {
-    return addToGraph(new TransitPathwayNodeVertex(node.getId(), node.getCoordinate(), node.getName()));
+    return addToGraph(
+      new TransitPathwayNodeVertex(node.getId(), node.getCoordinate(), node.getName())
+    );
   }
 
   public TransitEntranceVertex transitEntrance(Entrance entrance) {
-    return addToGraph(new TransitEntranceVertex(entrance));
+    return addToGraph(
+      new TransitEntranceVertex(
+        entrance.getId(),
+        entrance.getCoordinate(),
+        entrance.getName(),
+        entrance.getWheelchairAccessibility()
+      )
+    );
   }
 
   public OsmVertex levelledOsm(OsmNode node, String level) {
-    return addToGraph(new OsmVertexOnLevel(node, level));
+    return addToGraph(
+      new OsmVertexOnLevel(node.getId(), new WgsCoordinate(node.getCoordinate()), level)
+    );
   }
 
   private <T extends Vertex> T addToGraph(T vertex) {
