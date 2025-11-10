@@ -34,8 +34,8 @@ public class VertexFactory {
     this.graph = graph;
   }
 
-  public TransitBoardingAreaVertex transitBoardingArea(BoardingArea boardingArea) {
-    return addToGraph(new TransitBoardingAreaVertex(boardingArea));
+  public TransitBoardingAreaVertex transitBoardingArea(BoardingArea ba) {
+    return addToGraph(new TransitBoardingAreaVertex(ba.getId(), ba.getCoordinate(), ba.getName(), ba.getWheelchairAccessibility()));
   }
 
   public ElevatorVertex elevator(Vertex sourceVertex, String label, String levelName) {
@@ -136,7 +136,7 @@ public class VertexFactory {
   }
 
   public TransitPathwayNodeVertex transitPathwayNode(PathwayNode node) {
-    return addToGraph(new TransitPathwayNodeVertex(node));
+    return addToGraph(new TransitPathwayNodeVertex(node.getId(), node.getCoordinate(), node.getName()));
   }
 
   public TransitEntranceVertex transitEntrance(Entrance entrance) {
