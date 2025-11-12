@@ -1,7 +1,5 @@
 package org.opentripplanner.ext.geocoder;
 
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
@@ -9,6 +7,7 @@ import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import java.util.Map;
 import org.opentripplanner.framework.geometry.WgsCoordinate;
 import org.opentripplanner.standalone.api.OtpServerRequestContext;
 
@@ -34,7 +33,12 @@ public class GeocoderResource {
   ) {
     if (query == null || query.length() < 3) {
       return Response.status(Response.Status.BAD_REQUEST)
-        .entity("Query param 'query' must be provided and have at least 3 characters.")
+        .entity(
+          Map.of(
+            "error",
+            "Query parameter 'query' must be provided and have at least 3 characters."
+          )
+        )
         .build();
     }
     WgsCoordinate focusPoint = null;

@@ -33,6 +33,7 @@ import org.apache.lucene.queryparser.classic.ParseException;
 import org.apache.lucene.queryparser.classic.QueryParser;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.BooleanQuery;
+import org.apache.lucene.search.BoostQuery;
 import org.apache.lucene.search.FuzzyQuery;
 import org.apache.lucene.search.PrefixQuery;
 import org.apache.lucene.search.Sort;
@@ -272,10 +273,12 @@ public class LuceneIndex implements Serializable {
         new Term(TYPE, analyzer.normalize(TYPE, StopCluster.class.getSimpleName()))
       );
 
+      var boostedCodeQuery = new org.apache.lucene.search.BoostQuery(codeQuery, 100.0f);
+
       var builder = new BooleanQuery.Builder()
         .setMinimumNumberShouldMatch(1)
         .add(typeQuery, Occur.MUST)
-        .add(codeQuery, Occur.SHOULD)
+        .add(boostedCodeQuery, Occur.SHOULD)
         .add(prefixCodeQuery, Occur.SHOULD)
         .add(nameQuery, Occur.SHOULD)
         .add(fuzzyNameQuery, Occur.SHOULD)
