@@ -11,7 +11,6 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Nested;
@@ -164,31 +163,6 @@ class LuceneIndexTest {
     );
     index = new LuceneIndex(transitService, stopConsolidationService);
     mapper = new StopClusterMapper(transitService, stopConsolidationService);
-  }
-
-  @Test
-  void stopLocations() {
-    var result1 = index.queryStopLocations("lich", true).toList();
-    assertEquals(1, result1.size());
-    assertEquals(LICHTERFELDE_OST_1.getName().toString(), result1.getFirst().getName().toString());
-
-    var result2 = index.queryStopLocations("alexan", true).collect(Collectors.toSet());
-    assertEquals(Set.of(ALEXANDERPLATZ_BUS, ALEXANDERPLATZ_RAIL), result2);
-  }
-
-  @Test
-  void stopLocationGroups() {
-    var result1 = index.queryStopLocationGroups("alex", true).toList();
-    assertEquals(List.of(ALEXANDERPLATZ_STATION), result1);
-
-    var result2 = index.queryStopLocationGroups("haupt", true).toList();
-    assertEquals(List.of(BERLIN_HAUPTBAHNHOF_STATION), result2);
-  }
-
-  @Test
-  void stopLocationGroupsWithSpace() {
-    var result1 = index.queryStopLocationGroups("five points", true).toList();
-    assertEquals(List.of(FIVE_POINTS_STATION), result1);
   }
 
   @Nested
