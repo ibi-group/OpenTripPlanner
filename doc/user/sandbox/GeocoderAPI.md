@@ -33,9 +33,11 @@ Path: `/otp/geocode/stopClusters`
 
 It supports the following URL parameters:
 
-| Parameter      | Description                                                      |
-|----------------|------------------------------------------------------------------|
-| `query`        | The query string we want to geocode                              |
+| Parameter        | Description                           |
+|------------------|---------------------------------------|
+| `query`          | The query string we want to geocode   |
+| `focusLatitude`  | Optional latitude of the focus point  |
+| `focusLongitude` | Optional longitude of the focus point |
 
 ## Changelog
 
