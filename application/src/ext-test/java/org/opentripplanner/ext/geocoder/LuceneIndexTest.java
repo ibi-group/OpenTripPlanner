@@ -190,20 +190,20 @@ class LuceneIndexTest {
       }
     )
     void stopClustersWithTypos(String searchTerm) {
-      var results = index.queryStopClusters(searchTerm).toList();
+      var results = index.queryStopClusters(searchTerm, null).toList();
       var ids = results.stream().map(primaryId()).toList();
       assertEquals(List.of(ALEXANDERPLATZ_STATION.getId()), ids);
     }
 
     @Test
     void fuzzyStopClusters() {
-      var result1 = index.queryStopClusters("arts").map(primaryId()).toList();
+      var result1 = index.queryStopClusters("arts", null).map(primaryId()).toList();
       assertEquals(List.of(ARTS_CENTER.getId()), result1);
     }
 
     @Test
     void deduplicatedStopClusters() {
-      var result = index.queryStopClusters("lich").toList();
+      var result = index.queryStopClusters("lich", null).toList();
       assertEquals(1, result.size());
       assertEquals(LICHTERFELDE_OST_1.getName().toString(), result.getFirst().primary().name());
     }
@@ -237,21 +237,21 @@ class LuceneIndexTest {
       }
     )
     void stopClustersWithSpace(String query) {
-      var result = index.queryStopClusters(query).map(primaryId()).toList();
+      var result = index.queryStopClusters(query, null).map(primaryId()).toList();
       assertEquals(List.of(FIVE_POINTS_STATION.getId()), result);
     }
 
     @ParameterizedTest
     @ValueSource(strings = { "4456", "445" })
     void fuzzyStopCode(String query) {
-      var result = index.queryStopClusters(query).toList();
+      var result = index.queryStopClusters(query, null).toList();
       assertEquals(1, result.size());
       assertEquals(ARTS_CENTER.getName().toString(), result.getFirst().primary().name());
     }
 
     @Test
     void modes() {
-      var result = index.queryStopClusters("westh").toList();
+      var result = index.queryStopClusters("westh", null).toList();
       assertEquals(1, result.size());
       var cluster = result.getFirst();
       assertEquals(WESTHAFEN.getName().toString(), cluster.primary().name());
@@ -260,7 +260,7 @@ class LuceneIndexTest {
 
     @Test
     void agenciesAndFeedPublisher() {
-      var cluster = index.queryStopClusters("alexanderplatz").toList().getFirst();
+      var cluster = index.queryStopClusters("alexanderplatz", null).toList().getFirst();
       assertEquals(ALEXANDERPLATZ_STATION.getName().toString(), cluster.primary().name());
       assertEquals(List.of(StopClusterMapper.toAgency(BVG)), cluster.primary().agencies());
       assertEquals("A Publisher", cluster.primary().feedPublisher().name());
@@ -282,7 +282,7 @@ class LuceneIndexTest {
       }
     )
     void numericAdjectives(String query) {
-      var names = index.queryStopClusters(query).map(c -> c.primary().name()).toList();
+      var names = index.queryStopClusters(query, null).map(c -> c.primary().name()).toList();
       assertEquals(
         Stream.of(MERIDIAN_AVE, MERIDIAN_N2, MERIDIAN_N1).map(s -> s.getName().toString()).toList(),
         names
