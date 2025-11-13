@@ -21,6 +21,6 @@ public class TransitServiceResolver implements SiteResolver {
 
   @Override
   public Entrance getEntrance(FeedScopedId id) {
-    return Objects.requireNonNull(null);
+    return transitService.getEntrance(id);
   }
 }

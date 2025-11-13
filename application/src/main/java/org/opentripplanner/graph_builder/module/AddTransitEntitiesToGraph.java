@@ -141,7 +141,7 @@ public class AddTransitEntitiesToGraph {
   }
 
   private void addEntrancesToGraph() {
-    for (Entrance entrance : otpTransitService.getAllEntrances()) {
+    for (Entrance entrance : otpTransitService.siteRepository().listEntrances()) {
       TransitEntranceVertex entranceVertex = vertexFactory.transitEntrance(entrance);
       stationElementNodes.put(entrance, entranceVertex);
     }

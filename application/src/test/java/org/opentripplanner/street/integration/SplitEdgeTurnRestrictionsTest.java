@@ -180,7 +180,7 @@ public class SplitEdgeTurnRestrictionsTest {
       var paths = gpf.graphPathFinderEntryPoint(request, linkingContext);
 
       GraphPathToItineraryMapper graphPathToItineraryMapper = new GraphPathToItineraryMapper(
-      new NoopSiteResolver(),
+        new NoopSiteResolver(),
         ZoneIds.BERLIN,
         graph.streetNotesService,
         graph.ellipsoidToGeoidDifference
