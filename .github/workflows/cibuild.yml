@@ -10,7 +10,7 @@ on:
       - ibi-dev
       - ibi-dev-2.x
 permissions:
-  id-token: write   # This is required for requesting AWS login tokens
+  id-token: write # This is required for requesting AWS login tokens
 env:
   # maven default arguments to make the log quieter and colourful
   MAVEN_ARGS: "--no-transfer-progress -Dstyle.color=always"
@@ -77,6 +77,12 @@ jobs:
       - name: Inject slug/short variables
         uses: rlespinasse/github-slug-action@v3.x
       # Define AWS profile credentials for use by subsequent steps.
+      # The AWS role referenced below should have the following S3 permissions:
+      # - s3:PutObject
+      # - s3:GetObject
+      # - s3:ListBucket
+      # - s3:DeleteObject
+      # - s3:PutObjectAcl
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v5.1.1
         with:
