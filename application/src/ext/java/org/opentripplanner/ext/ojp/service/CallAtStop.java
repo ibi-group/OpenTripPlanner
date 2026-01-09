@@ -1,4 +1,4 @@
-package org.opentripplanner.ext.trias.service;
+package org.opentripplanner.ext.ojp.service;
 
 import java.time.Duration;
 import java.util.Comparator;

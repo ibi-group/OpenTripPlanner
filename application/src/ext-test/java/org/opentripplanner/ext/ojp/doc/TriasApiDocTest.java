@@ -1,4 +1,4 @@
-package org.opentripplanner.ext.trias.doc;
+package org.opentripplanner.ext.ojp.doc;
 
 import static org.opentripplanner.framework.application.OtpFileNames.ROUTER_CONFIG_FILENAME;
 import static org.opentripplanner.framework.io.FileUtils.assertFileEquals;

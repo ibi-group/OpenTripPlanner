@@ -1,9 +1,9 @@
-package org.opentripplanner.ext.trias.service;
+package org.opentripplanner.ext.ojp.service;
 
 import static java.lang.Boolean.TRUE;
-import static org.opentripplanner.ext.trias.mapping.StopEventResponseMapper.OptionalFeature.ONWARD_CALLS;
-import static org.opentripplanner.ext.trias.mapping.StopEventResponseMapper.OptionalFeature.PREVIOUS_CALLS;
-import static org.opentripplanner.ext.trias.mapping.StopEventResponseMapper.OptionalFeature.REALTIME_DATA;
+import static org.opentripplanner.ext.ojp.mapping.StopEventResponseMapper.OptionalFeature.ONWARD_CALLS;
+import static org.opentripplanner.ext.ojp.mapping.StopEventResponseMapper.OptionalFeature.PREVIOUS_CALLS;
+import static org.opentripplanner.ext.ojp.mapping.StopEventResponseMapper.OptionalFeature.REALTIME_DATA;
 
 import de.vdv.ojp20.LineDirectionFilterStructure;
 import de.vdv.ojp20.ModeFilterStructure;
@@ -29,8 +29,8 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import org.opentripplanner.api.model.transit.FeedScopedIdMapper;
 import org.opentripplanner.core.model.id.FeedScopedId;
-import org.opentripplanner.ext.trias.mapping.PtModeMapper;
-import org.opentripplanner.ext.trias.mapping.StopEventResponseMapper;
+import org.opentripplanner.ext.ojp.mapping.PtModeMapper;
+import org.opentripplanner.ext.ojp.mapping.StopEventResponseMapper;
 import org.opentripplanner.framework.geometry.WgsCoordinate;
 import org.opentripplanner.transit.model.basic.TransitMode;
 import org.opentripplanner.transit.service.ArrivalDeparture;

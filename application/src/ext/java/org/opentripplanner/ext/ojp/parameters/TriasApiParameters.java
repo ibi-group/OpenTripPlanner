@@ -1,4 +1,4 @@
-package org.opentripplanner.ext.trias.parameters;
+package org.opentripplanner.ext.ojp.parameters;
 
 import java.time.ZoneId;
 import java.util.Optional;

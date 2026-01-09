@@ -1,4 +1,4 @@
-package org.opentripplanner.ext.trias.mapping;
+package org.opentripplanner.ext.ojp.mapping;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
