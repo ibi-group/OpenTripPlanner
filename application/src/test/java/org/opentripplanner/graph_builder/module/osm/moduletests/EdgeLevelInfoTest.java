@@ -175,12 +175,16 @@ public class EdgeLevelInfoTest {
 
   @Test
   void testElevatorWayEdgeLevelInfo() {
-    var elevatorWay = new OsmWay();
-    elevatorWay.setId(1);
-    elevatorWay.addTag("highway", "elevator");
-    elevatorWay.addTag("level", "0;1");
+    var n1 = node(1, new WgsCoordinate(0, 1));
+    var n2 = node(2, new WgsCoordinate(0, 2));
+    var n3 = node(3, new WgsCoordinate(0, 3));
+    var n4 = node(4, new WgsCoordinate(0, 4));
 
-    var provider = TestOsmProvider.of().addWay(elevatorWay).build();
+    var provider = TestOsmProvider.of()
+      .addWayFromNodes(way -> way.addTag("highway", "corridor"), n1, n2)
+      .addWayFromNodes(way -> way.addTag("highway", "elevator").addTag("level", "0;1"), n2, n3)
+      .addWayFromNodes(way -> way.addTag("highway", "corridor"), n3, n4)
+      .build();
     var graph = new Graph();
     var streetDetailsRepository = new DefaultStreetDetailsRepository();
     OsmModuleTestFactory.of(provider)
@@ -199,12 +203,16 @@ public class EdgeLevelInfoTest {
 
   @Test
   void testElevatorWayEdgeLevelInfoOnSameLevel() {
-    var elevatorWay = new OsmWay();
-    elevatorWay.setId(1);
-    elevatorWay.addTag("highway", "elevator");
-    elevatorWay.addTag("level", "1;1");
+    var n1 = node(1, new WgsCoordinate(0, 1));
+    var n2 = node(2, new WgsCoordinate(0, 2));
+    var n3 = node(3, new WgsCoordinate(0, 3));
+    var n4 = node(4, new WgsCoordinate(0, 4));
 
-    var provider = TestOsmProvider.of().addWay(elevatorWay).build();
+    var provider = TestOsmProvider.of()
+      .addWayFromNodes(way -> way.addTag("highway", "corridor"), n1, n2)
+      .addWayFromNodes(way -> way.addTag("highway", "elevator").addTag("level", "1;1"), n2, n3)
+      .addWayFromNodes(way -> way.addTag("highway", "corridor"), n3, n4)
+      .build();
     var graph = new Graph();
     var streetDetailsRepository = new DefaultStreetDetailsRepository();
     OsmModuleTestFactory.of(provider)
@@ -223,11 +231,16 @@ public class EdgeLevelInfoTest {
 
   @Test
   void testElevatorWayEdgeLevelInfoWithoutDefinedLevels() {
-    var elevatorWay = new OsmWay();
-    elevatorWay.setId(1);
-    elevatorWay.addTag("highway", "elevator");
+    var n1 = node(1, new WgsCoordinate(0, 1));
+    var n2 = node(2, new WgsCoordinate(0, 2));
+    var n3 = node(3, new WgsCoordinate(0, 3));
+    var n4 = node(4, new WgsCoordinate(0, 4));
 
-    var provider = TestOsmProvider.of().addWay(elevatorWay).build();
+    var provider = TestOsmProvider.of()
+      .addWayFromNodes(way -> way.addTag("highway", "corridor"), n1, n2)
+      .addWayFromNodes(way -> way.addTag("highway", "elevator"), n2, n3)
+      .addWayFromNodes(way -> way.addTag("highway", "corridor"), n3, n4)
+      .build();
     var graph = new Graph();
     var streetDetailsRepository = new DefaultStreetDetailsRepository();
     OsmModuleTestFactory.of(provider)

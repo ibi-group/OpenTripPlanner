@@ -12,6 +12,7 @@ import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.opentripplanner.framework.geometry.GeometryUtils;
 import org.opentripplanner.framework.geometry.WgsCoordinate;
 import org.opentripplanner.graph_builder.module.osm.OsmModuleTestFactory;
 import org.opentripplanner.graph_builder.module.osm.moduletests._support.TestOsmProvider;
@@ -22,9 +23,11 @@ import org.opentripplanner.street.model.edge.Edge;
 import org.opentripplanner.street.model.edge.ElevatorAlightEdge;
 import org.opentripplanner.street.model.edge.ElevatorBoardEdge;
 import org.opentripplanner.street.model.edge.ElevatorHopEdge;
+import org.opentripplanner.street.model.edge.StreetEdgeBuilder;
 import org.opentripplanner.street.model.vertex.ElevatorHopVertex;
 import org.opentripplanner.street.model.vertex.OsmEntityType;
 import org.opentripplanner.street.model.vertex.OsmVertex;
+import org.opentripplanner.street.model.vertex.StreetVertex;
 import org.opentripplanner.street.model.vertex.VertexFactory;
 import org.opentripplanner.transit.model.basic.Accessibility;
 
@@ -32,10 +35,33 @@ class ElevatorTest {
 
   @Test
   void testDuration() {
-    var way = new OsmWay();
-    way.addTag("duration", "00:01:02");
-    way.addTag("highway", "elevator");
-    var provider = TestOsmProvider.of().addWay(way).build();
+    var n1 = node(1, new WgsCoordinate(0, 1));
+    var n2 = node(2, new WgsCoordinate(0, 2));
+    var n3 = node(3, new WgsCoordinate(0, 3));
+    var n4 = node(4, new WgsCoordinate(0, 4));
+
+    var way1 = new OsmWay();
+    way1.setId(1);
+    way1.addTag("highway", "corridor");
+    way1.addNodeRef(1);
+    way1.addNodeRef(3);
+    var elevatorWay = new OsmWay();
+    elevatorWay.setId(2);
+    elevatorWay.addTag("highway", "elevator");
+    elevatorWay.addTag("duration", "00:01:02");
+    elevatorWay.addNodeRef(1);
+    elevatorWay.addNodeRef(2);
+    var way2 = new OsmWay();
+    way2.setId(3);
+    way2.addTag("highway", "corridor");
+    way2.addNodeRef(2);
+    way2.addNodeRef(4);
+
+    var provider = new TestOsmProvider(
+      List.of(),
+      List.of(way1, elevatorWay, way2),
+      List.of(n1, n2, n3, n4)
+    );
     var graph = new Graph();
     var osmModule = OsmModuleTestFactory.of(provider).withGraph(graph).builder().build();
 
@@ -222,15 +248,31 @@ class ElevatorTest {
   void testMultilevelWay() {
     var n1 = node(1, new WgsCoordinate(0, 1));
     var n2 = node(2, new WgsCoordinate(0, 2));
+    var n3 = node(3, new WgsCoordinate(0, 3));
+    var n4 = node(4, new WgsCoordinate(0, 4));
 
+    var way1 = new OsmWay();
+    way1.setId(1);
+    way1.addTag("highway", "corridor");
+    way1.addNodeRef(1);
+    way1.addNodeRef(3);
     var elevatorWay = new OsmWay();
-    elevatorWay.setId(1);
+    elevatorWay.setId(2);
     elevatorWay.addTag("highway", "elevator");
     elevatorWay.addTag("level", "1;3.5");
     elevatorWay.addNodeRef(1);
     elevatorWay.addNodeRef(2);
+    var way2 = new OsmWay();
+    way2.setId(3);
+    way2.addTag("highway", "corridor");
+    way2.addNodeRef(2);
+    way2.addNodeRef(4);
 
-    var provider = new TestOsmProvider(List.of(), List.of(elevatorWay), List.of(n1, n2));
+    var provider = new TestOsmProvider(
+      List.of(),
+      List.of(way1, elevatorWay, way2),
+      List.of(n1, n2, n3, n4)
+    );
     var graph = new Graph();
     OsmModuleTestFactory.of(provider).withGraph(graph).builder().build().buildGraph();
 
@@ -239,19 +281,23 @@ class ElevatorTest {
 
     var osmVertex1 = new OsmVertex(0, 1, 1);
     var osmVertex2 = new OsmVertex(0, 2, 2);
+    var osmVertex3 = new OsmVertex(0, 3, 3);
+    var osmVertex4 = new OsmVertex(0, 4, 4);
 
-    var elevatorVertex1 = vertexFactory.elevator(
+    var elevatorHopVertex1 = vertexFactory.elevator(
       osmVertex1,
       elevatorWay.getId() + "_" + 0 + "_" + osmVertex1.getLabelString()
     );
-    var elevatorVertex2 = vertexFactory.elevator(
+    var elevatorHopVertex2 = vertexFactory.elevator(
       osmVertex2,
       elevatorWay.getId() + "_" + 1 + "_" + osmVertex2.getLabelString()
     );
 
-    addElevatorBoardAndAlightEdges(edgeSet, osmVertex1, elevatorVertex1);
-    addElevatorBoardAndAlightEdges(edgeSet, osmVertex2, elevatorVertex2);
-    addElevatorHopEdges(elevatorVertex1, elevatorVertex2, 2.5, edgeSet, null);
+    addElevatorBoardAndAlightEdges(edgeSet, osmVertex1, elevatorHopVertex1);
+    addElevatorBoardAndAlightEdges(edgeSet, osmVertex2, elevatorHopVertex2);
+    addElevatorHopEdges(elevatorHopVertex1, elevatorHopVertex2, 2.5, edgeSet, null);
+    addStreetEdges(edgeSet, osmVertex1, osmVertex3);
+    addStreetEdges(edgeSet, osmVertex2, osmVertex4);
 
     assertEquals(
       edgeSet,
@@ -266,14 +312,30 @@ class ElevatorTest {
   void testMultilevelWayWithoutLevelInfo() {
     var n1 = node(1, new WgsCoordinate(0, 1));
     var n2 = node(2, new WgsCoordinate(0, 2));
+    var n3 = node(3, new WgsCoordinate(0, 3));
+    var n4 = node(4, new WgsCoordinate(0, 4));
 
+    var way1 = new OsmWay();
+    way1.setId(1);
+    way1.addTag("highway", "corridor");
+    way1.addNodeRef(1);
+    way1.addNodeRef(3);
     var elevatorWay = new OsmWay();
-    elevatorWay.setId(1);
+    elevatorWay.setId(2);
     elevatorWay.addTag("highway", "elevator");
     elevatorWay.addNodeRef(1);
     elevatorWay.addNodeRef(2);
+    var way2 = new OsmWay();
+    way2.setId(3);
+    way2.addTag("highway", "corridor");
+    way2.addNodeRef(2);
+    way2.addNodeRef(4);
 
-    var provider = new TestOsmProvider(List.of(), List.of(elevatorWay), List.of(n1, n2));
+    var provider = new TestOsmProvider(
+      List.of(),
+      List.of(way1, elevatorWay, way2),
+      List.of(n1, n2, n3, n4)
+    );
     var graph = new Graph();
     OsmModuleTestFactory.of(provider).withGraph(graph).builder().build().buildGraph();
 
@@ -282,19 +344,23 @@ class ElevatorTest {
 
     var osmVertex1 = new OsmVertex(0, 1, 1);
     var osmVertex2 = new OsmVertex(0, 2, 2);
+    var osmVertex3 = new OsmVertex(0, 3, 3);
+    var osmVertex4 = new OsmVertex(0, 4, 4);
 
-    var elevatorVertex1 = vertexFactory.elevator(
+    var elevatorHopVertex1 = vertexFactory.elevator(
       osmVertex1,
       elevatorWay.getId() + "_" + 0 + "_" + osmVertex1.getLabelString()
     );
-    var elevatorVertex2 = vertexFactory.elevator(
+    var elevatorHopVertex2 = vertexFactory.elevator(
       osmVertex2,
       elevatorWay.getId() + "_" + 1 + "_" + osmVertex2.getLabelString()
     );
 
-    addElevatorBoardAndAlightEdges(edgeSet, osmVertex1, elevatorVertex1);
-    addElevatorBoardAndAlightEdges(edgeSet, osmVertex2, elevatorVertex2);
-    addElevatorHopEdges(elevatorVertex1, elevatorVertex2, 0, edgeSet, null);
+    addElevatorBoardAndAlightEdges(edgeSet, osmVertex1, elevatorHopVertex1);
+    addElevatorBoardAndAlightEdges(edgeSet, osmVertex2, elevatorHopVertex2);
+    addElevatorHopEdges(elevatorHopVertex1, elevatorHopVertex2, 0, edgeSet, null);
+    addStreetEdges(edgeSet, osmVertex1, osmVertex3);
+    addStreetEdges(edgeSet, osmVertex2, osmVertex4);
 
     assertEquals(
       edgeSet,
@@ -345,6 +411,42 @@ class ElevatorTest {
     );
   }
 
+  /**
+   * If an elevator way has three intersection nodes, it is is probably a tagging error.
+   * OTP supports it anyway. We need to make sure that the middle intersection node is not created
+   * twice, otherwise we get an error during deserialization.
+   */
+  @Test
+  void elevatorWayWithThreeIntersectionNodes() {
+    // Each elevator way node (1-3) is an intersection node.
+    var n1 = node(1, new WgsCoordinate(1, 1));
+    var n2 = node(2, new WgsCoordinate(2, 2));
+    var n3 = node(3, new WgsCoordinate(3, 3));
+
+    var n4 = node(4, new WgsCoordinate(4, 4));
+    var n5 = node(5, new WgsCoordinate(5, 5));
+    var n6 = node(5, new WgsCoordinate(6, 6));
+    var n7 = node(5, new WgsCoordinate(7, 7));
+
+    var provider = TestOsmProvider.of()
+      .addWayFromNodes(way -> way.addTag("highway", "elevator"), n1, n2, n3)
+      .addWayFromNodes(way -> way.addTag("public_transport", "platform"), n4, n2, n5)
+      .addWayFromNodes(way -> way.addTag("highway", "corridor"), n1, n6)
+      .addWayFromNodes(way -> way.addTag("highway", "corridor"), n3, n7)
+      .build();
+    var graph = new Graph();
+
+    OsmModuleTestFactory.of(provider).withGraph(graph).builder().build().buildGraph();
+
+    var elevatorHopEdges = graph.getEdgesOfType(ElevatorHopEdge.class);
+    assertThat(elevatorHopEdges).hasSize(4);
+    var elevatorHopVertices = graph
+      .getVerticesOfType(ElevatorHopVertex.class)
+      .stream()
+      .map(vertex -> vertex.getLabelString());
+    assertThat(elevatorHopVertices).containsNoDuplicates();
+  }
+
   private void addElevatorBoardAndAlightEdges(
     Set<String> edgeSet,
     OsmVertex osmVertex,
@@ -393,6 +495,27 @@ class ElevatorTest {
 
     edgeSet.add(convertEdgeToVertexLabelString(edge1));
     edgeSet.add(convertEdgeToVertexLabelString(edge2));
+  }
+
+  private void addStreetEdges(Set<String> edgeSet, StreetVertex vertex1, StreetVertex vertex2) {
+    addStreetEdge(edgeSet, vertex1, vertex2);
+    addStreetEdge(edgeSet, vertex2, vertex1);
+  }
+
+  private void addStreetEdge(Set<String> edgeSet, StreetVertex vertex1, StreetVertex vertex2) {
+    edgeSet.add(
+      convertEdgeToVertexLabelString(
+        new StreetEdgeBuilder<>()
+          .withFromVertex(vertex1)
+          .withToVertex(vertex2)
+          .withGeometry(
+            GeometryUtils.makeLineString(List.of(vertex1.getCoordinate(), vertex2.getCoordinate()))
+          )
+          .withMeterLength(5)
+          .withPermission(StreetTraversalPermission.PEDESTRIAN)
+          .buildAndConnect()
+      )
+    );
   }
 
   private Set<String> getActualEdgeSet(Graph graph) {

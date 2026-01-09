@@ -361,21 +361,12 @@ public class OrcaFareServiceTest {
   @Test
   void calculateFareForKitsapFastFerry() {
     List<Leg> rides = List.of(getLeg(KITSAP_TRANSIT_AGENCY_ID, 0, 4, "404", "east"));
-    calculateFare(rides, regular, TWO_DOLLARS);
-    calculateFare(rides, FareType.senior, ONE_DOLLAR);
+    calculateFare(rides, regular, DEFAULT_TEST_RIDE_PRICE);
+    calculateFare(rides, FareType.senior, DEFAULT_TEST_RIDE_PRICE.half());
     calculateFare(rides, FareType.youth, Money.ZERO_USD);
-    calculateFare(rides, FareType.electronicSpecial, ONE_DOLLAR);
-    calculateFare(rides, FareType.electronicRegular, TWO_DOLLARS);
-    calculateFare(rides, FareType.electronicSenior, ONE_DOLLAR);
-    calculateFare(rides, FareType.electronicYouth, Money.ZERO_USD);
-
-    rides = List.of(getLeg(KITSAP_TRANSIT_AGENCY_ID, 0, 4, "404", "west"));
-    calculateFare(rides, regular, usDollars(12f));
-    calculateFare(rides, FareType.senior, usDollars(6f));
-    calculateFare(rides, FareType.youth, Money.ZERO_USD);
-    calculateFare(rides, FareType.electronicSpecial, usDollars(6f));
-    calculateFare(rides, FareType.electronicRegular, usDollars(12f));
-    calculateFare(rides, FareType.electronicSenior, usDollars(6f));
+    calculateFare(rides, FareType.electronicSpecial, DEFAULT_TEST_RIDE_PRICE.half());
+    calculateFare(rides, FareType.electronicRegular, DEFAULT_TEST_RIDE_PRICE);
+    calculateFare(rides, FareType.electronicSenior, DEFAULT_TEST_RIDE_PRICE.half());
     calculateFare(rides, FareType.electronicYouth, Money.ZERO_USD);
   }
 

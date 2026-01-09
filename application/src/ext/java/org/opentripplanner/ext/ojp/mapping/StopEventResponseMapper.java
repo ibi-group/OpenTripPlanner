@@ -1,6 +1,6 @@
-package org.opentripplanner.ext.trias.mapping;
+package org.opentripplanner.ext.ojp.mapping;
 
-import static org.opentripplanner.ext.trias.mapping.StopEventResponseMapper.OptionalFeature.REALTIME_DATA;
+import static org.opentripplanner.ext.ojp.mapping.StopEventResponseMapper.OptionalFeature.REALTIME_DATA;
 
 import de.vdv.ojp20.CallAtNearStopStructure;
 import de.vdv.ojp20.CallAtStopStructure;
@@ -36,7 +36,7 @@ import javax.annotation.Nullable;
 import javax.xml.namespace.QName;
 import org.opentripplanner.api.model.transit.FeedScopedIdMapper;
 import org.opentripplanner.core.model.i18n.I18NString;
-import org.opentripplanner.ext.trias.service.CallAtStop;
+import org.opentripplanner.ext.ojp.service.CallAtStop;
 import org.opentripplanner.model.PickDrop;
 import org.opentripplanner.model.TripTimeOnDate;
 import org.opentripplanner.ojp.time.XmlDateTime;

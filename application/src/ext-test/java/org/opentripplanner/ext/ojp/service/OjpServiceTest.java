@@ -1,4 +1,4 @@
-package org.opentripplanner.ext.trias.service;
+package org.opentripplanner.ext.ojp.service;
 
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;

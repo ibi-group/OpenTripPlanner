@@ -1,8 +1,8 @@
-package org.opentripplanner.ext.trias.config;
+package org.opentripplanner.ext.ojp.config;
 
 import static org.opentripplanner.standalone.config.framework.json.OtpVersion.V2_8;
 
-import org.opentripplanner.ext.trias.parameters.TriasApiParameters;
+import org.opentripplanner.ext.ojp.parameters.TriasApiParameters;
 import org.opentripplanner.standalone.config.framework.json.NodeAdapter;
 
 public class TriasApiConfig {

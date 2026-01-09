@@ -232,7 +232,7 @@ public class OsmModule implements GraphBuilderModule {
       parkingRepository.updateVehicleParking(parkingLots, List.of());
     }
 
-    elevatorProcessor.buildElevatorEdgesFromElevatorNodes();
+    elevatorProcessor.buildElevatorEdges();
 
     TurnRestrictionUnifier.unifyTurnRestrictions(osmdb, issueStore, osmInfoGraphBuildRepository);
 
@@ -343,7 +343,9 @@ public class OsmModule implements GraphBuilderModule {
 
       if (
         !way.isRoutable() ||
-        (forwardPermission.allowsNothing() && backwardPermission.allowsNothing())
+        (forwardPermission.allowsNothing() && backwardPermission.allowsNothing()) ||
+        // Elevator way processing is done after the basic graph has been built.
+        elevatorProcessor.isElevatorWay(way)
       ) {
         continue;
       }
@@ -486,8 +488,6 @@ public class OsmModule implements GraphBuilderModule {
               way
             );
           }
-        } else if (elevatorProcessor.isElevatorWay(way)) {
-          elevatorProcessor.buildElevatorEdgesFromElevatorWay(way);
         } else {
           StreetEdgePair streets = getEdgesForStreet(
             fromVertex,

@@ -1,4 +1,4 @@
-package org.opentripplanner.ext.trias.trias;
+package org.opentripplanner.ext.ojp.trias;
 
 import de.vdv.ojp20.OJP;
 import de.vdv.ojp20.OJPStopEventRequestStructure;
@@ -24,10 +24,10 @@ import javax.xml.transform.TransformerException;
 import org.opentripplanner.api.model.transit.DefaultFeedIdMapper;
 import org.opentripplanner.api.model.transit.FeedScopedIdMapper;
 import org.opentripplanner.api.model.transit.HideFeedIdMapper;
-import org.opentripplanner.ext.trias.mapping.ErrorMapper;
-import org.opentripplanner.ext.trias.parameters.TriasApiParameters;
-import org.opentripplanner.ext.trias.service.OjpService;
-import org.opentripplanner.ext.trias.service.OjpServiceMapper;
+import org.opentripplanner.ext.ojp.mapping.ErrorMapper;
+import org.opentripplanner.ext.ojp.parameters.TriasApiParameters;
+import org.opentripplanner.ext.ojp.service.OjpService;
+import org.opentripplanner.ext.ojp.service.OjpServiceMapper;
 import org.opentripplanner.routing.error.RoutingValidationException;
 import org.opentripplanner.standalone.api.OtpServerRequestContext;
 import org.opentripplanner.transit.model.framework.EntityNotFoundException;
