@@ -22,6 +22,11 @@ import org.opentripplanner.transit.model.basic.Money;
 
 public class OregonHopFareFactory extends DefaultFareServiceFactory {
 
+  /**
+   * Pulls out a desired fare product by ID from the fare leg rule table. Otherwise, generates a $0 fare as a null.
+   * @param fareProductId The fare product to find
+   * @return              The fare product from the GTFS, or a generated $0 fare product.
+   */
   private FareProduct findFareProduct(FeedScopedId fareProductId) {
     Optional<FareLegRule> potentialRuleMatch = this.fareLegRules.stream()
       .filter(f ->  f.fareProducts().stream().anyMatch(fp -> fp.id().equals(fareProductId)))
