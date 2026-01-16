@@ -23,7 +23,7 @@ public class OregonHopFareFactory extends DefaultFareServiceFactory {
    * Generates fare products based on C-TRAN/TriMet data. Relies on 2 fares per rider category.
    * To calculate the effective fare, the second fare is subtracted from the first.
    */
-  private Collection<FareProduct> generateHopFareProducts(Money AdultFirst, Money AdultSecond, Money SeniorFirst, Money SeniorSecond, Money YouthFirst, Money YouthSecond) {
+  private Collection<FareProduct> generateHopFareProducts(Money AdultLarger, Money AdultSmaller, Money SeniorLarger, Money SeniorSmaller, Money YouthLarger, Money YouthSmaller) {
     final Collection<FareProduct> hopFareProducts = new HashSet<>();
 
     // Adult
@@ -31,7 +31,7 @@ public class OregonHopFareFactory extends DefaultFareServiceFactory {
       FareProduct.of(
           new FeedScopedId("CTRAN", "TRIMET_CTRAN_ADULT_TRANSFER"),
           "TriMet to C-TRAN",
-          AdultFirst.minus(AdultSecond))
+        Money.max(Money.ZERO_USD, AdultLarger.minus(AdultSmaller)))
         .withCategory(RiderCategory.of(FeedScopedId.parse("CTRAN:ADULT")).withName("Adult").build())
         .withMedium(new FareMedium(FeedScopedId.parse("CTRAN:2"), "HOP Fastpass"))
         .build()
@@ -40,7 +40,7 @@ public class OregonHopFareFactory extends DefaultFareServiceFactory {
       FareProduct.of(
           new FeedScopedId("CTRAN", "TRIMET_CTRAN_ADULT_TRANSFER"),
           "TriMet to C-TRAN",
-          AdultFirst.minus(AdultSecond))
+        Money.max(Money.ZERO_USD, AdultLarger.minus(AdultSmaller)))
         .withCategory(RiderCategory.of(FeedScopedId.parse("CTRAN:ADULT")).withName("Adult").build())
         .withMedium(new FareMedium(FeedScopedId.parse("CTRAN:3"), "Open Payment"))
         .build()
@@ -49,7 +49,7 @@ public class OregonHopFareFactory extends DefaultFareServiceFactory {
       FareProduct.of(
           new FeedScopedId("CTRAN", "TRIMET_CTRAN_ADULT_TRANSFER"),
           "TriMet to C-TRAN",
-          AdultFirst.minus(AdultSecond))
+        Money.max(Money.ZERO_USD, AdultLarger.minus(AdultSmaller)))
         .withCategory(RiderCategory.of(FeedScopedId.parse("CTRAN:ADULT")).withName("Adult").build())
         .withMedium(new FareMedium(FeedScopedId.parse("CTRAN:4"), "Virtual HOP Fastpass"))
         .build()
@@ -60,7 +60,7 @@ public class OregonHopFareFactory extends DefaultFareServiceFactory {
       FareProduct.of(
           new FeedScopedId("CTRAN", "TRIMET_CTRAN_HC_TRANSFER"),
           "TriMet to C-TRAN",
-          SeniorFirst.minus(SeniorSecond))
+        Money.max(Money.ZERO_USD, (SeniorLarger.minus(SeniorSmaller))))
         .withCategory(RiderCategory.of(FeedScopedId.parse("CTRAN:HONORED_CITIZEN")).withName("Honored Citizen").build())
         .withMedium(new FareMedium(FeedScopedId.parse("CTRAN:2"), "HOP Fastpass"))
         .build()
@@ -69,7 +69,7 @@ public class OregonHopFareFactory extends DefaultFareServiceFactory {
       FareProduct.of(
           new FeedScopedId("CTRAN", "TRIMET_CTRAN_HONORED_CITIZEN_TRANSFER"),
           "TriMet to C-TRAN",
-          SeniorFirst.minus(SeniorSecond))
+        Money.max(Money.ZERO_USD, SeniorLarger.minus(SeniorSmaller)))
         .withCategory(RiderCategory.of(FeedScopedId.parse("CTRAN:HONORED_CITIZEN")).withName("Honored Citizen").build())
         .withMedium(new FareMedium(FeedScopedId.parse("CTRAN:3"), "Open Payment"))
         .build()
@@ -78,7 +78,7 @@ public class OregonHopFareFactory extends DefaultFareServiceFactory {
       FareProduct.of(
           new FeedScopedId("CTRAN", "TRIMET_CTRAN_HONORED_CITIZEN_TRANSFER"),
           "TriMet to C-TRAN",
-          SeniorFirst.minus(SeniorSecond))
+        Money.max(Money.ZERO_USD, SeniorLarger.minus(SeniorSmaller)))
         .withCategory(RiderCategory.of(FeedScopedId.parse("CTRAN:HONORED_CITIZEN")).withName("Honored Citizen").build())
         .withMedium(new FareMedium(FeedScopedId.parse("CTRAN:4"), "Virtual HOP Fastpass"))
         .build()
@@ -90,7 +90,7 @@ public class OregonHopFareFactory extends DefaultFareServiceFactory {
       FareProduct.of(
           new FeedScopedId("CTRAN", "TRIMET_CTRAN_YOUTH_TRANSFER"),
           "TriMet to C-TRAN",
-          Money.max(Money.ZERO_USD, YouthFirst.minus(YouthSecond)))
+          Money.max(Money.ZERO_USD, YouthLarger.minus(YouthSmaller)))
         .withCategory(RiderCategory.of(FeedScopedId.parse("CTRAN:YOUTH")).withName("Youth").build())
         .withMedium(new FareMedium(FeedScopedId.parse("CTRAN:2"), "HOP Fastpass"))
         .build()
@@ -99,7 +99,7 @@ public class OregonHopFareFactory extends DefaultFareServiceFactory {
       FareProduct.of(
           new FeedScopedId("CTRAN", "TRIMET_CTRAN_YOUTH_TRANSFER"),
           "TriMet to C-TRAN",
-          Money.max(Money.ZERO_USD, YouthFirst.minus(YouthSecond)))
+          Money.max(Money.ZERO_USD, YouthLarger.minus(YouthSmaller)))
         .withCategory(RiderCategory.of(FeedScopedId.parse("CTRAN:YOUTH")).withName("Youth").build())
         .withMedium(new FareMedium(FeedScopedId.parse("CTRAN:3"), "Open Payment"))
         .build()
@@ -108,7 +108,7 @@ public class OregonHopFareFactory extends DefaultFareServiceFactory {
       FareProduct.of(
           new FeedScopedId("CTRAN", "TRIMET_CTRAN_YOUTH_TRANSFER"),
           "TriMet to C-TRAN",
-          Money.max(Money.ZERO_USD, YouthFirst.minus(YouthSecond)))
+          Money.max(Money.ZERO_USD, YouthLarger.minus(YouthSmaller)))
         .withCategory(RiderCategory.of(FeedScopedId.parse("CTRAN:YOUTH")).withName("Youth").build())
         .withMedium(new FareMedium(FeedScopedId.parse("CTRAN:4"), "Virtual HOP Fastpass"))
         .build()
@@ -121,7 +121,7 @@ public class OregonHopFareFactory extends DefaultFareServiceFactory {
     DefaultFareService fareService = new DefaultFareService();
     fareService.addFareRules(FareType.regular, regularFareRules.values());
 
-    // TODO: It might be nice to extract these prices out dynamically from the data
+    // TODO: we need to extract these prices out dynamically from the fare leg rules
     final Money ADULT_TRIMET = Money.usDollars(2.8f);
     final Money REDUCED_TRIMET = Money.usDollars(1.4f);
     final Money ADULT_STREETCAR = Money.usDollars(2f);
@@ -136,8 +136,8 @@ public class OregonHopFareFactory extends DefaultFareServiceFactory {
     final Money REDUCED_CTRAN_LOCAL = Money.usDollars(0.75f);
 
 
-    // TODO: c-tran to flex
-    // TODO: trimet to flex
+    // TODO: pull in fares dynamically
+    // TODO: Senior discounted express upcharge during the mornings
 
     // TriMet to C-TRAN
     this.fareTransferRules.add(FareTransferRule.of()
@@ -156,6 +156,15 @@ public class OregonHopFareFactory extends DefaultFareServiceFactory {
       .withTimeLimit(TimeLimitType.DEPARTURE_TO_DEPARTURE, Duration.ofMinutes(180))
       .withFareProducts(generateHopFareProducts(ADULT_CTRAN_LOCAL, ADULT_TRIMET, REDUCED_CTRAN_LOCAL, REDUCED_TRIMET, Money.ZERO_USD, REDUCED_TRIMET))
       .build());
+    this.fareTransferRules.add(FareTransferRule.of()
+      .withId(new FeedScopedId("CTRAN", "trimet-to-ctran-flex"))
+      .withFromLegGroup(FeedScopedId.parse("TRIMET:TRIMET"))
+      .withToLegGroup(FeedScopedId.parse("CTRAN_FLEX:LOCAL"))
+      .withTransferCount(FareTransferRule.UNLIMITED_TRANSFERS)
+      .withTimeLimit(TimeLimitType.DEPARTURE_TO_DEPARTURE, Duration.ofMinutes(180))
+      .withFareProducts(generateHopFareProducts(ADULT_CTRAN_LOCAL, ADULT_TRIMET, REDUCED_CTRAN_LOCAL, REDUCED_TRIMET, Money.ZERO_USD, REDUCED_TRIMET))
+      .build());
+
     this.fareTransferRules.add(FareTransferRule.of()
       .withId(new FeedScopedId("CTRAN", "trimet-to-ctran-express"))
       .withFromLegGroup(FeedScopedId.parse("TRIMET:TRIMET"))
@@ -178,6 +187,14 @@ public class OregonHopFareFactory extends DefaultFareServiceFactory {
       .withId(new FeedScopedId("CTRAN", "psc-to-ctran-local"))
       .withFromLegGroup(FeedScopedId.parse("TRIMET:PSC"))
       .withToLegGroup(FeedScopedId.parse("CTRAN:LOCAL"))
+      .withTransferCount(FareTransferRule.UNLIMITED_TRANSFERS)
+      .withTimeLimit(TimeLimitType.DEPARTURE_TO_DEPARTURE, Duration.ofMinutes(180))
+      .withFareProducts(generateHopFareProducts(ADULT_CTRAN_LOCAL, ADULT_STREETCAR, REDUCED_CTRAN_LOCAL, REDUCED_STREETCAR, Money.ZERO_USD, REDUCED_STREETCAR))
+      .build());
+    this.fareTransferRules.add(FareTransferRule.of()
+      .withId(new FeedScopedId("CTRAN", "psc-to-ctran-flex"))
+      .withFromLegGroup(FeedScopedId.parse("TRIMET:PSC"))
+      .withToLegGroup(FeedScopedId.parse("CTRAN_FLEX:LOCAL"))
       .withTransferCount(FareTransferRule.UNLIMITED_TRANSFERS)
       .withTimeLimit(TimeLimitType.DEPARTURE_TO_DEPARTURE, Duration.ofMinutes(180))
       .withFareProducts(generateHopFareProducts(ADULT_CTRAN_LOCAL, ADULT_STREETCAR, REDUCED_CTRAN_LOCAL, REDUCED_STREETCAR, Money.ZERO_USD, REDUCED_STREETCAR))
@@ -208,6 +225,14 @@ public class OregonHopFareFactory extends DefaultFareServiceFactory {
       .withTimeLimit(TimeLimitType.DEPARTURE_TO_DEPARTURE, Duration.ofMinutes(180))
       .withFareProducts(generateHopFareProducts(ADULT_TRIMET, ADULT_CTRAN_LOCAL, REDUCED_TRIMET, REDUCED_CTRAN_LOCAL, REDUCED_TRIMET, Money.ZERO_USD))
       .build());
+    this.fareTransferRules.add(FareTransferRule.of()
+      .withId(new FeedScopedId("TRIMET", "ctran-flex-to-trimet"))
+      .withToLegGroup(FeedScopedId.parse("TRIMET:TRIMET"))
+      .withFromLegGroup(FeedScopedId.parse("CTRAN_FLEX:LOCAL"))
+      .withTransferCount(FareTransferRule.UNLIMITED_TRANSFERS)
+      .withTimeLimit(TimeLimitType.DEPARTURE_TO_DEPARTURE, Duration.ofMinutes(180))
+      .withFareProducts(generateHopFareProducts(ADULT_TRIMET, ADULT_CTRAN_LOCAL, REDUCED_TRIMET, REDUCED_CTRAN_LOCAL, REDUCED_TRIMET, Money.ZERO_USD))
+      .build());
 
     this.fareTransferRules.add(FareTransferRule.of()
       .withId(new FeedScopedId("TRIMET", "ctran-express-to-trimet"))
@@ -230,6 +255,14 @@ public class OregonHopFareFactory extends DefaultFareServiceFactory {
       .withId(new FeedScopedId("TRIMET", "ctran-local-to-psc"))
       .withToLegGroup(FeedScopedId.parse("TRIMET:PSC"))
       .withFromLegGroup(FeedScopedId.parse("CTRAN:LOCAL"))
+      .withTransferCount(FareTransferRule.UNLIMITED_TRANSFERS)
+      .withTimeLimit(TimeLimitType.DEPARTURE_TO_DEPARTURE, Duration.ofMinutes(180))
+      .withFareProducts(generateHopFareProducts(ADULT_STREETCAR, ADULT_CTRAN_LOCAL, REDUCED_STREETCAR, REDUCED_CTRAN_LOCAL, REDUCED_STREETCAR, Money.ZERO_USD))
+      .build());
+    this.fareTransferRules.add(FareTransferRule.of()
+      .withId(new FeedScopedId("TRIMET", "ctran-flex-to-psc"))
+      .withToLegGroup(FeedScopedId.parse("TRIMET:PSC"))
+      .withFromLegGroup(FeedScopedId.parse("CTRAN_FLEX:LOCAL"))
       .withTransferCount(FareTransferRule.UNLIMITED_TRANSFERS)
       .withTimeLimit(TimeLimitType.DEPARTURE_TO_DEPARTURE, Duration.ofMinutes(180))
       .withFareProducts(generateHopFareProducts(ADULT_STREETCAR, ADULT_CTRAN_LOCAL, REDUCED_STREETCAR, REDUCED_CTRAN_LOCAL, REDUCED_STREETCAR, Money.ZERO_USD))
@@ -264,6 +297,56 @@ public class OregonHopFareFactory extends DefaultFareServiceFactory {
       .withToLegGroup(FeedScopedId.parse("CTRAN:LOCAL"))
       .withTransferCount(FareTransferRule.UNLIMITED_TRANSFERS)
       .withTimeLimit(TimeLimitType.DEPARTURE_TO_DEPARTURE, Duration.ofMinutes(180))
+      .build());
+
+
+
+    // CTRAN to CTRAN Flex transfers
+    this.fareTransferRules.add(FareTransferRule.of()
+      .withId(new FeedScopedId("CTRAN", "LOCAL_TO_FLEX"))
+      .withFromLegGroup(FeedScopedId.parse("CTRAN:LOCAL"))
+      .withToLegGroup(FeedScopedId.parse("CTRAN_FLEX:LOCAL"))
+      .withTransferCount(FareTransferRule.UNLIMITED_TRANSFERS)
+      .withTimeLimit(TimeLimitType.DEPARTURE_TO_DEPARTURE, Duration.ofMinutes(180))
+      .build());
+    this.fareTransferRules.add(FareTransferRule.of()
+      .withId(new FeedScopedId("CTRAN", "REGIONAL_TO_FLEX"))
+      .withFromLegGroup(FeedScopedId.parse("CTRAN:REGIONAL"))
+      .withToLegGroup(FeedScopedId.parse("CTRAN_FLEX:LOCAL"))
+      .withTransferCount(FareTransferRule.UNLIMITED_TRANSFERS)
+      .withTimeLimit(TimeLimitType.DEPARTURE_TO_DEPARTURE, Duration.ofMinutes(180))
+      .build());
+    this.fareTransferRules.add(FareTransferRule.of()
+      .withId(new FeedScopedId("CTRAN", "EXPRESS_TO_FLEX"))
+      .withFromLegGroup(FeedScopedId.parse("CTRAN:EXPRESS"))
+      .withToLegGroup(FeedScopedId.parse("CTRAN_FLEX:LOCAL"))
+      .withTransferCount(FareTransferRule.UNLIMITED_TRANSFERS)
+      .withTimeLimit(TimeLimitType.DEPARTURE_TO_DEPARTURE, Duration.ofMinutes(180))
+      .build());
+
+    // CTRAN Flex to CTRAN transfers
+    this.fareTransferRules.add(FareTransferRule.of()
+      .withId(new FeedScopedId("CTRAN", "FLEX_TO_LOCAL"))
+      .withFromLegGroup(FeedScopedId.parse("CTRAN_FLEX:LOCAL"))
+      .withToLegGroup(FeedScopedId.parse("CTRAN:LOCAL"))
+      .withTransferCount(FareTransferRule.UNLIMITED_TRANSFERS)
+      .withTimeLimit(TimeLimitType.DEPARTURE_TO_DEPARTURE, Duration.ofMinutes(180))
+      .build());
+    this.fareTransferRules.add(FareTransferRule.of()
+      .withId(new FeedScopedId("CTRAN", "FLEX_TO_REGIONAL"))
+      .withFromLegGroup(FeedScopedId.parse("CTRAN_FLEX:LOCAL"))
+      .withToLegGroup(FeedScopedId.parse("CTRAN:REGIONAL"))
+      .withTransferCount(FareTransferRule.UNLIMITED_TRANSFERS)
+      .withTimeLimit(TimeLimitType.DEPARTURE_TO_DEPARTURE, Duration.ofMinutes(180))
+      .withFareProducts(generateHopFareProducts(ADULT_CTRAN_REGIONAL, ADULT_CTRAN_LOCAL, REDUCED_CTRAN_REGIONAL, REDUCED_CTRAN_LOCAL, REDUCED_CTRAN_REGIONAL, Money.ZERO_USD))
+      .build());
+    this.fareTransferRules.add(FareTransferRule.of()
+      .withId(new FeedScopedId("CTRAN", "FLEX_TO_EXPRESS"))
+      .withFromLegGroup(FeedScopedId.parse("CTRAN_FLEX:LOCAL"))
+      .withToLegGroup(FeedScopedId.parse("CTRAN:EXPRESS"))
+      .withTransferCount(FareTransferRule.UNLIMITED_TRANSFERS)
+      .withTimeLimit(TimeLimitType.DEPARTURE_TO_DEPARTURE, Duration.ofMinutes(180))
+      .withFareProducts(generateHopFareProducts(CTRAN_EXP, ADULT_CTRAN_LOCAL, CTRAN_EXP, REDUCED_CTRAN_LOCAL, CTRAN_EXP, Money.ZERO_USD))
       .build());
 
 
