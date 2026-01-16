@@ -4,7 +4,9 @@ package org.opentripplanner.ext.fares.service.gtfs.v2.custom;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.Optional;
 import org.opentripplanner.core.model.id.FeedScopedId;
+import org.opentripplanner.ext.fares.model.FareLegRule;
 import org.opentripplanner.ext.fares.model.FareTransferRule;
 import org.opentripplanner.ext.fares.model.TimeLimitType;
 import org.opentripplanner.ext.fares.service.gtfs.GtfsFaresService;
@@ -19,12 +21,24 @@ import org.opentripplanner.routing.fares.FareService;
 import org.opentripplanner.transit.model.basic.Money;
 
 public class OregonHopFareFactory extends DefaultFareServiceFactory {
+
+  private FareProduct findFareProduct(FeedScopedId fareProductId) {
+    Optional<FareLegRule> potentialRuleMatch = this.fareLegRules.stream()
+      .filter(f ->  f.fareProducts().stream().anyMatch(fp -> fp.id().equals(fareProductId)))
+      .findFirst();
+
+    return potentialRuleMatch
+      .flatMap(flr -> flr.fareProducts().stream().filter(fp -> fp.id().equals(fareProductId)).findFirst())
+      .orElse(FareProduct.of(fareProductId, "Could not find fare in data", Money.ZERO_USD).build());
+  }
+
   /**
    * Generates fare products based on C-TRAN/TriMet data. Relies on 2 fares per rider category.
    * To calculate the effective fare, the second fare is subtracted from the first.
    */
   private Collection<FareProduct> generateHopFareProducts(Money AdultLarger, Money AdultSmaller, Money SeniorLarger, Money SeniorSmaller, Money YouthLarger, Money YouthSmaller) {
     final Collection<FareProduct> hopFareProducts = new HashSet<>();
+
 
     // Adult
     hopFareProducts.add(
@@ -121,23 +135,26 @@ public class OregonHopFareFactory extends DefaultFareServiceFactory {
     DefaultFareService fareService = new DefaultFareService();
     fareService.addFareRules(FareType.regular, regularFareRules.values());
 
-    // TODO: we need to extract these prices out dynamically from the fare leg rules
-    final Money ADULT_TRIMET = Money.usDollars(2.8f);
-    final Money REDUCED_TRIMET = Money.usDollars(1.4f);
-    final Money ADULT_STREETCAR = Money.usDollars(2f);
-    final Money REDUCED_STREETCAR = Money.usDollars(1f);
+    final Money ADULT_TRIMET = findFareProduct(new FeedScopedId("TRIMET","TRIMET_ADULT_SINGLE_RIDE")).price();
+    final Money REDUCED_TRIMET = findFareProduct(new FeedScopedId("TRIMET","TRIMET_HC_SINGLE_RIDE")).price();
+    final Money ADULT_STREETCAR = findFareProduct(new FeedScopedId("TRIMET","STREETCAR_ADULT_SINGLE_RIDE")).price();
+    final Money REDUCED_STREETCAR = findFareProduct(new FeedScopedId("TRIMET","STREETCAR_HC_SINGLE_RIDE")).price();
 
-    final Money CTRAN_EXP = Money.usDollars(3.25f);
+    final Money CTRAN_EXP = findFareProduct(new FeedScopedId("CTRAN", "ADULT_EXPRESS_SINGLE_RIDE")).price();
 
-    final Money ADULT_CTRAN_REGIONAL = Money.usDollars(2.8f);
-    final Money REDUCED_CTRAN_REGIONAL = Money.usDollars(1.4f);
+    final Money ADULT_CTRAN_REGIONAL = findFareProduct(new FeedScopedId("CTRAN", "ADULT_REGIONAL_SINGLE_RIDE")).price();
+    final Money REDUCED_CTRAN_REGIONAL = findFareProduct(new FeedScopedId("CTRAN", "HC_REGIONAL_SINGLE_RIDE")).price();
 
-    final Money ADULT_CTRAN_LOCAL = Money.usDollars(1.5f);
-    final Money REDUCED_CTRAN_LOCAL = Money.usDollars(0.75f);
+    final Money ADULT_CTRAN_LOCAL = findFareProduct(new FeedScopedId("CTRAN", "ADULT_LOCAL_SINGLE_RIDE")).price();
+    final Money REDUCED_CTRAN_LOCAL = findFareProduct(new FeedScopedId("CTRAN", "HC_LOCAL_SINGLE_RIDE")).price();
 
 
-    // TODO: pull in fares dynamically
     // TODO: Senior discounted express upcharge during the mornings
+    // Handle senior off-peak fares
+    // FareProduct seniorOffPeakExpress = findFareProduct(new FeedScopedId("CTRAN", "HC_EXPRESS_SINGLE_RIDE_MIDDAY"));
+    // Money CTRAN_EXP_SENIOR_OFFPEAK = seniorOffPeakExpress.price();
+
+
 
     // TriMet to C-TRAN
     this.fareTransferRules.add(FareTransferRule.of()
