@@ -9,7 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.time.LocalDate;
 import org.junit.jupiter.api.Test;
 
-public class ServiceDateIntervalTest {
+public class LocalDateIntervalTest {
 
   private final LocalDate d0 = LocalDate.of(2020, 1, 1);
   private final LocalDate d1 = LocalDate.of(2020, 1, 7);
@@ -19,66 +19,66 @@ public class ServiceDateIntervalTest {
 
   @Test
   public void constructorFailsIfEndIsBeforeTheStart() {
-    assertThrows(IllegalArgumentException.class, () -> new ServiceDateInterval(d1.plusDays(1), d1));
+    assertThrows(IllegalArgumentException.class, () -> new LocalDateInterval(d1.plusDays(1), d1));
   }
 
   @Test
   public void unlimited() {
-    ServiceDateInterval u = ServiceDateInterval.unbounded();
+    LocalDateInterval u = LocalDateInterval.unbounded();
     assertTrue(u.include(LocalDate.MIN));
     assertTrue(u.include(LocalDate.MAX));
   }
 
   @Test
   public void isUnbounded() {
-    assertTrue(ServiceDateInterval.unbounded().isUnbounded());
-    assertFalse(new ServiceDateInterval(null, d2).isUnbounded());
-    assertFalse(new ServiceDateInterval(d2, null).isUnbounded());
+    assertTrue(LocalDateInterval.unbounded().isUnbounded());
+    assertFalse(new LocalDateInterval(null, d2).isUnbounded());
+    assertFalse(new LocalDateInterval(d2, null).isUnbounded());
   }
 
   @Test
   public void getStart() {
-    assertEquals(d1, new ServiceDateInterval(d1, d2).getStart());
-    assertEquals(LocalDate.MIN, ServiceDateInterval.unbounded().getStart());
+    assertEquals(d1, new LocalDateInterval(d1, d2).getStart());
+    assertEquals(LocalDate.MIN, LocalDateInterval.unbounded().getStart());
   }
 
   @Test
   public void getEnd() {
-    assertEquals(d2, new ServiceDateInterval(d1, d2).getEnd());
-    assertEquals(LocalDate.MAX, ServiceDateInterval.unbounded().getEnd());
+    assertEquals(d2, new LocalDateInterval(d1, d2).getEnd());
+    assertEquals(LocalDate.MAX, LocalDateInterval.unbounded().getEnd());
   }
 
   @Test
   public void overlap() {
-    ServiceDateInterval subject = new ServiceDateInterval(d1, d2);
-    ServiceDateInterval other;
+    LocalDateInterval subject = new LocalDateInterval(d1, d2);
+    LocalDateInterval other;
 
     // First day overlap
-    other = new ServiceDateInterval(d0, d1);
+    other = new LocalDateInterval(d0, d1);
     assertTrue(subject.overlap(other), subject + " should overlap " + other);
 
     // Last day overlap
-    other = new ServiceDateInterval(d2, d3);
+    other = new LocalDateInterval(d2, d3);
     assertTrue(subject.overlap(other), subject + " should overlap " + other);
 
     // Same periods overlap
-    other = new ServiceDateInterval(d1, d2);
+    other = new LocalDateInterval(d1, d2);
     assertTrue(subject.overlap(other), subject + " should overlap " + other);
 
     // Small period overlap part of large
-    other = new ServiceDateInterval(d0, d4);
+    other = new LocalDateInterval(d0, d4);
     assertTrue(subject.overlap(other), subject + " should overlap " + other);
 
     // Period ending day before, do NOT overlap
-    other = new ServiceDateInterval(d0, d1.minusDays(1));
+    other = new LocalDateInterval(d0, d1.minusDays(1));
     assertFalse(subject.overlap(other), subject + " should not overlap " + other);
 
     // Period start day after, do NOT overlap
-    other = new ServiceDateInterval(d2.plusDays(1), d3);
+    other = new LocalDateInterval(d2.plusDays(1), d3);
     assertFalse(subject.overlap(other), subject + " should not overlap " + other);
 
     // Period overlap with unlimited
-    ServiceDateInterval unlimited = ServiceDateInterval.unbounded();
+    LocalDateInterval unlimited = LocalDateInterval.unbounded();
     assertTrue(subject.overlap(unlimited), subject + " should overlap unlimited");
 
     // Unlimited overlap with unlimited
@@ -87,37 +87,37 @@ public class ServiceDateIntervalTest {
 
   @Test
   public void intersection() {
-    ServiceDateInterval subject = new ServiceDateInterval(d1, d2);
+    LocalDateInterval subject = new LocalDateInterval(d1, d2);
 
     // Intersection of subject and subject -> subject
     assertEquals(subject, subject.intersection(subject));
 
     // First day in common
     assertEquals(
-      new ServiceDateInterval(d1, d1),
-      subject.intersection(new ServiceDateInterval(d0, d1))
+      new LocalDateInterval(d1, d1),
+      subject.intersection(new LocalDateInterval(d0, d1))
     );
 
     // Last day in common
     assertEquals(
-      new ServiceDateInterval(d2, d2),
-      subject.intersection(new ServiceDateInterval(d2, d3))
+      new LocalDateInterval(d2, d2),
+      subject.intersection(new LocalDateInterval(d2, d3))
     );
 
     // The intersection of subject and unlimited -> subject
-    assertEquals(subject, subject.intersection(ServiceDateInterval.unbounded()));
+    assertEquals(subject, subject.intersection(LocalDateInterval.unbounded()));
   }
 
   @Test
   public void intersectionFailsIfAUnionDoNotExist() {
     assertThrows(IllegalArgumentException.class, () ->
-      new ServiceDateInterval(d0, d1).intersection(new ServiceDateInterval(d1.plusDays(1), d2))
+      new LocalDateInterval(d0, d1).intersection(new LocalDateInterval(d1.plusDays(1), d2))
     );
   }
 
   @Test
   public void include() {
-    ServiceDateInterval subject = new ServiceDateInterval(d1, d3);
+    LocalDateInterval subject = new LocalDateInterval(d1, d3);
 
     assertFalse(subject.include(d0));
     assertTrue(subject.include(d1));
@@ -128,36 +128,36 @@ public class ServiceDateIntervalTest {
 
   @Test
   public void testHashCodeAndEquals() {
-    ServiceDateInterval subject = new ServiceDateInterval(d1, d3);
-    ServiceDateInterval same = new ServiceDateInterval(d1, d3);
-    ServiceDateInterval i1 = new ServiceDateInterval(d1, d2);
-    ServiceDateInterval i2 = new ServiceDateInterval(d2, d3);
+    LocalDateInterval subject = new LocalDateInterval(d1, d3);
+    LocalDateInterval same = new LocalDateInterval(d1, d3);
+    LocalDateInterval i1 = new LocalDateInterval(d1, d2);
+    LocalDateInterval i2 = new LocalDateInterval(d2, d3);
 
     assertEquals(subject, same);
     assertNotEquals(subject, i1);
     assertNotEquals(subject, i2);
-    assertEquals(new ServiceDateInterval(null, null), ServiceDateInterval.unbounded());
+    assertEquals(new LocalDateInterval(null, null), LocalDateInterval.unbounded());
 
     assertEquals(subject.hashCode(), same.hashCode());
     assertNotEquals(subject.hashCode(), i1.hashCode());
     assertNotEquals(subject.hashCode(), i2.hashCode());
     assertEquals(
-      new ServiceDateInterval(null, null).hashCode(),
-      ServiceDateInterval.unbounded().hashCode()
+      new LocalDateInterval(null, null).hashCode(),
+      LocalDateInterval.unbounded().hashCode()
     );
   }
 
   @Test
   public void testToString() {
-    assertEquals("[2020-01-07, 2020-01-15]", new ServiceDateInterval(d1, d2).toString());
-    assertEquals("[MIN, 2020-01-15]", new ServiceDateInterval(null, d2).toString());
-    assertEquals("[2020-01-07, MAX]", new ServiceDateInterval(d1, null).toString());
-    assertEquals("[MIN, MAX]", new ServiceDateInterval(null, null).toString());
-    assertEquals("[MIN, MAX]", ServiceDateInterval.unbounded().toString());
+    assertEquals("[2020-01-07, 2020-01-15]", new LocalDateInterval(d1, d2).toString());
+    assertEquals("[MIN, 2020-01-15]", new LocalDateInterval(null, d2).toString());
+    assertEquals("[2020-01-07, MAX]", new LocalDateInterval(d1, null).toString());
+    assertEquals("[MIN, MAX]", new LocalDateInterval(null, null).toString());
+    assertEquals("[MIN, MAX]", LocalDateInterval.unbounded().toString());
   }
 
   @Test
   public void daysInPeriod() {
-    assertEquals(7, new ServiceDateInterval(d0, d1).daysInPeriod());
+    assertEquals(7, new LocalDateInterval(d0, d1).daysInPeriod());
   }
 }

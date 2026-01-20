@@ -367,7 +367,7 @@
         <dependency>
             <groupId>com.hivemq</groupId>
             <artifactId>hivemq-mqtt-client</artifactId>
-            <version>1.3.10</version>
+            <version>1.3.12</version>
         </dependency>
         <dependency>
             <groupId>io.github.ci-cmg</groupId>
@@ -520,11 +520,9 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-checkstyle-plugin</artifactId>
                 <configuration>
-                    <sourceDirectories>
-                        <sourceDirectory>src/main/java</sourceDirectory>
+                    <sourceDirectories combine.children="append">
                         <sourceDirectory>src/ext/java</sourceDirectory>
                         <sourceDirectory>src/ext-test/java</sourceDirectory>
-                        <sourceDirectory>src/test-fixtures/java</sourceDirectory>
                     </sourceDirectories>
                 </configuration>
             </plugin>

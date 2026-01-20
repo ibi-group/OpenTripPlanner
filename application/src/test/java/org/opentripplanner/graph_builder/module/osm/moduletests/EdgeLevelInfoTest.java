@@ -1,7 +1,7 @@
 package org.opentripplanner.graph_builder.module.osm.moduletests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.opentripplanner.graph_builder.module.osm.moduletests._support.NodeBuilder.node;
+import static org.opentripplanner.osm.model.NodeBuilder.node;
 
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -9,7 +9,7 @@ import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.opentripplanner.framework.geometry.WgsCoordinate;
 import org.opentripplanner.graph_builder.module.osm.OsmModuleTestFactory;
-import org.opentripplanner.graph_builder.module.osm.moduletests._support.TestOsmProvider;
+import org.opentripplanner.osm.TestOsmProvider;
 import org.opentripplanner.osm.model.OsmWay;
 import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.service.streetdetails.StreetDetailsRepository;
@@ -175,16 +175,12 @@ public class EdgeLevelInfoTest {
 
   @Test
   void testElevatorWayEdgeLevelInfo() {
-    var n1 = node(1, new WgsCoordinate(0, 1));
-    var n2 = node(2, new WgsCoordinate(0, 2));
-    var n3 = node(3, new WgsCoordinate(0, 3));
-    var n4 = node(4, new WgsCoordinate(0, 4));
+    var elevatorWay = new OsmWay();
+    elevatorWay.setId(1);
+    elevatorWay.addTag("highway", "elevator");
+    elevatorWay.addTag("level", "0;1");
 
-    var provider = TestOsmProvider.of()
-      .addWayFromNodes(way -> way.addTag("highway", "corridor"), n1, n2)
-      .addWayFromNodes(way -> way.addTag("highway", "elevator").addTag("level", "0;1"), n2, n3)
-      .addWayFromNodes(way -> way.addTag("highway", "corridor"), n3, n4)
-      .build();
+    var provider = TestOsmProvider.of().addWay(elevatorWay).build();
     var graph = new Graph();
     var streetDetailsRepository = new DefaultStreetDetailsRepository();
     OsmModuleTestFactory.of(provider)
@@ -203,16 +199,12 @@ public class EdgeLevelInfoTest {
 
   @Test
   void testElevatorWayEdgeLevelInfoOnSameLevel() {
-    var n1 = node(1, new WgsCoordinate(0, 1));
-    var n2 = node(2, new WgsCoordinate(0, 2));
-    var n3 = node(3, new WgsCoordinate(0, 3));
-    var n4 = node(4, new WgsCoordinate(0, 4));
+    var elevatorWay = new OsmWay();
+    elevatorWay.setId(1);
+    elevatorWay.addTag("highway", "elevator");
+    elevatorWay.addTag("level", "1;1");
 
-    var provider = TestOsmProvider.of()
-      .addWayFromNodes(way -> way.addTag("highway", "corridor"), n1, n2)
-      .addWayFromNodes(way -> way.addTag("highway", "elevator").addTag("level", "1;1"), n2, n3)
-      .addWayFromNodes(way -> way.addTag("highway", "corridor"), n3, n4)
-      .build();
+    var provider = TestOsmProvider.of().addWay(elevatorWay).build();
     var graph = new Graph();
     var streetDetailsRepository = new DefaultStreetDetailsRepository();
     OsmModuleTestFactory.of(provider)
@@ -231,16 +223,11 @@ public class EdgeLevelInfoTest {
 
   @Test
   void testElevatorWayEdgeLevelInfoWithoutDefinedLevels() {
-    var n1 = node(1, new WgsCoordinate(0, 1));
-    var n2 = node(2, new WgsCoordinate(0, 2));
-    var n3 = node(3, new WgsCoordinate(0, 3));
-    var n4 = node(4, new WgsCoordinate(0, 4));
+    var elevatorWay = new OsmWay();
+    elevatorWay.setId(1);
+    elevatorWay.addTag("highway", "elevator");
 
-    var provider = TestOsmProvider.of()
-      .addWayFromNodes(way -> way.addTag("highway", "corridor"), n1, n2)
-      .addWayFromNodes(way -> way.addTag("highway", "elevator"), n2, n3)
-      .addWayFromNodes(way -> way.addTag("highway", "corridor"), n3, n4)
-      .build();
+    var provider = TestOsmProvider.of().addWay(elevatorWay).build();
     var graph = new Graph();
     var streetDetailsRepository = new DefaultStreetDetailsRepository();
     OsmModuleTestFactory.of(provider)

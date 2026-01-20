@@ -17,14 +17,14 @@ import org.opentripplanner.utils.time.ServiceDateUtils;
  * {@code null} is used to represent an unbounded interval. One or both the of the {@code start} and
  * {@code end} can be {@code null} (unbounded).
  */
-public final class ServiceDateInterval {
+public final class LocalDateInterval {
 
-  private static final ServiceDateInterval UNBOUNDED = new ServiceDateInterval(MIN, MAX);
+  private static final LocalDateInterval UNBOUNDED = new LocalDateInterval(MIN, MAX);
 
   private final LocalDate start;
   private final LocalDate end;
 
-  public ServiceDateInterval(LocalDate start, LocalDate end) {
+  public LocalDateInterval(LocalDate start, LocalDate end) {
     this.start = start == null ? MIN : start;
     this.end = end == null ? MAX : end;
 
@@ -39,7 +39,7 @@ public final class ServiceDateInterval {
   /**
    * Return a interval with start or end unbounded ({@code null}).
    */
-  public static ServiceDateInterval unbounded() {
+  public static LocalDateInterval unbounded() {
     return UNBOUNDED;
   }
 
@@ -66,9 +66,9 @@ public final class ServiceDateInterval {
   /**
    * The intervals have at least one day in common.
    *
-   * @see #intersection(ServiceDateInterval)
+   * @see #intersection(LocalDateInterval)
    */
-  public boolean overlap(ServiceDateInterval other) {
+  public boolean overlap(LocalDateInterval other) {
     if (!start.isAfter(other.end)) {
       return !end.isBefore(other.start);
     }
@@ -80,10 +80,10 @@ public final class ServiceDateInterval {
    * periods (intersection of {@code this} and {@code other}).
    *
    * @throws IllegalArgumentException it the to periods do not overlap.
-   * @see #overlap(ServiceDateInterval) for checking an intersection exist.
+   * @see #overlap(LocalDateInterval) for checking an intersection exist.
    */
-  public ServiceDateInterval intersection(ServiceDateInterval other) {
-    return new ServiceDateInterval(
+  public LocalDateInterval intersection(LocalDateInterval other) {
+    return new LocalDateInterval(
       ServiceDateUtils.max(start, other.start),
       ServiceDateUtils.min(end, other.end)
     );
@@ -109,7 +109,7 @@ public final class ServiceDateInterval {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    ServiceDateInterval that = (ServiceDateInterval) o;
+    LocalDateInterval that = (LocalDateInterval) o;
     return start.equals(that.start) && end.equals(that.end);
   }
 

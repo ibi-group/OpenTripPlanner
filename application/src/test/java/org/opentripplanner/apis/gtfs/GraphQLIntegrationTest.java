@@ -98,6 +98,7 @@ import org.opentripplanner.street.model.edge.ElevatorAlightEdge;
 import org.opentripplanner.street.model.edge.ElevatorBoardEdge;
 import org.opentripplanner.street.search.state.TestStateBuilder;
 import org.opentripplanner.test.support.FilePatternSource;
+import org.opentripplanner.transfer.TransferServiceTestFactory;
 import org.opentripplanner.transit.model._data.TimetableRepositoryForTest;
 import org.opentripplanner.transit.model.basic.Accessibility;
 import org.opentripplanner.transit.model.basic.Money;
@@ -282,7 +283,11 @@ class GraphQLIntegrationTest {
       )
       .toList();
 
-    var busRoute = routes.stream().filter(r -> r.getMode().equals(BUS)).findFirst().get();
+    var busRoute = routes
+      .stream()
+      .filter(r -> r.getMode().equals(BUS))
+      .findFirst()
+      .get();
 
     final Trip addedTrip = Trip.of(new FeedScopedId(FEED_ID, ADDED_TRIP_ID))
       .withRoute(busRoute)
@@ -299,7 +304,7 @@ class GraphQLIntegrationTest {
           TripPattern.of(new FeedScopedId(FEED_ID, "ADDED_TRIP_PATTERN"))
             .withRoute(t.getRoute())
             .withStopPattern(TimetableRepositoryForTest.stopPattern(A.stop, B.stop, C.stop, D.stop))
-            .withCreatedByRealtimeUpdater(true)
+            .withRealTimeStopPatternModified()
             .build(),
           realTimeTripTimes,
           SERVICE_DATE,
@@ -494,6 +499,7 @@ class GraphQLIntegrationTest {
     context = new GraphQLRequestContext(
       new TestRoutingService(List.of(i1)),
       transitService,
+      TransferServiceTestFactory.defaultTransferService(),
       new DefaultFareService(),
       defaultVehicleRentalService,
       new DefaultVehicleParkingService(parkingRepository),

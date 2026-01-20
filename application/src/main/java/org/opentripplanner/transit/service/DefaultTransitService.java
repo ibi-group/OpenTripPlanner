@@ -25,7 +25,6 @@ import org.opentripplanner.core.model.id.FeedScopedId;
 import org.opentripplanner.ext.flex.FlexIndex;
 import org.opentripplanner.framework.application.OTPRequestTimeoutException;
 import org.opentripplanner.model.FeedInfo;
-import org.opentripplanner.model.PathTransfer;
 import org.opentripplanner.model.StopTimesInPattern;
 import org.opentripplanner.model.TripTimeOnDate;
 import org.opentripplanner.model.calendar.CalendarService;
@@ -343,6 +342,15 @@ public class DefaultTransitService implements TransitEditorService {
     return canceledTrips;
   }
 
+  /**
+   * TODO This only supports realtime cancelled trips for now.
+   */
+  @Override
+  public List<TripOnServiceDate> findCanceledTrips(TripOnServiceDateRequest request) {
+    Matcher<TripOnServiceDate> matcher = TripOnServiceDateMatcherFactory.of(request);
+    return listCanceledTrips().stream().filter(matcher::match).toList();
+  }
+
   @Override
   public Collection<Trip> listTrips() {
     OTPRequestTimeoutException.checkForTimeout();
@@ -622,11 +630,6 @@ public class DefaultTransitService implements TransitEditorService {
   @Nullable
   public FeedScopedId getOrCreateServiceIdForDate(LocalDate serviceDate) {
     return timetableRepository.getOrCreateServiceIdForDate(serviceDate);
-  }
-
-  @Override
-  public Collection<PathTransfer> findPathTransfers(StopLocation stop) {
-    return this.timetableRepository.getTransfersByStop(stop);
   }
 
   @Override
