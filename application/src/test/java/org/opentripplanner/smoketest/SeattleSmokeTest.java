@@ -127,7 +127,10 @@ public class SeattleSmokeTest {
       .transitItineraries()
       .stream()
       .filter(i ->
-        i.transitLegs().stream().anyMatch(l -> l.route().getLongName().equals(CCSWW_ROUTE))
+        i
+          .transitLegs()
+          .stream()
+          .anyMatch(l -> l.route().getLongName().equals(CCSWW_ROUTE))
       )
       .findFirst()
       .get();
