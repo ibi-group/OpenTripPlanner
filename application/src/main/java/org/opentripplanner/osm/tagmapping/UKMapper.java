@@ -25,7 +25,8 @@ import org.opentripplanner.osm.wayproperty.WayPropertySet;
 class UKMapper extends OsmTagMapper {
 
   @Override
-  public void populateProperties(WayPropertySet props) {
+  public WayPropertySet buildWayPropertySet() {
+    var props = WayPropertySet.of();
     props.setProperties("highway=cycleway", withModes(PEDESTRIAN_AND_BICYCLE).bicycleSafety(0.6));
     props.setProperties("highway=bridleway", withModes(PEDESTRIAN_AND_BICYCLE).bicycleSafety(1.3));
 
@@ -44,17 +45,27 @@ class UKMapper extends OsmTagMapper {
      *
      */
     // Max speed limit is 70 mph ~113kmh ~31.3m/s
-    props.maxPossibleCarSpeed = 31.4f;
-    props.setCarSpeed("highway=motorway", 30.4f); // ~=68mph
-    props.setCarSpeed("highway=motorway_link", 22.4f); // ~= 50mph
-    props.setCarSpeed("highway=trunk", 22.4f); // ~=50mph
-    props.setCarSpeed("highway=trunk_link", 17.9f); // ~= 40mph
-    props.setCarSpeed("highway=primary", 22.4f); // ~=50mph
-    props.setCarSpeed("highway=primary_link", 17.9f); // ~= 40mph
-    props.setCarSpeed("highway=secondary", 17.9f); // ~= 40mph
-    props.setCarSpeed("highway=secondary_link", 13.4f); // ~= 30mph
-    props.setCarSpeed("highway=tertiary", 15.7f); // ~= 35mph
+    props.setMaxPossibleCarSpeed(31.4f);
+    // ~=68mph
+    props.setCarSpeed("highway=motorway", 30.4f);
+    // ~= 50mph
+    props.setCarSpeed("highway=motorway_link", 22.4f);
+    // ~=50mph
+    props.setCarSpeed("highway=trunk", 22.4f);
+    // ~= 40mph
+    props.setCarSpeed("highway=trunk_link", 17.9f);
+    // ~=50mph
+    props.setCarSpeed("highway=primary", 22.4f);
+    // ~= 40mph
+    props.setCarSpeed("highway=primary_link", 17.9f);
+    // ~= 40mph
+    props.setCarSpeed("highway=secondary", 17.9f);
+    // ~= 30mph
+    props.setCarSpeed("highway=secondary_link", 13.4f);
+    // ~= 35mph
+    props.setCarSpeed("highway=tertiary", 15.7f);
 
-    super.populateProperties(props);
+    props.addPickers(super.buildWayPropertySet());
+    return props.build();
   }
 }

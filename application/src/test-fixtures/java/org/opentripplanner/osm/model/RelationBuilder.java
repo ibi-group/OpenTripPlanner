@@ -1,8 +1,4 @@
-package org.opentripplanner.graph_builder.module.osm.moduletests._support;
-
-import org.opentripplanner.osm.model.OsmMemberType;
-import org.opentripplanner.osm.model.OsmRelation;
-import org.opentripplanner.osm.model.OsmRelationMember;
+package org.opentripplanner.osm.model;
 
 public class RelationBuilder {
 

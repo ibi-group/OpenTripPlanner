@@ -83,7 +83,10 @@ public class RequestCombinationsBuilder {
       .stream()
       .flatMap(place -> {
         var builder = TripPlanParameters.builder().withFrom(place);
-        return places.stream().filter(p -> !p.equals(place)).map(p -> builder.copy().withTo(p));
+        return places
+          .stream()
+          .filter(p -> !p.equals(place))
+          .map(p -> builder.copy().withTo(p));
       });
   }
 }

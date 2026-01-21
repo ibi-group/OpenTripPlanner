@@ -1,4 +1,4 @@
-package org.opentripplanner.graph_builder.module.osm.moduletests._support;
+package org.opentripplanner.osm;
 
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -8,7 +8,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import org.opentripplanner._support.time.ZoneIds;
 import org.opentripplanner.graph_builder.module.osm.OsmDatabase;
-import org.opentripplanner.osm.OsmProvider;
 import org.opentripplanner.osm.model.OsmEntity;
 import org.opentripplanner.osm.model.OsmNode;
 import org.opentripplanner.osm.model.OsmRelation;
@@ -22,7 +21,7 @@ public class TestOsmProvider implements OsmProvider {
   private final List<OsmNode> nodes;
   private final List<OsmRelation> relations;
   private final OsmTagMapper osmTagMapper = new OsmTagMapper();
-  private final WayPropertySet wayPropertySet = new WayPropertySet();
+  private final WayPropertySet wayPropertySet = osmTagMapper.buildWayPropertySet();
 
   public TestOsmProvider(List<OsmRelation> relations, List<OsmWay> ways, List<OsmNode> nodes) {
     // this was originally peek() but Joel insisted that it's "for debugging"

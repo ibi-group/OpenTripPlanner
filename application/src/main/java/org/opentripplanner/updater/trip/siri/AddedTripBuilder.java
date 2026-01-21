@@ -237,6 +237,7 @@ class AddedTripBuilder {
       .withMode(trip.getMode())
       .withNetexSubmode(trip.getNetexSubMode())
       .withStopPattern(stopPattern)
+      .withRealTimeAddedTrip()
       .withScheduledTimeTableBuilder(builder -> builder.addTripTimes(tripTimes))
       .build();
 
@@ -373,7 +374,7 @@ class AddedTripBuilder {
     List<TripOnServiceDate> listOfReplacedVehicleJourneys = new ArrayList<>();
 
     // VehicleJourneyRef is the reference to the serviceJourney being replaced.
-    VehicleJourneyRef vehicleJourneyRef = estimatedVehicleJourney.getVehicleJourneyRef(); // getVehicleJourneyRef
+    VehicleJourneyRef vehicleJourneyRef = estimatedVehicleJourney.getVehicleJourneyRef();
     if (vehicleJourneyRef != null) {
       var replacedDatedServiceJourney = entityResolver.resolveTripOnServiceDate(
         vehicleJourneyRef.getValue()

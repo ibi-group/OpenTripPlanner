@@ -73,7 +73,13 @@ public class SmokeTest {
   static void assertThatItineraryHasModes(List<Itinerary> itineraries, List<String> expectedModes) {
     var itineraryModes = itineraries
       .stream()
-      .map(i -> i.legs().stream().map(l -> l.mode().toString()).toList())
+      .map(i ->
+        i
+          .legs()
+          .stream()
+          .map(l -> l.mode().toString())
+          .toList()
+      )
       .toList();
     assertTrue(
       itineraryModes.contains(expectedModes),
@@ -109,7 +115,10 @@ public class SmokeTest {
   static void assertThereArePatternsWithVehiclePositions() {
     try {
       var patterns = API_CLIENT.patterns();
-      var vehiclePositions = patterns.stream().flatMap(p -> p.vehiclePositions().stream()).toList();
+      var vehiclePositions = patterns
+        .stream()
+        .flatMap(p -> p.vehiclePositions().stream())
+        .toList();
 
       assertFalse(
         vehiclePositions.isEmpty(),
