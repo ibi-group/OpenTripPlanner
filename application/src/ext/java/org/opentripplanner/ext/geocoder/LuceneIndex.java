@@ -265,7 +265,6 @@ public class LuceneIndex implements Serializable {
 
       var fuzzyNameQuery = new FuzzyQuery(new Term(NAME, analyzer.normalize(NAME, searchTerms)));
       var prefixNameQuery = new PrefixQuery(new Term(NAME, analyzer.normalize(NAME, searchTerms)));
-      var codeQuery = new TermQuery(new Term(CODE, analyzer.normalize(CODE, searchTerms)));
 
       var prefixCodeQuery = new PrefixQuery(new Term(CODE, analyzer.normalize(CODE, searchTerms)));
 
@@ -273,7 +272,8 @@ public class LuceneIndex implements Serializable {
         new Term(TYPE, analyzer.normalize(TYPE, StopCluster.class.getSimpleName()))
       );
 
-      var boostedCodeQuery = new BoostQuery(codeQuery, 100.0f);
+      var codeQuery = new TermQuery(new Term(CODE, analyzer.normalize(CODE, searchTerms)));
+      var boostedCodeQuery = new BoostQuery(codeQuery, 100);
 
       var builder = new BooleanQuery.Builder()
         .setMinimumNumberShouldMatch(1)
@@ -288,11 +288,11 @@ public class LuceneIndex implements Serializable {
         var distanceBoost = LatLonPoint.newDistanceFeatureQuery(
           LOCATION,
           // boost score
-          10.0f,
+          10f,
           focusPoint.latitude(),
           focusPoint.longitude(),
           // pivot distance in meters
-          100000.0
+          5_000
         );
         builder.add(distanceBoost, Occur.SHOULD);
       }
