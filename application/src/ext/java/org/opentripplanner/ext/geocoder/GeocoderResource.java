@@ -8,6 +8,7 @@ import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import java.util.Map;
+import org.geotools.referencing.GeodeticCalculator;
 import org.opentripplanner.framework.geometry.WgsCoordinate;
 import org.opentripplanner.standalone.api.OtpServerRequestContext;
 
@@ -41,6 +42,17 @@ public class GeocoderResource {
       focusPoint = new WgsCoordinate(focusLat, focusLon);
     }
     var clusters = luceneIndex.queryStopClusters(query, focusPoint).toList();
+
+    if (focusPoint != null) {
+      GeodeticCalculator gc = new GeodeticCalculator();
+      gc.setStartingGeographicPoint(focusPoint.longitude(), focusPoint.latitude());
+      clusters.forEach(c -> {
+        var coord = c.primary().coordinate();
+        gc.setDestinationGeographicPoint(coord.lon(), coord.lat());
+        double distance = gc.getOrthodromicDistance();
+        System.out.println("Distance to " + c.primary().name() + ": " + distance + " m");
+      });
+    }
 
     return Response.status(Response.Status.OK).entity(clusters).build();
   }
