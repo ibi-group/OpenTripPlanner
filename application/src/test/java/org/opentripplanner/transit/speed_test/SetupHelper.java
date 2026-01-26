@@ -8,7 +8,7 @@ import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.routing.graph.SerializedGraphObject;
 import org.opentripplanner.standalone.config.ConfigModel;
 import org.opentripplanner.standalone.config.OtpConfigLoader;
-import org.opentripplanner.transfer.TransferRepository;
+import org.opentripplanner.transfer.regular.TransferRepository;
 import org.opentripplanner.transit.service.TimetableRepository;
 import org.opentripplanner.transit.speed_test.options.SpeedTestCmdLineOpts;
 
@@ -20,7 +20,9 @@ class SetupHelper {
   static LoadModel loadGraph(File baseDir, @Nullable URI path) {
     File file = path == null
       ? OtpDataStore.graphFile(baseDir)
-      : path.isAbsolute() ? new File(path) : new File(baseDir, path.getPath());
+      : path.isAbsolute()
+        ? new File(path)
+        : new File(baseDir, path.getPath());
     SerializedGraphObject serializedGraphObject = SerializedGraphObject.load(file);
     Graph graph = serializedGraphObject.graph;
 

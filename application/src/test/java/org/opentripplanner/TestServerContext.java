@@ -6,6 +6,7 @@ import io.micrometer.core.instrument.Metrics;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 import javax.annotation.Nullable;
 import org.opentripplanner.ext.emission.internal.DefaultEmissionRepository;
 import org.opentripplanner.ext.emission.internal.DefaultEmissionService;
@@ -44,8 +45,8 @@ import org.opentripplanner.standalone.server.DefaultServerRequestContext;
 import org.opentripplanner.street.internal.DefaultStreetRepository;
 import org.opentripplanner.street.service.DefaultStreetLimitationParametersService;
 import org.opentripplanner.street.service.StreetLimitationParametersService;
-import org.opentripplanner.transfer.TransferRepository;
-import org.opentripplanner.transfer.TransferServiceTestFactory;
+import org.opentripplanner.transfer.regular.TransferRepository;
+import org.opentripplanner.transfer.regular.TransferServiceTestFactory;
 import org.opentripplanner.transit.service.DefaultTransitService;
 import org.opentripplanner.transit.service.TimetableRepository;
 import org.opentripplanner.transit.service.TransitService;
@@ -209,7 +210,11 @@ public class TestServerContext {
     return new LinkingContextFactory(
       graph,
       new VertexCreationService(vertexLinker),
-      transitService::findStopOrChildIds
+      transitService::findStopOrChildIds,
+      id -> {
+        var group = transitService.getStopLocationsGroup(id);
+        return Optional.ofNullable(group).map(locationsGroup -> locationsGroup.getCoordinate());
+      }
     );
   }
 }
