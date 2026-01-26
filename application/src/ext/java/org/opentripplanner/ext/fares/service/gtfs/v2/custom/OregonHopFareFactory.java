@@ -9,6 +9,7 @@ import org.opentripplanner.core.model.id.FeedScopedId;
 import org.opentripplanner.ext.fares.model.FareLegRule;
 import org.opentripplanner.ext.fares.model.FareTransferRule;
 import org.opentripplanner.ext.fares.model.TimeLimitType;
+import org.opentripplanner.ext.fares.model.Timeframe;
 import org.opentripplanner.ext.fares.service.gtfs.GtfsFaresService;
 import org.opentripplanner.ext.fares.service.gtfs.v1.DefaultFareService;
 import org.opentripplanner.ext.fares.service.gtfs.v1.DefaultFareServiceFactory;
@@ -41,97 +42,101 @@ public class OregonHopFareFactory extends DefaultFareServiceFactory {
    * Generates fare products based on C-TRAN/TriMet data. Relies on 2 fares per rider category.
    * To calculate the effective fare, the second fare is subtracted from the first.
    */
-  private Collection<FareProduct> generateHopFareProducts(Money AdultLarger, Money AdultSmaller, Money SeniorLarger, Money SeniorSmaller, Money YouthLarger, Money YouthSmaller) {
+  private Collection<FareProduct> generateHopFareProducts(Money adultLarger, Money adultSmaller, Money seniorLarger, Money seniorSmaller, Money youthLarger, Money youthSmaller) {
     final Collection<FareProduct> hopFareProducts = new HashSet<>();
 
-
     // Adult
-    hopFareProducts.add(
-      FareProduct.of(
-          new FeedScopedId("CTRAN", "TRIMET_CTRAN_ADULT_TRANSFER"),
-          "TriMet to C-TRAN",
-        Money.max(Money.ZERO_USD, AdultLarger.minus(AdultSmaller)))
-        .withCategory(RiderCategory.of(FeedScopedId.parse("CTRAN:ADULT")).withName("Adult").build())
-        .withMedium(new FareMedium(FeedScopedId.parse("CTRAN:2"), "HOP Fastpass"))
-        .build()
-    );
-    hopFareProducts.add(
-      FareProduct.of(
-          new FeedScopedId("CTRAN", "TRIMET_CTRAN_ADULT_TRANSFER"),
-          "TriMet to C-TRAN",
-        Money.max(Money.ZERO_USD, AdultLarger.minus(AdultSmaller)))
-        .withCategory(RiderCategory.of(FeedScopedId.parse("CTRAN:ADULT")).withName("Adult").build())
-        .withMedium(new FareMedium(FeedScopedId.parse("CTRAN:3"), "Open Payment"))
-        .build()
-    );
-    hopFareProducts.add(
-      FareProduct.of(
-          new FeedScopedId("CTRAN", "TRIMET_CTRAN_ADULT_TRANSFER"),
-          "TriMet to C-TRAN",
-        Money.max(Money.ZERO_USD, AdultLarger.minus(AdultSmaller)))
-        .withCategory(RiderCategory.of(FeedScopedId.parse("CTRAN:ADULT")).withName("Adult").build())
-        .withMedium(new FareMedium(FeedScopedId.parse("CTRAN:4"), "Virtual HOP Fastpass"))
-        .build()
-    );
+    if (adultLarger != null && adultSmaller != null) {
+      hopFareProducts.add(
+        FareProduct.of(
+            new FeedScopedId("CTRAN", "TRIMET_CTRAN_ADULT_TRANSFER"),
+            "TriMet to C-TRAN",
+            Money.max(Money.ZERO_USD, adultLarger.minus(adultSmaller)))
+          .withCategory(RiderCategory.of(FeedScopedId.parse("CTRAN:ADULT")).withName("Adult").build())
+          .withMedium(new FareMedium(FeedScopedId.parse("CTRAN:2"), "HOP Fastpass"))
+          .build()
+      );
+      hopFareProducts.add(
+        FareProduct.of(
+            new FeedScopedId("CTRAN", "TRIMET_CTRAN_ADULT_TRANSFER"),
+            "TriMet to C-TRAN",
+            Money.max(Money.ZERO_USD, adultLarger.minus(adultSmaller)))
+          .withCategory(RiderCategory.of(FeedScopedId.parse("CTRAN:ADULT")).withName("Adult").build())
+          .withMedium(new FareMedium(FeedScopedId.parse("CTRAN:3"), "Open Payment"))
+          .build()
+      );
+      hopFareProducts.add(
+        FareProduct.of(
+            new FeedScopedId("CTRAN", "TRIMET_CTRAN_ADULT_TRANSFER"),
+            "TriMet to C-TRAN",
+            Money.max(Money.ZERO_USD, adultLarger.minus(adultSmaller)))
+          .withCategory(RiderCategory.of(FeedScopedId.parse("CTRAN:ADULT")).withName("Adult").build())
+          .withMedium(new FareMedium(FeedScopedId.parse("CTRAN:4"), "Virtual HOP Fastpass"))
+          .build()
+      );
+    }
 
     // Senior
-    hopFareProducts.add(
-      FareProduct.of(
-          new FeedScopedId("CTRAN", "TRIMET_CTRAN_HC_TRANSFER"),
-          "TriMet to C-TRAN",
-        Money.max(Money.ZERO_USD, (SeniorLarger.minus(SeniorSmaller))))
-        .withCategory(RiderCategory.of(FeedScopedId.parse("CTRAN:HONORED_CITIZEN")).withName("Honored Citizen").build())
-        .withMedium(new FareMedium(FeedScopedId.parse("CTRAN:2"), "HOP Fastpass"))
-        .build()
-    );
-    hopFareProducts.add(
-      FareProduct.of(
-          new FeedScopedId("CTRAN", "TRIMET_CTRAN_HONORED_CITIZEN_TRANSFER"),
-          "TriMet to C-TRAN",
-        Money.max(Money.ZERO_USD, SeniorLarger.minus(SeniorSmaller)))
-        .withCategory(RiderCategory.of(FeedScopedId.parse("CTRAN:HONORED_CITIZEN")).withName("Honored Citizen").build())
-        .withMedium(new FareMedium(FeedScopedId.parse("CTRAN:3"), "Open Payment"))
-        .build()
-    );
-    hopFareProducts.add(
-      FareProduct.of(
-          new FeedScopedId("CTRAN", "TRIMET_CTRAN_HONORED_CITIZEN_TRANSFER"),
-          "TriMet to C-TRAN",
-        Money.max(Money.ZERO_USD, SeniorLarger.minus(SeniorSmaller)))
-        .withCategory(RiderCategory.of(FeedScopedId.parse("CTRAN:HONORED_CITIZEN")).withName("Honored Citizen").build())
-        .withMedium(new FareMedium(FeedScopedId.parse("CTRAN:4"), "Virtual HOP Fastpass"))
-        .build()
-    );
-
+    if (seniorLarger != null && seniorSmaller != null) {
+      hopFareProducts.add(
+        FareProduct.of(
+            new FeedScopedId("CTRAN", "TRIMET_CTRAN_HC_TRANSFER"),
+            "TriMet to C-TRAN",
+            Money.max(Money.ZERO_USD, (seniorLarger.minus(seniorSmaller))))
+          .withCategory(RiderCategory.of(FeedScopedId.parse("CTRAN:HONORED_CITIZEN")).withName("Honored Citizen").build())
+          .withMedium(new FareMedium(FeedScopedId.parse("CTRAN:2"), "HOP Fastpass"))
+          .build()
+      );
+      hopFareProducts.add(
+        FareProduct.of(
+            new FeedScopedId("CTRAN", "TRIMET_CTRAN_HONORED_CITIZEN_TRANSFER"),
+            "TriMet to C-TRAN",
+            Money.max(Money.ZERO_USD, seniorLarger.minus(seniorSmaller)))
+          .withCategory(RiderCategory.of(FeedScopedId.parse("CTRAN:HONORED_CITIZEN")).withName("Honored Citizen").build())
+          .withMedium(new FareMedium(FeedScopedId.parse("CTRAN:3"), "Open Payment"))
+          .build()
+      );
+      hopFareProducts.add(
+        FareProduct.of(
+            new FeedScopedId("CTRAN", "TRIMET_CTRAN_HONORED_CITIZEN_TRANSFER"),
+            "TriMet to C-TRAN",
+            Money.max(Money.ZERO_USD, seniorLarger.minus(seniorSmaller)))
+          .withCategory(RiderCategory.of(FeedScopedId.parse("CTRAN:HONORED_CITIZEN")).withName("Honored Citizen").build())
+          .withMedium(new FareMedium(FeedScopedId.parse("CTRAN:4"), "Virtual HOP Fastpass"))
+          .build()
+      );
+    }
 
     // Youth
-    hopFareProducts.add(
-      FareProduct.of(
-          new FeedScopedId("CTRAN", "TRIMET_CTRAN_YOUTH_TRANSFER"),
-          "TriMet to C-TRAN",
-          Money.max(Money.ZERO_USD, YouthLarger.minus(YouthSmaller)))
-        .withCategory(RiderCategory.of(FeedScopedId.parse("CTRAN:YOUTH")).withName("Youth").build())
-        .withMedium(new FareMedium(FeedScopedId.parse("CTRAN:2"), "HOP Fastpass"))
-        .build()
-    );
-    hopFareProducts.add(
-      FareProduct.of(
-          new FeedScopedId("CTRAN", "TRIMET_CTRAN_YOUTH_TRANSFER"),
-          "TriMet to C-TRAN",
-          Money.max(Money.ZERO_USD, YouthLarger.minus(YouthSmaller)))
-        .withCategory(RiderCategory.of(FeedScopedId.parse("CTRAN:YOUTH")).withName("Youth").build())
-        .withMedium(new FareMedium(FeedScopedId.parse("CTRAN:3"), "Open Payment"))
-        .build()
-    );
-    hopFareProducts.add(
-      FareProduct.of(
-          new FeedScopedId("CTRAN", "TRIMET_CTRAN_YOUTH_TRANSFER"),
-          "TriMet to C-TRAN",
-          Money.max(Money.ZERO_USD, YouthLarger.minus(YouthSmaller)))
-        .withCategory(RiderCategory.of(FeedScopedId.parse("CTRAN:YOUTH")).withName("Youth").build())
-        .withMedium(new FareMedium(FeedScopedId.parse("CTRAN:4"), "Virtual HOP Fastpass"))
-        .build()
-    );
+    if (youthLarger != null && youthSmaller != null) {
+      hopFareProducts.add(
+        FareProduct.of(
+            new FeedScopedId("CTRAN", "TRIMET_CTRAN_YOUTH_TRANSFER"),
+            "TriMet to C-TRAN",
+            Money.max(Money.ZERO_USD, youthLarger.minus(youthSmaller)))
+          .withCategory(RiderCategory.of(FeedScopedId.parse("CTRAN:YOUTH")).withName("Youth").build())
+          .withMedium(new FareMedium(FeedScopedId.parse("CTRAN:2"), "HOP Fastpass"))
+          .build()
+      );
+      hopFareProducts.add(
+        FareProduct.of(
+            new FeedScopedId("CTRAN", "TRIMET_CTRAN_YOUTH_TRANSFER"),
+            "TriMet to C-TRAN",
+            Money.max(Money.ZERO_USD, youthLarger.minus(youthSmaller)))
+          .withCategory(RiderCategory.of(FeedScopedId.parse("CTRAN:YOUTH")).withName("Youth").build())
+          .withMedium(new FareMedium(FeedScopedId.parse("CTRAN:3"), "Open Payment"))
+          .build()
+      );
+      hopFareProducts.add(
+        FareProduct.of(
+            new FeedScopedId("CTRAN", "TRIMET_CTRAN_YOUTH_TRANSFER"),
+            "TriMet to C-TRAN",
+            Money.max(Money.ZERO_USD, youthLarger.minus(youthSmaller)))
+          .withCategory(RiderCategory.of(FeedScopedId.parse("CTRAN:YOUTH")).withName("Youth").build())
+          .withMedium(new FareMedium(FeedScopedId.parse("CTRAN:4"), "Virtual HOP Fastpass"))
+          .build()
+      );
+    }
 
     return hopFareProducts;
   }
@@ -154,12 +159,7 @@ public class OregonHopFareFactory extends DefaultFareServiceFactory {
     final Money REDUCED_CTRAN_LOCAL = findFareProduct(new FeedScopedId("CTRAN", "HC_LOCAL_SINGLE_RIDE")).price();
 
 
-    // TODO: Senior discounted express upcharge during the mornings
-    // Handle senior off-peak fares
-    // FareProduct seniorOffPeakExpress = findFareProduct(new FeedScopedId("CTRAN", "HC_EXPRESS_SINGLE_RIDE_MIDDAY"));
-    // Money CTRAN_EXP_SENIOR_OFFPEAK = seniorOffPeakExpress.price();
-
-
+    Money CTRAN_EXP_SENIOR_OFFPEAK = findFareProduct(new FeedScopedId("CTRAN", "HC_EXPRESS_SINGLE_RIDE_MIDDAY")).price();
 
     // TriMet to C-TRAN
     this.fareTransferRules.add(FareTransferRule.of()
@@ -371,6 +371,38 @@ public class OregonHopFareFactory extends DefaultFareServiceFactory {
       .withFareProducts(generateHopFareProducts(CTRAN_EXP, ADULT_CTRAN_LOCAL, CTRAN_EXP, REDUCED_CTRAN_LOCAL, CTRAN_EXP, Money.ZERO_USD))
       .build());
 
+    // Create a new leg rule for the new midday express upcharge
+    // Because we are creating this transfer as a new fare product, some clients may not indicate
+    // it as a transfer.
+
+    // Get relevant timeframes
+    Collection<Timeframe> seniorOffpeakTimeframes = this.fareLegRules.stream()
+      .map(FareLegRule::fromTimeframes)
+      // TODO: is there a cleaner way to build this stream?
+      .filter(c -> c.stream()
+        // This is quite brittle, but the only way to match the correct timeframe
+        .filter(tf -> tf.startTime().getHour() == 9 && tf.endTime().getHour() == 15)
+        .toList().size() > 0
+      )
+      .findAny()
+      .orElse(null);
+
+    this.fareLegRules.add(
+      FareLegRule.of(
+        new FeedScopedId("CTRAN", "trimet-to-ctran-express"), generateHopFareProducts(null, null, CTRAN_EXP_SENIOR_OFFPEAK, REDUCED_TRIMET, null, null))
+        .withLegGroupId(new FeedScopedId("CTRAN", "EXPRESS"))
+        .withNetworkId(new FeedScopedId("CTRAN", "EXPRESS"))
+        .withFromTimeframes(seniorOffpeakTimeframes)
+        .build()
+    );
+    this.fareLegRules.add(
+      FareLegRule.of(
+          new FeedScopedId("CTRAN", "psc-to-ctran-express"), generateHopFareProducts(null, null, CTRAN_EXP_SENIOR_OFFPEAK, REDUCED_STREETCAR, null, null))
+        .withLegGroupId(new FeedScopedId("CTRAN", "EXPRESS"))
+        .withNetworkId(new FeedScopedId("CTRAN", "EXPRESS"))
+        .withFromTimeframes(seniorOffpeakTimeframes)
+        .build()
+    );
 
     var faresV2Service = GtfsFaresV2Service.of()
       .withLegRules(this.fareLegRules)
