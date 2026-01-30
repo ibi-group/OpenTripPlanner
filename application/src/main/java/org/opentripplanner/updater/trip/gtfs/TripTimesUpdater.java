@@ -25,7 +25,7 @@ import org.opentripplanner.model.PickDrop;
 import org.opentripplanner.model.StopTime;
 import org.opentripplanner.transit.model.basic.Accessibility;
 import org.opentripplanner.transit.model.framework.DataValidationException;
-import org.opentripplanner.transit.model.framework.Deduplicator;
+import org.opentripplanner.transit.model.framework.DeduplicatorService;
 import org.opentripplanner.transit.model.framework.Result;
 import org.opentripplanner.transit.model.network.StopPattern;
 import org.opentripplanner.transit.model.timetable.RealTimeState;
@@ -253,7 +253,7 @@ class TripTimesUpdater {
     LocalDate serviceDate,
     RealTimeState realTimeState,
     @Nullable I18NString tripHeadsign,
-    Deduplicator deduplicator,
+    DeduplicatorService deduplicator,
     int serviceCode
   ) {
     // Calculate seconds since epoch on GTFS midnight (noon minus 12h) of service date

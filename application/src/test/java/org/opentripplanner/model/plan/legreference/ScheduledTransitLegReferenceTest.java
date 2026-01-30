@@ -68,10 +68,7 @@ class ScheduledTransitLegReferenceTest {
       .withRegularStop(stop3a)
       .withRegularStop(stop3b)
       .build();
-    TimetableRepository timetableRepository = new TimetableRepository(
-      siteRepository,
-      new Deduplicator()
-    );
+    TimetableRepository timetableRepository = new TimetableRepository(siteRepository);
     timetableRepository.setUpdaterManager(
       new GraphUpdaterManager(
         new DefaultRealTimeUpdateContext(new Graph(), timetableRepository, new TimetableSnapshot()),

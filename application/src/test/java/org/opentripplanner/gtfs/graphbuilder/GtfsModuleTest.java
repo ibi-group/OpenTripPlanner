@@ -15,7 +15,6 @@ import org.opentripplanner.ConstantsForTests;
 import org.opentripplanner.model.calendar.LocalDateInterval;
 import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.test.support.ResourceLoader;
-import org.opentripplanner.transit.model.framework.Deduplicator;
 import org.opentripplanner.transit.service.SiteRepository;
 import org.opentripplanner.transit.service.TimetableRepository;
 
@@ -67,10 +66,9 @@ class GtfsModuleTest {
   }
 
   private static TestModels buildTestModel() {
-    var deduplicator = new Deduplicator();
     var siteRepository = new SiteRepository();
     var graph = new Graph();
-    var timetableRepository = new TimetableRepository(siteRepository, deduplicator);
+    var timetableRepository = new TimetableRepository(siteRepository);
     return new TestModels(graph, timetableRepository);
   }
 
@@ -117,7 +115,7 @@ class GtfsModuleTest {
 
       assertEquals(
         expectedTransfers,
-        model.timetableRepository.getTransferService().listAll().size()
+        model.timetableRepository.getConstrainedTransferService().listAll().size()
       );
     }
   }

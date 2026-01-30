@@ -36,7 +36,6 @@ import org.opentripplanner.street.model.vertex.VertexFactory;
 import org.opentripplanner.street.model.vertex.VertexLabel;
 import org.opentripplanner.test.support.ResourceLoader;
 import org.opentripplanner.transit.model._data.TimetableRepositoryForTest;
-import org.opentripplanner.transit.model.framework.Deduplicator;
 import org.opentripplanner.transit.model.site.RegularStop;
 import org.opentripplanner.transit.service.TimetableRepository;
 
@@ -88,9 +87,8 @@ class OsmBoardingLocationsModuleTest {
       .withRegularStops(List.of(platform, busStop, floatingBusStop))
       .build();
 
-    var deduplicator = new Deduplicator();
     var graph = new Graph();
-    var timetableRepository = new TimetableRepository(siteRepo, deduplicator);
+    var timetableRepository = new TimetableRepository(siteRepo);
     var factory = new VertexFactory(graph);
 
     var provider = new DefaultOsmProvider(file, false);
@@ -305,7 +303,7 @@ class OsmBoardingLocationsModuleTest {
       .build();
     new OsmBoardingLocationsModule(
       graph,
-      new TimetableRepository(siteRepo, new Deduplicator()),
+      new TimetableRepository(siteRepo),
       VertexLinkerTestFactory.of(graph),
       new DefaultOsmInfoGraphBuildService(osmInfoRepository)
     ).buildGraph();

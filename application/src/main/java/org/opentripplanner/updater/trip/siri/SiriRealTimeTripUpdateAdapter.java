@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.List;
 import javax.annotation.Nullable;
 import org.opentripplanner.transit.model.framework.DataValidationException;
+import org.opentripplanner.transit.model.framework.DeduplicatorService;
 import org.opentripplanner.transit.model.framework.Result;
 import org.opentripplanner.transit.model.network.TripPattern;
 import org.opentripplanner.transit.model.timetable.RealTimeTripTimesBuilder;
@@ -62,12 +63,15 @@ public class SiriRealTimeTripUpdateAdapter {
    */
   private final TransitEditorService transitEditorService;
 
+  private final DeduplicatorService deduplicator;
   private final TimetableSnapshotManager snapshotManager;
 
   public SiriRealTimeTripUpdateAdapter(
     TimetableRepository timetableRepository,
+    DeduplicatorService deduplicator,
     TimetableSnapshotManager snapshotManager
   ) {
+    this.deduplicator = deduplicator;
     this.snapshotManager = snapshotManager;
     this.transitEditorService = new DefaultTransitService(
       timetableRepository,
@@ -140,6 +144,7 @@ public class SiriRealTimeTripUpdateAdapter {
         case REPLACEMENT_DEPARTURE -> new AddedTripBuilder(
           journey,
           transitService,
+          deduplicator,
           entityResolver,
           tripPatternIdGenerator::generateUniqueTripPatternId
         ).build();
@@ -335,6 +340,7 @@ public class SiriRealTimeTripUpdateAdapter {
     var updateResult = new ExtraCallTripBuilder(
       estimatedVehicleJourney,
       transitEditorService,
+      deduplicator,
       entityResolver,
       tripPatternIdGenerator::generateUniqueTripPatternId,
       trip

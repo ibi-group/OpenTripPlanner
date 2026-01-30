@@ -35,7 +35,6 @@ import org.opentripplanner.street.search.TraverseMode;
 import org.opentripplanner.street.search.TraverseModeSet;
 import org.opentripplanner.test.support.GeoJsonIo;
 import org.opentripplanner.transit.model._data.TimetableRepositoryForTest;
-import org.opentripplanner.transit.model.framework.Deduplicator;
 import org.opentripplanner.transit.model.site.RegularStop;
 import org.opentripplanner.transit.service.SiteRepository;
 import org.opentripplanner.transit.service.TimetableRepository;
@@ -46,12 +45,11 @@ public class LinkStopToPlatformTest {
   private final TimetableRepositoryForTest testModel = TimetableRepositoryForTest.of();
 
   private Graph prepareTest(Coordinate[] platform, int[] visible, Coordinate[] stops) {
-    var deduplicator = new Deduplicator();
     var siteRepository = new SiteRepository();
     Graph graph = new Graph();
     var vertexFactory = new VertexFactory(graph);
 
-    var timetableRepository = new TimetableRepository(siteRepository, deduplicator);
+    var timetableRepository = new TimetableRepository(siteRepository);
     ArrayList<IntersectionVertex> vertices = new ArrayList<>();
     Coordinate[] closedGeom = new Coordinate[platform.length + 1];
 

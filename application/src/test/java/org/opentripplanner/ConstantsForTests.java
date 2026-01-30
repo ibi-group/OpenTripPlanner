@@ -50,8 +50,8 @@ import org.opentripplanner.street.model.edge.LinkingDirection;
 import org.opentripplanner.street.search.TraverseMode;
 import org.opentripplanner.street.search.TraverseModeSet;
 import org.opentripplanner.test.support.ResourceLoader;
-import org.opentripplanner.transfer.TransferRepository;
-import org.opentripplanner.transfer.TransferServiceTestFactory;
+import org.opentripplanner.transfer.regular.TransferRepository;
+import org.opentripplanner.transfer.regular.TransferServiceTestFactory;
 import org.opentripplanner.transit.model.framework.Deduplicator;
 import org.opentripplanner.transit.service.SiteRepository;
 import org.opentripplanner.transit.service.TimetableRepository;
@@ -145,9 +145,8 @@ public class ConstantsForTests {
    */
   public static TestOtpModel buildNewPortlandGraph(boolean withElevation) {
     try {
-      var deduplicator = new Deduplicator();
       var graph = new Graph();
-      var timetableRepository = new TimetableRepository(new SiteRepository(), deduplicator);
+      var timetableRepository = new TimetableRepository(new SiteRepository());
       var fareFactory = new DefaultFareServiceFactory();
       // Add street data from OSM
       {
@@ -199,10 +198,9 @@ public class ConstantsForTests {
 
   public static TestOtpModel buildOsmGraph(File osmFile) {
     try {
-      var deduplicator = new Deduplicator();
       var siteRepository = new SiteRepository();
       var graph = new Graph();
-      var timetableRepository = new TimetableRepository(siteRepository, deduplicator);
+      var timetableRepository = new TimetableRepository(siteRepository);
       // Add street data from OSM
       var osmProvider = new DefaultOsmProvider(osmFile, true);
       var osmInfoRepository = new DefaultOsmInfoGraphBuildRepository();
@@ -256,10 +254,9 @@ public class ConstantsForTests {
   }
 
   public static TestOtpModel buildGtfsGraph(File gtfsFile, FareServiceFactory fareServiceFactory) {
-    var deduplicator = new Deduplicator();
     var siteRepository = new SiteRepository();
     var graph = new Graph();
-    var timetableRepository = new TimetableRepository(siteRepository, deduplicator);
+    var timetableRepository = new TimetableRepository(siteRepository);
     var transferRepository = TransferServiceTestFactory.defaultTransferRepository();
     addGtfsToGraph(graph, timetableRepository, gtfsFile, fareServiceFactory, null);
     return new TestOtpModel(graph, timetableRepository, transferRepository, fareServiceFactory);
@@ -271,7 +268,7 @@ public class ConstantsForTests {
       var siteRepository = new SiteRepository();
       var parkingRepository = new DefaultVehicleParkingRepository();
       var graph = new Graph();
-      var timetableRepository = new TimetableRepository(siteRepository, deduplicator);
+      var timetableRepository = new TimetableRepository(siteRepository);
       var streetDetailsRepository = new DefaultStreetDetailsRepository();
       // Add street data from OSM
       {
