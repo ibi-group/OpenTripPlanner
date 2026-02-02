@@ -157,7 +157,7 @@ class TripTimeOnDateTest {
     var testModel = TimetableRepositoryForTest.of();
     var trip = TimetableRepositoryForTest.trip("123").build();
     var siteRepository = testModel.siteRepositoryBuilder().build();
-    var timetableRepository = new TimetableRepository(siteRepository, new Deduplicator());
+    var timetableRepository = new TimetableRepository(siteRepository);
     var tripTimes = ScheduledTripTimes.of()
       .withTrip(trip)
       .withDepartureTimes(new int[] { 0, 1 })

@@ -53,11 +53,10 @@ import org.opentripplanner.street.model.vertex.VehicleParkingEntranceVertex;
 import org.opentripplanner.street.model.vertex.Vertex;
 import org.opentripplanner.street.model.vertex.VertexFactory;
 import org.opentripplanner.street.model.vertex.VertexLabel;
-import org.opentripplanner.transfer.TransferServiceTestFactory;
+import org.opentripplanner.transfer.regular.TransferServiceTestFactory;
 import org.opentripplanner.transit.model._data.TimetableRepositoryForTest;
 import org.opentripplanner.transit.model.basic.Accessibility;
 import org.opentripplanner.transit.model.basic.TransitMode;
-import org.opentripplanner.transit.model.framework.Deduplicator;
 import org.opentripplanner.transit.model.network.Route;
 import org.opentripplanner.transit.model.network.TripPattern;
 import org.opentripplanner.transit.model.organization.Agency;
@@ -91,9 +90,8 @@ public abstract class GraphRoutingTest {
     private final VehicleParkingHelper vehicleParkingHelper;
 
     protected Builder() {
-      var deduplicator = new Deduplicator();
       graph = new Graph();
-      timetableRepository = new TimetableRepository(new SiteRepository(), deduplicator);
+      timetableRepository = new TimetableRepository(new SiteRepository());
       vertexFactory = new VertexFactory(graph);
       vehicleParkingHelper = new VehicleParkingHelper(graph);
     }

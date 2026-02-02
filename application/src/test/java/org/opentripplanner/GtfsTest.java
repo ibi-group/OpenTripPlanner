@@ -40,8 +40,8 @@ import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.routing.impl.TransitAlertServiceImpl;
 import org.opentripplanner.standalone.api.OtpServerRequestContext;
 import org.opentripplanner.standalone.config.RouterConfig;
-import org.opentripplanner.transfer.TransferRepository;
-import org.opentripplanner.transfer.TransferServiceTestFactory;
+import org.opentripplanner.transfer.regular.TransferRepository;
+import org.opentripplanner.transfer.regular.TransferServiceTestFactory;
 import org.opentripplanner.transit.model.basic.MainAndSubMode;
 import org.opentripplanner.transit.model.basic.TransitMode;
 import org.opentripplanner.transit.model.framework.Deduplicator;
@@ -201,9 +201,8 @@ public abstract class GtfsTest {
     List<GtfsBundle> gtfsBundleList = List.of(gtfsBundle);
 
     alertsUpdateHandler = new AlertsUpdateHandler(false);
-    var deduplicator = new Deduplicator();
     graph = new Graph();
-    timetableRepository = new TimetableRepository(new SiteRepository(), deduplicator);
+    timetableRepository = new TimetableRepository(new SiteRepository());
     timetableRepository.setUpdaterManager(
       new GraphUpdaterManager(
         new DefaultRealTimeUpdateContext(new Graph(), timetableRepository, new TimetableSnapshot()),
@@ -236,6 +235,7 @@ public abstract class GtfsTest {
     );
     tripUpdateAdapter = new GtfsRealTimeTripUpdateAdapter(
       timetableRepository,
+      new Deduplicator(),
       snapshotManager,
       LocalDate::now
     );

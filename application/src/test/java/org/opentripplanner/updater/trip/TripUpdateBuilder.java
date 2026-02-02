@@ -193,8 +193,8 @@ public class TripUpdateBuilder {
 
   public TripUpdateBuilder addStopTimeWithArrivalAndDeparture(
     int stopSequence,
-    String arrivalTime,
-    String departureTime
+    @Nullable String arrivalTime,
+    @Nullable String departureTime
   ) {
     return addStopTime(
       null,
@@ -452,38 +452,33 @@ public class TripUpdateBuilder {
       }
     }
 
-    final GtfsRealtime.TripUpdate.StopTimeEvent.Builder arrivalBuilder =
-      stopTimeUpdateBuilder.getArrivalBuilder();
-    final GtfsRealtime.TripUpdate.StopTimeEvent.Builder departureBuilder =
-      stopTimeUpdateBuilder.getDepartureBuilder();
-
     if (arrivalTime != null) {
       var epochSeconds = midnight.plusSeconds(TimeUtils.time(arrivalTime)).toEpochSecond();
-      arrivalBuilder.setTime(epochSeconds);
+      stopTimeUpdateBuilder.getArrivalBuilder().setTime(epochSeconds);
     }
 
     if (departureTime != null) {
       var epochSeconds = midnight.plusSeconds(TimeUtils.time(departureTime)).toEpochSecond();
-      departureBuilder.setTime(epochSeconds);
+      stopTimeUpdateBuilder.getDepartureBuilder().setTime(epochSeconds);
     }
 
     if (scheduledArrivalTime != null) {
       var epochSeconds = midnight.plusSeconds(TimeUtils.time(scheduledArrivalTime)).toEpochSecond();
-      arrivalBuilder.setScheduledTime(epochSeconds);
+      stopTimeUpdateBuilder.getArrivalBuilder().setScheduledTime(epochSeconds);
     }
 
     if (scheduledDepartureTime != null) {
       var epochSeconds = midnight
         .plusSeconds(TimeUtils.time(scheduledDepartureTime))
         .toEpochSecond();
-      departureBuilder.setScheduledTime(epochSeconds);
+      stopTimeUpdateBuilder.getDepartureBuilder().setScheduledTime(epochSeconds);
     }
 
     if (arrivalDelay != NO_DELAY) {
-      arrivalBuilder.setDelay(arrivalDelay);
+      stopTimeUpdateBuilder.getArrivalBuilder().setDelay(arrivalDelay);
     }
     if (departureDelay != NO_DELAY) {
-      departureBuilder.setDelay(departureDelay);
+      stopTimeUpdateBuilder.getDepartureBuilder().setDelay(departureDelay);
     }
 
     return this;
