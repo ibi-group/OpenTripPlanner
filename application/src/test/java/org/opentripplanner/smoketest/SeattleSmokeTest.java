@@ -36,15 +36,16 @@ import org.opentripplanner.smoketest.util.SmokeTestRequest;
 public class SeattleSmokeTest {
 
   private static final String CCSWW_ROUTE = "Volunteer Services: Northwest";
-  static final Coordinate SODO = new Coordinate(47.5811, -122.3290);
-  static final Coordinate CLYDE_HILL = new Coordinate(47.6316, -122.2173);
+  private static final Coordinate SODO = new Coordinate(47.5811, -122.3290);
+  private static final Coordinate CLYDE_HILL = new Coordinate(47.6316, -122.2173);
 
-  static final Coordinate RONALD_BOG_PARK = new Coordinate(47.75601664, -122.33141);
+  private static final Coordinate RONALD_BOG_PARK = new Coordinate(47.75601664, -122.33141);
+  private static final Coordinate UNIVERSITY = new Coordinate(47.649259, -122.305008);
 
-  static final Coordinate ESPERANCE = new Coordinate(47.797330, -122.351560592);
-  static final Coordinate SHORELINE = new Coordinate(47.7568, -122.3483);
-  static final Coordinate MOUNTAINLAKE_TERRACE = new Coordinate(47.7900, -122.30379581);
-  static final Coordinate OLIVE_WAY = new Coordinate(47.61309420, -122.336314916);
+  private static final Coordinate ESPERANCE = new Coordinate(47.797330, -122.351560592);
+  private static final Coordinate SHORELINE = new Coordinate(47.7568, -122.3483);
+  private static final Coordinate MOUNTAINLAKE_TERRACE = new Coordinate(47.7900, -122.30379581);
+  private static final Coordinate OLIVE_WAY = new Coordinate(47.61309420, -122.336314916);
 
   @Test
   public void busWithFares() {
@@ -98,8 +99,8 @@ public class SeattleSmokeTest {
   public void flexAndTransit() {
     var modes = Set.of(WALK, BUS, FLEX_DIRECT, FLEX_EGRESS, FLEX_ACCESS);
     SmokeTest.basicRouteTest(
-      new SmokeTestRequest(SHORELINE, RONALD_BOG_PARK, modes),
-      List.of("BUS")
+      new SmokeTestRequest(SHORELINE, UNIVERSITY, modes),
+      List.of("WALK", "BUS", "WALK")
     );
   }
 
