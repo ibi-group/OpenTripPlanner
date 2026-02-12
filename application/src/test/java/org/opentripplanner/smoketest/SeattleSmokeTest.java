@@ -17,7 +17,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -104,7 +103,6 @@ public class SeattleSmokeTest {
     );
   }
 
-  @Disabled
   @Test
   public void ccswwIntoKingCounty() {
     var modes = Set.of(WALK, FLEX_DIRECT);
@@ -118,7 +116,6 @@ public class SeattleSmokeTest {
     assertEquals(CCSWW_ROUTE, flexLeg.route().getAgency().getName());
   }
 
-  @Disabled
   @Test
   public void ccswwIntoSnohomishCounty() {
     var modes = Set.of(WALK, FLEX_DIRECT);
