@@ -30,7 +30,7 @@ import org.opentripplanner.transit.service.TimetableRepository;
 
 public class TimetableSnapshotTest {
 
-  private static final ZoneId timeZone = ZoneIds.GMT;
+  private static final ZoneId TIME_ZONE = ZoneIds.GMT;
   public static final LocalDate SERVICE_DATE = LocalDate.of(2024, 1, 1);
   private static Map<FeedScopedId, TripPattern> patternIndex;
   private static String feedId;
@@ -53,8 +53,8 @@ public class TimetableSnapshotTest {
   @Test
   public void testCompare() {
     Timetable orig = Timetable.of().build();
-    Timetable a = orig.copyOf().withServiceDate(LocalDate.now(timeZone).minusDays(1)).build();
-    Timetable b = orig.copyOf().withServiceDate(LocalDate.now(timeZone)).build();
+    Timetable a = orig.copyOf().withServiceDate(LocalDate.now(TIME_ZONE).minusDays(1)).build();
+    Timetable b = orig.copyOf().withServiceDate(LocalDate.now(TIME_ZONE)).build();
     assertTrue(new TimetableSnapshot.SortedTimetableComparator().compare(a, b) < 0);
   }
 
@@ -91,7 +91,7 @@ public class TimetableSnapshotTest {
   @Test
   void testCannotUpdateReadOnlyTimetableSnapshot() {
     TimetableSnapshot committedSnapshot = createCommittedSnapshot();
-    LocalDate today = LocalDate.now(timeZone);
+    LocalDate today = LocalDate.now(TIME_ZONE);
     TripPattern pattern = patternIndex.get(new FeedScopedId(feedId, "1.1"));
     TripTimes tripTimes = pattern.getScheduledTimetable().getTripTimes().getFirst();
     RealTimeTripUpdate realTimeTripUpdate = new RealTimeTripUpdate(pattern, tripTimes, today);

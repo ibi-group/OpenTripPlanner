@@ -50,6 +50,9 @@ graph.obj
 # draw.io backup files
 *.svg.bkp
 
+# EPSG files
+application/v??.?.??
+
 smoke-tests/*.jar
 smoke-tests/**/*.obj
 smoke-tests/**/*.pbf

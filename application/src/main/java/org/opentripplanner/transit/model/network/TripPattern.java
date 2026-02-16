@@ -108,7 +108,6 @@ public final class TripPattern
 
   private final boolean realTimeTripPattern;
   private final boolean stopPatternModifiedInRealTime;
-
   private final RoutingTripPattern routingTripPattern;
 
   TripPattern(TripPatternBuilder builder) {

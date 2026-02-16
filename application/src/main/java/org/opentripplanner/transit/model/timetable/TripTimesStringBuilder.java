@@ -48,6 +48,9 @@ public class TripTimesStringBuilder {
       if (tripTimes.isNoDataStop(i)) {
         flags.add("ND");
       }
+      if (tripTimes.isExtraCall(i)) {
+        flags.add("EC");
+      }
 
       s.append(" | ").append(stops.get(i).getName());
       if (!flags.isEmpty()) {

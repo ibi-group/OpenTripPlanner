@@ -23,7 +23,7 @@ import org.slf4j.LoggerFactory;
  */
 public class LiipiHubToVehicleParkingGroupMapper {
 
-  private static final Logger log = LoggerFactory.getLogger(
+  private static final Logger LOG = LoggerFactory.getLogger(
     LiipiHubToVehicleParkingGroupMapper.class
   );
 
@@ -71,14 +71,14 @@ public class LiipiHubToVehicleParkingGroupMapper {
 
       return hubForPark;
     } catch (Exception e) {
-      log.warn("Error parsing hub {}", hubId, e);
+      LOG.warn("Error parsing hub {}", hubId, e);
       return null;
     }
   }
 
   public List<FeedScopedId> getVehicleParkingIds(ArrayNode facilityIdsNode, FeedScopedId hubId) {
     if (facilityIdsNode == null || !facilityIdsNode.isArray() || facilityIdsNode.isEmpty()) {
-      log.warn("Hub {} contained no facilities", hubId);
+      LOG.warn("Hub {} contained no facilities", hubId);
       return null;
     }
     var vehicleParkingIds = new ArrayList<FeedScopedId>();

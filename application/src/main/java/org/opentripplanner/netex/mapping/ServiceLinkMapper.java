@@ -35,7 +35,7 @@ import org.rutebanken.netex.model.ServiceLinkInJourneyPattern_VersionedChildStru
  */
 class ServiceLinkMapper {
 
-  private static final GeometryFactory geometryFactory = GeometryUtils.getGeometryFactory();
+  private static final GeometryFactory GEOMETRY_FACTORY = GeometryUtils.getGeometryFactory();
   private final FeedScopedIdFactory idFactory;
   private final ReadOnlyHierarchicalMapById<ServiceLink> serviceLinkById;
   private final ReadOnlyHierarchicalMap<String, String> quayIdByStopPointRef;
@@ -151,7 +151,7 @@ class ServiceLinkMapper {
         for (int i = 0; i < positionList.size(); i += 2) {
           coordinates[i / 2] = new Coordinate(positionList.get(i + 1), positionList.get(i));
         }
-        final LineString geometry = geometryFactory.createLineString(coordinates);
+        final LineString geometry = GEOMETRY_FACTORY.createLineString(coordinates);
 
         if (
           !isGeometryValid(geometry, serviceLink.getId()) ||
@@ -184,7 +184,7 @@ class ServiceLinkMapper {
     };
     CoordinateSequence sequence = new PackedCoordinateSequence.Double(coordinates, 2);
 
-    return geometryFactory.createLineString(sequence);
+    return GEOMETRY_FACTORY.createLineString(sequence);
   }
 
   private boolean isFromToPointRefsValid(

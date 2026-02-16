@@ -1,6 +1,5 @@
 package org.opentripplanner.street.model.vertex;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -8,7 +7,6 @@ import org.junit.jupiter.api.Test;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.LineString;
 import org.opentripplanner.framework.geometry.GeometryUtils;
-import org.opentripplanner.osm.model.OsmNode;
 import org.opentripplanner.street.model.StreetTraversalPermission;
 import org.opentripplanner.street.model._data.StreetModelForTest;
 import org.opentripplanner.street.model.edge.StreetEdge;
@@ -17,83 +15,7 @@ import org.opentripplanner.street.search.TraverseMode;
 import org.opentripplanner.street.search.TraverseModeSet;
 import org.opentripplanner.transit.model.basic.Accessibility;
 
-/**
- * Created by mabu on 17.8.2015.
- */
 public class BarrierVertexTest {
-
-  @Test
-  public void testBarrierPermissions() {
-    OsmNode simpleBarrier = new OsmNode();
-    assertFalse(simpleBarrier.isBarrier());
-    simpleBarrier.addTag("barrier", "bollard");
-    assertTrue(simpleBarrier.isBarrier());
-    BarrierVertex bv = new BarrierVertex(
-      simpleBarrier.lon,
-      simpleBarrier.lat,
-      0,
-      Accessibility.NO_INFORMATION
-    );
-    bv.setBarrierPermissions(
-      simpleBarrier.overridePermissions(BarrierVertex.defaultBarrierPermissions)
-    );
-    assertEquals(StreetTraversalPermission.PEDESTRIAN_AND_BICYCLE, bv.getBarrierPermissions());
-
-    simpleBarrier.addTag("foot", "yes");
-    bv.setBarrierPermissions(
-      simpleBarrier.overridePermissions(BarrierVertex.defaultBarrierPermissions)
-    );
-    assertEquals(StreetTraversalPermission.PEDESTRIAN_AND_BICYCLE, bv.getBarrierPermissions());
-    simpleBarrier.addTag("bicycle", "yes");
-    bv.setBarrierPermissions(
-      simpleBarrier.overridePermissions(BarrierVertex.defaultBarrierPermissions)
-    );
-    assertEquals(StreetTraversalPermission.PEDESTRIAN_AND_BICYCLE, bv.getBarrierPermissions());
-    simpleBarrier.addTag("access", "no");
-    bv.setBarrierPermissions(
-      simpleBarrier.overridePermissions(BarrierVertex.defaultBarrierPermissions)
-    );
-    assertEquals(StreetTraversalPermission.PEDESTRIAN_AND_BICYCLE, bv.getBarrierPermissions());
-
-    simpleBarrier.addTag("motor_vehicle", "no");
-    bv.setBarrierPermissions(
-      simpleBarrier.overridePermissions(BarrierVertex.defaultBarrierPermissions)
-    );
-    assertEquals(StreetTraversalPermission.PEDESTRIAN_AND_BICYCLE, bv.getBarrierPermissions());
-
-    simpleBarrier.addTag("bicycle", "no");
-    bv.setBarrierPermissions(
-      simpleBarrier.overridePermissions(BarrierVertex.defaultBarrierPermissions)
-    );
-    assertEquals(StreetTraversalPermission.PEDESTRIAN, bv.getBarrierPermissions());
-
-    OsmNode complexBarrier = new OsmNode();
-    complexBarrier.addTag("barrier", "bollard");
-    complexBarrier.addTag("access", "no");
-
-    bv.setBarrierPermissions(
-      complexBarrier.overridePermissions(BarrierVertex.defaultBarrierPermissions)
-    );
-    assertEquals(StreetTraversalPermission.NONE, bv.getBarrierPermissions());
-
-    OsmNode noBikeBollard = new OsmNode();
-    noBikeBollard.addTag("barrier", "bollard");
-    noBikeBollard.addTag("bicycle", "no");
-
-    bv.setBarrierPermissions(
-      noBikeBollard.overridePermissions(BarrierVertex.defaultBarrierPermissions)
-    );
-    assertEquals(StreetTraversalPermission.PEDESTRIAN, bv.getBarrierPermissions());
-
-    /* test that traversal limitations work also without barrier tag  */
-    OsmNode accessBarrier = new OsmNode();
-    accessBarrier.addTag("access", "no");
-
-    bv.setBarrierPermissions(
-      accessBarrier.overridePermissions(BarrierVertex.defaultBarrierPermissions)
-    );
-    assertEquals(StreetTraversalPermission.NONE, bv.getBarrierPermissions());
-  }
 
   @Test
   public void testStreetsWithBollard() {

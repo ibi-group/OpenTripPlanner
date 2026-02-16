@@ -21,7 +21,7 @@ public class GroupByDistanceTest implements PlanTestConstants {
   public void calculateTotalDistanceTest() {
     Itinerary i = newItinerary(A)
       .bus(21, T11_01, T11_02, B)
-      .walk(D2m, C)
+      .walk(D2_m, C)
       .bus(31, T11_05, T11_07, D)
       .build();
 
@@ -72,13 +72,13 @@ public class GroupByDistanceTest implements PlanTestConstants {
 
   @Test
   public void mainStreetModeAsKeyInStreatOnlyItinerary() {
-    var itinerary = newItinerary(A, T11_00).bicycle(T11_00, T11_10, A).walk(D5m, B).build();
+    var itinerary = newItinerary(A, T11_00).bicycle(T11_00, T11_10, A).walk(D5_m, B).build();
     var subject = new GroupByDistance(itinerary, 0.5);
 
     assertEquals(1, subject.size());
     assertEquals(itinerary.legs().get(0), subject.getKeySet().get(0));
 
-    itinerary = newItinerary(A, T11_00).bicycle(T11_00, T11_02, A).walk(D12m, B).build();
+    itinerary = newItinerary(A, T11_00).bicycle(T11_00, T11_02, A).walk(D12_m, B).build();
     subject = new GroupByDistance(itinerary, 0.5);
 
     assertEquals(1, subject.size());
@@ -90,7 +90,7 @@ public class GroupByDistanceTest implements PlanTestConstants {
     // walk 30 minutes, bus 1 minute => walking account for more than 50% of the distance
 
     // TEST ACCESS
-    var itinerary = newItinerary(A, T11_00).walk(D10m, A).bus(11, T11_32, T11_33, B).build();
+    var itinerary = newItinerary(A, T11_00).walk(D10_m, A).bus(11, T11_32, T11_33, B).build();
     var subject = new GroupByDistance(itinerary, 0.5);
 
     // The walk leg is the main part of the itinerary
@@ -98,7 +98,7 @@ public class GroupByDistanceTest implements PlanTestConstants {
     assertSame(itinerary.legs().get(0), subject.getKeySet().get(0));
 
     // TEST EGRESS
-    itinerary = newItinerary(A, T11_00).bus(11, T11_32, T11_33, B).walk(D10m, A).build();
+    itinerary = newItinerary(A, T11_00).bus(11, T11_32, T11_33, B).walk(D10_m, A).build();
     subject = new GroupByDistance(itinerary, 0.5);
 
     // The walk leg is the main part of the itinerary
@@ -155,7 +155,7 @@ public class GroupByDistanceTest implements PlanTestConstants {
   @Test
   public void matchDifferentStreetModes() {
     var gAccessWalk = new GroupByDistance(
-      newItinerary(A, T11_00).walk(D12m, A).bus(11, T11_32, T11_33, B).build(),
+      newItinerary(A, T11_00).walk(D12_m, A).bus(11, T11_32, T11_33, B).build(),
       0.9
     );
     var gAccessBicycle = new GroupByDistance(
@@ -163,11 +163,11 @@ public class GroupByDistanceTest implements PlanTestConstants {
       0.9
     );
     var gEgressWalk = new GroupByDistance(
-      newItinerary(A, T11_00).bus(11, T11_32, T11_33, B).walk(D12m, A).build(),
+      newItinerary(A, T11_00).bus(11, T11_32, T11_33, B).walk(D12_m, A).build(),
       0.9
     );
     var gWalkTwice = new GroupByDistance(
-      newItinerary(A, T11_00).walk(D10m, A).bus(11, T11_32, T11_33, B).walk(D10m, A).build(),
+      newItinerary(A, T11_00).walk(D10_m, A).bus(11, T11_32, T11_33, B).walk(D10_m, A).build(),
       0.9
     );
 
@@ -226,7 +226,7 @@ public class GroupByDistanceTest implements PlanTestConstants {
       subject.toString()
     );
 
-    itinerary = newItinerary(A, T11_00).walk(D5m, B).bus(11, T11_10, T11_15, C).build();
+    itinerary = newItinerary(A, T11_00).walk(D5_m, B).bus(11, T11_10, T11_15, C).build();
     subject = new GroupByDistance(itinerary, 0.5);
 
     assertEquals(

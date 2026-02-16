@@ -44,7 +44,7 @@ class ExtraCallTest implements RealtimeTestConstants {
 
     assertEquals(1, result.successful());
     assertEquals(
-      "MODIFIED | A [R] 0:00:15 0:00:15 | D 0:00:20 0:00:25 | B 0:00:33 0:00:33",
+      "MODIFIED | A [R] 0:00:15 0:00:15 | D [EC] 0:00:20 0:00:25 | B 0:00:33 0:00:33",
       env.tripData(TRIP_1_ID).showTimetable()
     );
   }
@@ -60,7 +60,7 @@ class ExtraCallTest implements RealtimeTestConstants {
 
     assertEquals(1, result.successful());
     assertEquals(
-      "MODIFIED | A [R] 0:00:15 0:00:15 | D 0:00:20 0:00:25 | B 0:00:33 0:00:33",
+      "MODIFIED | A [R] 0:00:15 0:00:15 | D [EC] 0:00:20 0:00:25 | B 0:00:33 0:00:33",
       env.tripData(TRIP_1_ID).showTimetable()
     );
   }

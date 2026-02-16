@@ -139,6 +139,8 @@ public interface TripTimes<T extends TripTimes> extends Serializable, Comparable
 
   boolean isPredictionInaccurate(int stopPos);
 
+  boolean isExtraCall(int stopPos);
+
   /**
    * Return if trip has been updated and stop position has not been given a NO_DATA update.
    */

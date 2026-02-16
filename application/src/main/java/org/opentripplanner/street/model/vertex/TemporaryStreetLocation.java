@@ -16,10 +16,10 @@ import org.opentripplanner.street.model.edge.TemporaryEdge;
  */
 public final class TemporaryStreetLocation extends StreetLocation implements TemporaryVertex {
 
-  private static final AtomicLong idCounter = new AtomicLong(0);
+  private static final AtomicLong ID_COUNTER = new AtomicLong(0);
 
   public TemporaryStreetLocation(Coordinate nearestPoint, I18NString name) {
-    super("TempVertex-" + idCounter.incrementAndGet(), nearestPoint, name);
+    super("TempVertex-" + ID_COUNTER.incrementAndGet(), nearestPoint, name);
   }
 
   @Override

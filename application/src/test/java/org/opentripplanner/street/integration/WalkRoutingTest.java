@@ -28,7 +28,7 @@ import org.opentripplanner.test.support.ResourceLoader;
 
 class WalkRoutingTest {
 
-  static final Instant dateTime = Instant.now();
+  static final Instant DATE_TIME = Instant.now();
   private final Graph roundabout;
 
   {
@@ -53,7 +53,7 @@ class WalkRoutingTest {
   void shouldRouteAroundRoundabout() {
     var start = GenericLocation.fromCoordinate(59.94646, 10.77511);
     var end = GenericLocation.fromCoordinate(59.94641, 10.77522);
-    assertDoesNotThrow(() -> route(roundabout, start, end, dateTime, false));
+    assertDoesNotThrow(() -> route(roundabout, start, end, DATE_TIME, false));
   }
 
   @ParameterizedTest
@@ -61,7 +61,7 @@ class WalkRoutingTest {
   void pathReversalWorks(int offset) {
     var start = GenericLocation.fromCoordinate(59.94646, 10.77511);
     var end = GenericLocation.fromCoordinate(59.94641, 10.77522);
-    var base = dateTime.truncatedTo(ChronoUnit.SECONDS);
+    var base = DATE_TIME.truncatedTo(ChronoUnit.SECONDS);
     var time = base.plusMillis(offset);
     var forwardResults = route(roundabout, start, end, time, false);
     assertEquals(1, forwardResults.size());

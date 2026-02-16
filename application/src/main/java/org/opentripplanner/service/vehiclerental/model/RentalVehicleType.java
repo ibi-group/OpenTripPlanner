@@ -18,7 +18,8 @@ import org.opentripplanner.utils.tostring.ToStringBuilder;
 public final class RentalVehicleType implements Serializable, Comparable<RentalVehicleType> {
 
   // This is a ConcurrentHashMap in order to be thread safe, as it is used from different updater threads.
-  static final Map<String, RentalVehicleType> defaultVehicleForSystem = new ConcurrentHashMap<>();
+  static final Map<String, RentalVehicleType> DEFAULT_VEHICLE_FOR_SYSTEM =
+    new ConcurrentHashMap<>();
 
   public static final RentalVehicleType DEFAULT = new RentalVehicleType();
 
@@ -72,7 +73,7 @@ public final class RentalVehicleType implements Serializable, Comparable<RentalV
   }
 
   public static RentalVehicleType getDefaultType(String systemId) {
-    return defaultVehicleForSystem.computeIfAbsent(
+    return DEFAULT_VEHICLE_FOR_SYSTEM.computeIfAbsent(
       systemId,
       (id ->
         new RentalVehicleType(

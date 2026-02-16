@@ -7,7 +7,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.function.Consumer;
 import org.opentripplanner.framework.model.Cost;
-import org.opentripplanner.routing.api.request.preference.VehicleRentalPreferences;
 import org.opentripplanner.utils.tostring.ToStringBuilder;
 
 /**
@@ -16,6 +15,12 @@ import org.opentripplanner.utils.tostring.ToStringBuilder;
  * THIS CLASS IS IMMUTABLE AND THREAD-SAFE.
  */
 public final class RentalRequest {
+
+  /**
+   * Default slope sensitivity for electric-assist vehicles.
+   * 0.0 = motor fully compensates (ignore slope), 1.0 = no assistance (full slope effect).
+   */
+  public static final double DEFAULT_ELECTRIC_ASSIST_SLOPE_SENSITIVITY = 0.3;
 
   public static final RentalRequest DEFAULT = new RentalRequest();
   private final Duration pickupTime;
@@ -41,8 +46,7 @@ public final class RentalRequest {
     this.allowArrivingInRentedVehicleAtDestination = false;
     this.allowedNetworks = Set.of();
     this.bannedNetworks = Set.of();
-    this.electricAssistSlopeSensitivity =
-      VehicleRentalPreferences.DEFAULT_ELECTRIC_ASSIST_SLOPE_SENSITIVITY;
+    this.electricAssistSlopeSensitivity = DEFAULT_ELECTRIC_ASSIST_SLOPE_SENSITIVITY;
   }
 
   private RentalRequest(Builder builder) {
@@ -128,7 +132,6 @@ public final class RentalRequest {
 
   /**
    * Slope sensitivity for electric-assist rental vehicles (0-1).
-   * @see VehicleRentalPreferences#electricAssistSlopeSensitivity()
    */
   public double electricAssistSlopeSensitivity() {
     return electricAssistSlopeSensitivity;

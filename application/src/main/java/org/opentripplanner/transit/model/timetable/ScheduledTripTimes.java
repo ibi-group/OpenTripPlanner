@@ -246,6 +246,11 @@ public final class ScheduledTripTimes implements TripTimes<ScheduledTripTimes> {
   }
 
   @Override
+  public boolean isExtraCall(int stopPos) {
+    return false;
+  }
+
+  @Override
   public boolean isRealTimeUpdated(int stopPos) {
     return false;
   }

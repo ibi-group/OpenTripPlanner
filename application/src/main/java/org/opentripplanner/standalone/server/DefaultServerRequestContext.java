@@ -13,6 +13,7 @@ import org.opentripplanner.ext.carpooling.CarpoolingService;
 import org.opentripplanner.ext.empiricaldelay.EmpiricalDelayService;
 import org.opentripplanner.ext.flex.FlexParameters;
 import org.opentripplanner.ext.geocoder.LuceneIndex;
+import org.opentripplanner.ext.ojp.parameters.OjpApiParameters;
 import org.opentripplanner.ext.ojp.parameters.TriasApiParameters;
 import org.opentripplanner.ext.ridehailing.RideHailingService;
 import org.opentripplanner.ext.sorlandsbanen.SorlandsbanenNorwayService;
@@ -103,6 +104,8 @@ public class DefaultServerRequestContext implements OtpServerRequestContext {
 
   private final TriasApiParameters triasApiParameters;
 
+  private final OjpApiParameters ojpApiParameters;
+
   private final GtfsApiParameters gtfsApiParameters;
 
   private final TransmodelAPIParameters transmodelAPIParameters;
@@ -125,6 +128,7 @@ public class DefaultServerRequestContext implements OtpServerRequestContext {
     Graph graph,
     LinkingContextFactory linkingContextFactory,
     MeterRegistry meterRegistry,
+    OjpApiParameters ojpApiParameters,
     RaptorConfig<TripSchedule> raptorConfig,
     RealtimeVehicleService realtimeVehicleService,
     List<RideHailingService> rideHailingServices,
@@ -159,6 +163,7 @@ public class DefaultServerRequestContext implements OtpServerRequestContext {
     this.graph = graph;
     this.linkingContextFactory = linkingContextFactory;
     this.meterRegistry = meterRegistry;
+    this.ojpApiParameters = ojpApiParameters;
     this.raptorConfig = raptorConfig;
     this.realtimeVehicleService = realtimeVehicleService;
     this.rideHailingServices = rideHailingServices;
@@ -310,6 +315,11 @@ public class DefaultServerRequestContext implements OtpServerRequestContext {
   @Override
   public TriasApiParameters triasApiParameters() {
     return triasApiParameters;
+  }
+
+  @Override
+  public OjpApiParameters ojpApiParameters() {
+    return ojpApiParameters;
   }
 
   @Override

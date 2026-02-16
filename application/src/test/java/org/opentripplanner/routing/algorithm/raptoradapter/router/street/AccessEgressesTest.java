@@ -13,16 +13,16 @@ import org.opentripplanner.street.search.state.TestStateBuilder;
 
 class AccessEgressesTest {
 
-  public static final Duration D3m = Duration.ofMinutes(3);
-  public static final Duration D7m = Duration.ofMinutes(7);
+  public static final Duration D3_m = Duration.ofMinutes(3);
+  public static final Duration D7_m = Duration.ofMinutes(7);
   private static final RoutingAccessEgress ACCESS_A = new DefaultAccessEgress(
     1,
     TestStateBuilder.ofWalking().build()
-  ).withPenalty(new TimeAndCost(D3m, Cost.ZERO));
+  ).withPenalty(new TimeAndCost(D3_m, Cost.ZERO));
   private static final RoutingAccessEgress ACCESS_B = new DefaultAccessEgress(
     1,
     TestStateBuilder.ofWalking().build()
-  ).withPenalty(new TimeAndCost(D7m, Cost.ZERO));
+  ).withPenalty(new TimeAndCost(D7_m, Cost.ZERO));
   private static final RoutingAccessEgress ACCESS_C = new DefaultAccessEgress(
     1,
     TestStateBuilder.ofWalking().build()

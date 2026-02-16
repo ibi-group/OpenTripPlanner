@@ -29,21 +29,21 @@ import org.locationtech.jts.linearref.LocationIndexedLine;
 
 public class GeometryUtils {
 
-  private static final CoordinateSequenceFactory csf = new PackedCoordinateSequenceFactory();
-  private static final GeometryFactory gf = new GeometryFactory(csf);
+  private static final CoordinateSequenceFactory CSF = new PackedCoordinateSequenceFactory();
+  private static final GeometryFactory GF = new GeometryFactory(CSF);
 
   public static <T> Geometry makeConvexHull(
     Collection<T> collection,
     Function<T, Coordinate> mapToCoordinate
   ) {
-    var gf = getGeometryFactory();
+    var GF = getGeometryFactory();
     Geometry[] points = new Geometry[collection.size()];
     int i = 0;
     for (T v : collection) {
-      points[i++] = gf.createPoint(mapToCoordinate.apply(v));
+      points[i++] = GF.createPoint(mapToCoordinate.apply(v));
     }
 
-    var col = new GeometryCollection(points, gf);
+    var col = new GeometryCollection(points, GF);
     return new ConvexHull(col).getConvexHull();
   }
 
@@ -123,7 +123,7 @@ public class GeometryUtils {
   }
 
   public static GeometryFactory getGeometryFactory() {
-    return gf;
+    return GF;
   }
 
   /**
@@ -144,10 +144,10 @@ public class GeometryUtils {
    * Splits the input geometry into two LineStrings at a fraction of the distance covered.
    */
   public static SplitLineString splitGeometryAtFraction(Geometry geometry, double fraction) {
-    LineString empty = new LineString(null, gf);
+    LineString empty = new LineString(null, GF);
     Coordinate[] coordinates = geometry.getCoordinates();
-    CoordinateSequence sequence = gf.getCoordinateSequenceFactory().create(coordinates);
-    LineString total = new LineString(sequence, gf);
+    CoordinateSequence sequence = GF.getCoordinateSequenceFactory().create(coordinates);
+    LineString total = new LineString(sequence, GF);
 
     if (coordinates.length < 2) {
       return new SplitLineString(empty, empty);
@@ -198,7 +198,7 @@ public class GeometryUtils {
     throws UnsupportedGeometryException {
     if (geoJsonGeom instanceof org.geojson.Point) {
       org.geojson.Point geoJsonPoint = (org.geojson.Point) geoJsonGeom;
-      return gf.createPoint(
+      return GF.createPoint(
         new Coordinate(
           geoJsonPoint.getCoordinates().getLongitude(),
           geoJsonPoint.getCoordinates().getLatitude(),
@@ -207,13 +207,13 @@ public class GeometryUtils {
       );
     } else if (geoJsonGeom instanceof org.geojson.Polygon) {
       org.geojson.Polygon geoJsonPolygon = (org.geojson.Polygon) geoJsonGeom;
-      LinearRing shell = gf.createLinearRing(convertPath(geoJsonPolygon.getExteriorRing()));
+      LinearRing shell = GF.createLinearRing(convertPath(geoJsonPolygon.getExteriorRing()));
       LinearRing[] holes = new LinearRing[geoJsonPolygon.getInteriorRings().size()];
       int i = 0;
       for (List<LngLatAlt> hole : geoJsonPolygon.getInteriorRings()) {
-        holes[i++] = gf.createLinearRing(convertPath(hole));
+        holes[i++] = GF.createLinearRing(convertPath(hole));
       }
-      return gf.createPolygon(shell, holes);
+      return GF.createPolygon(shell, holes);
     } else if (geoJsonGeom instanceof org.geojson.MultiPolygon) {
       org.geojson.MultiPolygon geoJsonMultiPolygon = (org.geojson.MultiPolygon) geoJsonGeom;
       Polygon[] jtsPolygons = new Polygon[geoJsonMultiPolygon.getCoordinates().size()];
@@ -225,10 +225,10 @@ public class GeometryUtils {
         }
         jtsPolygons[i++] = (Polygon) convertGeoJsonToJtsGeometry(geoJsonPoly);
       }
-      return gf.createMultiPolygon(jtsPolygons);
+      return GF.createMultiPolygon(jtsPolygons);
     } else if (geoJsonGeom instanceof org.geojson.LineString) {
       org.geojson.LineString geoJsonLineString = (org.geojson.LineString) geoJsonGeom;
-      return gf.createLineString(convertPath(geoJsonLineString.getCoordinates()));
+      return GF.createLineString(convertPath(geoJsonLineString.getCoordinates()));
     } else if (geoJsonGeom instanceof org.geojson.MultiLineString) {
       org.geojson.MultiLineString geoJsonMultiLineString =
         (org.geojson.MultiLineString) geoJsonGeom;
@@ -240,7 +240,7 @@ public class GeometryUtils {
         );
         jtsLineStrings[i++] = (LineString) convertGeoJsonToJtsGeometry(geoJsonLineString);
       }
-      return gf.createMultiLineString(jtsLineStrings);
+      return GF.createMultiLineString(jtsLineStrings);
     }
 
     throw new UnsupportedGeometryException(geoJsonGeom.getClass().toString());

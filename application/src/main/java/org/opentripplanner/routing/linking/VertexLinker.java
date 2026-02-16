@@ -507,16 +507,16 @@ public class VertexLinker {
     // existing vertices
     var newEdges = scope == Scope.PERMANENT
       ? originalEdge.splitDestructively(v)
-      : originalEdge.splitNonDestructively(v, tempEdges, direction);
+      : originalEdge.splitNonDestructively(v, direction);
+
+    if (scope != Scope.PERMANENT) {
+      newEdges.forEach(tempEdges::addEdge);
+    }
 
     if (scope == Scope.REALTIME || scope == Scope.PERMANENT) {
       // update indices of new edges
-      if (newEdges.head() != null) {
-        graph.insert(newEdges.head(), scope);
-      }
-      if (newEdges.tail() != null) {
-        graph.insert(newEdges.tail(), scope);
-      }
+
+      newEdges.forEach(e -> graph.insert(e, scope));
 
       if (scope == Scope.PERMANENT) {
         // remove original edges from the spatial index
@@ -547,7 +547,6 @@ public class VertexLinker {
         y,
         originalEdge
       );
-      tsv.setWheelchairAccessible(originalEdge.isWheelchairAccessible());
       v = tsv;
     } else {
       v = vertexFactory.splitter(originalEdge, x, y, uniqueSplitLabel);

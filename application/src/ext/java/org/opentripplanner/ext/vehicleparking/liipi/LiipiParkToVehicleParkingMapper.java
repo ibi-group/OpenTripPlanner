@@ -32,7 +32,7 @@ import org.slf4j.LoggerFactory;
  */
 public class LiipiParkToVehicleParkingMapper {
 
-  private static final Logger log = LoggerFactory.getLogger(LiipiParkToVehicleParkingMapper.class);
+  private static final Logger LOG = LoggerFactory.getLogger(LiipiParkToVehicleParkingMapper.class);
 
   private static final GenericGeometryParser GEOMETRY_PARSER = new GenericGeometryParser(
     GeometryUtils.getGeometryFactory()
@@ -131,7 +131,7 @@ public class LiipiParkToVehicleParkingMapper {
         .vehicleParkingGroup(vehicleParkingGroup)
         .build();
     } catch (Exception e) {
-      log.warn("Error parsing park {}", vehicleParkId, e);
+      LOG.warn("Error parsing park {}", vehicleParkId, e);
       return null;
     }
   }

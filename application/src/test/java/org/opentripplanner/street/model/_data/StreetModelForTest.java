@@ -15,7 +15,6 @@ import org.opentripplanner.framework.geometry.SphericalDistanceLibrary;
 import org.opentripplanner.framework.geometry.SplitLineString;
 import org.opentripplanner.framework.geometry.WgsCoordinate;
 import org.opentripplanner.routing.graph.Graph;
-import org.opentripplanner.routing.linking.DisposableEdgeCollection;
 import org.opentripplanner.service.vehicleparking.model.VehicleParking;
 import org.opentripplanner.service.vehiclerental.model.TestFreeFloatingRentalVehicleBuilder;
 import org.opentripplanner.service.vehiclerental.street.VehicleRentalPlaceVertex;
@@ -27,8 +26,6 @@ import org.opentripplanner.street.model.edge.Edge;
 import org.opentripplanner.street.model.edge.EscalatorEdge;
 import org.opentripplanner.street.model.edge.StreetEdge;
 import org.opentripplanner.street.model.edge.StreetEdgeBuilder;
-import org.opentripplanner.street.model.edge.TemporaryFreeEdge;
-import org.opentripplanner.street.model.edge.TemporaryPartialStreetEdge;
 import org.opentripplanner.street.model.edge.TemporaryPartialStreetEdgeBuilder;
 import org.opentripplanner.street.model.vertex.IntersectionVertex;
 import org.opentripplanner.street.model.vertex.LabelledIntersectionVertex;
@@ -242,48 +239,27 @@ public class StreetModelForTest {
    * @return the new TemporaryStreetLocation
    */
   public static TemporaryStreetLocation createTemporaryStreetLocationForTest(
-    String label,
     I18NString name,
     Iterable<StreetEdge> edges,
     Coordinate nearestPoint,
-    boolean endVertex,
-    DisposableEdgeCollection tempEdges
+    boolean endVertex
   ) {
-    boolean wheelchairAccessible = false;
-
     TemporaryStreetLocation location = new TemporaryStreetLocation(nearestPoint, name);
 
     for (StreetEdge street : edges) {
       Vertex fromv = street.getFromVertex();
       Vertex tov = street.getToVertex();
-      wheelchairAccessible |= street.isWheelchairAccessible();
 
       /* forward edges and vertices */
-      Vertex edgeLocation;
       if (SphericalDistanceLibrary.distance(nearestPoint, fromv.getCoordinate()) < 1) {
         // no need to link to area edges caught on-end
-        edgeLocation = fromv;
-
-        if (endVertex) {
-          tempEdges.addEdge(TemporaryFreeEdge.createTemporaryFreeEdge(edgeLocation, location));
-        } else {
-          tempEdges.addEdge(TemporaryFreeEdge.createTemporaryFreeEdge(location, edgeLocation));
-        }
       } else if (SphericalDistanceLibrary.distance(nearestPoint, tov.getCoordinate()) < 1) {
         // no need to link to area edges caught on-end
-        edgeLocation = tov;
-
-        if (endVertex) {
-          tempEdges.addEdge(TemporaryFreeEdge.createTemporaryFreeEdge(edgeLocation, location));
-        } else {
-          tempEdges.addEdge(TemporaryFreeEdge.createTemporaryFreeEdge(location, edgeLocation));
-        }
       } else {
         // creates links from street head -> location -> street tail.
-        createHalfLocationForTest(location, name, nearestPoint, street, endVertex, tempEdges);
+        createHalfLocationForTest(location, name, nearestPoint, street, endVertex);
       }
     }
-    location.setWheelchairAccessible(wheelchairAccessible);
     return location;
   }
 
@@ -292,8 +268,7 @@ public class StreetModelForTest {
     I18NString name,
     Coordinate nearestPoint,
     StreetEdge street,
-    boolean endVertex,
-    DisposableEdgeCollection tempEdges
+    boolean endVertex
   ) {
     StreetVertex tov = (StreetVertex) street.getToVertex();
     StreetVertex fromv = (StreetVertex) street.getFromVertex();
@@ -308,7 +283,7 @@ public class StreetModelForTest {
     double lengthOut = street.getDistanceMeters() * (1 - lengthRatioIn);
 
     if (endVertex) {
-      TemporaryPartialStreetEdge tpse = new TemporaryPartialStreetEdgeBuilder()
+      new TemporaryPartialStreetEdgeBuilder()
         .withParentEdge(street)
         .withFromVertex(fromv)
         .withToVertex(base)
@@ -320,9 +295,8 @@ public class StreetModelForTest {
         .withWalkNoThruTraffic(street.isWalkNoThruTraffic())
         .withLink(street.isLink())
         .buildAndConnect();
-      tempEdges.addEdge(tpse);
     } else {
-      TemporaryPartialStreetEdge tpse = new TemporaryPartialStreetEdgeBuilder()
+      new TemporaryPartialStreetEdgeBuilder()
         .withParentEdge(street)
         .withFromVertex(base)
         .withToVertex(tov)
@@ -334,7 +308,6 @@ public class StreetModelForTest {
         .withBicycleNoThruTraffic(street.isBicycleNoThruTraffic())
         .withWalkNoThruTraffic(street.isWalkNoThruTraffic())
         .buildAndConnect();
-      tempEdges.addEdge(tpse);
     }
   }
 

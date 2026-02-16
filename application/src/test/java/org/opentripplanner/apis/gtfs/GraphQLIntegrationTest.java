@@ -3,7 +3,7 @@ package org.opentripplanner.apis.gtfs;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.fail;
 import static org.opentripplanner._support.time.ZoneIds.BERLIN;
-import static org.opentripplanner.model.plan.PlanTestConstants.D10m;
+import static org.opentripplanner.model.plan.PlanTestConstants.D10_m;
 import static org.opentripplanner.model.plan.PlanTestConstants.T11_00;
 import static org.opentripplanner.model.plan.PlanTestConstants.T11_01;
 import static org.opentripplanner.model.plan.PlanTestConstants.T11_15;
@@ -182,12 +182,12 @@ class GraphQLIntegrationTest {
   private static GraphQLRequestContext context;
 
   private static final Deduplicator DEDUPLICATOR = new Deduplicator();
-  private static final VehicleParkingRepository parkingRepository =
+  private static final VehicleParkingRepository PARKING_REPOSITORY =
     new DefaultVehicleParkingRepository();
 
   @BeforeAll
   static void setup() {
-    parkingRepository.updateVehicleParking(
+    PARKING_REPOSITORY.updateVehicleParking(
       List.of(
         VehicleParking.builder()
           .id(id("parking-1"))
@@ -446,7 +446,7 @@ class GraphQLIntegrationTest {
       .walk(20, B, List.of(step1, step2, step3, step4, step5))
       .bus(busRoute, 122, T11_01, T11_15, C)
       .rail(439, T11_30, T11_50, D)
-      .carHail(D10m, E)
+      .carHail(D10_m, E)
       .build();
 
     i1 = add10MinuteDelay(i1);
@@ -514,10 +514,10 @@ class GraphQLIntegrationTest {
       TransferServiceTestFactory.defaultTransferService(),
       new DefaultFareService(),
       defaultVehicleRentalService,
-      new DefaultVehicleParkingService(parkingRepository),
+      new DefaultVehicleParkingService(PARKING_REPOSITORY),
       realtimeVehicleService,
       SchemaFactory.createSchemaWithDefaultInjection(routeRequest),
-      finder,
+      FINDER,
       routeRequest
     );
   }
@@ -648,7 +648,7 @@ class GraphQLIntegrationTest {
     return null;
   }
 
-  private static final GraphFinder finder = new GraphFinder() {
+  private static final GraphFinder FINDER = new GraphFinder() {
     @Override
     public List<NearbyStop> findClosestStops(Coordinate coordinate, double radiusMeters) {
       return null;

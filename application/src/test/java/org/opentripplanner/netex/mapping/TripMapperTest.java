@@ -34,7 +34,7 @@ public class TripMapperTest {
   private static final String SERVICE_JOURNEY_ID = NetexTestDataSample.SERVICE_JOURNEY_ID;
   private static final String JOURNEY_PATTERN_ID = "RUT:JourneyPattern:1";
   private static final FeedScopedId SERVICE_ID = TimetableRepositoryForTest.id("S001");
-  private static final DataImportIssueStore issueStore = DataImportIssueStore.NOOP;
+  private static final DataImportIssueStore ISSUE_STORE = DataImportIssueStore.NOOP;
 
   private static final JAXBElement<LineRefStructure> LINE_REF = MappingSupport.createWrappedRef(
     ROUTE_ID,
@@ -49,12 +49,12 @@ public class TripMapperTest {
     var limitations = new AccessibilityLimitations_RelStructure();
     var access = new AccessibilityAssessment();
 
-    var transitBuilder = new TransitDataImportBuilder(new SiteRepository(), issueStore);
+    var transitBuilder = new TransitDataImportBuilder(new SiteRepository(), ISSUE_STORE);
     transitBuilder.getRoutes().add(TimetableRepositoryForTest.route(ROUTE_ID).build());
 
     TripMapper tripMapper = new TripMapper(
       ID_FACTORY,
-      issueStore,
+      ISSUE_STORE,
       transitBuilder.getOperatorsById(),
       transitBuilder.getRoutes(),
       new HierarchicalMapById<>(),
@@ -80,13 +80,13 @@ public class TripMapperTest {
   public void mapTrip() {
     TransitDataImportBuilder transitBuilder = new TransitDataImportBuilder(
       new SiteRepository(),
-      issueStore
+      ISSUE_STORE
     );
     transitBuilder.getRoutes().add(TimetableRepositoryForTest.route(ROUTE_ID).build());
 
     TripMapper tripMapper = new TripMapper(
       ID_FACTORY,
-      issueStore,
+      ISSUE_STORE,
       transitBuilder.getOperatorsById(),
       transitBuilder.getRoutes(),
       new HierarchicalMapById<>(),
@@ -107,7 +107,7 @@ public class TripMapperTest {
   public void mapTripWithRouteRefViaJourneyPattern() {
     TransitDataImportBuilder transitBuilder = new TransitDataImportBuilder(
       new SiteRepository(),
-      issueStore
+      ISSUE_STORE
     );
     transitBuilder.getRoutes().add(TimetableRepositoryForTest.route(ROUTE_ID).build());
 
@@ -131,7 +131,7 @@ public class TripMapperTest {
 
     TripMapper tripMapper = new TripMapper(
       ID_FACTORY,
-      issueStore,
+      ISSUE_STORE,
       transitBuilder.getOperatorsById(),
       transitBuilder.getRoutes(),
       routeById,

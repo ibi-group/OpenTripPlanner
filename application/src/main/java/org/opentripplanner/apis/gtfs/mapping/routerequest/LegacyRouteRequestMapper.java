@@ -199,7 +199,7 @@ public class LegacyRouteRequestMapper {
           );
 
           callWith.argument("banned.trips", (String v) ->
-            journeyBuilder.withTransit(b -> b.withBannedTrips(FeedScopedId.parseList(v)))
+            transitBuilder.withBannedTrips(FeedScopedId.parseList(v))
           );
 
           if (hasArgument(environment, "transportModes")) {

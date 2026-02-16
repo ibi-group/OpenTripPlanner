@@ -14,14 +14,14 @@ import org.opentripplanner.transit.model.basic.Accessibility;
  */
 public class BarrierVertex extends OsmVertex {
 
-  public static final StreetTraversalPermission defaultBarrierPermissions =
+  public static final StreetTraversalPermission DEFAULT_BARRIER_PERMISSIONS =
     StreetTraversalPermission.ALL;
   private StreetTraversalPermission barrierPermissions;
   protected Accessibility wheelchairAccessibility;
 
   public BarrierVertex(double x, double y, long nodeId, Accessibility wheelchairAccessibility) {
     super(x, y, nodeId);
-    barrierPermissions = defaultBarrierPermissions;
+    barrierPermissions = DEFAULT_BARRIER_PERMISSIONS;
     this.wheelchairAccessibility = wheelchairAccessibility;
   }
 

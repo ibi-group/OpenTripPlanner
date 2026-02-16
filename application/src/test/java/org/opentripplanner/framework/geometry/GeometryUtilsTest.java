@@ -9,9 +9,11 @@ import org.locationtech.jts.geom.CoordinateSequence;
 import org.locationtech.jts.geom.CoordinateSequenceFactory;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.LineString;
-import org.opentripplanner._support.geometry.Coordinates;
 
 public class GeometryUtilsTest {
+
+  public static final Coordinate BERLIN = new Coordinate(13.4105, 52.5212);
+  public static final Coordinate HAMBURG = new Coordinate(10.0003, 53.5566);
 
   @Test
   public final void testSplitGeometryAtFraction() {
@@ -269,14 +271,14 @@ public class GeometryUtilsTest {
 
   @Test
   void sumDistances() {
-    var coordinates = List.of(Coordinates.BERLIN, Coordinates.HAMBURG);
+    var coordinates = List.of(BERLIN, HAMBURG);
     var meters = GeometryUtils.sumDistances(coordinates);
     assertEquals(255_384.0, meters, 0.5);
   }
 
   @Test
   void sumDistancesArraySinglePoint() {
-    var coordinates = new Coordinate[] { Coordinates.BERLIN };
+    var coordinates = new Coordinate[] { BERLIN };
     var meters = GeometryUtils.sumDistances(coordinates);
     assertEquals(0.0, meters);
   }

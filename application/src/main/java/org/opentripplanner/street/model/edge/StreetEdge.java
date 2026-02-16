@@ -15,7 +15,6 @@ import org.opentripplanner.framework.geometry.GeometryUtils;
 import org.opentripplanner.framework.geometry.SphericalDistanceLibrary;
 import org.opentripplanner.framework.geometry.SplitLineString;
 import org.opentripplanner.routing.api.request.preference.RoutingPreferences;
-import org.opentripplanner.routing.linking.DisposableEdgeCollection;
 import org.opentripplanner.routing.util.ElevationUtils;
 import org.opentripplanner.service.vehiclerental.model.RentalVehicleType.PropulsionType;
 import org.opentripplanner.street.model.RentalRestrictionExtension;
@@ -675,11 +674,7 @@ public class StreetEdge
   }
 
   /** Split this street edge and return the resulting street edges. The original edge is kept. */
-  public SplitStreetEdge splitNonDestructively(
-    SplitterVertex v,
-    DisposableEdgeCollection tempEdges,
-    LinkingDirection direction
-  ) {
+  public SplitStreetEdge splitNonDestructively(SplitterVertex v, LinkingDirection direction) {
     SplitLineString geoms = GeometryUtils.splitGeometryAtPoint(getGeometry(), v.getCoordinate());
 
     StreetEdge e1 = null;
@@ -696,7 +691,6 @@ public class StreetEdge
       copyPropertiesToSplitEdge(seb1, 0, defaultMillimeterLength(geoms.beginning()) / 1000.0);
       e1 = seb1.buildAndConnect();
       copyRentalRestrictionsToSplitEdge(e1);
-      tempEdges.addEdge(e1);
     }
     if (direction == LinkingDirection.INCOMING || direction == LinkingDirection.BIDIRECTIONAL) {
       var seb2 = new TemporaryPartialStreetEdgeBuilder()
@@ -713,7 +707,6 @@ public class StreetEdge
       );
       e2 = seb2.buildAndConnect();
       copyRentalRestrictionsToSplitEdge(e2);
-      tempEdges.addEdge(e2);
     }
 
     return new SplitStreetEdge(e1, e2);

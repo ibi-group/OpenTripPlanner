@@ -43,7 +43,7 @@ import org.slf4j.LoggerFactory;
 public class GeometryProcessor {
 
   private static final Logger LOG = LoggerFactory.getLogger(GeometryProcessor.class);
-  private static final GeometryFactory geometryFactory = GeometryUtils.getGeometryFactory();
+  private static final GeometryFactory GEOMETRY_FACTORY = GeometryUtils.getGeometryFactory();
   private final TransitDataImportBuilder builder;
   // this is a thread-safe implementation
   private final Map<ShapeSegmentKey, LineString> geometriesByShapeSegmentKey =
@@ -200,7 +200,7 @@ public class GeometryProcessor {
           geometry.getCoordinates(),
           2
         );
-        geometry = geometryFactory.createLineString(sequence);
+        geometry = GEOMETRY_FACTORY.createLineString(sequence);
       }
       geoms[i] = geometry;
     }
@@ -448,7 +448,7 @@ public class GeometryProcessor {
     };
     CoordinateSequence sequence = new PackedCoordinateSequence.Double(coordinates, 2);
 
-    return geometryFactory.createLineString(sequence);
+    return GEOMETRY_FACTORY.createLineString(sequence);
   }
 
   private boolean isValid(Geometry geometry, StopLocation s0, StopLocation s1) {
@@ -503,7 +503,7 @@ public class GeometryProcessor {
         geometry.getCoordinates(),
         2
       );
-      geometry = geometryFactory.createLineString(sequence);
+      geometry = GEOMETRY_FACTORY.createLineString(sequence);
 
       if (!isValid(geometry, st0.getStop(), st1.getStop())) {
         issueStore.add(new BogusShapeGeometryCaught(shapeId, st0, st1));
@@ -576,7 +576,7 @@ public class GeometryProcessor {
     }
 
     CoordinateSequence sequence = new PackedCoordinateSequence.Double(coordinates, 2);
-    geometry = geometryFactory.createLineString(sequence);
+    geometry = GEOMETRY_FACTORY.createLineString(sequence);
     geometriesByShapeId.put(shapeId, geometry);
 
     // If we don't have distances here, we can't calculate them ourselves because we can't

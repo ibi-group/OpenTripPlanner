@@ -11,7 +11,6 @@ import org.opentripplanner.core.model.i18n.I18NString;
 public class StreetLocation extends StreetVertex {
 
   private final I18NString name;
-  private boolean wheelchairAccessible;
 
   private final VertexLabel label;
 
@@ -21,14 +20,6 @@ public class StreetLocation extends StreetVertex {
     super(nearestPoint.x, nearestPoint.y);
     this.label = VertexLabel.string(id);
     this.name = name;
-  }
-
-  public boolean isWheelchairAccessible() {
-    return wheelchairAccessible;
-  }
-
-  public void setWheelchairAccessible(boolean wheelchairAccessible) {
-    this.wheelchairAccessible = wheelchairAccessible;
   }
 
   @Override

@@ -1,16 +1,14 @@
 package org.opentripplanner.street.model.vertex;
 
-import java.util.Set;
 import org.locationtech.jts.geom.Point;
 import org.opentripplanner.core.model.id.FeedScopedId;
 import org.opentripplanner.framework.geometry.WgsCoordinate;
 import org.opentripplanner.transit.model.basic.Accessibility;
-import org.opentripplanner.transit.model.basic.TransitMode;
 
 public class TransitStopVertexBuilder {
 
   private Point coordinate;
-  private Set<TransitMode> modes = Set.of();
+  private boolean isFerryStop = false;
   private FeedScopedId id;
   private Accessibility wheelchairAccessibility = Accessibility.NO_INFORMATION;
 
@@ -35,12 +33,17 @@ public class TransitStopVertexBuilder {
     return this;
   }
 
-  public TransitStopVertexBuilder withModes(Set<TransitMode> modes) {
-    this.modes = modes;
+  public TransitStopVertexBuilder withIsFerryStop(boolean isFerryStop) {
+    this.isFerryStop = isFerryStop;
     return this;
   }
 
   public TransitStopVertex build() {
-    return new TransitStopVertex(id, new WgsCoordinate(coordinate), wheelchairAccessibility, modes);
+    return new TransitStopVertex(
+      id,
+      new WgsCoordinate(coordinate),
+      wheelchairAccessibility,
+      isFerryStop
+    );
   }
 }

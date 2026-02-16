@@ -41,7 +41,7 @@ import org.opentripplanner.transit.service.TimetableRepository;
 
 public class LinkStopToPlatformTest {
 
-  private static final GeometryFactory geometryFactory = GeometryUtils.getGeometryFactory();
+  private static final GeometryFactory GEOMETRY_FACTORY = GeometryUtils.getGeometryFactory();
   private final TimetableRepositoryForTest testModel = TimetableRepositoryForTest.of();
 
   private Graph prepareTest(Coordinate[] platform, int[] visible, Coordinate[] stops) {
@@ -517,7 +517,7 @@ public class LinkStopToPlatformTest {
     AreaGroup area,
     String nameString
   ) {
-    LineString line = geometryFactory.createLineString(
+    LineString line = GEOMETRY_FACTORY.createLineString(
       new Coordinate[] { v1.getCoordinate(), v2.getCoordinate() }
     );
     I18NString name = new LocalizedString(nameString);

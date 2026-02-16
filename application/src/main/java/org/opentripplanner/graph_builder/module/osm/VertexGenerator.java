@@ -38,7 +38,7 @@ import org.opentripplanner.transit.model.basic.Accessibility;
  */
 class VertexGenerator {
 
-  private static final String nodeLabelFormat = "osm:node:%d";
+  private static final String NODE_LABEL_FORMAT = "osm:node:%d";
 
   private final Map<Long, IntersectionVertex> intersectionNodes = new HashMap<>();
 
@@ -121,7 +121,7 @@ class VertexGenerator {
 
       /* If the OSM node represents a transit stop and has a ref=(stop_code) tag, make a special vertex for it. */
       if (node.isBoardingLocation()) {
-        String label = String.format(nodeLabelFormat, node.getId());
+        String label = String.format(NODE_LABEL_FORMAT, node.getId());
         var refs = node.getMultiTagValues(boardingAreaRefTags);
         if (!refs.isEmpty()) {
           String name = node.getTag("name");
@@ -149,7 +149,9 @@ class VertexGenerator {
       }
 
       if (iv instanceof BarrierVertex bv) {
-        bv.setBarrierPermissions(node.overridePermissions(BarrierVertex.defaultBarrierPermissions));
+        bv.setBarrierPermissions(
+          node.overridePermissions(BarrierVertex.DEFAULT_BARRIER_PERMISSIONS)
+        );
         if (
           bv.wheelchairAccessibility() == Accessibility.NO_INFORMATION &&
           !node.isWheelchairAccessible()

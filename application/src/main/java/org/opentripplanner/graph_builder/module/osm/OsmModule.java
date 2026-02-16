@@ -37,7 +37,6 @@ import org.opentripplanner.osm.model.OsmWay;
 import org.opentripplanner.osm.model.TraverseDirection;
 import org.opentripplanner.osm.wayproperty.WayPropertiesPair;
 import org.opentripplanner.routing.graph.Graph;
-import org.opentripplanner.routing.util.ElevationUtils;
 import org.opentripplanner.service.osminfo.OsmInfoGraphBuildRepository;
 import org.opentripplanner.service.osminfo.model.Platform;
 import org.opentripplanner.service.streetdetails.StreetDetailsRepository;
@@ -453,12 +452,9 @@ public class OsmModule implements GraphBuilderModule {
           // make or get a shared vertex for flat intersections,
           // one vertex per level for multilevel nodes like elevators
           fromVertex = vertexGenerator.getVertexForOsmNode(osmStartNode, way, NORMAL);
-          String ele = segmentStartOsmNode.getTag("ele");
-          if (ele != null) {
-            Double elevation = ElevationUtils.parseEleTag(ele);
-            if (elevation != null) {
-              elevationData.put(fromVertex, elevation);
-            }
+          var ele = segmentStartOsmNode.parseEleTag();
+          if (ele.isPresent()) {
+            elevationData.put(fromVertex, ele.getAsDouble());
           }
         } else {
           // subsequent iterations
@@ -466,12 +462,9 @@ public class OsmModule implements GraphBuilderModule {
         }
 
         toVertex = vertexGenerator.getVertexForOsmNode(osmEndNode, way, NORMAL);
-        String ele = osmEndNode.getTag("ele");
-        if (ele != null) {
-          Double elevation = ElevationUtils.parseEleTag(ele);
-          if (elevation != null) {
-            elevationData.put(toVertex, elevation);
-          }
+        var ele = osmEndNode.parseEleTag();
+        if (ele.isPresent()) {
+          elevationData.put(toVertex, ele.getAsDouble());
         }
         if (elevatorProcessor.isElevatorWay(way)) {
           // Elevator way processing is done after the basic graph has been built.

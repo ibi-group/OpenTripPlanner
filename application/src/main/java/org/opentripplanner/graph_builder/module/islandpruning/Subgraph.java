@@ -17,7 +17,6 @@ import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.street.model.vertex.OsmVertex;
 import org.opentripplanner.street.model.vertex.TransitStopVertex;
 import org.opentripplanner.street.model.vertex.Vertex;
-import org.opentripplanner.transit.model.basic.TransitMode;
 
 class Subgraph {
 
@@ -136,9 +135,8 @@ class Subgraph {
    */
   boolean hasOnlyFerryStops() {
     for (TransitStopVertex v : stopsVertexSet) {
-      Set<TransitMode> modes = v.getModes();
       // test if stop has other transit modes than FERRY
-      if (!modes.contains(TransitMode.FERRY)) {
+      if (!v.isFerryStop()) {
         return false;
       }
     }

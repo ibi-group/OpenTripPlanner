@@ -5,12 +5,15 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.opentripplanner.transit.model._data.FeedScopedIdForTestFactory.id;
 import static org.opentripplanner.updater.spi.UpdateResultAssertions.assertFailure;
+import static org.opentripplanner.updater.spi.UpdateResultAssertions.assertSuccess;
 
 import org.junit.jupiter.api.Test;
 import org.opentripplanner.core.model.id.FeedScopedId;
 import org.opentripplanner.transit.model._data.TransitTestEnvironment;
 import org.opentripplanner.transit.model._data.TransitTestEnvironmentBuilder;
 import org.opentripplanner.transit.model._data.TripInput;
+import org.opentripplanner.transit.model.basic.SubMode;
+import org.opentripplanner.transit.model.basic.TransitMode;
 import org.opentripplanner.transit.model.network.Route;
 import org.opentripplanner.transit.model.organization.Operator;
 import org.opentripplanner.transit.model.site.RegularStop;
@@ -22,12 +25,14 @@ import org.opentripplanner.updater.spi.UpdateError;
 import org.opentripplanner.updater.trip.RealtimeTestConstants;
 import org.opentripplanner.updater.trip.SiriTestHelper;
 import org.opentripplanner.updater.trip.siri.SiriEtBuilder;
+import uk.org.siri.siri21.VehicleModesEnumeration;
 
 class ExtraJourneyTest implements RealtimeTestConstants {
 
   private static final String ADDED_TRIP_ID = "newJourney";
   private static final String OPERATOR_ID = "operatorId";
   private static final String ROUTE_ID = "routeId";
+  private static final String RAIL_ROUTE_ID = "railRouteId";
 
   private final TransitTestEnvironmentBuilder ENV_BUILDER = TransitTestEnvironment.of();
   private final RegularStop STOP_A = ENV_BUILDER.stop(STOP_A_ID);
@@ -40,6 +45,15 @@ class ExtraJourneyTest implements RealtimeTestConstants {
 
   private final TripInput TRIP_1_INPUT = TripInput.of(TRIP_1_ID)
     .withRoute(ROUTE)
+    .addStop(STOP_A, "0:00:10", "0:00:11")
+    .addStop(STOP_B, "0:00:20", "0:00:21");
+
+  private final Route RAIL_ROUTE = ENV_BUILDER.route(RAIL_ROUTE_ID, r ->
+    r.withMode(TransitMode.RAIL)
+  );
+
+  private final TripInput RAIL_TRIP_INPUT = TripInput.of("railTrip1")
+    .withRoute(RAIL_ROUTE)
     .addStop(STOP_A, "0:00:10", "0:00:11")
     .addStop(STOP_B, "0:00:20", "0:00:21");
 
@@ -134,11 +148,9 @@ class ExtraJourneyTest implements RealtimeTestConstants {
     var updates = createValidAddedJourney(siri).buildEstimatedTimetableDeliveries();
 
     int numTrips = env.transitService().listTrips().size();
-    var result1 = siri.applyEstimatedTimetable(updates);
-    assertEquals(1, result1.successful());
+    assertSuccess(siri.applyEstimatedTimetable(updates));
     assertEquals(numTrips + 1, env.transitService().listTrips().size());
-    var result2 = siri.applyEstimatedTimetable(updates);
-    assertEquals(1, result2.successful());
+    assertSuccess(siri.applyEstimatedTimetable(updates));
     assertEquals(numTrips + 1, env.transitService().listTrips().size());
 
     assertThat(env.raptorData().summarizePatterns()).containsExactly(
@@ -193,9 +205,7 @@ class ExtraJourneyTest implements RealtimeTestConstants {
       .withEstimatedCalls(builder -> builder.call(STOP_C).arriveAimedExpected("00:03", "00:04"))
       .buildEstimatedTimetableDeliveries();
 
-    var result = siri.applyEstimatedTimetable(updates);
-
-    assertEquals(1, result.successful());
+    assertSuccess(siri.applyEstimatedTimetable(updates));
 
     assertEquals(
       "ADDED | A [R] 0:02 0:02 | C 0:04 0:04",
@@ -240,6 +250,118 @@ class ExtraJourneyTest implements RealtimeTestConstants {
 
     // TODO: this should have a more specific error type
     assertFailure(UpdateError.UpdateErrorType.UNKNOWN, result);
+  }
+
+  @Test
+  void testAddJourneyWithNewRouteAndShortName() {
+    var env = ENV_BUILDER.addTrip(TRIP_1_INPUT).build();
+    var siri = SiriTestHelper.of(env);
+
+    String newRouteRef = "newRouteForShortName";
+    var updates = createValidAddedJourney(siri)
+      .withLineRef(newRouteRef)
+      .withPublishedLineName("L1")
+      .buildEstimatedTimetableDeliveries();
+
+    assertSuccess(siri.applyEstimatedTimetable(updates));
+
+    Route newRoute = env.transitService().getRoute(id(newRouteRef));
+    assertEquals(
+      "L1",
+      newRoute.getShortName(),
+      "PublishedLineName should be mapped to the new route short name"
+    );
+  }
+
+  @Test
+  void testAddJourneyWithNewRouteAndOperator() {
+    var env = ENV_BUILDER.addTrip(TRIP_1_INPUT).build();
+    var siri = SiriTestHelper.of(env);
+
+    String newRouteRef = "newRouteForOperator";
+    var updates = createValidAddedJourney(siri)
+      .withLineRef(newRouteRef)
+      .buildEstimatedTimetableDeliveries();
+
+    assertSuccess(siri.applyEstimatedTimetable(updates));
+
+    Trip trip = env.transitService().getTrip(id(ADDED_TRIP_ID));
+    assertNotNull(trip);
+    assertEquals(
+      OPERATOR,
+      trip.getOperator(),
+      "The new trip is assigned to the operator specified in OperatorRef"
+    );
+  }
+
+  @Test
+  void testAddJourneyWithNewRouteResolvesAgencyFromOperator() {
+    var env = ENV_BUILDER.addTrip(TRIP_1_INPUT).build();
+    var siri = SiriTestHelper.of(env);
+
+    String newRouteRef = "newRouteForAgency";
+    var updates = createValidAddedJourney(siri)
+      .withLineRef(newRouteRef)
+      .buildEstimatedTimetableDeliveries();
+
+    var result = siri.applyEstimatedTimetable(updates);
+    assertEquals(1, result.successful());
+
+    Route newRoute = env.transitService().getRoute(id(newRouteRef));
+    assertNotNull(newRoute);
+    assertEquals(
+      ROUTE.getAgency(),
+      newRoute.getAgency(),
+      "The new route agency should be mapped to the agency of any existing route that has the same operator"
+    );
+  }
+
+  @Test
+  void testAddJourneyBusReplacingRailHasRailReplacementSubmode() {
+    var env = ENV_BUILDER.addTrip(TRIP_1_INPUT).addTrip(RAIL_TRIP_INPUT).build();
+    var siri = SiriTestHelper.of(env);
+
+    String newRouteRef = "busReplacementRoute";
+    var updates = createValidAddedJourney(siri)
+      .withLineRef(newRouteRef)
+      .withExternalLineRef(RAIL_ROUTE_ID)
+      .withVehicleMode(VehicleModesEnumeration.BUS)
+      .buildEstimatedTimetableDeliveries();
+
+    assertSuccess(siri.applyEstimatedTimetable(updates));
+
+    Route newRoute = env.transitService().getRoute(id(newRouteRef));
+    assertNotNull(newRoute);
+    assertEquals(TransitMode.BUS, newRoute.getMode());
+    assertEquals(
+      SubMode.of("railReplacementBus"),
+      newRoute.getNetexSubmode(),
+      "When an added bus trip is assigned to an existing rail route, the submode should be 'railReplacementBus'"
+    );
+  }
+
+  @Test
+  void testAddJourneyRailReplacingRailHasReplacementRailSubmode() {
+    var env = ENV_BUILDER.addTrip(TRIP_1_INPUT).addTrip(RAIL_TRIP_INPUT).build();
+    var siri = SiriTestHelper.of(env);
+
+    String newRouteRef = "railReplacementRoute";
+    var updates = createValidAddedJourney(siri)
+      .withLineRef(newRouteRef)
+      .withExternalLineRef(RAIL_ROUTE_ID)
+      .withVehicleMode(VehicleModesEnumeration.RAIL)
+      .buildEstimatedTimetableDeliveries();
+
+    assertSuccess(siri.applyEstimatedTimetable(updates));
+
+    Route newRoute = env.transitService().getRoute(id(newRouteRef));
+    assertNotNull(newRoute);
+    assertEquals(TransitMode.RAIL, newRoute.getMode());
+    assertEquals(
+      SubMode.of("replacementRailService"),
+      newRoute.getNetexSubmode(),
+      "When an added rail trip is assigned to an existing rail route, the submode should be 'replacementRailService'"
+    );
   }
 
   private SiriEtBuilder createValidAddedJourney(SiriTestHelper siri) {

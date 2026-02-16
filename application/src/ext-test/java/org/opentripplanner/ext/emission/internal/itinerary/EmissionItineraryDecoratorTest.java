@@ -23,8 +23,8 @@ import org.opentripplanner.model.plan.PlanTestConstants;
 
 class EmissionItineraryDecoratorTest implements PlanTestConstants {
 
-  private static final int startTime = T11_09;
-  private static final int endTime = T11_55;
+  private static final int START_TIME = T11_09;
+  private static final int END_TIME = T11_55;
 
   // Apply route emissions
   private Itinerary bus;
@@ -48,25 +48,25 @@ class EmissionItineraryDecoratorTest implements PlanTestConstants {
     var routeA = route("R1").build();
     var routeB = route("R2").build();
 
-    bus = newItinerary(A).bus(routeA, 21, startTime, endTime, B).build();
-    busZeroEmission = newItinerary(A).bus(routeB, 22, startTime, endTime, B).build();
-    rail = newItinerary(A).rail(3, startTime, endTime, B).build();
-    car = newItinerary(A).drive(startTime, endTime, B).build();
-    flex = newItinerary(A).flex(startTime, endTime, B).build();
+    bus = newItinerary(A).bus(routeA, 21, START_TIME, END_TIME, B).build();
+    busZeroEmission = newItinerary(A).bus(routeB, 22, START_TIME, END_TIME, B).build();
+    rail = newItinerary(A).rail(3, START_TIME, END_TIME, B).build();
+    car = newItinerary(A).drive(START_TIME, END_TIME, B).build();
+    flex = newItinerary(A).flex(START_TIME, END_TIME, B).build();
 
-    int t0 = startTime;
+    int t0 = START_TIME;
     combinedWithFlex = newItinerary(A)
       .drive(t0, t0 += 90, C)
       .rail(4, t0 += 90, t0 += 90, D)
       .bus(routeA, 20, t0, t0 += 90, E)
-      .flex(t0 + 90, endTime, B)
+      .flex(t0 + 90, END_TIME, B)
       .build();
 
     combinedNoFlex = newItinerary(A)
       .drive(t0, t0 += 90, C)
       .rail(4, t0 += 90, t0 + 90, D)
       .bus(routeA, 20, t0, t0 += 90, E)
-      .bus(routeB, 23, t0, endTime, B)
+      .bus(routeB, 23, t0, END_TIME, B)
       .build();
 
     var repository = new DefaultEmissionRepository();
