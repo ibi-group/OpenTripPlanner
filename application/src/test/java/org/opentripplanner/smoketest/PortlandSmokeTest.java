@@ -25,18 +25,18 @@ import org.opentripplanner.smoketest.util.SmokeTestRequest;
 @Tag("portland")
 public class PortlandSmokeTest {
 
-  static final Coordinate cennentenial = new Coordinate(45.504602, -122.4968719);
-  static final Coordinate buckman = new Coordinate(45.51720, -122.652289867);
-  static final Coordinate hazelwood = new Coordinate(45.52463, -122.5583);
-  static final Coordinate piedmont = new Coordinate(45.5746, -122.6697);
-  static final Coordinate mountTaborPark = new Coordinate(45.511399, -122.594203);
+  static final Coordinate CENNENTENIAL = new Coordinate(45.504602, -122.4968719);
+  static final Coordinate BUCKMAN = new Coordinate(45.51720, -122.652289867);
+  static final Coordinate HAZELWOOD = new Coordinate(45.52463, -122.5583);
+  static final Coordinate PIEDMONT = new Coordinate(45.5746, -122.6697);
+  static final Coordinate MOUNT_TABOR_PARK = new Coordinate(45.511399, -122.594203);
 
   @Test
   public void railTrip() {
     // this used to be across the city by since the train is interrupted in April '23 this is a
     // much shorter trip
     var plan = SmokeTest.basicRouteTest(
-      new SmokeTestRequest(cennentenial, hazelwood, Set.of(TRAM, WALK)),
+      new SmokeTestRequest(CENNENTENIAL, HAZELWOOD, Set.of(TRAM, WALK)),
       List.of("WALK", "TRAM", "WALK")
     );
 
@@ -45,7 +45,7 @@ public class PortlandSmokeTest {
 
   static List<TripPlanParameters> buildCombinations() {
     return new RequestCombinationsBuilder()
-      .withLocations(cennentenial, buckman, hazelwood, piedmont, mountTaborPark)
+      .withLocations(CENNENTENIAL, BUCKMAN, HAZELWOOD, PIEDMONT, MOUNT_TABOR_PARK)
       .withModes(TRANSIT, WALK)
       .withTime(SmokeTest.weekdayAtNoon())
       .includeWheelchair()
@@ -73,7 +73,7 @@ public class PortlandSmokeTest {
     @ValueSource(booleans = { true, false })
     public void geofencingZone(boolean arriveBy) {
       SmokeTest.basicRouteTest(
-        new SmokeTestRequest(buckman, mountTaborPark, Set.of(SCOOTER_RENT, WALK), arriveBy),
+        new SmokeTestRequest(BUCKMAN, MOUNT_TABOR_PARK, Set.of(SCOOTER_RENT, WALK), arriveBy),
         List.of("WALK", "SCOOTER", "WALK")
       );
     }
@@ -82,7 +82,7 @@ public class PortlandSmokeTest {
     @ValueSource(booleans = { true, false })
     void scooterRent(boolean arriveBy) {
       SmokeTest.basicRouteTest(
-        new SmokeTestRequest(cennentenial, piedmont, Set.of(SCOOTER_RENT, WALK), arriveBy),
+        new SmokeTestRequest(CENNENTENIAL, PIEDMONT, Set.of(SCOOTER_RENT, WALK), arriveBy),
         List.of("WALK", "SCOOTER")
       );
     }
