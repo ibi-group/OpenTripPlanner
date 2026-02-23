@@ -81,6 +81,13 @@ based on merged pull requests. Search GitHub issues and pull requests for smalle
 - Make filters for the canceled trips query in the GTFS API a list [#7235](https://github.com/opentripplanner/OpenTripPlanner/pull/7235)
 - Allow setting `maxThreads` lower than `MIN_THREADS` when using parameter [#7224](https://github.com/opentripplanner/OpenTripPlanner/pull/7224)
 - Allow missing arrival time on the first stop in a GTFS RT Trip Update [#7245](https://github.com/opentripplanner/OpenTripPlanner/pull/7245)
+- Direct transit search [#7145](https://github.com/opentripplanner/OpenTripPlanner/pull/7145)
+- Add ability to start a Raptor search from on-board a trip in MC range raptor [#7241](https://github.com/opentripplanner/OpenTripPlanner/pull/7241)
+- Change `@timingData` annotations in GTFS GraphQL API [#7261](https://github.com/opentripplanner/OpenTripPlanner/pull/7261)
+- Account for DST and multi-day trips in departure boards [#7250](https://github.com/opentripplanner/OpenTripPlanner/pull/7250)
+- Add publiccode.yml for OpenTripPlanner [#7212](https://github.com/opentripplanner/OpenTripPlanner/pull/7212)
+- Expose boolean extraCall field on EstimatedCall in Transmodel API [#7272](https://github.com/opentripplanner/OpenTripPlanner/pull/7272)
+- Fix mapping of `banned.trip` in GTFS API [#7288](https://github.com/opentripplanner/OpenTripPlanner/pull/7288)
 [](AUTOMATIC_CHANGELOG_PLACEHOLDER_DO_NOT_REMOVE)
 
 ## 2.8.1 (2025-09-22)

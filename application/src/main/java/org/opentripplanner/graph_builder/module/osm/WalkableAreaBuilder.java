@@ -73,7 +73,7 @@ class WalkableAreaBuilder {
   private final SafetyValueNormalizer normalizer;
 
   // template for AreaEdge names
-  private static final String labelTemplate = "way (area) %s from %s to %s";
+  private static final String LABEL_TEMPLATE = "way (area) %s from %s to %s";
 
   private static final Logger LOG = LoggerFactory.getLogger(WalkableAreaBuilder.class);
 
@@ -492,7 +492,7 @@ class WalkableAreaBuilder {
       return Set.of();
     }
     String label = String.format(
-      labelTemplate,
+      LABEL_TEMPLATE,
       parent.getId(),
       vertex1.getLabel(),
       vertex2.getLabel()
@@ -518,7 +518,7 @@ class WalkableAreaBuilder {
       .withWheelchairAccessible(wheelchairAccessible)
       .withLink(parent.isLink());
 
-    label = String.format(labelTemplate, parent.getId(), vertex2.getLabel(), vertex1.getLabel());
+    label = String.format(LABEL_TEMPLATE, parent.getId(), vertex2.getLabel(), vertex1.getLabel());
     name = namer.getName(parent, label);
     AreaEdgeBuilder backStreetEdgeBuilder = new AreaEdgeBuilder()
       .withFromVertex(vertex2)

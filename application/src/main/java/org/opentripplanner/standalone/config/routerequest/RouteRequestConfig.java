@@ -340,6 +340,8 @@ public class RouteRequestConfig {
     if (relaxTransitGroupPriorityValue != null) {
       builder.withRelaxTransitGroupPriority(CostLinearFunction.of(relaxTransitGroupPriorityValue));
     }
+
+    builder.withDirectTransitPreferences(it -> DirectTransitRequestConfig.map(c, it));
   }
 
   private static void mapBikePreferences(NodeAdapter root, BikePreferences.Builder builder) {

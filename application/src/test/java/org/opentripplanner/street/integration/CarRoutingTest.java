@@ -34,7 +34,7 @@ import org.opentripplanner.test.support.ResourceLoader;
 
 public class CarRoutingTest {
 
-  static final Instant dateTime = Instant.now();
+  static final Instant DATE_TIME = Instant.now();
   private static final ResourceLoader RESOURCE_LOADER = ResourceLoader.of(CarRoutingTest.class);
 
   private static Graph herrenbergGraph;
@@ -134,7 +134,7 @@ public class CarRoutingTest {
 
   private static String computePolyline(Graph graph, GenericLocation from, GenericLocation to) {
     RouteRequest request = RouteRequest.of()
-      .withDateTime(dateTime)
+      .withDateTime(DATE_TIME)
       .withFrom(from)
       .withTo(to)
       .withJourney(jb -> jb.withDirect(new StreetRequest(StreetMode.CAR)))

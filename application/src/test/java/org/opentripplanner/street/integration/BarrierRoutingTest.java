@@ -44,7 +44,7 @@ import org.opentripplanner.test.support.ResourceLoader;
 
 public class BarrierRoutingTest {
 
-  private static final Instant dateTime = Instant.now();
+  private static final Instant DATE_TIME = Instant.now();
 
   private static Graph graph;
 
@@ -182,7 +182,7 @@ public class BarrierRoutingTest {
     Function<List<Itinerary>, Stream<Executable>> assertions
   ) {
     var builder = RouteRequest.of()
-      .withDateTime(dateTime)
+      .withDateTime(DATE_TIME)
       .withFrom(from)
       .withTo(to)
       .withJourney(jb -> jb.withDirect(new StreetRequest(streetMode)));

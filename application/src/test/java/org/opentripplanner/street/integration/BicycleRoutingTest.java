@@ -33,7 +33,7 @@ import org.opentripplanner.test.support.ResourceLoader;
 
 public class BicycleRoutingTest {
 
-  static final Instant dateTime = Instant.now();
+  static final Instant DATE_TIME = Instant.now();
   private final Graph herrenbergGraph;
 
   {
@@ -80,7 +80,7 @@ public class BicycleRoutingTest {
 
   private static String computePolyline(Graph graph, GenericLocation from, GenericLocation to) {
     RouteRequest request = RouteRequest.of()
-      .withDateTime(dateTime)
+      .withDateTime(DATE_TIME)
       .withFrom(from)
       .withTo(to)
       .withPreferences(p ->

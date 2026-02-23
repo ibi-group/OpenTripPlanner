@@ -74,8 +74,6 @@ public class VertexCreationService {
       LOG.warn("Couldn't link {}", coordinate);
     }
 
-    temporaryStreetLocation.setWheelchairAccessible(true);
-
     return temporaryStreetLocation;
   }
 

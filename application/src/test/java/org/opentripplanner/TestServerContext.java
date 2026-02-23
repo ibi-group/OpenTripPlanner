@@ -124,6 +124,7 @@ public class TestServerContext {
       graph,
       createLinkingContextFactory(graph, vertexLinker, transitService),
       Metrics.globalRegistry,
+      routerConfig.ojpApiParameters(),
       raptorConfig,
       createRealtimeVehicleService(transitService),
       List.of(),

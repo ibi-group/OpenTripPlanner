@@ -47,4 +47,13 @@ public class MessageTest {
       Locale.setDefault(sysDefaultLocale);
     }
   }
+
+  @Test
+  void localize() {
+    var msg = Message.SYSTEM_ERROR.get(Locale.GERMAN);
+    assertEquals(
+      "Es tut uns leid, leider steht der Trip-Planer momentan nicht zur Verfügung. Bitte versuchen Sie es zu einem späteren Zeitpunkt nochmal.",
+      msg
+    );
+  }
 }

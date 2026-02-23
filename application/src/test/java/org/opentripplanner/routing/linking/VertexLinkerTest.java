@@ -1,7 +1,8 @@
 package org.opentripplanner.routing.linking;
 
 import static com.google.common.truth.Truth.assertThat;
-import static org.opentripplanner.transit.model._data.TimetableRepositoryForTest.id;
+import static org.opentripplanner.street.model.edge.LinkingDirection.BIDIRECTIONAL;
+import static org.opentripplanner.transit.model._data.FeedScopedIdForTestFactory.id;
 
 import java.util.List;
 import java.util.Set;
@@ -10,7 +11,8 @@ import org.opentripplanner.core.model.id.FeedScopedId;
 import org.opentripplanner.framework.application.OTPFeature;
 import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.street.model._data.StreetModelForTest;
-import org.opentripplanner.street.model.edge.LinkingDirection;
+import org.opentripplanner.street.model.edge.StreetEdge;
+import org.opentripplanner.street.model.vertex.IntersectionVertex;
 import org.opentripplanner.street.model.vertex.SplitterVertex;
 import org.opentripplanner.street.model.vertex.StreetVertex;
 import org.opentripplanner.street.search.TraverseModeSet;
@@ -45,7 +47,7 @@ class VertexLinkerTest {
       linker.linkVertexPermanently(
         toBeLinked,
         TraverseModeSet.allModes(),
-        LinkingDirection.BIDIRECTIONAL,
+        BIDIRECTIONAL,
         (vertex, streetVertex) ->
           List.of(
             StreetModelForTest.streetEdge((StreetVertex) vertex, streetVertex),
@@ -60,4 +62,72 @@ class VertexLinkerTest {
       assertThat(splitter.areaStops()).containsExactly(AREA_STOP_1, AREA_STOP_2);
     });
   }
+
+  @Test
+  void splitPermanently() {
+    var model = buildModel();
+    assertThat(model.graph().getEdgesOfType(StreetEdge.class)).hasSize(1);
+
+    model
+      .linker()
+      .linkVertexPermanently(
+        model.split(),
+        TraverseModeSet.allModes(),
+        BIDIRECTIONAL,
+        (vertex, streetVertex) -> List.of(model.edge())
+      );
+
+    assertThat(model.graph().getEdgesOfType(StreetEdge.class)).hasSize(2);
+  }
+
+  @Test
+  void splitRequestScoped() {
+    var model = buildModel();
+    assertThat(model.graph().getEdgesOfType(StreetEdge.class)).hasSize(1);
+    var temp = model
+      .linker()
+      .linkVertexForRequest(model.split(), TraverseModeSet.allModes(), BIDIRECTIONAL, (v1, v2) ->
+        List.of()
+      );
+    assertThat(model.graph().getEdgesOfType(StreetEdge.class)).hasSize(2);
+    temp.disposeEdges();
+    assertThat(model.graph().getEdgesOfType(StreetEdge.class)).hasSize(1);
+  }
+
+  @Test
+  void splitRealtime() {
+    var model = buildModel();
+    assertThat(model.graph().getEdgesOfType(StreetEdge.class)).hasSize(1);
+    var temp = model
+      .linker()
+      .linkVertexForRealTime(model.split(), TraverseModeSet.allModes(), BIDIRECTIONAL, (v1, v2) ->
+        List.of()
+      );
+    assertThat(model.graph().getEdgesOfType(StreetEdge.class)).hasSize(2);
+    temp.disposeEdges();
+    assertThat(model.graph().getEdgesOfType(StreetEdge.class)).hasSize(1);
+  }
+
+  private static TestModel buildModel() {
+    var v1 = StreetModelForTest.intersectionVertex(0.0, 0.0);
+    var v2 = StreetModelForTest.intersectionVertex(0.1, 0.1);
+    var split = StreetModelForTest.intersectionVertex(0.05, 0.05);
+
+    var edge = StreetModelForTest.streetEdge(v1, v2);
+
+    var g = new Graph();
+    g.addVertex(v1);
+    g.addVertex(v2);
+    g.index();
+    g.insert(edge, Scope.PERMANENT);
+    var linker = VertexLinkerTestFactory.of(g);
+    return new TestModel(split, edge, g, linker);
+  }
+
+  private record TestModel(
+    IntersectionVertex split,
+    StreetEdge edge,
+    Graph graph,
+    VertexLinker linker
+  ) {}
 }

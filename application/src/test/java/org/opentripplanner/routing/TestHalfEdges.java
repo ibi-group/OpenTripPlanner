@@ -21,8 +21,6 @@ import org.opentripplanner.framework.geometry.GeometryUtils;
 import org.opentripplanner.graph_builder.module.TestStreetLinkerModule;
 import org.opentripplanner.model.GenericLocation;
 import org.opentripplanner.routing.api.request.RouteRequest;
-import org.opentripplanner.routing.api.request.StreetMode;
-import org.opentripplanner.routing.api.request.request.StreetRequest;
 import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.routing.linking.DisposableEdgeCollection;
 import org.opentripplanner.routing.linking.LinkingContextFactory;
@@ -61,7 +59,6 @@ public class TestHalfEdges {
   private StreetEdge left;
   private StreetEdge right;
   private StreetEdge leftBack;
-  private StreetEdge rightBack;
   private IntersectionVertex br;
   private IntersectionVertex tr;
   private IntersectionVertex bl;
@@ -145,15 +142,6 @@ public class TestHalfEdges {
       .withPermission(StreetTraversalPermission.ALL)
       .withBack(true)
       .buildAndConnect();
-    rightBack = new StreetEdgeBuilder<>()
-      .withFromVertex(tr)
-      .withToVertex(br)
-      .withGeometry(right.getGeometry().reverse())
-      .withName("rightBack")
-      .withMeterLength(1500)
-      .withPermission(StreetTraversalPermission.ALL)
-      .withBack(true)
-      .buildAndConnect();
 
     var s1 = testModel.stop("fleem station", 40.0099999, -74.005).build();
     var s2 = testModel.stop("morx station", 40.0099999, -74.002).build();
@@ -172,228 +160,23 @@ public class TestHalfEdges {
   }
 
   @Test
-  public void testHalfEdges() {
-    // the shortest half-edge from the start vertex takes you down, but the shortest total path
-    // is up and over
-
-    DisposableEdgeCollection tempEdges = new DisposableEdgeCollection(graph);
-
-    int nVertices = graph.getVertices().size();
-    int nEdges = graph.getEdges().size();
-
-    HashSet<Edge> turns = new HashSet<>();
-    turns.add(left);
-    turns.add(leftBack);
-
-    TemporaryStreetLocation start = StreetModelForTest.createTemporaryStreetLocationForTest(
-      "start",
-      new NonLocalizedString("start"),
-      filter(turns, StreetEdge.class),
-      new LinearLocation(0, 0.4).getCoordinate(left.getGeometry()),
-      false,
-      tempEdges
-    );
-
-    HashSet<Edge> endTurns = new HashSet<>();
-    endTurns.add(right);
-    endTurns.add(rightBack);
-
-    TemporaryStreetLocation end = StreetModelForTest.createTemporaryStreetLocationForTest(
-      "end",
-      new NonLocalizedString("end"),
-      filter(endTurns, StreetEdge.class),
-      new LinearLocation(0, 0.8).getCoordinate(right.getGeometry()),
-      true,
-      tempEdges
-    );
-
-    assertTrue(start.getX() < end.getX());
-    assertTrue(start.getY() < end.getY());
-
-    Collection<Edge> edges = end.getIncoming();
-
-    assertEquals(2, edges.size());
-
-    var r = RouteRequest.defaultValue();
-
-    ShortestPathTree<State, Edge, Vertex> spt1 = StreetSearchBuilder.of()
-      .withHeuristic(new EuclideanRemainingWeightHeuristic())
-      .withRequest(r)
-      .withStreetRequest(r.journey().direct())
-      .withFrom(br)
-      .withTo(end)
-      .getShortestPathTree();
-
-    GraphPath<State, Edge, Vertex> pathBr = spt1.getPath(end);
-    assertNotNull(pathBr, "There must be a path from br to end");
-
-    ShortestPathTree<State, Edge, Vertex> spt2 = StreetSearchBuilder.of()
-      .withHeuristic(new EuclideanRemainingWeightHeuristic())
-      .withRequest(r)
-      .withStreetRequest(r.journey().direct())
-      .withFrom(tr)
-      .withTo(end)
-      .getShortestPathTree();
-
-    GraphPath<State, Edge, Vertex> pathTr = spt2.getPath(end);
-    assertNotNull(pathTr, "There must be a path from tr to end");
-    assertTrue(
-      pathBr.getWeight() > pathTr.getWeight(),
-      "path from bottom to end must be longer than path from top to end"
-    );
-
-    ShortestPathTree<State, Edge, Vertex> spt = StreetSearchBuilder.of()
-      .withHeuristic(new EuclideanRemainingWeightHeuristic())
-      .withRequest(r)
-      .withStreetRequest(r.journey().direct())
-      .withFrom(start)
-      .withTo(end)
-      .getShortestPathTree();
-
-    GraphPath<State, Edge, Vertex> path = spt.getPath(end);
-    assertNotNull(path, "There must be a path from start to end");
-
-    // the bottom is not part of the shortest path
-    for (State s : path.states) {
-      assertNotSame(s.getVertex(), graph.getVertex("bottom"));
-      assertNotSame(s.getVertex(), graph.getVertex("bottomBack"));
-    }
-
-    r = RouteRequest.of().withArriveBy(true).buildDefault();
-
-    spt = StreetSearchBuilder.of()
-      .withHeuristic(new EuclideanRemainingWeightHeuristic())
-      .withRequest(r)
-      .withStreetRequest(r.journey().direct())
-      .withFrom(start)
-      .withTo(end)
-      .getShortestPathTree();
-
-    path = spt.getPath(start);
-    assertNotNull(path, "There must be a path from start to end (looking back)");
-
-    // the bottom edge is not part of the shortest path
-    for (State s : path.states) {
-      assertNotSame(s.getVertex(), graph.getVertex("bottom"));
-      assertNotSame(s.getVertex(), graph.getVertex("bottomBack"));
-    }
-
-    // Number of vertices and edges should be the same as before after a cleanup.
-    tempEdges.disposeEdges();
-    assertEquals(nVertices, graph.getVertices().size());
-    assertEquals(nEdges, graph.getEdges().size());
-
-    /*
-     * Now, the right edge is not bikeable. But the user can walk their bike. So here are some tests that prove (a) that walking bikes works, but
-     * that (b) it is not preferred to riding a tiny bit longer.
-     */
-
-    start = StreetModelForTest.createTemporaryStreetLocationForTest(
-      "start1",
-      new NonLocalizedString("start1"),
-      filter(turns, StreetEdge.class),
-      new LinearLocation(0, 0.95).getCoordinate(top.getGeometry()),
-      false,
-      tempEdges
-    );
-    end = StreetModelForTest.createTemporaryStreetLocationForTest(
-      "end1",
-      new NonLocalizedString("end1"),
-      filter(turns, StreetEdge.class),
-      new LinearLocation(0, 0.95).getCoordinate(bottom.getGeometry()),
-      true,
-      tempEdges
-    );
-
-    r = RouteRequest.of()
-      .withJourney(jb -> jb.withDirect(new StreetRequest(StreetMode.BIKE)))
-      .buildDefault();
-
-    spt = StreetSearchBuilder.of()
-      .withHeuristic(new EuclideanRemainingWeightHeuristic())
-      .withRequest(r)
-      .withStreetRequest(r.journey().direct())
-      .withFrom(start)
-      .withTo(end)
-      .getShortestPathTree();
-
-    path = spt.getPath(start);
-    assertNotNull(path, "There must be a path from top to bottom along the right");
-
-    // the left edge is not part of the shortest path (even though the bike must be walked along the right)
-    for (State s : path.states) {
-      assertNotSame(s.getVertex(), graph.getVertex("left"));
-      assertNotSame(s.getVertex(), graph.getVertex("leftBack"));
-    }
-
-    // Number of vertices and edges should be the same as before after a cleanup.
-    tempEdges.disposeEdges();
-    assertEquals(nVertices, graph.getVertices().size());
-    assertEquals(nEdges, graph.getEdges().size());
-
-    start = StreetModelForTest.createTemporaryStreetLocationForTest(
-      "start2",
-      new NonLocalizedString("start2"),
-      filter(turns, StreetEdge.class),
-      new LinearLocation(0, 0.55).getCoordinate(top.getGeometry()),
-      false,
-      tempEdges
-    );
-    end = StreetModelForTest.createTemporaryStreetLocationForTest(
-      "end2",
-      new NonLocalizedString("end2"),
-      filter(turns, StreetEdge.class),
-      new LinearLocation(0, 0.55).getCoordinate(bottom.getGeometry()),
-      true,
-      tempEdges
-    );
-
-    spt = StreetSearchBuilder.of()
-      .withHeuristic(new EuclideanRemainingWeightHeuristic())
-      .withRequest(r)
-      .withFrom(start)
-      .withTo(end)
-      .getShortestPathTree();
-
-    path = spt.getPath(start);
-    assertNotNull(path, "There must be a path from top to bottom");
-
-    // the right edge is not part of the shortest path, e
-    for (State s : path.states) {
-      assertNotSame(s.getVertex(), graph.getVertex("right"));
-      assertNotSame(s.getVertex(), graph.getVertex("rightBack"));
-    }
-
-    // Number of vertices and edges should be the same as before after a cleanup.
-    tempEdges.disposeEdges();
-    assertEquals(nVertices, graph.getVertices().size());
-    assertEquals(nEdges, graph.getEdges().size());
-  }
-
-  @Test
   public void testRouteToSameEdge() {
-    DisposableEdgeCollection tempEdges = new DisposableEdgeCollection(graph);
-
     HashSet<Edge> turns = new HashSet<>();
     turns.add(left);
     turns.add(leftBack);
 
     TemporaryStreetLocation start = StreetModelForTest.createTemporaryStreetLocationForTest(
-      "start",
       new NonLocalizedString("start"),
       filter(turns, StreetEdge.class),
       new LinearLocation(0, 0.4).getCoordinate(left.getGeometry()),
-      false,
-      tempEdges
+      false
     );
 
     TemporaryStreetLocation end = StreetModelForTest.createTemporaryStreetLocationForTest(
-      "end",
       new NonLocalizedString("end"),
       filter(turns, StreetEdge.class),
       new LinearLocation(0, 0.8).getCoordinate(left.getGeometry()),
-      true,
-      tempEdges
+      true
     );
 
     DisposableEdgeCollection connection = SameEdgeAdjuster.adjust(start, end, graph);
@@ -418,34 +201,27 @@ public class TestHalfEdges {
     GraphPath<State, Edge, Vertex> path = spt.getPath(end);
     assertNotNull(path, "There must be a path from start to end");
     assertEquals(1, path.edges.size());
-    tempEdges.disposeEdges();
     connection.disposeEdges();
   }
 
   @Test
   public void testRouteToSameEdgeBackwards() {
-    DisposableEdgeCollection tempEdges = new DisposableEdgeCollection(graph);
-
     // Sits only on the leftmost edge, not on its reverse.
     HashSet<Edge> turns = new HashSet<>();
     turns.add(left);
 
     TemporaryStreetLocation start = StreetModelForTest.createTemporaryStreetLocationForTest(
-      "start",
       new NonLocalizedString("start"),
       filter(turns, StreetEdge.class),
       new LinearLocation(0, 0.8).getCoordinate(left.getGeometry()),
-      false,
-      tempEdges
+      false
     );
 
     TemporaryStreetLocation end = StreetModelForTest.createTemporaryStreetLocationForTest(
-      "end",
       new NonLocalizedString("end"),
       filter(turns, StreetEdge.class),
       new LinearLocation(0, 0.4).getCoordinate(left.getGeometry()),
-      true,
-      tempEdges
+      true
     );
 
     DisposableEdgeCollection connection = SameEdgeAdjuster.adjust(start, end, graph);
@@ -469,7 +245,6 @@ public class TestHalfEdges {
     GraphPath<State, Edge, Vertex> path = spt.getPath(end);
     assertNotNull(path, "There must be a path from start to end");
     assertTrue(path.edges.size() > 1);
-    tempEdges.disposeEdges();
     connection.disposeEdges();
   }
 
@@ -479,8 +254,6 @@ public class TestHalfEdges {
    */
   @Test
   public void testStreetSplittingAlerts() {
-    DisposableEdgeCollection tempEdges = new DisposableEdgeCollection(graph);
-
     HashSet<Edge> turns = new HashSet<>();
     turns.add(left);
     turns.add(leftBack);
@@ -493,12 +266,10 @@ public class TestHalfEdges {
     graph.streetNotesService.addStaticNote(leftBack, alert, StreetNotesService.ALWAYS_MATCHER);
 
     TemporaryStreetLocation start = StreetModelForTest.createTemporaryStreetLocationForTest(
-      "start",
       new NonLocalizedString("start"),
       filter(turns, StreetEdge.class),
       new LinearLocation(0, 0.4).getCoordinate(left.getGeometry()),
-      false,
-      tempEdges
+      false
     );
 
     // The alert should be preserved
@@ -538,12 +309,10 @@ public class TestHalfEdges {
     req.withWheelchairEnabled(true);
 
     start = StreetModelForTest.createTemporaryStreetLocationForTest(
-      "start",
       new NonLocalizedString("start"),
       filter(turns, StreetEdge.class),
       new LinearLocation(0, 0.4).getCoordinate(left.getGeometry()),
-      false,
-      tempEdges
+      false
     );
 
     traversedOne = new State(start, req.build());
@@ -558,7 +327,6 @@ public class TestHalfEdges {
     assertEquals(wheelchairAlerts, graph.streetNotesService.getNotes(traversedOne));
     assertNotSame(left, traversedOne.getBackEdge().getFromVertex());
     assertNotSame(leftBack, traversedOne.getBackEdge().getFromVertex());
-    tempEdges.disposeEdges();
   }
 
   @Test

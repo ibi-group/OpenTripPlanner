@@ -24,11 +24,11 @@ class AccessEgressPenaltyDecoratorTest {
 
   private static final int DURATION_CAR_RENTAL = 45;
   private static final int DURATION_WALKING = 135;
-  private static final Duration D10m = DurationUtils.duration("10m");
+  private static final Duration D10_m = DurationUtils.duration("10m");
   private static final RoutingAccessEgress WALK = ofWalking(DURATION_WALKING);
   private static final RoutingAccessEgress CAR_RENTAL = ofCarRental(DURATION_CAR_RENTAL);
   private static final TimeAndCostPenalty PENALTY = new TimeAndCostPenalty(
-    TimePenalty.of(D10m, 1.5),
+    TimePenalty.of(D10_m, 1.5),
     2.0
   );
 

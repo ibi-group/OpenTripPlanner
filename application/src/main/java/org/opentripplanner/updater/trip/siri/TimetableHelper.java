@@ -74,6 +74,10 @@ class TimetableHelper {
       tripTimesBuilder.withCanceled(index);
     }
 
+    if (call.isExtraCall()) {
+      tripTimesBuilder.withExtraCall(index, true);
+    }
+
     int scheduledArrivalTime = tripTimesBuilder.getArrivalTime(index);
     int realTimeArrivalTime = getAvailableTime(
       departureDate,

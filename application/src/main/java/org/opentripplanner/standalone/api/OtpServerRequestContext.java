@@ -13,6 +13,7 @@ import org.opentripplanner.ext.dataoverlay.routing.DataOverlayContext;
 import org.opentripplanner.ext.empiricaldelay.EmpiricalDelayService;
 import org.opentripplanner.ext.flex.FlexParameters;
 import org.opentripplanner.ext.geocoder.LuceneIndex;
+import org.opentripplanner.ext.ojp.parameters.OjpApiParameters;
 import org.opentripplanner.ext.ojp.parameters.TriasApiParameters;
 import org.opentripplanner.ext.ridehailing.RideHailingService;
 import org.opentripplanner.ext.sorlandsbanen.SorlandsbanenNorwayService;
@@ -145,6 +146,8 @@ public interface OtpServerRequestContext {
   ViaCoordinateTransferFactory viaTransferResolver();
 
   TriasApiParameters triasApiParameters();
+
+  OjpApiParameters ojpApiParameters();
 
   GtfsApiParameters gtfsApiParameters();
 

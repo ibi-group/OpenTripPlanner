@@ -16,13 +16,13 @@ public enum StreetTraversalPermission {
   BICYCLE_AND_CAR(4 | 2),
   ALL(4 | 2 | 1);
 
-  private static final StreetTraversalPermission[] lookup =
+  private static final StreetTraversalPermission[] LOOKUP =
     new StreetTraversalPermission[StreetTraversalPermission.values().length];
   public final int code;
 
   static {
     for (StreetTraversalPermission s : StreetTraversalPermission.values()) {
-      lookup[s.code] = s;
+      LOOKUP[s.code] = s;
     }
   }
 
@@ -31,7 +31,7 @@ public enum StreetTraversalPermission {
   }
 
   public static StreetTraversalPermission get(int code) {
-    return lookup[code];
+    return LOOKUP[code];
   }
 
   public StreetTraversalPermission add(StreetTraversalPermission perm) {

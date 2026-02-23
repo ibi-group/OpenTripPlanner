@@ -17,8 +17,8 @@ import org.opentripplanner.transit.model.site.AreaStop;
  */
 public class TestCarpoolTripBuilder {
 
-  private static final AtomicInteger idCounter = new AtomicInteger(0);
-  private static final AtomicInteger areaStopCounter = new AtomicInteger(0);
+  private static final AtomicInteger ID_COUNTER = new AtomicInteger(0);
+  private static final AtomicInteger AREA_STOP_COUNTER = new AtomicInteger(0);
 
   /**
    * Creates a simple trip with origin and destination stops, default capacity of 4.
@@ -108,7 +108,7 @@ public class TestCarpoolTripBuilder {
     List<CarpoolStop> stops
   ) {
     return new org.opentripplanner.ext.carpooling.model.CarpoolTripBuilder(
-      FeedScopedId.ofNullable("TEST", "trip-" + idCounter.incrementAndGet())
+      FeedScopedId.ofNullable("TEST", "trip-" + ID_COUNTER.incrementAndGet())
     )
       .withStops(stops)
       .withAvailableSeats(seats)
@@ -127,7 +127,7 @@ public class TestCarpoolTripBuilder {
     List<CarpoolStop> stops
   ) {
     return new org.opentripplanner.ext.carpooling.model.CarpoolTripBuilder(
-      FeedScopedId.ofNullable("TEST", "trip-" + idCounter.incrementAndGet())
+      FeedScopedId.ofNullable("TEST", "trip-" + ID_COUNTER.incrementAndGet())
     )
       .withStops(stops)
       .withAvailableSeats(seats)
@@ -233,8 +233,8 @@ public class TestCarpoolTripBuilder {
     );
 
     return AreaStop.of(
-      FeedScopedId.ofNullable("TEST", "area-" + areaStopCounter.incrementAndGet()),
-      areaStopCounter::getAndIncrement
+      FeedScopedId.ofNullable("TEST", "area-" + AREA_STOP_COUNTER.incrementAndGet()),
+      AREA_STOP_COUNTER::getAndIncrement
     )
       .withGeometry(point)
       .build();

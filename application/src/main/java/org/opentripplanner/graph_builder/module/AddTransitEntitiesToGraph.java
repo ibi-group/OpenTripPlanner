@@ -120,7 +120,7 @@ public class AddTransitEntitiesToGraph {
         .withId(stop.getId())
         .withPoint(stop.getGeometry())
         .withWheelchairAccessiblity(stop.getWheelchairAccessibility())
-        .withModes(modes);
+        .withIsFerryStop(modes.contains(TransitMode.FERRY));
       TransitStopVertex stopVertex = vertexFactory.transitStop(b);
 
       if (modes.contains(TransitMode.SUBWAY)) {

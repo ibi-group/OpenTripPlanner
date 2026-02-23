@@ -284,6 +284,10 @@ public class TripTimeOnDate {
     );
   }
 
+  public boolean isExtraCall() {
+    return tripTimes.isExtraCall(stopPosition);
+  }
+
   public boolean isPredictionInaccurate() {
     return tripTimes.isPredictionInaccurate(stopPosition);
   }

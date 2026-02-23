@@ -23,7 +23,7 @@ import org.opentripplanner.street.model.vertex.Vertex;
 
 class StreetNearbyStopFinderTest extends GraphRoutingTest {
 
-  private static final WgsCoordinate origin = new WgsCoordinate(0.0, 0.0);
+  private static final WgsCoordinate ORIGIN = new WgsCoordinate(0.0, 0.0);
   private TransitStopVertex isolatedStop;
   private TransitStopVertex stopA;
   private TransitStopVertex stopB;
@@ -37,12 +37,12 @@ class StreetNearbyStopFinderTest extends GraphRoutingTest {
       new GraphRoutingTest.Builder() {
         @Override
         public void build() {
-          var isolated = intersection("isolated", origin.moveNorthMeters(1000));
+          var isolated = intersection("isolated", ORIGIN.moveNorthMeters(1000));
 
-          var A = intersection("A", origin);
-          var B = intersection("B", origin.moveEastMeters(100));
-          var C = intersection("C", origin.moveEastMeters(200));
-          var D = intersection("D", origin.moveEastMeters(300));
+          var A = intersection("A", ORIGIN);
+          var B = intersection("B", ORIGIN.moveEastMeters(100));
+          var C = intersection("C", ORIGIN.moveEastMeters(200));
+          var D = intersection("D", ORIGIN.moveEastMeters(300));
 
           biStreet(A, B, 100);
           biStreet(B, C, 100);

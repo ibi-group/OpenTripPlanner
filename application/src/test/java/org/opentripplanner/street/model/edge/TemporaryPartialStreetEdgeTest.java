@@ -13,8 +13,6 @@ import org.locationtech.jts.geom.LineString;
 import org.opentripplanner.core.model.i18n.NonLocalizedString;
 import org.opentripplanner.framework.geometry.GeometryUtils;
 import org.opentripplanner.routing.api.request.StreetMode;
-import org.opentripplanner.routing.graph.Graph;
-import org.opentripplanner.routing.linking.DisposableEdgeCollection;
 import org.opentripplanner.street.model.StreetTraversalPermission;
 import org.opentripplanner.street.model._data.StreetModelForTest;
 import org.opentripplanner.street.model.vertex.IntersectionVertex;
@@ -26,7 +24,6 @@ import org.opentripplanner.street.search.state.State;
 
 public class TemporaryPartialStreetEdgeTest {
 
-  private Graph graph;
   private IntersectionVertex v1;
   private IntersectionVertex v2;
   private IntersectionVertex v3;
@@ -38,8 +35,6 @@ public class TemporaryPartialStreetEdgeTest {
 
   @BeforeEach
   public void setUp() throws Exception {
-    graph = new Graph();
-
     // Graph for a fictional grid city with turn restrictions
     v1 = vertex("maple_1st", 2.0, 2.0);
     v2 = vertex("maple_2nd", 1.0, 2.0);
@@ -146,25 +141,21 @@ public class TemporaryPartialStreetEdgeTest {
 
   @Test
   public void testTraversalOfSubdividedEdge() {
-    DisposableEdgeCollection tempEdges = new DisposableEdgeCollection(graph);
     Coordinate nearestPoint = new Coordinate(0.5, 2.0);
     List<StreetEdge> edges = new ArrayList<>();
     edges.add(e2);
+
     TemporaryStreetLocation end = StreetModelForTest.createTemporaryStreetLocationForTest(
-      "middle of e2",
       new NonLocalizedString("foo"),
       edges,
       nearestPoint,
-      true,
-      tempEdges
+      true
     );
     TemporaryStreetLocation start = StreetModelForTest.createTemporaryStreetLocationForTest(
-      "middle of e2",
       new NonLocalizedString("foo"),
       edges,
       nearestPoint,
-      false,
-      tempEdges
+      false
     );
 
     StreetSearchRequest request = StreetSearchRequest.of()

@@ -51,7 +51,7 @@ public class OsmOpeningHoursParser {
 
   private static final Set<RuleModifier.Modifier> CLOSED_MODIFIERS = Set.of(CLOSED, OFF);
   private static final Set<RuleModifier.Modifier> OPEN_MODIFIERS = Set.of(OPEN, UNKNOWN);
-  private static final Map<WeekDay, DayOfWeek> dayOfWeekMap = Map.ofEntries(
+  private static final Map<WeekDay, DayOfWeek> DAY_OF_WEEK_MAP = Map.ofEntries(
     entry(WeekDay.MO, DayOfWeek.MONDAY),
     entry(WeekDay.TU, DayOfWeek.TUESDAY),
     entry(WeekDay.WE, DayOfWeek.WEDNESDAY),
@@ -61,7 +61,7 @@ public class OsmOpeningHoursParser {
     entry(WeekDay.SU, DayOfWeek.SUNDAY)
   );
 
-  private static final Map<Month, java.time.Month> monthMap = Map.ofEntries(
+  private static final Map<Month, java.time.Month> MONTH_MAP = Map.ofEntries(
     entry(Month.JAN, java.time.Month.JANUARY),
     entry(Month.FEB, java.time.Month.FEBRUARY),
     entry(Month.MAR, java.time.Month.MARCH),
@@ -260,13 +260,13 @@ public class OsmOpeningHoursParser {
       if (weekDayRange.getStartDay() == null || startDate == null || startDate.getMonth() == null) {
         return openingHoursBuilder;
       }
-      DayOfWeek startDayOfWeek = dayOfWeekMap.getOrDefault(weekDayRange.getStartDay(), null);
+      DayOfWeek startDayOfWeek = DAY_OF_WEEK_MAP.getOrDefault(weekDayRange.getStartDay(), null);
       DayOfWeek endDayOfWeek = weekDayRange.getEndDay() != null
-        ? dayOfWeekMap.getOrDefault(weekDayRange.getEndDay(), null)
+        ? DAY_OF_WEEK_MAP.getOrDefault(weekDayRange.getEndDay(), null)
         : null;
-      java.time.Month startMonth = monthMap.getOrDefault(startDate.getMonth(), null);
+      java.time.Month startMonth = MONTH_MAP.getOrDefault(startDate.getMonth(), null);
       java.time.Month endMonth = endDate != null && endDate.getMonth() != null
-        ? monthMap.getOrDefault(endDate.getMonth(), null)
+        ? MONTH_MAP.getOrDefault(endDate.getMonth(), null)
         : null;
       openingHoursBuilder.on(startMonth, endMonth, startDayOfWeek, endDayOfWeek);
     }
@@ -317,11 +317,11 @@ public class OsmOpeningHoursParser {
     if (weekDayRange.getStartDay() == null) {
       return openingHoursBuilder;
     }
-    DayOfWeek startDayOfWeek = dayOfWeekMap.getOrDefault(weekDayRange.getStartDay(), null);
+    DayOfWeek startDayOfWeek = DAY_OF_WEEK_MAP.getOrDefault(weekDayRange.getStartDay(), null);
     if (weekDayRange.getEndDay() != null) {
       return openingHoursBuilder.on(
         startDayOfWeek,
-        dayOfWeekMap.getOrDefault(weekDayRange.getEndDay(), null)
+        DAY_OF_WEEK_MAP.getOrDefault(weekDayRange.getEndDay(), null)
       );
     } else {
       return openingHoursBuilder.on(startDayOfWeek);

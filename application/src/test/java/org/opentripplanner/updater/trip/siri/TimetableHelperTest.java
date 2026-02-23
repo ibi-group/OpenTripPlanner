@@ -95,7 +95,7 @@ public class TimetableHelperTest {
     TimetableHelper.applyUpdates(START_OF_SERVICE, builder, 0, false, false, estimatedCall, null);
 
     // Assert
-    assertStatuses(0, OccupancyStatus.MANY_SEATS_AVAILABLE, false, false, true);
+    assertStatuses(0, OccupancyStatus.MANY_SEATS_AVAILABLE, false, false, false, true);
   }
 
   @Test
@@ -114,7 +114,7 @@ public class TimetableHelperTest {
 
     // Assert
 
-    assertStatuses(0, OccupancyStatus.FULL, true, false, false);
+    assertStatuses(0, OccupancyStatus.FULL, true, false, false, false);
   }
 
   @Test
@@ -135,7 +135,7 @@ public class TimetableHelperTest {
 
     // Assert
 
-    assertStatuses(0, OccupancyStatus.FULL, true, false, false);
+    assertStatuses(0, OccupancyStatus.FULL, true, false, false, false);
   }
 
   @Test
@@ -154,7 +154,7 @@ public class TimetableHelperTest {
     TimetableHelper.applyUpdates(START_OF_SERVICE, builder, 0, false, false, recordedCall, null);
 
     // Assert
-    assertStatuses(0, OccupancyStatus.FULL, false, false, true);
+    assertStatuses(0, OccupancyStatus.FULL, false, false, false, true);
   }
 
   @Test
@@ -173,7 +173,7 @@ public class TimetableHelperTest {
     TimetableHelper.applyUpdates(START_OF_SERVICE, builder, 0, false, false, recordedCall, null);
 
     // Assert
-    assertStatuses(0, OccupancyStatus.STANDING_ROOM_ONLY, false, true, false);
+    assertStatuses(0, OccupancyStatus.STANDING_ROOM_ONLY, false, false, true, false);
   }
 
   @Test
@@ -193,13 +193,26 @@ public class TimetableHelperTest {
     );
 
     // Assert
-    assertStatuses(0, OccupancyStatus.STANDING_ROOM_ONLY, false, false, true);
+    assertStatuses(0, OccupancyStatus.STANDING_ROOM_ONLY, false, false, false, true);
+  }
+
+  @Test
+  public void testApplyUpdates_ExtraCall_EstimatedCall() {
+    // Arrange
+    CallWrapper estimatedCall = TestCall.of().withExtraCall(true).build();
+
+    // Act
+    TimetableHelper.applyUpdates(START_OF_SERVICE, builder, 0, false, false, estimatedCall, null);
+
+    // Assert
+    assertStatuses(0, OccupancyStatus.NO_DATA_AVAILABLE, false, true, false, false);
   }
 
   private void assertStatuses(
     int index,
     OccupancyStatus occupancyStatus,
     boolean cancelled,
+    boolean extraCall,
     boolean recorded,
     boolean predictionInaccurate
   ) {
@@ -216,5 +229,6 @@ public class TimetableHelperTest {
       "Occupancy should be mapped to " + occupancyStatus
     );
     assertEquals(cancelled, tripTimes.isCancelledStop(index));
+    assertEquals(extraCall, tripTimes.isExtraCall(index));
   }
 }

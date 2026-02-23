@@ -78,6 +78,7 @@ public class ConstructApplicationModule {
 
     var transitRoutingConfig = routerConfig.transitTuningConfig();
     var triasApiParameters = routerConfig.triasApiParameters();
+    var ojpApiParameters = routerConfig.ojpApiParameters();
     var gtfsApiConfig = routerConfig.gtfsApiParameters();
     var vectorTileConfig = routerConfig.vectorTileConfig();
     var flexParameters = routerConfig.flexParameters();
@@ -90,6 +91,7 @@ public class ConstructApplicationModule {
       graph,
       linkingContextFactory,
       Metrics.globalRegistry,
+      ojpApiParameters,
       raptorConfig,
       realtimeVehicleService,
       rideHailingServices,
