@@ -2628,6 +2628,8 @@ type Trip implements Node {
   "Whether bikes are allowed on board the vehicle running this trip"
   bikesAllowed: BikesAllowed
   blockId: String
+  "Whether cars are allowed on board the vehicle running this trip"
+  carsAllowed: CarsAllowed!
   """
   Departure time from the first stop. If the trip does not run on the given date,
   it will return scheduled times from another date. This field is slightly
@@ -3226,6 +3228,15 @@ enum BikesAllowed {
   "No bicycles are allowed on this trip."
   NOT_ALLOWED
   "There is no bike information for the trip."
+  NO_INFORMATION
+}
+
+enum CarsAllowed {
+  "The vehicle being used on this particular trip can accommodate at least one car."
+  ALLOWED
+  "No cars are allowed on this trip."
+  NOT_ALLOWED
+  "There is no car information for the trip."
   NO_INFORMATION
 }
 

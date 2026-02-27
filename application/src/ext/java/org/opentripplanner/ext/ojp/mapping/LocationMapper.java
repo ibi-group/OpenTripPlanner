@@ -1,7 +1,7 @@
 package org.opentripplanner.ext.ojp.mapping;
 
 import de.vdv.ojp20.siri.LocationStructure;
-import org.opentripplanner.framework.geometry.WgsCoordinate;
+import org.opentripplanner.street.geometry.WgsCoordinate;
 
 class LocationMapper {
 

@@ -43,7 +43,7 @@ class DelayedTest implements RealtimeTestConstants {
 
     var result = rt.applyTripUpdate(tripUpdate);
 
-    assertEquals(1, result.successful());
+    assertSuccess(result);
 
     var tripData = env.tripData(TRIP_1_ID);
 

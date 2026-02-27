@@ -3,6 +3,9 @@ package org.opentripplanner.updater.trip.siri;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
+import org.opentripplanner.updater.spi.UpdateError.UpdateErrorType;
+import org.opentripplanner.utils.lang.StringUtils;
 import uk.org.siri.siri21.ArrivalBoardingActivityEnumeration;
 import uk.org.siri.siri21.CallStatusEnumeration;
 import uk.org.siri.siri21.DepartureBoardingActivityEnumeration;
@@ -43,7 +46,56 @@ public interface CallWrapper {
     return List.copyOf(result);
   }
 
+  /**
+   * Validate that all calls have a non-empty stop point ref and either order or visit number (but
+   * not both). Also checks cross-call consistency: all calls must use the same strategy (all Order
+   * or all VisitNumber). A mix of Order and VisitNumber-only calls is rejected.
+   */
+  static Optional<UpdateErrorType> validateAll(List<CallWrapper> calls) {
+    var perCallError = calls
+      .stream()
+      .map(CallWrapper::validate)
+      .flatMap(Optional::stream)
+      .findFirst();
+    if (perCallError.isPresent()) {
+      return perCallError;
+    }
+    boolean anyHasOrder = calls.stream().anyMatch(CallWrapper::hasOrder);
+    boolean anyMissingOrder = calls.stream().anyMatch(c -> !c.hasOrder());
+    if (anyHasOrder && anyMissingOrder) {
+      return Optional.of(UpdateErrorType.MIXED_CALL_ORDER_AND_VISIT_NUMBER);
+    }
+    return Optional.empty();
+  }
+
+  /**
+   * Validate that the call has a non-empty stop point ref and either order or visit number (but not
+   * both).
+   */
+  default Optional<UpdateErrorType> validate() {
+    if (StringUtils.hasNoValueOrNullAsString(getStopPointRef())) {
+      return Optional.of(UpdateErrorType.EMPTY_STOP_POINT_REF);
+    }
+    if (!hasOrder() && !hasVisitNumber()) {
+      return Optional.of(UpdateErrorType.MISSING_CALL_ORDER);
+    }
+    if (hasOrder() && hasVisitNumber()) {
+      return Optional.of(UpdateErrorType.MIXED_CALL_ORDER_AND_VISIT_NUMBER);
+    }
+    return Optional.empty();
+  }
+
   String getStopPointRef();
+
+  boolean hasOrder();
+
+  boolean hasVisitNumber();
+
+  /**
+   * Return the sort order of this call. Prefers Order if present, falls back to VisitNumber.
+   */
+  int getSortOrder();
+
   Boolean isCancellation();
   Boolean isPredictionInaccurate();
   boolean isExtraCall();
@@ -60,6 +112,19 @@ public interface CallWrapper {
   CallStatusEnumeration getDepartureStatus();
   DepartureBoardingActivityEnumeration getDepartureBoardingActivity();
 
+  /// Whether the call is a RecordedCall or not
+  boolean isRecorded();
+
+  /// Whether the vehicle has arrived at the stop.
+  default boolean hasArrived() {
+    return isRecorded() || getArrivalStatus() == CallStatusEnumeration.ARRIVED;
+  }
+
+  /// Whether the vehicle has departed from the stop.
+  default boolean hasDeparted() {
+    return isRecorded() && getActualDepartureTime() != null;
+  }
+
   final class EstimatedCallWrapper implements CallWrapper {
 
     private final EstimatedCall call;
@@ -71,6 +136,29 @@ public interface CallWrapper {
     @Override
     public String getStopPointRef() {
       return call.getStopPointRef() != null ? call.getStopPointRef().getValue() : null;
+    }
+
+    @Override
+    public boolean hasOrder() {
+      return call.getOrder() != null;
+    }
+
+    @Override
+    public boolean hasVisitNumber() {
+      return call.getVisitNumber() != null;
+    }
+
+    /**
+     * Return the call order, either from the Order field or the VisitNumber field.
+     * Validation ensures that one of them is set.
+     * See {@link #validate()}
+     * @return
+     */
+    @Override
+    public int getSortOrder() {
+      return call.getOrder() != null
+        ? call.getOrder().intValueExact()
+        : call.getVisitNumber().intValueExact();
     }
 
     @Override
@@ -149,6 +237,11 @@ public interface CallWrapper {
     }
 
     @Override
+    public boolean isRecorded() {
+      return false;
+    }
+
+    @Override
     public int hashCode() {
       return call.hashCode();
     }
@@ -173,6 +266,23 @@ public interface CallWrapper {
     @Override
     public String getStopPointRef() {
       return call.getStopPointRef() != null ? call.getStopPointRef().getValue() : null;
+    }
+
+    @Override
+    public boolean hasOrder() {
+      return call.getOrder() != null;
+    }
+
+    @Override
+    public boolean hasVisitNumber() {
+      return call.getVisitNumber() != null;
+    }
+
+    @Override
+    public int getSortOrder() {
+      return call.getOrder() != null
+        ? call.getOrder().intValueExact()
+        : call.getVisitNumber().intValueExact();
     }
 
     @Override
@@ -248,6 +358,11 @@ public interface CallWrapper {
     @Override
     public DepartureBoardingActivityEnumeration getDepartureBoardingActivity() {
       return null;
+    }
+
+    @Override
+    public boolean isRecorded() {
+      return true;
     }
 
     @Override
