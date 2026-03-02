@@ -100,7 +100,7 @@ public class SeattleSmokeTest {
     var modes = Set.of(WALK, BUS, FLEX_DIRECT, FLEX_EGRESS, FLEX_ACCESS);
     SmokeTest.basicRouteTest(
       new SmokeTestRequest(SHORELINE, UNIVERSITY, modes),
-      List.of("WALK", "BUS", "WALK")
+      List.of("BUS", "WALK")
     );
   }
 

@@ -6,8 +6,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.params.provider.Arguments.of;
-import static org.opentripplanner.routing.core.VehicleRoutingOptimizeType.SAFE_STREETS;
-import static org.opentripplanner.routing.core.VehicleRoutingOptimizeType.TRIANGLE;
+import static org.opentripplanner.street.model.VehicleRoutingOptimizeType.SAFE_STREETS;
+import static org.opentripplanner.street.model.VehicleRoutingOptimizeType.TRIANGLE;
 import static org.opentripplanner.transit.model._data.FeedScopedIdForTestFactory.id;
 
 import graphql.schema.DataFetchingEnvironment;
@@ -36,7 +36,6 @@ import org.opentripplanner.routing.api.request.RouteRequest;
 import org.opentripplanner.routing.api.request.preference.TimeSlopeSafetyTriangle;
 import org.opentripplanner.routing.api.request.preference.TransferPreferences;
 import org.opentripplanner.routing.api.request.preference.VehicleParkingPreferences;
-import org.opentripplanner.routing.graph.Graph;
 import org.opentripplanner.routing.graphfinder.GraphFinder;
 import org.opentripplanner.routing.linking.LinkingContextFactory;
 import org.opentripplanner.routing.linking.VertexLinkerTestFactory;
@@ -45,6 +44,7 @@ import org.opentripplanner.service.realtimevehicles.internal.DefaultRealtimeVehi
 import org.opentripplanner.service.vehicleparking.internal.DefaultVehicleParkingRepository;
 import org.opentripplanner.service.vehicleparking.internal.DefaultVehicleParkingService;
 import org.opentripplanner.service.vehiclerental.internal.DefaultVehicleRentalService;
+import org.opentripplanner.street.graph.Graph;
 import org.opentripplanner.street.search.TraverseMode;
 import org.opentripplanner.transfer.regular.TransferServiceTestFactory;
 import org.opentripplanner.transit.model._data.TimetableRepositoryForTest;

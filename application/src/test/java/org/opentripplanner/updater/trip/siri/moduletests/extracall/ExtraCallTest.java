@@ -2,6 +2,7 @@ package org.opentripplanner.updater.trip.siri.moduletests.extracall;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.opentripplanner.updater.spi.UpdateResultAssertions.assertFailure;
+import static org.opentripplanner.updater.spi.UpdateResultAssertions.assertSuccess;
 
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -42,7 +43,7 @@ class ExtraCallTest implements RealtimeTestConstants {
 
     var result = siri.applyEstimatedTimetable(updates);
 
-    assertEquals(1, result.successful());
+    assertSuccess(result);
     assertEquals(
       "MODIFIED | A [R] 0:00:15 0:00:15 | D [EC] 0:00:20 0:00:25 | B 0:00:33 0:00:33",
       env.tripData(TRIP_1_ID).showTimetable()
@@ -58,7 +59,7 @@ class ExtraCallTest implements RealtimeTestConstants {
     siri.applyEstimatedTimetable(updates);
     var result = siri.applyEstimatedTimetable(updates);
 
-    assertEquals(1, result.successful());
+    assertSuccess(result);
     assertEquals(
       "MODIFIED | A [R] 0:00:15 0:00:15 | D [EC] 0:00:20 0:00:25 | B 0:00:33 0:00:33",
       env.tripData(TRIP_1_ID).showTimetable()
@@ -81,9 +82,9 @@ class ExtraCallTest implements RealtimeTestConstants {
 
     var cancellationResult = siri.applyEstimatedTimetable(cancellation);
 
-    assertEquals(1, cancellationResult.successful());
+    assertSuccess(cancellationResult);
 
-    assertEquals(1, result.successful());
+    assertSuccess(result);
     assertEquals(
       "CANCELED | A 0:00:10 0:00:11 | B 0:00:20 0:00:21",
       env.tripData(TRIP_1_ID).showTimetable()

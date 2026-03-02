@@ -16,9 +16,9 @@ import org.opentripplanner.ext.ojp.mapping.RouteRequestMapper;
 import org.opentripplanner.ext.ojp.mapping.StopEventParamsMapper;
 import org.opentripplanner.ext.ojp.mapping.StopEventResponseMapper;
 import org.opentripplanner.ext.ojp.mapping.TripResponseMapper;
-import org.opentripplanner.framework.geometry.WgsCoordinate;
 import org.opentripplanner.routing.api.RoutingService;
 import org.opentripplanner.routing.api.request.RouteRequest;
+import org.opentripplanner.street.geometry.WgsCoordinate;
 
 /**
  * Takes raw OJP requests, extracts information and forwards it to the underlying services.

@@ -1,7 +1,6 @@
 package org.opentripplanner.updater.trip.siri;
 
 import static java.lang.Boolean.TRUE;
-import static org.opentripplanner.updater.spi.UpdateError.UpdateErrorType.EMPTY_STOP_POINT_REF;
 import static org.opentripplanner.updater.spi.UpdateError.UpdateErrorType.NOT_MONITORED;
 import static org.opentripplanner.updater.spi.UpdateError.UpdateErrorType.NO_START_DATE;
 import static org.opentripplanner.updater.spi.UpdateError.UpdateErrorType.TRIP_NOT_FOUND;
@@ -13,8 +12,8 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import javax.annotation.Nullable;
+import org.opentripplanner.core.framework.deduplicator.DeduplicatorService;
 import org.opentripplanner.transit.model.framework.DataValidationException;
-import org.opentripplanner.transit.model.framework.DeduplicatorService;
 import org.opentripplanner.transit.model.framework.Result;
 import org.opentripplanner.transit.model.network.TripPattern;
 import org.opentripplanner.transit.model.timetable.RealTimeTripTimesBuilder;
@@ -33,7 +32,6 @@ import org.opentripplanner.updater.trip.TimetableSnapshotManager;
 import org.opentripplanner.updater.trip.UpdateIncrementality;
 import org.opentripplanner.updater.trip.patterncache.TripPatternCache;
 import org.opentripplanner.updater.trip.patterncache.TripPatternIdGenerator;
-import org.opentripplanner.utils.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import uk.org.siri.siri21.EstimatedTimetableDeliveryStructure;
@@ -133,10 +131,9 @@ public class SiriRealTimeTripUpdateAdapter {
     EntityResolver entityResolver
   ) {
     List<CallWrapper> callWrappers = CallWrapper.of(journey);
-    for (var call : callWrappers) {
-      if (StringUtils.hasNoValueOrNullAsString(call.getStopPointRef())) {
-        return UpdateError.result(null, EMPTY_STOP_POINT_REF, journey.getDataSource());
-      }
+    var error = CallWrapper.validateAll(callWrappers);
+    if (error.isPresent()) {
+      return UpdateError.result(null, error.get(), journey.getDataSource());
     }
     SiriUpdateType siriUpdateType = null;
     try {

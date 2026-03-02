@@ -5,10 +5,10 @@ import java.time.Duration;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Consumer;
-import org.opentripplanner.framework.model.Cost;
-import org.opentripplanner.framework.model.Units;
+import org.opentripplanner.core.model.basic.Cost;
 import org.opentripplanner.street.search.request.RentalRequest;
 import org.opentripplanner.utils.lang.DoubleUtils;
+import org.opentripplanner.utils.lang.Units;
 import org.opentripplanner.utils.tostring.ToStringBuilder;
 
 /**

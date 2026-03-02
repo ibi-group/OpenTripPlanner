@@ -1,7 +1,7 @@
 package org.opentripplanner.ext.ojp.mapping;
 
 import de.vdv.ojp20.PersonalModesEnumeration;
-import org.opentripplanner.routing.api.request.StreetMode;
+import org.opentripplanner.street.model.StreetMode;
 import org.opentripplanner.street.search.TraverseMode;
 
 class PersonalModeMapper {

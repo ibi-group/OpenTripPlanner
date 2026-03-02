@@ -4,23 +4,36 @@ import static com.google.common.truth.Truth.assertThat;
 import static org.opentripplanner.street.model.edge.LinkingDirection.BIDIRECTIONAL;
 import static org.opentripplanner.transit.model._data.FeedScopedIdForTestFactory.id;
 
+import java.text.DecimalFormat;
+import java.text.DecimalFormatSymbols;
 import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.opentripplanner.core.model.id.FeedScopedId;
 import org.opentripplanner.framework.application.OTPFeature;
-import org.opentripplanner.routing.graph.Graph;
-import org.opentripplanner.street.model._data.StreetModelForTest;
+import org.opentripplanner.street.Scope;
+import org.opentripplanner.street.graph.Graph;
+import org.opentripplanner.street.model.StreetModelForTest;
+import org.opentripplanner.street.model.StreetTraversalPermission;
 import org.opentripplanner.street.model.edge.StreetEdge;
+import org.opentripplanner.street.model.edge.TemporaryPartialStreetEdge;
 import org.opentripplanner.street.model.vertex.IntersectionVertex;
 import org.opentripplanner.street.model.vertex.SplitterVertex;
 import org.opentripplanner.street.model.vertex.StreetVertex;
+import org.opentripplanner.street.model.vertex.Vertex;
 import org.opentripplanner.street.search.TraverseModeSet;
 
 class VertexLinkerTest {
 
   public static final FeedScopedId AREA_STOP_1 = id("area-stop-1");
   public static final FeedScopedId AREA_STOP_2 = id("area-stop-2");
+  public static final DecimalFormat DECIMAL_FORMAT = new DecimalFormat("0.######");
+  public static final DecimalFormatSymbols SYMBOLS = DECIMAL_FORMAT.getDecimalFormatSymbols();
+
+  {
+    SYMBOLS.setDecimalSeparator('.');
+    DECIMAL_FORMAT.setDecimalFormatSymbols(SYMBOLS);
+  }
 
   @Test
   void flex() {
@@ -106,6 +119,95 @@ class VertexLinkerTest {
     assertThat(model.graph().getEdgesOfType(StreetEdge.class)).hasSize(2);
     temp.disposeEdges();
     assertThat(model.graph().getEdgesOfType(StreetEdge.class)).hasSize(1);
+  }
+
+  @Test
+  void multiModeLinking() {
+    // test model has 3 parallel horizontal edges, of which uppermost allows car driving
+    IntersectionVertex[] vertices = {
+      StreetModelForTest.intersectionVertex(0.0, 0.0),
+      StreetModelForTest.intersectionVertex(0.01, 0.0),
+      StreetModelForTest.intersectionVertex(0.0, 0.0001),
+      StreetModelForTest.intersectionVertex(0.01, 0.0001),
+      StreetModelForTest.intersectionVertex(0.0, 0.0002),
+      StreetModelForTest.intersectionVertex(0.01, 0.0002),
+    };
+
+    var walkEdge1 = StreetModelForTest.streetEdge(
+      vertices[0],
+      vertices[1],
+      0.01,
+      StreetTraversalPermission.PEDESTRIAN
+    );
+    var walkEdge2 = StreetModelForTest.streetEdge(
+      vertices[2],
+      vertices[3],
+      0.01,
+      StreetTraversalPermission.PEDESTRIAN
+    );
+    var carEdge = StreetModelForTest.streetEdge(
+      vertices[4],
+      vertices[5],
+      0.01,
+      StreetTraversalPermission.CAR
+    );
+
+    // link point below all edges, in the middle
+    var split = StreetModelForTest.intersectionVertex(0.005, -0.0001);
+
+    var g = new Graph();
+    for (IntersectionVertex vertex : vertices) {
+      g.addVertex(vertex);
+    }
+    g.index();
+    g.insert(walkEdge1, Scope.PERMANENT);
+    g.insert(walkEdge2, Scope.PERMANENT);
+    g.insert(carEdge, Scope.PERMANENT);
+    assertThat(g.getEdgesOfType(StreetEdge.class)).hasSize(3);
+    var linker = VertexLinkerTestFactory.of(g);
+    var temp = linker.linkVertexForRequest(
+      split,
+      TraverseModeSet.allModes(),
+      BIDIRECTIONAL,
+      (v1, v2) -> List.of()
+    );
+    // vertex is linked to closest walk edge and to the car edge, not to all 3 edges
+    assertThat(summarizeLinks(g)).containsExactly(
+      "(0,0) → (0.005,0) PEDESTRIAN ♿✅",
+      "(0,0.0002) → (0.005,0.0002) CAR ♿✅"
+    );
+    temp.disposeEdges();
+    assertThat(summarizeLinks(g)).isEmpty();
+  }
+
+  private static List<String> summarizeLinks(Graph graph) {
+    return graph
+      .getEdgesOfType(TemporaryPartialStreetEdge.class)
+      .stream()
+      .map(e ->
+        String.format(
+          "%s → %s %s ♿%s",
+          summarizeVertex(e.getFromVertex()),
+          summarizeVertex(e.getToVertex()),
+          e.getPermission(),
+          summarizeBoolean(e.isWheelchairAccessible())
+        )
+      )
+      .toList();
+  }
+
+  private static String summarizeBoolean(boolean b) {
+    if (b) {
+      return "✅";
+    } else {
+      return "❌";
+    }
+  }
+
+  private static String summarizeVertex(Vertex e) {
+    return String.format(
+      "(%s,%s)".formatted(DECIMAL_FORMAT.format(e.getLat()), DECIMAL_FORMAT.format(e.getLon()))
+    );
   }
 
   private static TestModel buildModel() {
