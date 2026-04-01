@@ -1,4 +1,4 @@
-package org.opentripplanner.graph_builder.module.transfer.filter;
+package org.opentripplanner.utils.collection;
 
 import java.util.Collection;
 import java.util.Comparator;
@@ -7,21 +7,31 @@ import java.util.Map;
 import javax.annotation.Nullable;
 
 /**
- * Decorates a Map that to track the smallest value for each key.
+ * Provides a map-like data structure that tracks the smallest value for each key.
  */
-class MinMap<K, V> {
+public class MinMap<K, V> {
 
   private final Map<K, V> map = new HashMap<>();
   private final Comparator<V> comparator;
 
-  MinMap(Comparator<V> comparator) {
+  private MinMap(Comparator<V> comparator) {
     this.comparator = comparator;
   }
 
-  public static <Key, Value extends Comparable<Value>> MinMap<Key, Value> of(){
+  /**
+   * Create a new MinMap with natural order comparison for values. The value must implement
+   * the Comparable interface.
+   */
+  public static <Key, Value extends Comparable<Value>> MinMap<Key, Value> of() {
     return new MinMap<Key, Value>(Comparator.naturalOrder());
   }
 
+  /**
+   * Create a MinMap with a custom comparator for ordering.
+   */
+  public static <Key, Value> MinMap<Key, Value> of(Comparator<Value> comparator) {
+    return new MinMap<>(comparator);
+  }
 
   /**
    * Put the given key-value pair in the map if the map does not yet contain the key, or if the
@@ -30,7 +40,7 @@ class MinMap<K, V> {
    * @see Map#put(Object, Object)
    * @return whether the key-value pair was inserted in the map.
    */
-  boolean putMin(K key, V value) {
+  public boolean putMin(K key, V value) {
     V oldValue = map.get(key);
     if (oldValue == null || comparator.compare(value, oldValue) < 0) {
       map.put(key, value);

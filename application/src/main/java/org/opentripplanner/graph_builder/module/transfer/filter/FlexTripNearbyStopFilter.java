@@ -5,6 +5,7 @@ import org.opentripplanner.core.model.id.FeedScopedId;
 import org.opentripplanner.ext.flex.trip.FlexTrip;
 import org.opentripplanner.routing.graphfinder.NearbyStop;
 import org.opentripplanner.transit.service.TransitService;
+import org.opentripplanner.utils.collection.MinMap;
 
 /**
  * Filters nearby stops based on flex trip availability.
