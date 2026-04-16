@@ -13,6 +13,7 @@ import java.util.Objects;
 import java.util.Optional;
 import javax.annotation.Nullable;
 import org.opentripplanner.api.model.transit.FeedScopedIdMapper;
+import org.opentripplanner.apis.support.InvalidInputException;
 import org.opentripplanner.apis.transmodel.TransmodelRequestContext;
 import org.opentripplanner.framework.graphql.GraphQLUtils;
 import org.opentripplanner.routing.graphfinder.GraphFinder;
@@ -90,7 +91,7 @@ public class GqlUtil {
   ) {
     Integer argumentValue = environment.getArgument(argumentName);
     if (argumentValue == null || argumentValue < 0) {
-      throw new IllegalArgumentException(
+      throw new InvalidInputException(
         "The argument '" + argumentName + "' should be a non-null positive value: " + argumentValue
       );
     }

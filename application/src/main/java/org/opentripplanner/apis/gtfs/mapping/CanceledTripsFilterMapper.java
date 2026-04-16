@@ -7,6 +7,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.annotation.Nullable;
 import org.opentripplanner.apis.gtfs.generated.GraphQLTypes;
+import org.opentripplanner.apis.support.InvalidInputException;
 import org.opentripplanner.transit.api.model.FilterValues;
 import org.opentripplanner.transit.api.request.TripOnServiceDateRequest;
 import org.opentripplanner.transit.model.basic.TransitMode;
@@ -24,7 +25,7 @@ public class CanceledTripsFilterMapper {
       return TripOnServiceDateRequest.of().build();
     }
     if (filters.size() > 1) {
-      throw new IllegalArgumentException("Only one filter is allowed for now.");
+      throw new InvalidInputException("Only one filter is allowed for now.");
     }
     var filter = filters.getFirst();
     var includes = filter.getGraphQLInclude();
@@ -53,7 +54,7 @@ public class CanceledTripsFilterMapper {
         .stream()
         .anyMatch(input -> input.getGraphQLModes() != null && input.getGraphQLModes().isEmpty())
     ) {
-      throw new IllegalArgumentException(
+      throw new InvalidInputException(
         "Mode filter must be either null or have at least one entry."
       );
     }

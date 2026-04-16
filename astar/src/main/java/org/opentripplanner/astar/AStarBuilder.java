@@ -3,11 +3,8 @@ package org.opentripplanner.astar;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import org.opentripplanner.astar.model.GraphPath;
-import org.opentripplanner.astar.model.ShortestPathTree;
 import org.opentripplanner.astar.spi.AStarEdge;
 import org.opentripplanner.astar.spi.AStarState;
 import org.opentripplanner.astar.spi.AStarVertex;
@@ -15,6 +12,7 @@ import org.opentripplanner.astar.spi.DominanceFunction;
 import org.opentripplanner.astar.spi.RemainingWeightHeuristic;
 import org.opentripplanner.astar.spi.SearchTerminationStrategy;
 import org.opentripplanner.astar.spi.SkipEdgeStrategy;
+import org.opentripplanner.astar.spi.StatisticsCallback;
 import org.opentripplanner.astar.spi.TraverseVisitor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,6 +37,7 @@ public abstract class AStarBuilder<
   private Set<Vertex> toVertices;
   private SearchTerminationStrategy<State> terminationStrategy;
   private DominanceFunction<State> dominanceFunction;
+  private StatisticsCallback<Vertex> statisticsCallback = StatisticsCallback.NOOP;
 
   protected AStarBuilder() {}
 
@@ -67,6 +66,11 @@ public abstract class AStarBuilder<
 
   public Builder withTraverseVisitor(TraverseVisitor<State, Edge> traverseVisitor) {
     this.traverseVisitor = traverseVisitor;
+    return builder;
+  }
+
+  public Builder withStatisticsCallback(StatisticsCallback<Vertex> statisticsCallback) {
+    this.statisticsCallback = statisticsCallback;
     return builder;
   }
 
@@ -112,15 +116,7 @@ public abstract class AStarBuilder<
 
   protected abstract Duration streetRoutingTimeout();
 
-  public ShortestPathTree<State, Edge, Vertex> getShortestPathTree() {
-    return build().getShortestPathTree();
-  }
-
-  public List<GraphPath<State, Edge, Vertex>> getPathsToTarget() {
-    return build().getPathsToTarget();
-  }
-
-  private AStar<State, Edge, Vertex> build() {
+  protected AStar<State, Edge, Vertex> build() {
     final Set<Vertex> origin = arriveBy ? toVertices : fromVertices;
     final Set<Vertex> destination = arriveBy ? fromVertices : toVertices;
 
@@ -139,7 +135,8 @@ public abstract class AStarBuilder<
       terminationStrategy,
       Optional.ofNullable(dominanceFunction).orElseGet(this::createDefaultDominanceFunction),
       streetRoutingTimeout(),
-      initialStates
+      initialStates,
+      statisticsCallback
     );
   }
 

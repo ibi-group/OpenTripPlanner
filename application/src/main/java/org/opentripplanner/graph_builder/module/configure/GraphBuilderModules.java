@@ -33,6 +33,7 @@ import org.opentripplanner.graph_builder.module.ned.NEDGridCoverageFactoryImpl;
 import org.opentripplanner.graph_builder.module.ned.parameter.DemExtractParameters;
 import org.opentripplanner.graph_builder.module.osm.OsmModule;
 import org.opentripplanner.graph_builder.module.osm.parameters.OsmExtractParameters;
+import org.opentripplanner.graph_builder.module.stopconnectivity.StopConnectivityModule;
 import org.opentripplanner.graph_builder.module.transfer.DirectTransferGenerator;
 import org.opentripplanner.graph_builder.services.ned.ElevationGridCoverageFactory;
 import org.opentripplanner.graph_builder.services.osm.EdgeNamer;
@@ -44,13 +45,13 @@ import org.opentripplanner.osm.DefaultOsmProvider;
 import org.opentripplanner.osm.OsmProvider;
 import org.opentripplanner.routing.api.request.preference.WalkPreferences;
 import org.opentripplanner.routing.fares.FareServiceFactory;
-import org.opentripplanner.routing.linking.VertexLinker;
 import org.opentripplanner.service.osminfo.OsmInfoGraphBuildRepository;
 import org.opentripplanner.service.streetdetails.StreetDetailsRepository;
 import org.opentripplanner.service.vehicleparking.VehicleParkingRepository;
 import org.opentripplanner.standalone.config.BuildConfig;
 import org.opentripplanner.street.StreetRepository;
 import org.opentripplanner.street.graph.Graph;
+import org.opentripplanner.street.linking.VertexLinker;
 import org.opentripplanner.transfer.regular.TransferRepository;
 import org.opentripplanner.transit.model.framework.Deduplicator;
 import org.opentripplanner.transit.service.TimetableRepository;
@@ -183,6 +184,15 @@ public class GraphBuilderModules {
 
   @Provides
   @Singleton
+  static StopConnectivityModule provideStopConnectivityModule(
+    Graph graph,
+    DataImportIssueStore issueStore
+  ) {
+    return new StopConnectivityModule(graph, issueStore);
+  }
+
+  @Provides
+  @Singleton
   static PruneIslands providePruneIslands(
     BuildConfig config,
     Graph graph,
@@ -260,9 +270,7 @@ public class GraphBuilderModules {
       timetableRepository,
       transferRepository,
       issueStore,
-      config.maxTransferDuration,
-      config.transferRequests,
-      config.transferParametersForMode
+      config.regularTransferParameters()
     );
   }
 
@@ -280,7 +288,7 @@ public class GraphBuilderModules {
       linker,
       timetableRepository,
       issueStore,
-      config.maxTransferDuration.toSeconds() * WalkPreferences.DEFAULT.speed()
+      config.regularTransferParameters().maxDuration().toSeconds() * WalkPreferences.DEFAULT.speed()
     );
   }
 
@@ -372,7 +380,11 @@ public class GraphBuilderModules {
     awsTileSource.awsSecretKey = config.elevationBucket.secretKey;
     awsTileSource.awsBucketName = config.elevationBucket.bucketName;
 
-    return new NEDGridCoverageFactoryImpl(nedCacheDirectory, awsTileSource);
+    return new NEDGridCoverageFactoryImpl(
+      nedCacheDirectory,
+      config.elevationBucket.datumUrl,
+      awsTileSource
+    );
   }
 
   private static List<ElevationGridCoverageFactory> createDemGeotiffGridCoverageFactories(

@@ -10,8 +10,10 @@ import org.opentripplanner.street.geometry.WgsCoordinate;
  * <p>
  * Filters are applied as a pre-screening mechanism to quickly eliminate
  * incompatible trips based on various criteria (direction, capacity, time, distance, etc.).
+ * <p>
+ * Supports both direct routing (pickup + dropoff) and access/egress routing
+ * (single passenger coordinate near a transit stop).
  */
-@FunctionalInterface
 public interface TripFilter {
   /**
    * Checks if a trip passes this filter for the given passenger request.
@@ -45,5 +47,26 @@ public interface TripFilter {
   ) {
     // Default: ignore time and delegate to coordinate-only method
     return accepts(trip, passengerPickup, passengerDropoff);
+  }
+
+  /**
+   * Checks if a trip passes this filter for access/egress routing.
+   * <p>
+   * Used when evaluating carpool trip viability for connecting passengers
+   * to public transit stops. Default implementation always returns true.
+   *
+   * @param trip Carpool trip
+   * @param coordinateOfPassenger Coordinates of origin if access, and destination if egress
+   * @param passengerDepartureTime Requested departure time of the passenger
+   * @param searchWindow The time window around the requested departure time
+   * @return true if the filter passes, false if it doesn't
+   */
+  default boolean acceptsAccessEgress(
+    CarpoolTrip trip,
+    WgsCoordinate coordinateOfPassenger,
+    Instant passengerDepartureTime,
+    Duration searchWindow
+  ) {
+    return true;
   }
 }

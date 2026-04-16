@@ -115,7 +115,6 @@ nav:
     - SIRI Azure Updater: 'sandbox/siri/SiriAzureUpdater.md'
     - SIRI MQTT Updater: 'sandbox/siri/SiriMqttUpdater.md'
     - Vehicle Rental Service Directory API support: 'sandbox/VehicleRentalServiceDirectory.md'
-    - Smoove Bike Rental Updator Support: 'sandbox/SmooveBikeRental.md'
     - Mapbox Vector Tiles API: 'sandbox/MapboxVectorTilesApi.md'
     - Flex Routing: 'sandbox/Flex.md'
     - Report API: 'sandbox/ReportApi.md'

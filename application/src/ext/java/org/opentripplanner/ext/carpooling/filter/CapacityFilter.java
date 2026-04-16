@@ -1,5 +1,7 @@
 package org.opentripplanner.ext.carpooling.filter;
 
+import java.time.Duration;
+import java.time.Instant;
 import org.opentripplanner.ext.carpooling.model.CarpoolTrip;
 import org.opentripplanner.street.geometry.WgsCoordinate;
 import org.slf4j.Logger;
@@ -15,12 +17,7 @@ public class CapacityFilter implements TripFilter {
 
   private static final Logger LOG = LoggerFactory.getLogger(CapacityFilter.class);
 
-  @Override
-  public boolean accepts(
-    CarpoolTrip trip,
-    WgsCoordinate passengerPickup,
-    WgsCoordinate passengerDropoff
-  ) {
+  private boolean accepts(CarpoolTrip trip) {
     boolean hasCapacity = trip.availableSeats() > 0;
 
     if (!hasCapacity) {
@@ -28,5 +25,24 @@ public class CapacityFilter implements TripFilter {
     }
 
     return hasCapacity;
+  }
+
+  @Override
+  public boolean accepts(
+    CarpoolTrip trip,
+    WgsCoordinate passengerPickup,
+    WgsCoordinate passengerDropoff
+  ) {
+    return accepts(trip);
+  }
+
+  @Override
+  public boolean acceptsAccessEgress(
+    CarpoolTrip trip,
+    WgsCoordinate coordinateOfPassenger,
+    Instant passengerDepartureTime,
+    Duration searchWindow
+  ) {
+    return accepts(trip);
   }
 }

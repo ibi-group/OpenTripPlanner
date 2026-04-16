@@ -7,7 +7,7 @@
   "labels": [
     "+Skip Changelog"
   ],
-  "rebaseWhen": "behind-base-branch",
+  "rebaseWhen": "conflicted",
   "enabledManagers": [
     "npm",
     "maven",
@@ -33,12 +33,14 @@
       "matchUpdateTypes": ["patch", "minor"],
       "groupName": "Debug UI dependencies (non-major)",
       "schedule": ["after 6pm on the 17th day of the month"],
+      "minimumReleaseAge": "4 days",
       "reviewers": ["testower"],
       "postUpdateOptions": ["npmInstallTwice"]
     },
     {
       "matchFiles": ["client/package.json"],
       "matchUpdateTypes": ["major"],
+      "minimumReleaseAge": "4 days",
       "reviewers": ["testower"],
       "postUpdateOptions": ["npmInstallTwice"]
     },
@@ -116,6 +118,7 @@
     {
       "groupName": "GTFS API code generation",
       "matchFiles": ["application/src/main/java/org/opentripplanner/apis/gtfs/generated/package.json"],
+      "minimumReleaseAge": "4 days",
       "reviewers": ["optionsome", "leonardehrenfried"],
       "schedule": "on the 11th through 12th day of the month"
     },
@@ -164,6 +167,7 @@
         "com.google.dagger:{/,}**",
         "io.micrometer:micrometer-registry-prometheus",
         "io.micrometer:micrometer-registry-influx",
+        "com.fasterxml.jackson:{/,}**",
         "com.fasterxml.jackson.core:{/,}**",
         "com.fasterxml.jackson.datatype:{/,}**",
         "com.azure:{/,}**"

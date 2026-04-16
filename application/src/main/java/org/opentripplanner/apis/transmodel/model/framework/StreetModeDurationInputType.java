@@ -15,6 +15,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import org.opentripplanner.apis.support.InvalidInputException;
 import org.opentripplanner.apis.transmodel.model.EnumTypes;
 import org.opentripplanner.apis.transmodel.support.GqlUtil;
 import org.opentripplanner.routing.api.request.framework.DurationForEnum;
@@ -101,7 +102,7 @@ public class StreetModeDurationInputType {
     Duration defaultValue
   ) {
     if (defaultValue.minus(value).isNegative()) {
-      throw new IllegalArgumentException(
+      throw new InvalidInputException(
         "Invalid duration for mode %s. The value %s is not greater than the default %s.".formatted(
           key,
           DurationUtils.durationToStr(value),

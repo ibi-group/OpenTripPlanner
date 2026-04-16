@@ -1,13 +1,13 @@
 package org.opentripplanner.raptor.rangeraptor.multicriteria;
 
-import static org.opentripplanner.raptor.api.model.PathLegType.ACCESS;
+import static org.opentripplanner.raptor.api.view.PathLegType.ACCESS;
 
-import java.util.Iterator;
 import java.util.Objects;
+import javax.annotation.Nullable;
 import org.opentripplanner.raptor.api.model.RaptorAccessEgress;
-import org.opentripplanner.raptor.api.model.RaptorOnBoardAccess;
-import org.opentripplanner.raptor.api.model.RaptorTripSchedule;
+import org.opentripplanner.raptor.api.model.RaptorStartOnBoardAccess;
 import org.opentripplanner.raptor.api.view.ArrivalView;
+import org.opentripplanner.raptor.rangeraptor.internalapi.OnBoardTripAccessPathsForRoute;
 import org.opentripplanner.raptor.rangeraptor.internalapi.PassThroughPointsService;
 import org.opentripplanner.raptor.rangeraptor.internalapi.RoutingStrategy;
 import org.opentripplanner.raptor.rangeraptor.internalapi.SlackProvider;
@@ -19,6 +19,7 @@ import org.opentripplanner.raptor.spi.RaptorBoardOrAlightEvent;
 import org.opentripplanner.raptor.spi.RaptorConstrainedBoardingSearch;
 import org.opentripplanner.raptor.spi.RaptorCostCalculator;
 import org.opentripplanner.raptor.spi.RaptorRoute;
+import org.opentripplanner.raptor.spi.RaptorTripSchedule;
 import org.opentripplanner.raptor.util.paretoset.ParetoSet;
 
 /**
@@ -120,13 +121,14 @@ public class MultiCriteriaRoutingStrategy<T extends RaptorTripSchedule, R extend
   }
 
   @Override
-  public void registerOnBoardAccessStopArrival(RaptorOnBoardAccess access, int boardTime) {
+  public void registerOnBoardAccessStopArrival(RaptorStartOnBoardAccess access, int boardTime) {
     state.addOnBoardAccessStopArrival(access, boardTime);
   }
 
   @Override
-  public Iterator<? extends McStopArrival<T>> consumeOnBoardStopArrivals() {
-    return state.listOnBoardStopArrivals().iterator();
+  @Nullable
+  public OnBoardTripAccessPathsForRoute<T> consumeOnBoardStopArrivals(int routeIndex) {
+    return state.consumeOnBoardStopArrivals(routeIndex);
   }
 
   @Override
@@ -139,7 +141,7 @@ public class MultiCriteriaRoutingStrategy<T extends RaptorTripSchedule, R extend
       throw new UnsupportedOperationException();
     }
 
-    var boarding = boardingSupport.searchRegularTransfer(
+    var boarding = boardingSupport.searchForRegularBoarding(
       prevArrival.arrivalTime(),
       stopPositionInPattern,
       slackProvider.boardSlack(trip.pattern().slackIndex())
@@ -189,7 +191,7 @@ public class MultiCriteriaRoutingStrategy<T extends RaptorTripSchedule, R extend
     int stopPos,
     int boardSlack
   ) {
-    var result = boardingSupport.searchRegularTransfer(
+    var result = boardingSupport.searchForRegularBoarding(
       prevArrival.arrivalTime(),
       stopPos,
       boardSlack
@@ -206,17 +208,17 @@ public class MultiCriteriaRoutingStrategy<T extends RaptorTripSchedule, R extend
     int boardSlack,
     RaptorConstrainedBoardingSearch<T> txSearch
   ) {
-    boardingSupport
-      .searchConstrainedTransfer(
-        prevArrival.mostRecentTransitArrival(),
-        prevArrival.arrivalTime(),
-        boardSlack,
-        txSearch
-      )
-      .boardWithFallback(
-        boarding -> board(prevArrival, stopIndex, boarding),
-        emptyBoarding -> boardWithRegularTransfer(prevArrival, stopIndex, stopPos, boardSlack)
-      );
+    var boarding = boardingSupport.searchForConstrainedBoarding(
+      prevArrival.mostRecentTransitArrival(),
+      prevArrival.arrivalTime(),
+      boardSlack,
+      txSearch
+    );
+    if (boarding.empty()) {
+      boardWithRegularTransfer(prevArrival, stopIndex, stopPos, boardSlack);
+    } else if (!boarding.transferConstraint().isNotAllowed()) {
+      board(prevArrival, stopIndex, boarding);
+    }
   }
 
   /**

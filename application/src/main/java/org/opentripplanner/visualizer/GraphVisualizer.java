@@ -58,7 +58,6 @@ import org.locationtech.jts.geom.Coordinate;
 import org.opentripplanner.api.common.LocationStringParser;
 import org.opentripplanner.api.parameter.ApiRequestMode;
 import org.opentripplanner.api.parameter.QualifiedModeSet;
-import org.opentripplanner.astar.model.GraphPath;
 import org.opentripplanner.astar.model.ShortestPathTree;
 import org.opentripplanner.astar.spi.DominanceFunction;
 import org.opentripplanner.astar.spi.TraverseVisitor;
@@ -67,16 +66,17 @@ import org.opentripplanner.routing.api.request.RouteRequest;
 import org.opentripplanner.routing.api.request.RouteRequestBuilder;
 import org.opentripplanner.routing.impl.GraphPathFinder;
 import org.opentripplanner.routing.linking.LinkingContextFactory;
-import org.opentripplanner.routing.linking.TemporaryVerticesContainer;
-import org.opentripplanner.routing.linking.VertexLinker;
-import org.opentripplanner.routing.linking.VisibilityMode;
 import org.opentripplanner.routing.linking.internal.VertexCreationService;
 import org.opentripplanner.routing.linking.mapping.LinkingContextRequestMapper;
 import org.opentripplanner.street.graph.Graph;
+import org.opentripplanner.street.linking.TemporaryVerticesContainer;
+import org.opentripplanner.street.linking.VertexLinker;
+import org.opentripplanner.street.linking.VisibilityMode;
 import org.opentripplanner.street.model.StreetConstants;
 import org.opentripplanner.street.model.VehicleRoutingOptimizeType;
 import org.opentripplanner.street.model.edge.Edge;
 import org.opentripplanner.street.model.edge.StreetEdge;
+import org.opentripplanner.street.model.path.StreetPath;
 import org.opentripplanner.street.model.vertex.IntersectionVertex;
 import org.opentripplanner.street.model.vertex.Vertex;
 import org.opentripplanner.street.model.vertex.VertexLabel;
@@ -248,8 +248,8 @@ public class GraphVisualizer extends JFrame implements VertexSelectionListener {
   private JTextField sptFlattening;
   private JTextField sptThickness;
   private JPopupMenu popup;
-  private GraphPath<State, Edge, Vertex> firstComparePath;
-  private GraphPath<State, Edge, Vertex> secondComparePath;
+  private StreetPath firstComparePath;
+  private StreetPath secondComparePath;
   private JList<State> firstComparePathStates;
   private JList<State> secondComparePathStates;
   private JList<String> secondStateData;
@@ -333,7 +333,7 @@ public class GraphVisualizer extends JFrame implements VertexSelectionListener {
       }
     }
     if (target != null && spt != null) {
-      List<GraphPath<State, Edge, Vertex>> paths = spt.getPaths(target);
+      var paths = spt.getPaths(target).stream().map(StreetPath::new).toList();
       showPathsInPanel(paths);
     }
   }
@@ -524,16 +524,14 @@ public class GraphVisualizer extends JFrame implements VertexSelectionListener {
           new VertexLinker(
             graph,
             VisibilityMode.TRAVERSE_AREA_EDGES,
-            StreetConstants.DEFAULT_MAX_AREA_NODES
+            StreetConstants.DEFAULT_MAX_AREA_NODES,
+            true
           )
         )
       );
       var linkingRequest = LinkingContextRequestMapper.map(request);
       var linkingContext = linkingContextFactory.create(temporaryVerticesContainer, linkingRequest);
-      List<GraphPath<State, Edge, Vertex>> paths = finder.graphPathFinderEntryPoint(
-        request,
-        linkingContext
-      );
+      List<StreetPath> paths = finder.graphPathFinderEntryPoint(request, linkingContext);
       long dt = System.currentTimeMillis() - t0;
       searchTimeElapsedLabel.setText("search time elapsed: " + dt + "ms");
 
@@ -548,7 +546,7 @@ public class GraphVisualizer extends JFrame implements VertexSelectionListener {
 
       if (paths == null) {
         System.out.println("no path");
-        showGraph.highlightGraphPath(null);
+        showGraph.highlightStreetPath(null);
         return;
       }
 
@@ -1276,15 +1274,15 @@ public class GraphVisualizer extends JFrame implements VertexSelectionListener {
           if (pp == null) {
             return;
           }
-          GraphPath<State, Edge, Vertex> path = pp.gp;
+          var path = pp.sp;
 
           DefaultListModel<State> pathModel = new DefaultListModel<>();
-          for (State st : path.states) {
+          for (State st : path.states()) {
             pathModel.addElement(st);
           }
           pathStates.setModel(pathModel);
 
-          showGraph.highlightGraphPath(path);
+          showGraph.highlightStreetPath(path);
         }
       }
     );
@@ -1369,7 +1367,7 @@ public class GraphVisualizer extends JFrame implements VertexSelectionListener {
     clearRouteButton.addActionListener(
       new ActionListener() {
         public void actionPerformed(ActionEvent e) {
-          showGraph.highlightGraphPath(null);
+          showGraph.highlightStreetPath(null);
           showGraph.clearHighlights();
           showGraph.resetSPT();
         }
@@ -1386,10 +1384,10 @@ public class GraphVisualizer extends JFrame implements VertexSelectionListener {
     routingPanel.add(dontUseGraphicalCallbackCheckBox);
   }
 
-  private void showPathsInPanel(List<GraphPath<State, Edge, Vertex>> paths) {
+  private void showPathsInPanel(List<StreetPath> paths) {
     // show paths in a list panel
     DefaultListModel<PathPrinter> data = new DefaultListModel<>();
-    for (GraphPath<State, Edge, Vertex> gp : paths) {
+    for (var gp : paths) {
       data.addElement(new PathPrinter(gp));
     }
     pathsList.setModel(data);
@@ -1397,24 +1395,24 @@ public class GraphVisualizer extends JFrame implements VertexSelectionListener {
 
   static class PathPrinter {
 
-    GraphPath<State, Edge, Vertex> gp;
+    StreetPath sp;
 
-    PathPrinter(GraphPath<State, Edge, Vertex> gp) {
-      this.gp = gp;
+    PathPrinter(StreetPath sp) {
+      this.sp = sp;
     }
 
     public String toString() {
-      String startTime = TIME_FORMAT.format(Instant.ofEpochSecond(gp.getStartTime()));
-      String endTime = TIME_FORMAT.format(Instant.ofEpochSecond(gp.getEndTime()));
+      String startTime = TIME_FORMAT.format(sp.startTime());
+      String endTime = TIME_FORMAT.format(sp.endTime());
       return (
         "Path (" +
         startTime +
         "-" +
         endTime +
         ") weight:" +
-        gp.getWeight() +
+        sp.weight() +
         " dur:" +
-        (gp.getDuration() / 60.0)
+        (sp.duration().toSeconds() / 60.0)
         // " walk:" +
         // gp.getWalkDistance()
       );
@@ -1443,7 +1441,7 @@ public class GraphVisualizer extends JFrame implements VertexSelectionListener {
       stateListModel.addElement("weightdelta:" + st.getWeightDelta());
       stateListModel.addElement("rentingVehicle:" + st.isRentingVehicle());
       stateListModel.addElement("vehicleParked:" + st.isVehicleParked());
-      stateListModel.addElement("walkDistance:" + st.getWalkDistance());
+      stateListModel.addElement("traversalDistance:" + st.getTraversalDistanceMeters());
       stateListModel.addElement("elapsedTime:" + st.getElapsedTimeSeconds());
       outputList.setModel(stateListModel);
 
@@ -1459,21 +1457,21 @@ public class GraphVisualizer extends JFrame implements VertexSelectionListener {
       if (pp == null) {
         return;
       }
-      GraphPath<State, Edge, Vertex> path = pp.gp;
+      var path = pp.sp;
 
       firstComparePath = secondComparePath;
       secondComparePath = path;
 
       if (firstComparePath != null) {
         DefaultListModel<State> pathModel = new DefaultListModel<>();
-        for (State st : firstComparePath.states) {
+        for (State st : firstComparePath.states()) {
           pathModel.addElement(st);
         }
         firstComparePathStates.setModel(pathModel);
       }
       if (secondComparePath != null) {
         DefaultListModel<State> pathModel = new DefaultListModel<>();
-        for (State st : secondComparePath.states) {
+        for (State st : secondComparePath.states()) {
           pathModel.addElement(st);
         }
         secondComparePathStates.setModel(pathModel);
@@ -1484,10 +1482,10 @@ public class GraphVisualizer extends JFrame implements VertexSelectionListener {
       final int converge = diff[1];
       if (diff[0] >= 0) {
         firstComparePathStates.setCellRenderer(
-          new DiffListCellRenderer(diverge, firstComparePath.states.size() - converge - 1)
+          new DiffListCellRenderer(diverge, firstComparePath.states().size() - converge - 1)
         );
         secondComparePathStates.setCellRenderer(
-          new DiffListCellRenderer(diverge, secondComparePath.states.size() - converge - 1)
+          new DiffListCellRenderer(diverge, secondComparePath.states().size() - converge - 1)
         );
       }
     }
@@ -1497,8 +1495,8 @@ public class GraphVisualizer extends JFrame implements VertexSelectionListener {
         return new int[] { -2, -2 };
       }
 
-      int l1 = firstComparePath.states.size();
-      int l2 = secondComparePath.states.size();
+      int l1 = firstComparePath.states().size();
+      int l2 = secondComparePath.states().size();
       int minlen = l1 < l2 ? l1 : l2;
 
       int divergence = -1;
@@ -1506,8 +1504,8 @@ public class GraphVisualizer extends JFrame implements VertexSelectionListener {
 
       // find divergence
       for (int i = 0; i < minlen; i++) {
-        Vertex v1 = firstComparePath.states.get(i).getVertex();
-        Vertex v2 = secondComparePath.states.get(i).getVertex();
+        Vertex v1 = firstComparePath.states().get(i).getVertex();
+        Vertex v2 = secondComparePath.states().get(i).getVertex();
         if (!v1.equals(v2)) {
           divergence = i - 1;
           break;
@@ -1516,8 +1514,8 @@ public class GraphVisualizer extends JFrame implements VertexSelectionListener {
 
       // find convergence
       for (int i = 0; i < minlen; i++) {
-        Vertex v1 = firstComparePath.states.get(l1 - i - 1).getVertex();
-        Vertex v2 = secondComparePath.states.get(l2 - i - 1).getVertex();
+        Vertex v1 = firstComparePath.states().get(l1 - i - 1).getVertex();
+        Vertex v2 = secondComparePath.states().get(l2 - i - 1).getVertex();
         if (!v1.equals(v2)) {
           convergence = i - 1;
           break;

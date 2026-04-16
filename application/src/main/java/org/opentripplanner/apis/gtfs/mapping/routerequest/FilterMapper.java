@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.opentripplanner.apis.gtfs.GraphQLUtils;
 import org.opentripplanner.apis.gtfs.generated.GraphQLTypes;
+import org.opentripplanner.apis.support.InvalidInputException;
 import org.opentripplanner.routing.api.request.request.filter.SelectRequest;
 import org.opentripplanner.routing.api.request.request.filter.TransitFilter;
 import org.opentripplanner.routing.api.request.request.filter.TransitFilterRequest;
@@ -26,7 +27,7 @@ class FilterMapper {
 
       if (CollectionUtils.isEmpty(excludes) && CollectionUtils.isEmpty(includes)) {
         var typeName = GraphQLUtils.typeName(filterInput);
-        throw new IllegalArgumentException(
+        throw new InvalidInputException(
           "%s must contain at least one 'include' or 'exclude'.".formatted(typeName)
         );
       }

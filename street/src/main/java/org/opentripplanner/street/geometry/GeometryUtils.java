@@ -1,19 +1,20 @@
 package org.opentripplanner.street.geometry;
 
+import static org.opentripplanner.utils.lang.DoubleUtils.doubleEquals;
+
+import com.google.common.collect.Iterables;
+import gnu.trove.list.array.TDoubleArrayList;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
-import java.util.Objects;
 import java.util.function.Function;
-import java.util.function.Predicate;
 import java.util.stream.Stream;
 import org.geojson.GeoJsonObject;
 import org.geojson.LngLatAlt;
 import org.locationtech.jts.algorithm.ConvexHull;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.CoordinateSequence;
-import org.locationtech.jts.geom.CoordinateSequenceFactory;
 import org.locationtech.jts.geom.Envelope;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.GeometryCollection;
@@ -29,7 +30,7 @@ import org.locationtech.jts.linearref.LocationIndexedLine;
 
 public class GeometryUtils {
 
-  private static final CoordinateSequenceFactory CSF = new PackedCoordinateSequenceFactory();
+  private static final PackedCoordinateSequenceFactory CSF = new PackedCoordinateSequenceFactory();
   private static final GeometryFactory GF = new GeometryFactory(CSF);
 
   public static <T> Geometry makeConvexHull(
@@ -48,12 +49,8 @@ public class GeometryUtils {
   }
 
   public static LineString makeLineString(double... coords) {
-    GeometryFactory factory = getGeometryFactory();
-    Coordinate[] coordinates = new Coordinate[coords.length / 2];
-    for (int i = 0; i < coords.length; i += 2) {
-      coordinates[i / 2] = new Coordinate(coords[i], coords[i + 1]);
-    }
-    return factory.createLineString(coordinates);
+    var seq = CSF.create(coords, 2);
+    return GF.createLineString(seq);
   }
 
   public static LineString makeLineString(List<Coordinate> coordinates) {
@@ -70,37 +67,56 @@ public class GeometryUtils {
     return makeLineString(Arrays.stream(coordinates).map(WgsCoordinate::asJtsCoordinate).toList());
   }
 
+  /// Convert an iterable of T by applying a mapping function to each element and concatenating the
+  /// resulting [LineString]s.
+  ///
+  /// See [GeometryUtils#concatenateLineStrings]
   public static <T> LineString concatenateLineStrings(
-    List<T> inputObjects,
+    Iterable<T> inputObjects,
     Function<T, LineString> mapper
   ) {
-    return concatenateLineStrings(inputObjects.stream().map(mapper).toList());
+    return concatenateLineStrings(Iterables.transform(inputObjects, mapper::apply));
   }
 
-  public static LineString concatenateLineStrings(List<LineString> lineStrings) {
-    GeometryFactory factory = getGeometryFactory();
-    Predicate<Coordinate[]> nonZeroLength = coordinates -> coordinates.length != 0;
-    return factory.createLineString(
-      lineStrings
-        .stream()
-        .filter(Objects::nonNull)
-        .map(LineString::getCoordinates)
-        .filter(nonZeroLength)
-        .<CoordinateArrayListSequence>collect(
-          CoordinateArrayListSequence::new,
-          (acc, segment) -> {
-            if ((acc.size() == 0 || !acc.getCoordinate(acc.size() - 1).equals(segment[0]))) {
-              acc.extend(segment);
-            } else {
-              acc.extend(segment, 1);
-            }
-          },
-          (head, tail) -> head.extend(tail.toCoordinateArray())
-        )
-    );
+  /// Concatenate a number of [LineString]s.
+  ///
+  /// This method also ensures that if the first coordinate of a consecutive line string is identical
+  /// with the last one of the previous line string, it is only added once to the result.
+  ///
+  /// For the best performance and lowest number of allocations pass in an [Iterable] rather
+  /// than a materialized [Collection].
+  public static LineString concatenateLineStrings(Iterable<LineString> lineStrings) {
+    var coordinates = new TDoubleArrayList();
+
+    for (var ls : lineStrings) {
+      if (ls == null || ls.isEmpty()) {
+        continue;
+      }
+      var seq = ls.getCoordinateSequence();
+      for (var i = 0; i < seq.size(); i++) {
+        double x = seq.getX(i);
+        double y = seq.getY(i);
+
+        // the very first coordinate is always added
+        // the non-first ones of the following ones, too
+        if (!coordinates.isEmpty() && i == 0) {
+          // the first coordinate of each following line string is checked if it's a duplicate
+          // of the previous one's last coordinate
+          double prevX = coordinates.get(coordinates.size() - 2);
+          double prevY = coordinates.get(coordinates.size() - 1);
+
+          if (doubleEquals(prevX, x) && doubleEquals(prevY, y)) {
+            continue;
+          }
+        }
+        coordinates.add(x);
+        coordinates.add(y);
+      }
+    }
+    return makeLineString(coordinates.toArray());
   }
 
-  public static LineString addStartEndCoordinatesToLineString(
+  static LineString addStartEndCoordinatesToLineString(
     Coordinate startCoord,
     LineString lineString,
     Coordinate endCoord
@@ -136,11 +152,19 @@ public class GeometryUtils {
    */
   public static SplitLineString splitGeometryAtFraction(Geometry geometry, double fraction) {
     LineString empty = new LineString(null, GF);
-    Coordinate[] coordinates = geometry.getCoordinates();
-    CoordinateSequence sequence = GF.getCoordinateSequenceFactory().create(coordinates);
-    LineString total = new LineString(sequence, GF);
+    LineString total;
+    int numPoints;
+    if (geometry instanceof LineString ls) {
+      total = ls;
+      numPoints = ls.getNumPoints();
+    } else {
+      Coordinate[] coordinates = geometry.getCoordinates();
+      CoordinateSequence sequence = GF.getCoordinateSequenceFactory().create(coordinates);
+      total = new LineString(sequence, GF);
+      numPoints = coordinates.length;
+    }
 
-    if (coordinates.length < 2) {
+    if (numPoints < 2) {
       return new SplitLineString(empty, empty);
     }
     if (fraction <= 0) {
@@ -259,33 +283,20 @@ public class GeometryUtils {
   }
 
   /**
-   * Split a linestring into its constituent segments and convert each into an envelope.
+   * Split a line string into its constituent segments and convert each into an envelope.
    * <p>
    * All segments form the complete line string again so [A,B,C,D] will be split into the
    * segments [[A,B],[B,C],[C,D]].
    */
   public static Stream<Envelope> toEnvelopes(LineString ls) {
-    Coordinate[] coordinates = ls.getCoordinates();
-    Envelope[] envelopes = new Envelope[coordinates.length - 1];
+    CoordinateSequence seq = ls.getCoordinateSequence();
+    Envelope[] envelopes = new Envelope[seq.size() - 1];
 
     for (int i = 0; i < envelopes.length; i++) {
-      Coordinate from = coordinates[i];
-      Coordinate to = coordinates[i + 1];
-      envelopes[i] = new Envelope(from, to);
+      envelopes[i] = new Envelope(seq.getX(i), seq.getX(i + 1), seq.getY(i), seq.getY(i + 1));
     }
 
     return Arrays.stream(envelopes);
-  }
-
-  /**
-   * Returns the sum of the distances in between the pairs of coordinates in meters.
-   */
-  public static double sumDistances(List<Coordinate> coordinates) {
-    double distance = 0;
-    for (int i = 1; i < coordinates.size(); i++) {
-      distance += SphericalDistanceLibrary.distance(coordinates.get(i - 1), coordinates.get(i));
-    }
-    return distance;
   }
 
   /// Returns the sum of the distances in between the pairs of coordinates in meters.
@@ -294,6 +305,24 @@ public class GeometryUtils {
     double distance = 0;
     for (int i = 1; i < coordinates.length; i++) {
       distance += SphericalDistanceLibrary.distance(coordinates[i - 1], coordinates[i]);
+    }
+    return distance;
+  }
+
+  /**
+   * Returns the sum of the distances in between the pairs of coordinates in meters.
+   * Uses the coordinate sequence directly to avoid allocating intermediate Coordinate objects.
+   * If the sequence has fewer than 2 points, {@code 0} is returned.
+   */
+  public static double sumDistances(CoordinateSequence seq) {
+    double distance = 0;
+    for (int i = 1; i < seq.size(); i++) {
+      distance += SphericalDistanceLibrary.distance(
+        seq.getY(i - 1),
+        seq.getX(i - 1),
+        seq.getY(i),
+        seq.getX(i)
+      );
     }
     return distance;
   }

@@ -9,6 +9,7 @@ import graphql.execution.instrumentation.ChainedInstrumentation;
 import graphql.execution.instrumentation.Instrumentation;
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.Tag;
+import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import java.util.HashMap;
 import java.util.Locale;
@@ -16,7 +17,7 @@ import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import org.opentripplanner.apis.support.graphql.LoggingDataFetcherExceptionHandler;
+import org.opentripplanner.apis.support.graphql.OtpDataFetcherExceptionHandler;
 import org.opentripplanner.ext.actuator.MicrometerGraphQLInstrumentation;
 import org.opentripplanner.framework.application.OTPFeature;
 import org.opentripplanner.framework.graphql.GraphQLResponseSerializer;
@@ -44,7 +45,7 @@ class GtfsGraphQLIndex {
 
     GraphQL graphQL = GraphQL.newGraphQL(requestContext.schema())
       .instrumentation(instrumentation)
-      .defaultDataFetcherExceptionHandler(new LoggingDataFetcherExceptionHandler())
+      .defaultDataFetcherExceptionHandler(new OtpDataFetcherExceptionHandler())
       .build();
 
     if (variables == null) {
@@ -87,7 +88,8 @@ class GtfsGraphQLIndex {
     );
 
     return Response.status(Response.Status.OK)
-      .entity(GraphQLResponseSerializer.serialize(executionResult))
+      .entity(GraphQLResponseSerializer.serializeAsStream(executionResult))
+      .type(MediaType.APPLICATION_JSON_TYPE)
       .build();
   }
 }

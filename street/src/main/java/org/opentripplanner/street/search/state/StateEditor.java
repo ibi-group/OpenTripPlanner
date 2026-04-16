@@ -195,13 +195,14 @@ public class StateEditor {
     incrementTimeInMilliseconds(1000L * seconds);
   }
 
-  public void incrementWalkDistance(double length) {
+  /**
+   * Increment the distance traversed through the graph in meters.
+   */
+  public void incrementTraversalDistanceMeters(double length) {
     if (length < 0) {
-      LOG.warn("A state's walk distance is being incremented by a negative amount.");
-      defectiveTraversal = true;
-      return;
+      throw new IllegalArgumentException("Traversal distance cannot be negative");
     }
-    child.walkDistance += length;
+    child.traversalDistance_m += length;
   }
 
   /* Basic Setters */

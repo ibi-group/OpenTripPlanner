@@ -80,7 +80,7 @@ GBFS feeds must include a system_id which will be used as the default `network`.
 
 **Since version:** `1.5` ∙ **Type:** `enum` ∙ **Cardinality:** `Required`   
 **Path:** /updaters/[1]   
-**Enum values:** `gbfs` | `smoove`
+**Enum values:** `gbfs`
 
 What source of vehicle rental updater to use.
 

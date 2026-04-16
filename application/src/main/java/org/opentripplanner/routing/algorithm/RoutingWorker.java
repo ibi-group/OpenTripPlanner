@@ -27,14 +27,17 @@ import org.opentripplanner.routing.algorithm.raptoradapter.router.street.DirectF
 import org.opentripplanner.routing.algorithm.raptoradapter.router.street.DirectStreetRouter;
 import org.opentripplanner.routing.api.request.RouteRequest;
 import org.opentripplanner.routing.api.request.request.StreetRequest;
+import org.opentripplanner.routing.api.response.InputField;
+import org.opentripplanner.routing.api.response.RoutingError;
+import org.opentripplanner.routing.api.response.RoutingErrorCode;
 import org.opentripplanner.routing.api.response.RoutingResponse;
 import org.opentripplanner.routing.error.RoutingValidationException;
 import org.opentripplanner.routing.framework.DebugTimingAggregator;
 import org.opentripplanner.routing.linking.LinkingContext;
-import org.opentripplanner.routing.linking.TemporaryVerticesContainer;
 import org.opentripplanner.routing.linking.mapping.LinkingContextRequestMapper;
 import org.opentripplanner.service.paging.PagingService;
 import org.opentripplanner.standalone.api.OtpServerRequestContext;
+import org.opentripplanner.street.linking.TemporaryVerticesContainer;
 import org.opentripplanner.street.model.StreetMode;
 import org.opentripplanner.transit.model.network.grouppriority.TransitGroupPriorityService;
 import org.opentripplanner.utils.time.ServiceDateUtils;
@@ -113,14 +116,19 @@ public class RoutingWorker {
           var r1 = CompletableFuture.supplyAsync(() -> routeDirectStreet());
           var r2 = CompletableFuture.supplyAsync(() -> routeDirectFlex());
           var r3 = CompletableFuture.supplyAsync(() -> routeTransit());
-          var r4 = CompletableFuture.supplyAsync(() -> routeCarpooling());
+          var r4 = CompletableFuture.supplyAsync(() -> routeDirectCarpooling());
 
           result.merge(r1.join(), r2.join(), r3.join(), r4.join());
         } catch (CompletionException e) {
           RoutingValidationException.unwrapAndRethrowCompletionException(e);
         }
       } else {
-        result.merge(routeDirectStreet(), routeDirectFlex(), routeTransit(), routeCarpooling());
+        result.merge(
+          routeDirectStreet(),
+          routeDirectFlex(),
+          routeTransit(),
+          routeDirectCarpooling()
+        );
       }
     } catch (RoutingValidationException e) {
       result.merge(RoutingResult.failed(e.getRoutingErrors()));
@@ -280,13 +288,15 @@ public class RoutingWorker {
     }
   }
 
-  private RoutingResult routeCarpooling() {
+  private RoutingResult routeDirectCarpooling() {
     if (OTPFeature.CarPooling.isOff()) {
       return RoutingResult.ok(List.of());
     }
     debugTimingAggregator.startedDirectCarpoolRouter();
     try {
-      return RoutingResult.ok(serverContext.carpoolingService().route(request, linkingContext()));
+      return RoutingResult.ok(
+        serverContext.carpoolingService().routeDirect(request, linkingContext())
+      );
     } catch (RoutingValidationException e) {
       return RoutingResult.failed(e.getRoutingErrors());
     } finally {
@@ -304,10 +314,13 @@ public class RoutingWorker {
         transitSearchTimeZero,
         additionalSearchDays,
         debugTimingAggregator,
-        linkingContext()
+        linkingContext(),
+        serverContext.carpoolingService()
       );
       raptorSearchParamsUsed = transitResults.getSearchParams();
-      return RoutingResult.ok(transitResults.getItineraries());
+      var itineraries = transitResults.getItineraries();
+      checkIfTransitConnectionExistsInSearchWindow(itineraries);
+      return RoutingResult.ok(itineraries);
     } catch (RoutingValidationException e) {
       return RoutingResult.failed(e.getRoutingErrors());
     } finally {
@@ -329,6 +342,23 @@ public class RoutingWorker {
       pageCursorInput,
       itineraries
     );
+  }
+
+  /**
+   * If the transit search was performed but found no itineraries in the search window, the
+   * heuristic found a transit connection exists but no trips run in the current window.
+   */
+  private void checkIfTransitConnectionExistsInSearchWindow(List<Itinerary> itineraries) {
+    if (itineraries.isEmpty() && raptorSearchParamsUsed != null) {
+      throw new RoutingValidationException(
+        List.of(
+          new RoutingError(
+            RoutingErrorCode.NO_TRANSIT_CONNECTION_IN_SEARCH_WINDOW,
+            InputField.DATE_TIME
+          )
+        )
+      );
+    }
   }
 
   private LinkingContext linkingContext() {

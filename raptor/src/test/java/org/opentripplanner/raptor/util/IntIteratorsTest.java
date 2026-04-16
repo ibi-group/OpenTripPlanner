@@ -1,6 +1,7 @@
 package org.opentripplanner.raptor.util;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.opentripplanner.raptor.util.IntIterators.intDecIterator;
 import static org.opentripplanner.raptor.util.IntIterators.intIncIterator;
 import static org.opentripplanner.raptor.util.IntIterators.singleValueIterator;
@@ -86,6 +87,7 @@ public class IntIteratorsTest {
 
   @Test
   public void testEmptyIterator() {
+    assertFalse(IntIterators.empty().hasNext());
     assertEquals("[]", toString(IntIterators.empty()));
   }
 

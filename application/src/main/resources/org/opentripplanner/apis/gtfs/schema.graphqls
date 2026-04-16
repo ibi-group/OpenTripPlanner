@@ -635,6 +635,42 @@ type FareProductUse {
           id: "single-ticket"  // product id
           name: "Single Ticket"
   ```
+    
+  ### Example: Combination of single tickets and day passes
+    
+  If you have two legs and it's possible to either buy singles or use a day pass, you will
+  have a combination of identical and different `FareProductUse.id`s.
+    
+  **Illustration**
+  ```yaml
+  itinerary:
+    leg1:
+      fareProducts:
+        # fare product use for day pass
+        id: "AAA" // id of a FareProductUse instance, not product id
+          product:
+            id: "single-ticket" // product id
+            name: "Single Ticket"
+    
+        # fare product use for single ticket
+        id: "CCC" // identical to leg2. the passenger needs to buy ONE day pass, not two.
+          product:
+            id: "day-pass"  // product id
+            name: "Day Pass"
+    leg2:
+      fareProducts:
+        id: "BBB" // different to leg1. the passenger needs to buy two single tickets.
+          product:
+            id: "single-ticket"  // product id
+            name: "Single Ticket"
+    
+        id: "CCC" // identical to leg1. the passenger needs to buy ONE day pass, not two.
+          product:
+            id: "day-pass"  // product id
+            name: "Day Pass"
+  ```
+  **It is the responsibility of the API consumers to display the day pass as a product for the
+  entire itinerary rather than two day passes!**
   """
   id: String!
   "The purchasable fare product"
@@ -654,6 +690,8 @@ type Feed {
   feedId: String!
   "The publisher of the input transit data."
   publisher: FeedPublisher
+  "The version of the dataset."
+  version: String
 }
 
 "Feed publisher information"
@@ -3830,6 +3868,16 @@ enum RelativeDirection {
   UTURN_RIGHT
 }
 
+"How does a trip's replacement feature affect whether a it is considered for use in routing?"
+enum ReplacementRequirement {
+  "Consider all trips ignoring their replacement feature."
+  FEATURE_IGNORED
+  "Only consider trips which don't have the replacement feature."
+  FORBIDDEN
+  "Only consider trips which have the replacement feature."
+  REQUIRED
+}
+
 "Entities that are relevant for routes that can contain alerts"
 enum RouteAlertType {
   "Alerts affecting the route's agency."
@@ -4737,6 +4785,19 @@ input PlanTransitModePreferenceInput {
   cost: TransitModePreferenceCostInput
   "Transit mode that could be (but doesn't have to be) used in an itinerary."
   mode: TransitMode!
+  """
+  If present and not null, further limits the transit mode selection.  A transit trip matches
+  a PlanTransitModePreferenceInput if the mandatory TransitMode field mode matches. If replacement
+  is REQUIRED, the trip must also be a replacement. If replacement is FORBIDDEN,
+  the trip must not be a replacement. If replacement is FEATURE_IGNORED or missing, it
+  does not matter if the trip is a replacement or not. Whether a leg is a replacement is recognized
+  both by the NeTEx submode and the GTFS extended type, depending on the data source.
+  Note that a bus replacing a train has mode: BUS, replacement: true, so it matches a query with
+  mode: BUS, replacement: REQUIRED and mode: BUS, replacement: FEATURE_IGNORED, but it does not
+  match mode: TRAIN with any replacement options. So to get both trains and buses replacing them,
+  but no other buses, query [(mode: TRAIN), (mode: BUS, replacement: REQUIRED)].
+  """
+  replacement: ReplacementFilterInput
 }
 
 """
@@ -4763,7 +4824,9 @@ input PlanTransitModesInput {
   """
   Transit modes and reluctances associated with them. Each defined mode can be used in
   an itinerary but doesn't have to be. If direct search is not disabled, there can be an
-  itinerary without any transit legs. By default, all transit modes are usable.
+  itinerary without any transit legs. By default, all transit modes are usable. For a transit trip
+  to match PlanTransitModesInput, it must match one of the PlanTransitModePreferenceInputs given
+  in the field.
   """
   transit: [PlanTransitModePreferenceInput!]
 }
@@ -4804,6 +4867,12 @@ input PlanVisitViaLocationInput {
   It is enough to visit ONE of the locations listed.
   """
   stopLocationIds: [String!]
+}
+
+"Contains details on how to filter trips based on the replacement feature when considering them for routing."
+input ReplacementFilterInput {
+  "One of three choices: must be replacement, cannot be a replacement, can either be or not be a replacement"
+  requirement: ReplacementRequirement
 }
 
 "What criteria should be used when optimizing a scooter route."

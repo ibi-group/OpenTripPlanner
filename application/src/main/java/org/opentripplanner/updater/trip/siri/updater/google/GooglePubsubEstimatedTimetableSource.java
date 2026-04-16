@@ -27,6 +27,7 @@ import java.util.function.Function;
 import javax.xml.stream.XMLStreamException;
 import org.entur.siri21.util.SiriXml;
 import org.opentripplanner.framework.application.ApplicationShutdownSupport;
+import org.opentripplanner.framework.io.HttpHeaders;
 import org.opentripplanner.framework.io.OtpHttpClientFactory;
 import org.opentripplanner.framework.retry.OtpRetry;
 import org.opentripplanner.framework.retry.OtpRetryBuilder;
@@ -264,16 +265,12 @@ public class GooglePubsubEstimatedTimetableSource implements AsyncEstimatedTimet
    */
   private void initializeData() {
     if (dataInitializationUrl != null) {
-      LOG.info("Fetching initial data from {}", dataInitializationUrl);
+      LOG.info("Fetching and parsing initial data from {}", dataInitializationUrl);
       final long t1 = System.currentTimeMillis();
-      ByteString value = fetchInitialData();
+      var serviceDelivery = fetchAndParseInitialData();
       final long t2 = System.currentTimeMillis();
-      LOG.info(
-        "Fetching initial data - finished after {} ms, got {}",
-        (t2 - t1),
-        FileSizeToTextConverter.fileSizeToString(value.size())
-      );
-      serviceDelivery(value)
+      LOG.info("Fetching and parsing initial data - finished after {} ms", (t2 - t1));
+      serviceDelivery
         .map(serviceDeliveryConsumer)
         .ifPresent(future -> {
           try {
@@ -298,17 +295,18 @@ public class GooglePubsubEstimatedTimetableSource implements AsyncEstimatedTimet
   }
 
   /**
-   * Fetch the backlog of messages over HTTP from the configured data initialization URL.
+   * Fetch the backlog of messages over HTTP and parse the XML response.
    */
-  private ByteString fetchInitialData() {
+  private Optional<ServiceDelivery> fetchAndParseInitialData() {
     try (OtpHttpClientFactory otpHttpClientFactory = new OtpHttpClientFactory()) {
       var otpHttpClient = otpHttpClientFactory.create(LOG);
-      return otpHttpClient.getAndMap(
+      var siri = otpHttpClient.getAndMap(
         dataInitializationUrl,
         initialGetDataTimeout,
-        Map.of("Content-Type", "application/xml"),
-        response -> ByteString.readFrom(response.body())
+        HttpHeaders.of(Map.of("Content-Type", "application/xml")),
+        response -> SiriXml.parseXml(response.body())
       );
+      return Optional.ofNullable(siri.getServiceDelivery());
     }
   }
 

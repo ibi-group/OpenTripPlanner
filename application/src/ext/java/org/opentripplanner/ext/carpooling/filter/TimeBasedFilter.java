@@ -54,4 +54,20 @@ public class TimeBasedFilter implements TripFilter {
 
     return withinWindow;
   }
+
+  @Override
+  public boolean acceptsAccessEgress(
+    CarpoolTrip trip,
+    WgsCoordinate coordinateOfPassenger,
+    Instant passengerDepartureTime,
+    Duration searchWindow
+  ) {
+    var earliestDepartureTime = trip.startTime().minus(searchWindow);
+    var latestDepartureTime = trip.endTime().plus(searchWindow);
+
+    return (
+      !passengerDepartureTime.isBefore(earliestDepartureTime.toInstant()) &&
+      !passengerDepartureTime.isAfter(latestDepartureTime.toInstant())
+    );
+  }
 }

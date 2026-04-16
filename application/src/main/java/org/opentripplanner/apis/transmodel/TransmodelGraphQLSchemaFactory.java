@@ -46,6 +46,7 @@ import javax.annotation.Nullable;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Envelope;
 import org.opentripplanner.api.model.transit.FeedScopedIdMapper;
+import org.opentripplanner.apis.support.InvalidInputException;
 import org.opentripplanner.apis.support.graphql.injectdoc.ApiDocumentationProfile;
 import org.opentripplanner.apis.support.graphql.injectdoc.CustomDocumentation;
 import org.opentripplanner.apis.support.graphql.injectdoc.InjectCustomDocumentation;
@@ -133,7 +134,6 @@ import org.opentripplanner.transit.api.request.TripRequest;
 import org.opentripplanner.transit.model.basic.TransitMode;
 import org.opentripplanner.transit.model.site.StopLocation;
 import org.opentripplanner.transit.service.TransitService;
-import org.opentripplanner.utils.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -648,7 +648,7 @@ public class TransmodelGraphQLSchemaFactory {
               var ids = resolveIds(environment);
 
               if (environment.getArgument("name") != null) {
-                throw new IllegalArgumentException("Unable to combine other filters with ids");
+                throw new InvalidInputException("Unable to combine other filters with ids");
               }
 
               TransitService transitService = GqlUtil.getTransitService(environment);
@@ -1153,7 +1153,7 @@ public class TransmodelGraphQLSchemaFactory {
                 ).anyMatch(environment::containsArgument) ||
                 Boolean.TRUE.equals(environment.getArgument("flexibleOnly"))
               ) {
-                throw new IllegalArgumentException("Unable to combine other filters with ids");
+                throw new InvalidInputException("Unable to combine other filters with ids");
               }
 
               return GqlUtil.getTransitService(environment).getRoutes(ids);
@@ -1574,7 +1574,7 @@ public class TransmodelGraphQLSchemaFactory {
   private Stream<FeedScopedId> resolveIds(DataFetchingEnvironment env) {
     return Optional.ofNullable(env.<Collection<String>>getArgument("ids"))
       .stream()
-      .flatMap(ids -> ids.stream().filter(StringUtils::hasValue).map(idMapper::parse));
+      .flatMap(ids -> ids.stream().flatMap(id -> idMapper.parse(id).stream()));
   }
 
   private @Nullable List<FeedScopedId> toNullableIdList(@Nullable List<String> ids) {
