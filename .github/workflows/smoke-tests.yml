@@ -27,8 +27,8 @@ jobs:
             sleep: 15
           - name: septa
             sleep: 15
-          #- name: portland
-          #  sleep: 30
+          - name: portland
+            sleep: 30
 
     steps:
       - uses: actions/checkout@v4
