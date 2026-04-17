@@ -2,14 +2,13 @@ package org.opentripplanner.routing.algorithm.raptoradapter.transit.request;
 
 import java.util.Arrays;
 import java.util.BitSet;
-import java.util.function.IntUnaryOperator;
 import org.opentripplanner.core.model.accessibility.Accessibility;
-import org.opentripplanner.raptor.api.model.RaptorTripPattern;
-import org.opentripplanner.raptor.api.model.SearchDirection;
 import org.opentripplanner.raptor.spi.IntIterator;
 import org.opentripplanner.raptor.spi.RaptorRoute;
 import org.opentripplanner.raptor.spi.RaptorTimeTable;
+import org.opentripplanner.raptor.spi.RaptorTripPattern;
 import org.opentripplanner.raptor.spi.RaptorTripScheduleSearch;
+import org.opentripplanner.raptor.spi.SearchDirection;
 import org.opentripplanner.raptor.util.IntIterators;
 import org.opentripplanner.routing.algorithm.raptoradapter.transit.TripPatternForDate;
 import org.opentripplanner.routing.algorithm.raptoradapter.transit.TripSchedule;
@@ -184,10 +183,6 @@ public class TripPatternForDates
     return priorityGroupId;
   }
 
-  public int transitReluctanceFactorIndex() {
-    return tripPattern.transitReluctanceFactorIndex();
-  }
-
   @Override
   public String debugInfo() {
     return tripPattern.debugInfo();
@@ -209,30 +204,22 @@ public class TripPatternForDates
   }
 
   @Override
-  public IntUnaryOperator getArrivalTimes(int stopPositionInPattern) {
-    final int base = stopPositionInPattern * numberOfTripSchedules;
-    return (int tripIndex) -> arrivalTimes[base + tripIndex];
+  public int arrivalTime(int stopPositionInPattern, int tripIndex) {
+    return arrivalTimes[stopPositionInPattern * numberOfTripSchedules + tripIndex];
   }
 
   @Override
-  public IntUnaryOperator getDepartureTimes(int stopPositionInPattern) {
-    final int base = stopPositionInPattern * numberOfTripSchedules;
-    return (int tripIndex) -> departureTimes[base + tripIndex];
-  }
-
-  public IntUnaryOperator getArrivalTimesForTrip(int tripIndex) {
-    return (int stopPositionInPattern) ->
-      arrivalTimes[stopPositionInPattern * numberOfTripSchedules + tripIndex];
-  }
-
-  public IntUnaryOperator getDepartureTimesForTrip(int tripIndex) {
-    return (int stopPositionInPattern) ->
-      departureTimes[stopPositionInPattern * numberOfTripSchedules + tripIndex];
+  public int departureTime(int stopPositionInPattern, int tripIndex) {
+    return departureTimes[stopPositionInPattern * numberOfTripSchedules + tripIndex];
   }
 
   @Override
   public int numberOfTripSchedules() {
     return numberOfTripSchedules;
+  }
+
+  public int transitReluctanceFactorIndex() {
+    return tripPattern.transitReluctanceFactorIndex();
   }
 
   public Route route() {

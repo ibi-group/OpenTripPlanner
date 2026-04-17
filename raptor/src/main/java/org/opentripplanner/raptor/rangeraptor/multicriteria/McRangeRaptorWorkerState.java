@@ -1,12 +1,11 @@
 package org.opentripplanner.raptor.rangeraptor.multicriteria;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
+import javax.annotation.Nullable;
 import org.opentripplanner.raptor.api.model.RaptorAccessEgress;
-import org.opentripplanner.raptor.api.model.RaptorTransfer;
-import org.opentripplanner.raptor.api.model.RaptorTripSchedule;
+import org.opentripplanner.raptor.rangeraptor.internalapi.OnBoardTripAccessPathsForRoute;
 import org.opentripplanner.raptor.rangeraptor.internalapi.RaptorRouterResult;
 import org.opentripplanner.raptor.rangeraptor.internalapi.RaptorWorkerState;
 import org.opentripplanner.raptor.rangeraptor.internalapi.WorkerLifeCycle;
@@ -19,6 +18,8 @@ import org.opentripplanner.raptor.rangeraptor.path.DestinationArrivalPaths;
 import org.opentripplanner.raptor.rangeraptor.transit.RaptorTransitCalculator;
 import org.opentripplanner.raptor.spi.IntIterator;
 import org.opentripplanner.raptor.spi.RaptorCostCalculator;
+import org.opentripplanner.raptor.spi.RaptorTransfer;
+import org.opentripplanner.raptor.spi.RaptorTripSchedule;
 
 /**
  * Tracks the state of a RAPTOR search, specifically the best arrival times at each transit stop at
@@ -40,7 +41,6 @@ public final class McRangeRaptorWorkerState<T extends RaptorTripSchedule>
   private final List<McStopArrival<T>> arrivalsCache = new ArrayList<>();
   private final RaptorCostCalculator<T> calculatorGeneralizedCost;
   private final RaptorTransitCalculator<T> transitCalculator;
-  private final Collection<McStopArrival<T>> onBoardAccessStopArrivals;
 
   /**
    * create a RaptorState for a network with a particular number of stops, and a given maximum
@@ -61,7 +61,6 @@ public final class McRangeRaptorWorkerState<T extends RaptorTripSchedule>
     this.stopArrivalFactory = stopArrivalFactory;
     this.calculatorGeneralizedCost = calculatorGeneralizedCost;
     this.transitCalculator = transitCalculator;
-    this.onBoardAccessStopArrivals = new ArrayList<>();
 
     // Attach to the RR life cycle
     lifeCycle.onSetupIteration(ignore -> setupIteration());
@@ -74,7 +73,7 @@ public final class McRangeRaptorWorkerState<T extends RaptorTripSchedule>
 
   @Override
   public boolean isNewRoundAvailable() {
-    return arrivals.updateExist() || !onBoardAccessStopArrivals.isEmpty();
+    return arrivals.updateExist();
   }
 
   @Override
@@ -123,13 +122,14 @@ public final class McRangeRaptorWorkerState<T extends RaptorTripSchedule>
     return arrivals.listArrivalsAfterMarker(stop);
   }
 
-  Iterable<? extends McStopArrival<T>> listOnBoardStopArrivals() {
-    return onBoardAccessStopArrivals;
+  @Nullable
+  OnBoardTripAccessPathsForRoute<T> consumeOnBoardStopArrivals(int routeIndex) {
+    return arrivals.consumeOnBoardStopArrivals(routeIndex);
   }
 
   public void addOnBoardAccessStopArrival(RaptorAccessEgress accessPath, int departureTime) {
     var arrival = stopArrivalFactory.createAccessStopArrival(departureTime, accessPath);
-    onBoardAccessStopArrivals.add(arrival);
+    arrivals.addOnBoardTripArrival(arrival);
   }
 
   /**

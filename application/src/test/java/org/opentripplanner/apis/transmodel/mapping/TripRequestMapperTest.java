@@ -26,6 +26,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.opentripplanner.TestServerContext;
 import org.opentripplanner._support.time.ZoneIds;
 import org.opentripplanner.api.model.transit.DefaultFeedIdMapper;
+import org.opentripplanner.apis.support.InvalidInputException;
 import org.opentripplanner.apis.support.graphql.DataFetchingSupport;
 import org.opentripplanner.apis.transmodel.TransmodelRequestContext;
 import org.opentripplanner.ext.fares.service.gtfs.v1.DefaultFareService;
@@ -210,7 +211,7 @@ public class TripRequestMapperTest implements PlanTestConstants {
 
     Map<String, Object> arguments = arguments("maxAccessEgressDurationForMode", duration);
 
-    var ex = assertThrows(IllegalArgumentException.class, () ->
+    var ex = assertThrows(InvalidInputException.class, () ->
       MAPPER.createRequest(executionContext(arguments))
     );
     assertEquals(
@@ -225,7 +226,7 @@ public class TripRequestMapperTest implements PlanTestConstants {
       "maxAccessEgressDurationForMode",
       List.of(Map.of("streetMode", StreetMode.FLEXIBLE, "duration", MAX_FLEXIBLE.plusSeconds(1)))
     );
-    var ex = assertThrows(IllegalArgumentException.class, () ->
+    var ex = assertThrows(InvalidInputException.class, () ->
       MAPPER.createRequest(executionContext(arguments))
     );
     assertEquals(
@@ -243,7 +244,7 @@ public class TripRequestMapperTest implements PlanTestConstants {
 
     Map<String, Object> arguments = arguments("maxDirectDurationForMode", duration);
 
-    var ex = assertThrows(IllegalArgumentException.class, () ->
+    var ex = assertThrows(InvalidInputException.class, () ->
       MAPPER.createRequest(executionContext(arguments))
     );
     assertEquals(
@@ -258,7 +259,7 @@ public class TripRequestMapperTest implements PlanTestConstants {
       "maxDirectDurationForMode",
       List.of(Map.of("streetMode", StreetMode.FLEXIBLE, "duration", MAX_FLEXIBLE.plusSeconds(1)))
     );
-    var ex = assertThrows(IllegalArgumentException.class, () ->
+    var ex = assertThrows(InvalidInputException.class, () ->
       MAPPER.createRequest(executionContext(arguments))
     );
     assertEquals(

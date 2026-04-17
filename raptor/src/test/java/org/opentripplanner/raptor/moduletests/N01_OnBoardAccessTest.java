@@ -14,7 +14,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.opentripplanner.raptor.RaptorService;
 import org.opentripplanner.raptor._data.transit.TestAccessEgress;
-import org.opentripplanner.raptor._data.transit.TestRaptorOnBoardAccess;
+import org.opentripplanner.raptor._data.transit.TestRaptorStartOnBoardAccess;
 import org.opentripplanner.raptor._data.transit.TestTransitData;
 import org.opentripplanner.raptor._data.transit.TestTripSchedule;
 import org.opentripplanner.raptor.api.request.RaptorProfile;
@@ -53,7 +53,7 @@ class N01_OnBoardAccessTest {
   @DisplayName("On-board access with two routes boards the correct route")
   void onBoardAccess() {
     data
-      .access(new TestRaptorOnBoardAccess(0, 0, 1, STOP_B, 0))
+      .access(new TestRaptorStartOnBoardAccess(0, 0, 1, STOP_B, 0))
       .withRoutes()
       .withTimetables(
         """
@@ -83,7 +83,7 @@ class N01_OnBoardAccessTest {
   )
   void transfer() {
     data
-      .access(new TestRaptorOnBoardAccess(0, 0, 1, STOP_B, 0))
+      .access(new TestRaptorStartOnBoardAccess(0, 0, 1, STOP_B, 0))
       .withRoutes()
       .withTimetables(
         """
@@ -113,7 +113,7 @@ class N01_OnBoardAccessTest {
   @DisplayName("On-board access does not allow invalid boardings or transfers")
   void noInvalidTransfers() {
     data
-      .access(new TestRaptorOnBoardAccess(0, 0, 1, STOP_B, 0))
+      .access(new TestRaptorStartOnBoardAccess(0, 0, 1, STOP_B, 0))
       .withRoutes()
       .withTimetables(
         """
@@ -144,7 +144,7 @@ class N01_OnBoardAccessTest {
   @DisplayName("On-board access on a ring-line starts from the provided stop position")
   void ringLineBoardsCorrectStopPosition() {
     data
-      .access(new TestRaptorOnBoardAccess(0, 0, 5, STOP_B, 0))
+      .access(new TestRaptorStartOnBoardAccess(0, 0, 5, STOP_B, 0))
       .withRoutes()
       .withTimetables(
         """
@@ -171,7 +171,7 @@ class N01_OnBoardAccessTest {
   )
   void correctTrip() {
     data
-      .access(new TestRaptorOnBoardAccess(0, 1, 1, STOP_B, 0))
+      .access(new TestRaptorStartOnBoardAccess(0, 1, 1, STOP_B, 0))
       .withRoutes()
       .withTimetables(
         """
@@ -200,7 +200,7 @@ class N01_OnBoardAccessTest {
   @DisplayName("On-board access to a non-existing route results in exception")
   void nonExistentRoute() {
     data
-      .access(new TestRaptorOnBoardAccess(1, 1, 1, STOP_B, 0))
+      .access(new TestRaptorStartOnBoardAccess(1, 1, 1, STOP_B, 0))
       .withTimetables(
         """
         -- R1
@@ -223,7 +223,7 @@ class N01_OnBoardAccessTest {
   @DisplayName("On-board access to a non-existing trip in route results in exception")
   void nonExistentTrip() {
     data
-      .access(new TestRaptorOnBoardAccess(0, 3, 1, STOP_B, 0))
+      .access(new TestRaptorStartOnBoardAccess(0, 3, 1, STOP_B, 0))
       .withTimetables(
         """
         -- R1
@@ -248,11 +248,11 @@ class N01_OnBoardAccessTest {
     data
       .access(
         // Dominated by trip 1 @ C
-        new TestRaptorOnBoardAccess(0, 1, 1, STOP_B, 0),
+        new TestRaptorStartOnBoardAccess(0, 1, 1, STOP_B, 0),
         // Pareto-optimal
-        new TestRaptorOnBoardAccess(0, 1, 2, STOP_C, 0),
+        new TestRaptorStartOnBoardAccess(0, 1, 2, STOP_C, 0),
         // Pareto-optimal
-        new TestRaptorOnBoardAccess(1, 0, 0, STOP_A, 0)
+        new TestRaptorStartOnBoardAccess(1, 0, 0, STOP_A, 0)
       )
       .withRoutes()
       .withTimetables(
@@ -289,7 +289,7 @@ class N01_OnBoardAccessTest {
         // Walk to E to catch a trip that arrives earlier
         TestAccessEgress.of("Walk 5m ~ E"),
         // Or stay on board
-        new TestRaptorOnBoardAccess(0, 0, 1, STOP_B, 0)
+        new TestRaptorStartOnBoardAccess(0, 0, 1, STOP_B, 0)
       )
       .withRoutes()
       .withTimetables(
@@ -322,8 +322,8 @@ class N01_OnBoardAccessTest {
   void rangeQuery() {
     data
       .access(
-        new TestRaptorOnBoardAccess(0, 0, 1, STOP_B, 0),
-        new TestRaptorOnBoardAccess(0, 1, 1, STOP_B, 0)
+        new TestRaptorStartOnBoardAccess(0, 0, 1, STOP_B, 0),
+        new TestRaptorStartOnBoardAccess(0, 1, 1, STOP_B, 0)
       )
       .withRoutes()
       .withTimetables(

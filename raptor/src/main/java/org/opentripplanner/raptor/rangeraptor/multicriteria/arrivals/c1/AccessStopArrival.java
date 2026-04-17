@@ -1,16 +1,16 @@
 package org.opentripplanner.raptor.rangeraptor.multicriteria.arrivals.c1;
 
 import static org.opentripplanner.raptor.api.model.AbstractAccessEgressDecorator.accessEgressWithExtraSlack;
-import static org.opentripplanner.raptor.api.model.PathLegType.ACCESS;
+import static org.opentripplanner.raptor.api.view.PathLegType.ACCESS;
 
-import org.opentripplanner.raptor.api.model.PathLegType;
 import org.opentripplanner.raptor.api.model.RaptorAccessEgress;
-import org.opentripplanner.raptor.api.model.RaptorConstants;
-import org.opentripplanner.raptor.api.model.RaptorOnBoardAccess;
-import org.opentripplanner.raptor.api.model.RaptorTripSchedule;
+import org.opentripplanner.raptor.api.model.RaptorStartOnBoardAccess;
+import org.opentripplanner.raptor.api.model.RaptorTripScheduleStopPosition;
 import org.opentripplanner.raptor.api.view.AccessPathView;
-import org.opentripplanner.raptor.api.view.TripScheduleStopPosition;
+import org.opentripplanner.raptor.api.view.PathLegType;
 import org.opentripplanner.raptor.rangeraptor.multicriteria.arrivals.McStopArrival;
+import org.opentripplanner.raptor.spi.RaptorConstants;
+import org.opentripplanner.raptor.spi.RaptorTripSchedule;
 
 /**
  * Represent a access stop arrival.
@@ -77,12 +77,12 @@ final class AccessStopArrival<T extends RaptorTripSchedule> extends McStopArriva
   }
 
   @Override
-  public TripScheduleStopPosition subsequentBoardingConstraint() {
-    if (access instanceof RaptorOnBoardAccess onBoardAccess) {
-      return new TripScheduleStopPosition(
-        onBoardAccess.routeIndex(),
-        onBoardAccess.tripScheduleIndex(),
-        onBoardAccess.stopPositionInPattern()
+  public RaptorTripScheduleStopPosition subsequentBoardingConstraint() {
+    if (access instanceof RaptorStartOnBoardAccess startOnBoardAccess) {
+      return new RaptorTripScheduleStopPosition(
+        startOnBoardAccess.tripBoarding().routeIndex(),
+        startOnBoardAccess.tripBoarding().tripScheduleIndex(),
+        startOnBoardAccess.tripBoarding().stopPositionInPattern()
       );
     }
     throw new UnsupportedOperationException();

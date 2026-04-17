@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.opentripplanner.updater.spi.UpdateResultAssertions.assertFailure;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -17,6 +18,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.opentripplanner.core.model.id.FeedScopedId;
+import org.opentripplanner.model.PickDrop;
 import org.opentripplanner.model.calendar.CalendarServiceData;
 import org.opentripplanner.transit.model._data.TimetableRepositoryForTest;
 import org.opentripplanner.transit.model.basic.SubMode;
@@ -36,7 +38,7 @@ import org.opentripplanner.transit.service.SiteRepository;
 import org.opentripplanner.transit.service.TimetableRepository;
 import org.opentripplanner.transit.service.TransitEditorService;
 import org.opentripplanner.updater.alert.siri.mapping.SiriTransportModeMapper;
-import org.opentripplanner.updater.spi.UpdateError;
+import org.opentripplanner.updater.spi.UpdateErrorType;
 import uk.org.siri.siri21.VehicleModesEnumeration;
 
 class AddedTripBuilderTest {
@@ -115,7 +117,7 @@ class AddedTripBuilderTest {
 
   @Test
   void testAddedTrip() {
-    var addedTrip = new AddedTripBuilder(
+    var tripUpdate = new AddedTripBuilder(
       transitService,
       DEDUPLICATOR,
       ENTITY_RESOLVER,
@@ -138,9 +140,6 @@ class AddedTripBuilderTest {
       "DATASOURCE"
     ).build();
 
-    assertTrue(addedTrip.isSuccess(), "Trip creation should succeed");
-
-    TripUpdate tripUpdate = addedTrip.successValue();
     // Assert trip
     Trip trip = tripUpdate.tripTimes().getTrip();
     assertEquals(TRIP_ID, trip.getId(), "Trip should be mapped");
@@ -183,6 +182,14 @@ class AddedTripBuilderTest {
     assertEquals(STOP_A, stopPattern.getStop(0));
     assertEquals(STOP_B, stopPattern.getStop(1));
     assertEquals(STOP_C, stopPattern.getStop(2));
+
+    // Assert pickup/dropoff defaults: no alighting at first stop, no boarding at last stop
+    assertEquals(PickDrop.SCHEDULED, pattern.getBoardType(0), "Can board at first stop");
+    assertEquals(PickDrop.NONE, pattern.getAlightType(0), "Cannot alight at first stop");
+    assertEquals(PickDrop.SCHEDULED, pattern.getBoardType(1), "Can board at middle stop");
+    assertEquals(PickDrop.SCHEDULED, pattern.getAlightType(1), "Can alight at middle stop");
+    assertEquals(PickDrop.NONE, pattern.getBoardType(2), "Cannot board at last stop");
+    assertEquals(PickDrop.SCHEDULED, pattern.getAlightType(2), "Can alight at last stop");
 
     // Assert scheduled timetable
     var scheduledTimes = pattern.getScheduledTimetable().getTripTimes(trip);
@@ -253,10 +260,9 @@ class AddedTripBuilderTest {
       "DATASOURCE"
     ).build();
 
-    assertTrue(firstAddedTrip.isSuccess(), "Trip creation should succeed");
-    assertTrue(firstAddedTrip.successValue().routeCreation());
+    assertTrue(firstAddedTrip.routeCreation());
 
-    var firstTrip = firstAddedTrip.successValue().tripTimes().getTrip();
+    var firstTrip = firstAddedTrip.tripTimes().getTrip();
 
     var tripId2 = TimetableRepositoryForTest.id("TRIP_ID_2");
     var datedServiceJourneyId2 = TimetableRepositoryForTest.id("DATED_SERVICE_JOURNEY_ID_2");
@@ -284,15 +290,13 @@ class AddedTripBuilderTest {
       "DATASOURCE"
     ).build();
 
-    assertTrue(secondAddedTrip.isSuccess(), "Trip creation should succeed");
-
     // Assert trip
-    Trip secondTrip = secondAddedTrip.successValue().tripTimes().getTrip();
+    Trip secondTrip = secondAddedTrip.tripTimes().getTrip();
     assertEquals(tripId2, secondTrip.getId(), "Trip should be mapped");
     assertNotEquals(firstTrip, secondTrip);
 
     // Assert trip times
-    var times = secondAddedTrip.successValue().tripTimes();
+    var times = secondAddedTrip.tripTimes();
     assertEquals(secondTrip, times.getTrip());
     assertEquals(RealTimeState.ADDED, times.getRealTimeState());
     assertEquals(secondsInDay(11, 19), times.getArrivalTime(0));
@@ -328,15 +332,13 @@ class AddedTripBuilderTest {
       "DATASOURCE"
     ).build();
 
-    assertTrue(addedTrip.isSuccess(), "Trip creation should succeed");
-
     // Assert trip
-    Trip trip = addedTrip.successValue().tripTimes().getTrip();
+    Trip trip = addedTrip.tripTimes().getTrip();
     assertEquals(TRIP_ID, trip.getId(), "Trip should be mapped");
     assertSame(REPLACED_ROUTE, trip.getRoute());
 
     // Assert route
-    assertFalse(addedTrip.successValue().routeCreation(), "The existing route should be reused");
+    assertFalse(addedTrip.routeCreation(), "The existing route should be reused");
   }
 
   @Test
@@ -364,14 +366,12 @@ class AddedTripBuilderTest {
       "DATASOURCE"
     ).build();
 
-    assertTrue(addedTrip.isSuccess(), "Trip creation should succeed");
-
     // Assert trip
-    Trip trip = addedTrip.successValue().tripTimes().getTrip();
+    Trip trip = addedTrip.tripTimes().getTrip();
     assertEquals(TRIP_ID, trip.getId(), "Trip should be mapped");
 
     // Assert route
-    assertTrue(addedTrip.successValue().routeCreation(), "A new route should be created");
+    assertTrue(addedTrip.routeCreation(), "A new route should be created");
     Route route = trip.getRoute();
     assertEquals(LINE_REF, route.getId().getId(), "route should be mapped");
     assertEquals(AGENCY, route.getAgency(), "Agency should be taken from replaced route");
@@ -408,12 +408,11 @@ class AddedTripBuilderTest {
       HEADSIGN,
       List.of(),
       "DATASOURCE"
-    ).build();
+    );
 
-    assertTrue(addedTrip.isFailure(), "Trip creation should fail");
-    assertEquals(
-      UpdateError.UpdateErrorType.NO_START_DATE,
-      addedTrip.failureValue().errorType(),
+    assertFailure(
+      UpdateErrorType.NO_START_DATE,
+      addedTrip::build,
       "Trip creation should fail without start date"
     );
   }
@@ -462,12 +461,11 @@ class AddedTripBuilderTest {
       HEADSIGN,
       List.of(),
       "DATASOURCE"
-    ).build();
+    );
 
-    assertTrue(addedTrip.isFailure(), "Trip creation should fail");
-    assertEquals(
-      UpdateError.UpdateErrorType.NEGATIVE_DWELL_TIME,
-      addedTrip.failureValue().errorType(),
+    assertFailure(
+      UpdateErrorType.NEGATIVE_DWELL_TIME,
+      addedTrip::build,
       "Trip creation should fail with invalid dwell time"
     );
   }
@@ -502,12 +500,10 @@ class AddedTripBuilderTest {
       HEADSIGN,
       List.of(),
       "DATASOURCE"
-    ).build();
-
-    assertTrue(addedTrip.isFailure(), "Trip creation should fail");
-    assertEquals(
-      UpdateError.UpdateErrorType.TOO_FEW_STOPS,
-      addedTrip.failureValue().errorType(),
+    );
+    assertFailure(
+      UpdateErrorType.TOO_FEW_STOPS,
+      addedTrip::build,
       "Trip creation should fail with too few calls"
     );
   }
@@ -549,12 +545,11 @@ class AddedTripBuilderTest {
       HEADSIGN,
       List.of(),
       "DATASOURCE"
-    ).build();
+    );
 
-    assertTrue(addedTrip.isFailure(), "Trip creation should fail");
-    assertEquals(
-      UpdateError.UpdateErrorType.UNKNOWN_STOP,
-      addedTrip.failureValue().errorType(),
+    assertFailure(
+      UpdateErrorType.UNKNOWN_STOP,
+      addedTrip::build,
       "Trip creation should fail with call referring to unknown stop"
     );
   }

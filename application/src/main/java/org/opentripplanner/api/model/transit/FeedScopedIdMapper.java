@@ -5,13 +5,21 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import javax.annotation.Nullable;
+import org.opentripplanner.apis.support.InvalidInputException;
 import org.opentripplanner.core.model.id.FeedScopedId;
 
 /**
  * Handles mapping from external IDs into feed-scoped ones.
  */
 public interface FeedScopedIdMapper {
-  FeedScopedId parse(String id);
+  Optional<FeedScopedId> parse(String id);
+
+  /// Parse an id into a FeedScopedId, throwing an exception on invalid inputs
+  ///
+  /// @throws org.opentripplanner.apis.support.InvalidInputException if the input is not a valid FeedScopedId
+  default FeedScopedId parseStrict(String id) throws InvalidInputException {
+    return parse(id).orElseThrow(() -> new InvalidInputException("invalid feed-scoped-id: " + id));
+  }
 
   /**
    * @param id a string representation of the id that should be parsed. May be <code>null</code> or
@@ -20,10 +28,10 @@ public interface FeedScopedIdMapper {
    * <code>FeedScopedId</code> wrapped in an <Optional
    */
   default Optional<FeedScopedId> parseNullSafe(@Nullable String id) {
-    if (id == null || id.isBlank()) {
+    if (id == null) {
       return Optional.empty();
     }
-    return Optional.ofNullable(parse(id));
+    return parse(id);
   }
 
   /**

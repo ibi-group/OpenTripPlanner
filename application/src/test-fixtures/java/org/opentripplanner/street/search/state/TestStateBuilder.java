@@ -73,7 +73,7 @@ public class TestStateBuilder {
   }
 
   /**
-   * Create an initial state that start in a car.
+   * Create an initial state that starts in a car.
    */
   public static TestStateBuilder ofDriving() {
     return new TestStateBuilder(StreetMode.CAR);
@@ -233,6 +233,16 @@ public class TestStateBuilder {
       .withName(name)
       .buildAndConnect();
     currentState = edge.traverse(currentState)[0];
+    return this;
+  }
+
+  public TestStateBuilder escalatorEdgeAndStationEntrance() {
+    count++;
+    var from = (StreetVertex) currentState.vertex;
+    var to = new StationEntranceVertex(count, count, 12345, "B", Accessibility.POSSIBLE);
+    var edge = StreetModelForTest.escalatorEdge(from, to, 30);
+
+    currentState = requireSingleState(edge.traverse(currentState));
     return this;
   }
 

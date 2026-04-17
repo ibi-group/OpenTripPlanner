@@ -11,6 +11,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
+import org.opentripplanner.apis.support.InvalidInputException;
 import org.opentripplanner.apis.support.graphql.DataFetchingSupport;
 import org.opentripplanner.transit.model.basic.TransitMode;
 
@@ -71,7 +72,7 @@ class CanceledTripsFilterMapperTest {
       List.of(Map.of("include", List.of()), Map.of("include", List.of()))
     );
     var environment = getEnvironment(args);
-    var exception = assertThrows(IllegalArgumentException.class, () ->
+    var exception = assertThrows(InvalidInputException.class, () ->
       CanceledTripsFilterMapper.mapToTripOnServiceDateRequest(environment)
     );
     assertEquals("Only one filter is allowed for now.", exception.getMessage());
@@ -104,7 +105,7 @@ class CanceledTripsFilterMapperTest {
       List.of(Map.of("include", List.of(Map.of("modes", List.of()))))
     );
     var environment = getEnvironment(args);
-    var exception = assertThrows(IllegalArgumentException.class, () ->
+    var exception = assertThrows(InvalidInputException.class, () ->
       CanceledTripsFilterMapper.mapToTripOnServiceDateRequest(environment)
     );
     assertEquals(

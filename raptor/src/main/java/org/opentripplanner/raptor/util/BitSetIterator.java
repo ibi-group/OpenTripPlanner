@@ -4,7 +4,7 @@ import java.util.BitSet;
 import org.opentripplanner.raptor.spi.IntIterator;
 
 /**
- * TODO TGR
+ * Iterate over the set bits in the {@code BitSet}.
  */
 public final class BitSetIterator implements IntIterator {
 

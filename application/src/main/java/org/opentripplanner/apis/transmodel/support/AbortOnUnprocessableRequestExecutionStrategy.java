@@ -5,7 +5,7 @@ import graphql.execution.ExecutionStrategyParameters;
 import graphql.schema.DataFetchingEnvironment;
 import java.io.Closeable;
 import java.util.concurrent.CompletableFuture;
-import org.opentripplanner.apis.support.graphql.LoggingDataFetcherExceptionHandler;
+import org.opentripplanner.apis.support.graphql.OtpDataFetcherExceptionHandler;
 import org.opentripplanner.apis.transmodel.ResponseTooLargeException;
 import org.opentripplanner.framework.application.OTPRequestTimeoutException;
 import org.opentripplanner.utils.logging.ProgressTracker;
@@ -33,7 +33,7 @@ public class AbortOnUnprocessableRequestExecutionStrategy
   );
 
   public AbortOnUnprocessableRequestExecutionStrategy() {
-    super(new LoggingDataFetcherExceptionHandler());
+    super(new OtpDataFetcherExceptionHandler());
   }
 
   @Override

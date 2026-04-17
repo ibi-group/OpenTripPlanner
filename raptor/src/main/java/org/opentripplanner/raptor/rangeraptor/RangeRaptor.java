@@ -3,8 +3,6 @@ package org.opentripplanner.raptor.rangeraptor;
 import static java.util.Objects.requireNonNull;
 
 import org.opentripplanner.raptor.api.debug.RaptorTimers;
-import org.opentripplanner.raptor.api.model.RaptorConstants;
-import org.opentripplanner.raptor.api.model.RaptorTripSchedule;
 import org.opentripplanner.raptor.rangeraptor.internalapi.RangeRaptorWorker;
 import org.opentripplanner.raptor.rangeraptor.internalapi.RaptorRouter;
 import org.opentripplanner.raptor.rangeraptor.internalapi.RaptorRouterResult;
@@ -13,7 +11,9 @@ import org.opentripplanner.raptor.rangeraptor.transit.AccessPaths;
 import org.opentripplanner.raptor.rangeraptor.transit.RaptorTransitCalculator;
 import org.opentripplanner.raptor.rangeraptor.transit.RoundTracker;
 import org.opentripplanner.raptor.spi.IntIterator;
+import org.opentripplanner.raptor.spi.RaptorConstants;
 import org.opentripplanner.raptor.spi.RaptorTransitDataProvider;
+import org.opentripplanner.raptor.spi.RaptorTripSchedule;
 
 /**
  * The algorithm used herein is described in
@@ -40,7 +40,8 @@ import org.opentripplanner.raptor.spi.RaptorTransitDataProvider;
  *     (generating randomized schedules)
  * </ul>
  * <p>
- * This class originated as a rewrite of Conveyals RAPTOR code: https://github.com/conveyal/r5.
+ * This class originated as a rewrite of
+ * <a href="https://github.com/conveyal/r5">Conveyals RAPTOR code</a>.
  *
  * @param <T> The TripSchedule type defined by the user of the raptor API.
  */
@@ -84,7 +85,7 @@ public final class RangeRaptor<T extends RaptorTripSchedule> implements RaptorRo
     this.calculator = requireNonNull(calculator);
     this.timers = requireNonNull(timers);
     this.accessPaths = requireNonNull(accessPaths);
-    this.minNumberOfRounds = accessPaths.calculateMaxNumberOfRides();
+    this.minNumberOfRounds = accessPaths.maxNumberOfRides();
     this.roundTracker = requireNonNull(roundTracker);
     this.lifeCycle = requireNonNull(lifeCyclePublisher);
     this.timeoutHook = requireNonNull(timeoutHook);
@@ -125,7 +126,7 @@ public final class RangeRaptor<T extends RaptorTripSchedule> implements RaptorRo
   private void runRaptorForMinute(int iterationDepartureTime) {
     setupIteration(iterationDepartureTime);
     worker.applyStreetStopAccess();
-    worker.applyOnBoardTripAccess(iterationDepartureTime);
+    worker.applyOnBoardTripAccess();
 
     while (hasMoreRounds()) {
       lifeCycle.prepareForNextRound(roundTracker.nextRound());
@@ -133,7 +134,6 @@ public final class RangeRaptor<T extends RaptorTripSchedule> implements RaptorRo
       // NB since we have transfer limiting not bothering to cut off search when there are no
       // more transfers as that will be rare and complicates the code
       worker.routeTransit();
-      worker.routeTransitUsingOnBoardTripAccess();
       lifeCycle.transitsForRoundComplete();
 
       worker.applyOnBoardStopAccess();

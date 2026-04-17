@@ -24,15 +24,7 @@ import org.opentripplanner.utils.time.TimeUtils;
  */
 public class StreetSearchRequest implements AStarRequest {
 
-  private static final StreetSearchRequest DEFAULT = new StreetSearchRequest();
-
-  /**
-   * How close to do you have to be to the start or end to be considered "close".
-   *
-   * @see StreetSearchRequest#isCloseToStartOrEnd(Vertex)
-   * @see DominanceFunctions#betterOrEqualAndComparable(State, State)
-   */
-  public static final int MAX_CLOSENESS_METERS = 500;
+  public static final StreetSearchRequest DEFAULT = new StreetSearchRequest();
 
   // the time at which the search started
   private final Instant startTime;
@@ -80,7 +72,7 @@ public class StreetSearchRequest implements AStarRequest {
     this.rentalPeriod = null;
     this.intersectionTraversalCalculator = IntersectionTraversalCalculator.DEFAULT;
     this.extensionRequestContexts = List.of();
-    this.timeout = Duration.ofSeconds(30);
+    this.timeout = Duration.ofSeconds(5);
   }
 
   StreetSearchRequest(StreetSearchRequestBuilder builder) {
@@ -139,10 +131,20 @@ public class StreetSearchRequest implements AStarRequest {
     return mode;
   }
 
+  /**
+   * This is used to determine whether vertices are close to the beginning or end of the search.
+   *
+   * @see StreetSearchRequest#isCloseToStartOrEnd
+   */
   public Envelope fromEnvelope() {
     return fromEnvelope;
   }
 
+  /**
+   * This is used to determine whether vertices are close to the beginning or end of the search.
+   *
+   * @see StreetSearchRequest#isCloseToStartOrEnd
+   */
   public Envelope toEnvelope() {
     return toEnvelope;
   }
@@ -187,7 +189,6 @@ public class StreetSearchRequest implements AStarRequest {
    * <p>
    * If you encounter a case of this, you can adjust this code to take this into account.
    *
-   * @see StreetSearchRequest#MAX_CLOSENESS_METERS
    * @see DominanceFunctions#betterOrEqualAndComparable(State, State)
    */
   public boolean isCloseToStartOrEnd(Vertex vertex) {

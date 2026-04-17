@@ -1,15 +1,14 @@
 package org.opentripplanner.raptor.rangeraptor.internalapi;
 
-import java.util.Collections;
-import java.util.Iterator;
+import javax.annotation.Nullable;
 import org.opentripplanner.raptor.api.model.RaptorAccessEgress;
-import org.opentripplanner.raptor.api.model.RaptorOnBoardAccess;
-import org.opentripplanner.raptor.api.model.RaptorTripSchedule;
+import org.opentripplanner.raptor.api.model.RaptorStartOnBoardAccess;
 import org.opentripplanner.raptor.api.view.ArrivalView;
 import org.opentripplanner.raptor.rangeraptor.RangeRaptor;
 import org.opentripplanner.raptor.spi.RaptorConstrainedBoardingSearch;
 import org.opentripplanner.raptor.spi.RaptorRoute;
 import org.opentripplanner.raptor.spi.RaptorTimeTable;
+import org.opentripplanner.raptor.spi.RaptorTripSchedule;
 
 /**
  * Provides alternative implementations of some logic within the {@link RangeRaptor}.
@@ -76,19 +75,20 @@ public interface RoutingStrategy<T extends RaptorTripSchedule> {
     RaptorConstrainedBoardingSearch<T> txSearch
   );
 
-  default void registerOnBoardAccessStopArrival(RaptorOnBoardAccess access, int boardTime) {
+  default void registerOnBoardAccessStopArrival(RaptorStartOnBoardAccess access, int boardTime) {
     throw new UnsupportedOperationException(
       "On-board access is not yet supported for this routing strategy"
     );
   }
 
   /**
-   * @return an iterator over all on-board stop-arrivals currently in the state.
-   * The iterator allows removal and this is the expected way to remove or a stop-arrival. When
-   * removed is when we consider a stop-arrival to be "consumed".
+   * @return all on-board trip access arrivals for the given {@code routeIndex}. The arrivals are
+   * removed from state and can only be fetched once. The method returns {@code null} if no
+   * arrivals exist - this should be very efficient to check.
    */
-  default Iterator<? extends ArrivalView<T>> consumeOnBoardStopArrivals() {
-    return Collections.emptyIterator();
+  @Nullable
+  default OnBoardTripAccessPathsForRoute<T> consumeOnBoardStopArrivals(int routeIndex) {
+    return null;
   }
 
   /**

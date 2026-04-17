@@ -7,7 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.opentripplanner.raptor.spi.RaptorCostCalculator.ZERO_COST;
 
 import org.junit.jupiter.api.Test;
-import org.opentripplanner.raptor.api.model.RaptorTripSchedule;
+import org.opentripplanner.raptor.spi.RaptorTripSchedule;
 
 public class PatternRideC1Test {
 
@@ -30,6 +30,15 @@ public class PatternRideC1Test {
     assertFalse(
       comparator.leftDominanceExist(
         new PatternRideC1<>(null, 0, 0, 0, C1_LOW, C1_LOW, TRIP_SORT_INDEX_1, null),
+        new PatternRideC1<>(null, 0, 0, 0, C1_LOW, C1_LOW, TRIP_SORT_INDEX_1, null)
+      )
+    );
+
+    // Left sort index higher than right: should NOT dominate (tripSortIndex is not a dominance
+    // criterion in this direction — different trips are incomparable, only lower index dominates)
+    assertFalse(
+      comparator.leftDominanceExist(
+        new PatternRideC1<>(null, 0, 0, 0, C1_LOW, C1_LOW, TRIP_SORT_INDEX_2, null),
         new PatternRideC1<>(null, 0, 0, 0, C1_LOW, C1_LOW, TRIP_SORT_INDEX_1, null)
       )
     );

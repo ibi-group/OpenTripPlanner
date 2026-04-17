@@ -74,4 +74,23 @@ public class FilterChain implements TripFilter {
         )
       );
   }
+
+  @Override
+  public boolean acceptsAccessEgress(
+    CarpoolTrip trip,
+    WgsCoordinate coordinateOfPassenger,
+    Instant passengerDepartureTime,
+    Duration searchWindow
+  ) {
+    return filters
+      .stream()
+      .allMatch(filter ->
+        filter.acceptsAccessEgress(
+          trip,
+          coordinateOfPassenger,
+          passengerDepartureTime,
+          searchWindow
+        )
+      );
+  }
 }

@@ -1,5 +1,7 @@
 package org.opentripplanner.ext.carpooling.filter;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import org.opentripplanner.ext.carpooling.model.CarpoolTrip;
 import org.opentripplanner.street.geometry.SphericalDistanceLibrary;
@@ -87,6 +89,27 @@ public class DistanceBasedFilter implements TripFilter {
       maxDistanceMeters
     );
     return false;
+  }
+
+  // length of the trip is longer than the length from the trip to the passenger
+  @Override
+  public boolean acceptsAccessEgress(
+    CarpoolTrip trip,
+    WgsCoordinate coordinateOfPassenger,
+    Instant passengerDepartureTime,
+    Duration searchWindow
+  ) {
+    var tripStart = trip.routePoints().getFirst().asJtsCoordinate();
+    var tripEnd = trip.routePoints().getLast().asJtsCoordinate();
+
+    var tripLength = SphericalDistanceLibrary.distance(tripStart, tripEnd);
+    var lengthFromTripToPassenger = SphericalDistanceLibrary.fastDistance(
+      coordinateOfPassenger.asJtsCoordinate(),
+      tripStart,
+      tripEnd
+    );
+
+    return tripLength > lengthFromTripToPassenger;
   }
 
   double getMaxDistanceMeters() {

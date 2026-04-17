@@ -10,7 +10,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import javax.annotation.Nullable;
-import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.LineString;
 import org.opentripplanner.core.model.accessibility.Accessibility;
 import org.opentripplanner.core.model.basic.Cost;
@@ -120,15 +119,15 @@ public class ScheduledTransitLeg implements TransitLeg {
 
     this.generalizedCost = builder.generalizedCost();
 
-    List<Coordinate> transitLegCoordinates = LegConstructionSupport.extractTransitLegCoordinates(
+    LineString transitLegCoordinates = LegConstructionSupport.extractSubGeometry(
       tripPattern,
       boardStopPosInPattern,
       alightStopPosInPattern
     );
-    this.legGeometry = GeometryUtils.makeLineString(transitLegCoordinates);
+    this.legGeometry = transitLegCoordinates;
 
     this.distanceMeters = DoubleUtils.roundTo2Decimals(
-      GeometryUtils.sumDistances(transitLegCoordinates)
+      GeometryUtils.sumDistances(transitLegCoordinates.getCoordinateSequence())
     );
     this.transitAlerts = Set.copyOf(builder.alerts());
     this.fromViaLocationType = builder.fromViaLocationType();

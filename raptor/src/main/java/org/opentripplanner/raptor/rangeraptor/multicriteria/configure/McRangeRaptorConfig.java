@@ -5,7 +5,6 @@ import java.util.List;
 import java.util.Objects;
 import javax.annotation.Nullable;
 import org.opentripplanner.raptor.api.model.DominanceFunction;
-import org.opentripplanner.raptor.api.model.RaptorTripSchedule;
 import org.opentripplanner.raptor.api.path.RaptorPath;
 import org.opentripplanner.raptor.api.request.MultiCriteriaRequest;
 import org.opentripplanner.raptor.api.request.RaptorTransitGroupPriorityCalculator;
@@ -22,10 +21,11 @@ import org.opentripplanner.raptor.rangeraptor.multicriteria.McRangeRaptorWorkerS
 import org.opentripplanner.raptor.rangeraptor.multicriteria.MultiCriteriaRoutingStrategy;
 import org.opentripplanner.raptor.rangeraptor.multicriteria.ViaConnectionStopArrivalEventListener;
 import org.opentripplanner.raptor.rangeraptor.multicriteria.arrivals.ArrivalParetoSetComparatorFactory;
-import org.opentripplanner.raptor.rangeraptor.multicriteria.arrivals.ArrivalsEventListenerMapper;
+import org.opentripplanner.raptor.rangeraptor.multicriteria.arrivals.McArrivalsEventListenerFactory;
 import org.opentripplanner.raptor.rangeraptor.multicriteria.arrivals.McStopArrival;
 import org.opentripplanner.raptor.rangeraptor.multicriteria.arrivals.McStopArrivalFactory;
 import org.opentripplanner.raptor.rangeraptor.multicriteria.arrivals.McStopArrivals;
+import org.opentripplanner.raptor.rangeraptor.multicriteria.arrivals.StopsWithArriveByTransitCriteriaResolver;
 import org.opentripplanner.raptor.rangeraptor.multicriteria.arrivals.c1.StopArrivalFactoryC1;
 import org.opentripplanner.raptor.rangeraptor.multicriteria.arrivals.c2.StopArrivalFactoryC2;
 import org.opentripplanner.raptor.rangeraptor.multicriteria.heuristic.HeuristicsProvider;
@@ -38,6 +38,7 @@ import org.opentripplanner.raptor.rangeraptor.multicriteria.ride.c2.PatternRideC
 import org.opentripplanner.raptor.rangeraptor.multicriteria.ride.c2.TransitGroupPriorityRideFactory;
 import org.opentripplanner.raptor.rangeraptor.path.DestinationArrivalPaths;
 import org.opentripplanner.raptor.rangeraptor.path.configure.PathConfig;
+import org.opentripplanner.raptor.spi.RaptorTripSchedule;
 import org.opentripplanner.raptor.util.paretoset.ParetoComparator;
 import org.opentripplanner.raptor.util.paretoset.ParetoSet;
 import org.opentripplanner.raptor.util.paretoset.ParetoSetEventListener;
@@ -120,17 +121,24 @@ public class McRangeRaptorConfig<T extends RaptorTripSchedule> {
    */
   public McStopArrivals<T> stopArrivals() {
     if (arrivals == null) {
+      var stopsWithArriveByTransitCriteria = StopsWithArriveByTransitCriteriaResolver.resolve(
+        contextSegment.accessPaths(),
+        contextSegment.egressPaths(),
+        contextSegment.viaConnections()
+      );
+
       // Glue arrivals to next-connection, egress/destination events, and debug-event on stops.
-      var listeners = ArrivalsEventListenerMapper.<T>map(
+      var listenersFactory = new McArrivalsEventListenerFactory<>(
         context().debugFactory(),
         createViaConnectionListeners(),
         contextSegment.egressPaths(),
         createDestinationArrivalPaths()
-      );
+      ).create();
 
       this.arrivals = new McStopArrivals<>(
         context().nStops(),
-        listeners,
+        stopsWithArriveByTransitCriteria,
+        listenersFactory.arrivalListeners(),
         createFactoryParetoComparator(),
         context().debugFactory()
       );

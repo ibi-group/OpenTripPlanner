@@ -1,9 +1,8 @@
 package org.opentripplanner.model.plan.leg;
 
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.LineString;
+import org.opentripplanner.street.geometry.GeometryUtils;
 import org.opentripplanner.transit.model.network.TripPattern;
 
 /**
@@ -15,19 +14,15 @@ public class LegConstructionSupport {
    * Given a pattern, board and alight stop index compute the list of coordinates that this
    * segment of the pattern visits.
    */
-  public static List<Coordinate> extractTransitLegCoordinates(
+  public static LineString extractSubGeometry(
     TripPattern tripPattern,
     int boardStopIndexInPattern,
     int alightStopIndexInPattern
   ) {
-    List<Coordinate> transitLegCoordinates = new ArrayList<>();
-
+    var lineStrings = new ArrayList<LineString>();
     for (int i = boardStopIndexInPattern + 1; i <= alightStopIndexInPattern; i++) {
-      transitLegCoordinates.addAll(
-        Arrays.asList(tripPattern.getHopGeometry(i - 1).getCoordinates())
-      );
+      lineStrings.add(tripPattern.getHopGeometry(i - 1));
     }
-
-    return transitLegCoordinates;
+    return GeometryUtils.concatenateLineStrings(lineStrings);
   }
 }
