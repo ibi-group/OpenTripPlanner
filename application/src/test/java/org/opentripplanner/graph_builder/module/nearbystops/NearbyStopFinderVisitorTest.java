@@ -82,8 +82,10 @@ class NearbyStopFinderVisitorTest {
       visitor.visitVertex(state);
 
       assertEquals(1, visitor.statesForAreaStopIds().size());
-      assertTrue(visitor.statesForAreaStopIds().containsKey(AREA_STOP_ID));
-      assertEquals(state, visitor.statesForAreaStopIds().get(AREA_STOP_ID).iterator().next());
+      assertEquals(
+        "[A:area-1=State{time: 1970-01-01T00:00:00Z, weight: 0.0, vertex: {10.0_10.0 lat,lng=10.0,10.0}}]",
+        visitor.statesForAreaStopIds().toString()
+      );
     });
   }
 
@@ -117,7 +119,10 @@ class NearbyStopFinderVisitorTest {
       visitor.visitVertex(state);
 
       assertEquals(1, visitor.statesForAreaStopIds().size());
-      assertTrue(visitor.statesForAreaStopIds().containsKey(AREA_STOP_ID));
+      assertEquals(
+        "[A:area-1=State{time: 1970-01-01T00:00:00Z, weight: 0.0, vertex: {30.0_30.0 lat,lng=30.0,30.0}}]",
+        visitor.statesForAreaStopIds().toString()
+      );
     });
   }
 }

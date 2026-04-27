@@ -9,7 +9,7 @@ import org.junit.jupiter.api.Test;
 class MinMapTest {
 
   private static final String KEY = "key";
-  private final MinMap<String, String> subject = new MinMap<>();
+  private final MinMap<String, String> subject = MinMap.ofNaturalOrder();
 
   @Test
   void putMinAndGet() {

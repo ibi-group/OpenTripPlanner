@@ -43,7 +43,7 @@ class PatternNearbyStopFilter implements NearbyStopFilter {
     boolean reverseDirection
   ) {
     // Track the closest stop on each pattern passing nearby.
-    MinMap<FeedScopedId, NearbyStop> closestStopForPattern = new MinMap<>();
+    MinMap<FeedScopedId, NearbyStop> closestStopForPattern = MinMap.ofNaturalOrder();
 
     // The end result
     Set<NearbyStop> uniqueStopsResult = new HashSet<>();
