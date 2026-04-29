@@ -14,12 +14,19 @@ import org.opentripplanner.street.search.state.State;
 public class CarpoolAccessEgress implements RoutingAccessEgress {
 
   /**
-   * The departure time of the passenger in seconds since transitSearchTimeZero.
+   * The Raptor departure time of this access/egress leg, in seconds since
+   * {@code transitSearchTimeZero}. For a carpool leg this is the moment the car arrives at the
+   * pickup: the passenger must be ready by this instant, since the driver is on a committed
+   * schedule and cannot wait. The boarding dwell at the pickup is part of
+   * {@link #durationInSeconds}, not of the time before departure.
    */
   private final int departureTimeOfPassenger;
 
   /**
-   * The arrival time of the passenger in seconds since transitSearchTimeZero.
+   * The Raptor arrival time of this access/egress leg, in seconds since
+   * {@code transitSearchTimeZero}. For a carpool leg this is the moment the car reaches the
+   * dropoff (the transit stop for access, the passenger's destination for egress), after
+   * boarding dwell and shared travel.
    */
   private final int arrivalTimeOfPassenger;
   private final int stop;
@@ -112,7 +119,7 @@ public class CarpoolAccessEgress implements RoutingAccessEgress {
     It is never used for instances of CarpoolAccessEgress, but this might change in the future.
    */
   @Override
-  public State getLastState() {
+  public State getFinalState() {
     throw new UnsupportedOperationException(
       "Fetching last state of CarpoolAccessEgress is not yet implemented"
     );

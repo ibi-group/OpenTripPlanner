@@ -1,13 +1,13 @@
 package org.opentripplanner.ext.fares.service.gtfs.v2.custom;
 
 import static com.google.common.truth.Truth.assertThat;
+import static org.opentripplanner.core.model.id.FeedScopedIdForTestFactory.id;
 import static org.opentripplanner.ext.fares.service.gtfs.v2.custom.OregonHopFareFactory.ADULT_REGIONAL_SINGLE_RIDE;
 import static org.opentripplanner.ext.fares.service.gtfs.v2.custom.OregonHopFareFactory.CATEGORY_ADULT;
 import static org.opentripplanner.ext.fares.service.gtfs.v2.custom.OregonHopFareFactory.HOP_FASTPASS;
 import static org.opentripplanner.ext.fares.service.gtfs.v2.custom.OregonHopFareFactory.LG_CTRAN_REGIONAL;
 import static org.opentripplanner.ext.fares.service.gtfs.v2.custom.OregonHopFareFactory.LG_TRIMET_TRIMET;
 import static org.opentripplanner.ext.fares.service.gtfs.v2.custom.OregonHopFareFactory.TRIMET_ADULT_SINGLE_RIDE;
-import static org.opentripplanner.transit.model._data.FeedScopedIdForTestFactory.id;
 
 import java.util.List;
 import java.util.Set;

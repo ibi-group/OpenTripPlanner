@@ -1,10 +1,10 @@
 package org.opentripplanner.routing.graphfinder;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.opentripplanner.core.model.id.FeedScopedIdForTestFactory.id;
 import static org.opentripplanner.model.plan.PlanTestConstants.T11_00;
 import static org.opentripplanner.model.plan.PlanTestConstants.T11_05;
 import static org.opentripplanner.model.plan.PlanTestConstants.T11_10;
-import static org.opentripplanner.transit.model._data.TimetableRepositoryForTest.id;
 import static org.opentripplanner.transit.model._data.TimetableRepositoryForTest.route;
 import static org.opentripplanner.transit.model._data.TimetableRepositoryForTest.tripPattern;
 

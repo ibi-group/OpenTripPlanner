@@ -21,13 +21,13 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
-import org.opentripplanner.api.common.LocationStringParser;
 import org.opentripplanner.core.model.id.FeedScopedId;
 import org.opentripplanner.core.model.time.LocalDateInterval;
 import org.opentripplanner.ext.fares.service.gtfs.v1.DefaultFareService;
 import org.opentripplanner.gtfs.graphbuilder.GtfsBundle;
 import org.opentripplanner.gtfs.graphbuilder.GtfsBundleTestFactory;
 import org.opentripplanner.gtfs.graphbuilder.GtfsModule;
+import org.opentripplanner.model.GenericLocation;
 import org.opentripplanner.model.plan.Itinerary;
 import org.opentripplanner.model.plan.Leg;
 import org.opentripplanner.routing.algorithm.raptoradapter.transit.mappers.RealTimeRaptorTransitDataUpdater;
@@ -97,10 +97,10 @@ public abstract class GtfsTest {
       .withDateTime(Instant.ofEpochSecond(Math.abs(dateTime)));
 
     if (fromVertex != null && !fromVertex.isEmpty()) {
-      builder.withFrom(LocationStringParser.getGenericLocation(null, FEED_ID + ":" + fromVertex));
+      builder.withFrom(GenericLocation.fromStopId(FeedScopedId.of(FEED_ID, fromVertex)));
     }
     if (toVertex != null && !toVertex.isEmpty()) {
-      builder.withTo(LocationStringParser.getGenericLocation(null, FEED_ID + ":" + toVertex));
+      builder.withTo(GenericLocation.fromStopId(FeedScopedId.of(FEED_ID, toVertex)));
     }
     if (onTripId != null && !onTripId.isEmpty()) {
       // TODO VIA - set different on-board request

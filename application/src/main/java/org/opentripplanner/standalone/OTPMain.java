@@ -193,11 +193,6 @@ public class OTPMain {
     // publishing the config version info make it available to the APIs
     setOtpConfigVersionsOnServerInfo(app);
 
-    /* Start visualizer if requested. */
-    if (params.visualize) {
-      app.graphVisualizer().run();
-    }
-
     /* Start web server if requested. */
     // We could start the server first so it can report build/load progress to a load balancer.
     // This would also avoid the awkward call to set the router on the appConstruction after it's constructed.

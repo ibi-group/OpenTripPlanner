@@ -1,13 +1,13 @@
 package org.opentripplanner.ext.fares.model;
 
+import static org.opentripplanner.core.model.id.FeedScopedIdForTestFactory.id;
 import static org.opentripplanner.ext.fares.model.FareModelForTest.fareProduct;
 import static org.opentripplanner.transit.model._data.TimetableRepositoryForTest.groupOfRoutes;
-import static org.opentripplanner.transit.model._data.TimetableRepositoryForTest.id;
 
 import java.time.LocalTime;
 import org.opentripplanner.core.model.id.FeedScopedId;
+import org.opentripplanner.core.model.id.FeedScopedIdForTestFactory;
 import org.opentripplanner.model.fare.FareProduct;
-import org.opentripplanner.transit.model._data.FeedScopedIdForTestFactory;
 import org.opentripplanner.transit.model.basic.Money;
 import org.opentripplanner.transit.model.network.GroupOfRoutes;
 

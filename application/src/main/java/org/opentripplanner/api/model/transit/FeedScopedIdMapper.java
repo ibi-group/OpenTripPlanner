@@ -25,7 +25,7 @@ public interface FeedScopedIdMapper {
    * @param id a string representation of the id that should be parsed. May be <code>null</code> or
    *           blank
    * @return <code>Optional.empty()</code> if the input id is <code>null</code> or blank, otherwise a
-   * <code>FeedScopedId</code> wrapped in an <Optional
+   * <code>FeedScopedId</code> wrapped in an Optional
    */
   default Optional<FeedScopedId> parseNullSafe(@Nullable String id) {
     if (id == null) {

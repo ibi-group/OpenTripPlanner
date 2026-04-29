@@ -1,10 +1,11 @@
 package org.opentripplanner.transit.model._data;
 
-import static org.opentripplanner.transit.model._data.FeedScopedIdForTestFactory.id;
+import static org.opentripplanner.core.model.id.FeedScopedIdForTestFactory.id;
 
 import java.time.LocalDate;
 import java.time.ZoneId;
 import org.opentripplanner.LocalTimeParser;
+import org.opentripplanner.core.model.id.FeedScopedIdForTestFactory;
 import org.opentripplanner.routing.algorithm.raptoradapter.transit.RaptorTransitData;
 import org.opentripplanner.routing.algorithm.raptoradapter.transit.mappers.RaptorTransitDataMapper;
 import org.opentripplanner.routing.algorithm.raptoradapter.transit.mappers.RealTimeRaptorTransitDataUpdater;

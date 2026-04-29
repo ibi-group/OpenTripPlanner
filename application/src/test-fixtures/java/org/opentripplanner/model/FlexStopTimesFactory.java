@@ -1,21 +1,27 @@
-package org.opentripplanner.ext.flex;
+package org.opentripplanner.model;
 
 import org.opentripplanner._support.geometry.Polygons;
-import org.opentripplanner.model.PickDrop;
-import org.opentripplanner.model.StopTime;
 import org.opentripplanner.transit.model._data.TimetableRepositoryForTest;
+import org.opentripplanner.transit.model.site.GroupStop;
 import org.opentripplanner.transit.model.site.RegularStop;
 import org.opentripplanner.transit.model.site.StopLocation;
 import org.opentripplanner.transit.model.timetable.Trip;
 import org.opentripplanner.utils.time.TimeUtils;
 
-public class FlexStopTimesForTest {
+public class FlexStopTimesFactory {
 
   private static final TimetableRepositoryForTest TEST_MODEL = TimetableRepositoryForTest.of();
   private static final StopLocation AREA_STOP = TEST_MODEL.areaStop("area")
     .withGeometry(Polygons.BERLIN)
     .build();
-  private static final RegularStop REGULAR_STOP = TEST_MODEL.stop("stop").build();
+  private static final RegularStop REGULAR_STOP_1 = TEST_MODEL.stop("stop-1").build();
+  private static final RegularStop REGULAR_STOP_2 = TEST_MODEL.stop("stop-2").build();
+  private static final RegularStop REGULAR_STOP_3 = TEST_MODEL.stop("stop-3").build();
+  private static final GroupStop GROUP_STOP = TEST_MODEL.groupStop(
+    "group-stop1",
+    REGULAR_STOP_2,
+    REGULAR_STOP_3
+  );
 
   private static final Trip TRIP = TimetableRepositoryForTest.trip("flex").build();
 
@@ -89,9 +95,18 @@ public class FlexStopTimesForTest {
 
   public static StopTime regularStop(int arrivalTime, int departureTime) {
     var stopTime = new StopTime();
-    stopTime.setStop(REGULAR_STOP);
+    stopTime.setStop(REGULAR_STOP_1);
     stopTime.setArrivalTime(arrivalTime);
     stopTime.setDepartureTime(departureTime);
+    stopTime.setTrip(TRIP);
+    return stopTime;
+  }
+
+  public static StopTime groupStop(String windowStart, String windowEnd) {
+    var stopTime = new StopTime();
+    stopTime.setStop(GROUP_STOP);
+    stopTime.setFlexWindowStart(TimeUtils.time(windowStart));
+    stopTime.setFlexWindowEnd(TimeUtils.time(windowEnd));
     stopTime.setTrip(TRIP);
     return stopTime;
   }

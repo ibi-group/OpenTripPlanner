@@ -1,20 +1,20 @@
 package org.opentripplanner.ext.carpooling.model;
 
-import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import org.opentripplanner.core.model.id.FeedScopedId;
 import org.opentripplanner.transit.model.framework.AbstractEntityBuilder;
 
+/**
+ * Builder for {@link CarpoolTrip} instances.
+ */
 public class CarpoolTripBuilder extends AbstractEntityBuilder<CarpoolTrip, CarpoolTripBuilder> {
 
   private ZonedDateTime startTime;
   private ZonedDateTime endTime;
   private String provider;
-  private Duration deviationBudget = Duration.ofMinutes(15);
-  private int availableSeats = 1;
+  private int totalCapacity = CarpoolTrip.DEFAULT_TOTAL_CAPACITY;
   private List<CarpoolStop> stops = new ArrayList<>();
 
   public CarpoolTripBuilder(FeedScopedId id) {
@@ -26,8 +26,7 @@ public class CarpoolTripBuilder extends AbstractEntityBuilder<CarpoolTrip, Carpo
     this.startTime = original.startTime();
     this.endTime = original.endTime();
     this.provider = original.provider();
-    this.deviationBudget = original.deviationBudget();
-    this.availableSeats = original.availableSeats();
+    this.totalCapacity = original.totalCapacity();
     this.stops = new ArrayList<>(original.stops());
   }
 
@@ -46,13 +45,8 @@ public class CarpoolTripBuilder extends AbstractEntityBuilder<CarpoolTrip, Carpo
     return this;
   }
 
-  public CarpoolTripBuilder withDeviationBudget(Duration deviationBudget) {
-    this.deviationBudget = deviationBudget;
-    return this;
-  }
-
-  public CarpoolTripBuilder withAvailableSeats(int availableSeats) {
-    this.availableSeats = availableSeats;
+  public CarpoolTripBuilder withTotalCapacity(int totalCapacity) {
+    this.totalCapacity = totalCapacity;
     return this;
   }
 
@@ -68,28 +62,12 @@ public class CarpoolTripBuilder extends AbstractEntityBuilder<CarpoolTrip, Carpo
     return provider;
   }
 
-  public Duration deviationBudget() {
-    return deviationBudget;
-  }
-
-  public int availableSeats() {
-    return availableSeats;
+  public int totalCapacity() {
+    return totalCapacity;
   }
 
   public CarpoolTripBuilder withStops(List<CarpoolStop> stops) {
     this.stops = new ArrayList<>(stops);
-    return this;
-  }
-
-  public CarpoolTripBuilder addStop(CarpoolStop stop) {
-    this.stops.add(stop);
-    // Sort stops by sequence number to maintain order
-    this.stops.sort(Comparator.comparingInt(CarpoolStop::getSequenceNumber));
-    return this;
-  }
-
-  public CarpoolTripBuilder clearStops() {
-    this.stops.clear();
     return this;
   }
 

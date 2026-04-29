@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 import org.opentripplanner.core.model.i18n.NonLocalizedString;
 import org.opentripplanner.core.model.id.FeedScopedId;
+import org.opentripplanner.core.model.id.FeedScopedIdForTestFactory;
 import org.opentripplanner.transit.model._data.TimetableRepositoryForTest;
 import org.opentripplanner.transit.model.basic.SubMode;
 import org.opentripplanner.transit.model.basic.TransitMode;
@@ -39,7 +40,7 @@ class RouteTest {
   private static final Integer GTFS_SORT_ORDER = 0;
   private static final String URL = "url";
   public static final Agency AGENCY = TimetableRepositoryForTest.AGENCY;
-  private static final Route SUBJECT = Route.of(TimetableRepositoryForTest.id(ID))
+  private static final Route SUBJECT = Route.of(FeedScopedIdForTestFactory.id(ID))
     .withShortName(SHORT_NAME)
     .withLongName(LONG_NAME)
     .withDescription(DESCRIPTION)
@@ -94,7 +95,7 @@ class RouteTest {
   @Test
   void sameAs() {
     assertTrue(SUBJECT.sameAs(SUBJECT.copy().build()));
-    assertFalse(SUBJECT.sameAs(SUBJECT.copy().withId(TimetableRepositoryForTest.id("X")).build()));
+    assertFalse(SUBJECT.sameAs(SUBJECT.copy().withId(FeedScopedIdForTestFactory.id("X")).build()));
     assertFalse(SUBJECT.sameAs(SUBJECT.copy().withShortName("X").build()));
     assertFalse(SUBJECT.sameAs(SUBJECT.copy().withLongName(new NonLocalizedString("X")).build()));
     assertFalse(SUBJECT.sameAs(SUBJECT.copy().withDescription("X").build()));

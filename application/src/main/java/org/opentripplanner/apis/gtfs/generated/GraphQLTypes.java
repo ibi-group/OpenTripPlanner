@@ -1623,6 +1623,35 @@ public class GraphQLTypes {
     }
   }
 
+  public static class GraphQLLinearCostFunctionInput {
+
+    private Double coefficient;
+    private org.opentripplanner.core.model.basic.Cost constant;
+
+    public GraphQLLinearCostFunctionInput(Map<String, Object> args) {
+      if (args != null) {
+        this.coefficient = (Double) args.get("coefficient");
+        this.constant = (org.opentripplanner.core.model.basic.Cost) args.get("constant");
+      }
+    }
+
+    public Double getGraphQLCoefficient() {
+      return this.coefficient;
+    }
+
+    public org.opentripplanner.core.model.basic.Cost getGraphQLConstant() {
+      return this.constant;
+    }
+
+    public void setGraphQLCoefficient(Double coefficient) {
+      this.coefficient = coefficient;
+    }
+
+    public void setGraphQLConstant(org.opentripplanner.core.model.basic.Cost constant) {
+      this.constant = constant;
+    }
+  }
+
   public static class GraphQLLocalDateRangeInput {
 
     private java.time.LocalDate end;
@@ -4721,6 +4750,7 @@ public class GraphQLTypes {
 
   public enum GraphQLRoutingErrorCode {
     LOCATION_NOT_FOUND,
+    NO_DIRECT_MODE_CONNECTION,
     NO_STOPS_IN_RANGE,
     NO_TRANSIT_CONNECTION,
     NO_TRANSIT_CONNECTION_IN_SEARCH_WINDOW,
@@ -5459,6 +5489,7 @@ public class GraphQLTypes {
     private GraphQLAlightPreferencesInput alight;
     private GraphQLBoardPreferencesInput board;
     private List<GraphQLTransitFilterInput> filters;
+    private GraphQLLinearCostFunctionInput relaxTransitGroupPriority;
     private GraphQLTimetablePreferencesInput timetable;
     private GraphQLTransferPreferencesInput transfer;
 
@@ -5471,6 +5502,9 @@ public class GraphQLTypes {
             .map(o -> o == null ? null : new GraphQLTransitFilterInput(o))
             .collect(Collectors.toList());
         }
+        this.relaxTransitGroupPriority = new GraphQLLinearCostFunctionInput(
+          (Map<String, Object>) args.get("relaxTransitGroupPriority")
+        );
         this.timetable = new GraphQLTimetablePreferencesInput(
           (Map<String, Object>) args.get("timetable")
         );
@@ -5492,6 +5526,10 @@ public class GraphQLTypes {
       return this.filters;
     }
 
+    public GraphQLLinearCostFunctionInput getGraphQLRelaxTransitGroupPriority() {
+      return this.relaxTransitGroupPriority;
+    }
+
     public GraphQLTimetablePreferencesInput getGraphQLTimetable() {
       return this.timetable;
     }
@@ -5510,6 +5548,12 @@ public class GraphQLTypes {
 
     public void setGraphQLFilters(List<GraphQLTransitFilterInput> filters) {
       this.filters = filters;
+    }
+
+    public void setGraphQLRelaxTransitGroupPriority(
+      GraphQLLinearCostFunctionInput relaxTransitGroupPriority
+    ) {
+      this.relaxTransitGroupPriority = relaxTransitGroupPriority;
     }
 
     public void setGraphQLTimetable(GraphQLTimetablePreferencesInput timetable) {

@@ -6,7 +6,6 @@ import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Multimap;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.Set;
 import org.opentripplanner.astar.spi.TraverseVisitor;
 import org.opentripplanner.core.model.id.FeedScopedId;
@@ -19,7 +18,6 @@ import org.opentripplanner.street.model.vertex.TransitStopVertex;
 import org.opentripplanner.street.model.vertex.Vertex;
 import org.opentripplanner.street.search.TraverseMode;
 import org.opentripplanner.street.search.state.State;
-import org.opentripplanner.transit.model.site.AreaStop;
 
 /**
  * A {@link TraverseVisitor} that collects transit stops and flex area stops during an A* search,
@@ -31,21 +29,18 @@ import org.opentripplanner.transit.model.site.AreaStop;
  */
 class NearbyStopFinderVisitor implements TraverseVisitor<State, Edge> {
 
-  private final StopResolver stopResolver;
   private final Set<Vertex> originVertices;
   private final Set<Vertex> ignoreVertices;
   private final boolean reverseDirection;
 
   private final List<NearbyStop> transitStopsFound = new ArrayList<>();
-  private final Multimap<AreaStop, State> areaStopStates = ArrayListMultimap.create();
+  private final Multimap<FeedScopedId, State> statesForAreaStopIds = ArrayListMultimap.create();
 
   NearbyStopFinderVisitor(
-    StopResolver stopResolver,
     Set<Vertex> originVertices,
     Set<Vertex> ignoreVertices,
     boolean reverseDirection
   ) {
-    this.stopResolver = requireNonNull(stopResolver);
     this.originVertices = requireNonNull(originVertices);
     this.ignoreVertices = requireNonNull(ignoreVertices);
     this.reverseDirection = reverseDirection;
@@ -60,8 +55,7 @@ class NearbyStopFinderVisitor implements TraverseVisitor<State, Edge> {
     }
 
     if (vertex instanceof TransitStopVertex tsv && state.isFinal()) {
-      var stop = requireNonNull(stopResolver.getRegularStop(tsv.getId()));
-      transitStopsFound.add(NearbyStop.nearbyStopForState(state, stop));
+      transitStopsFound.add(NearbyStop.nearbyStopForState(state, tsv.getId()));
     }
 
     if (
@@ -70,9 +64,8 @@ class NearbyStopFinderVisitor implements TraverseVisitor<State, Edge> {
       !streetVertex.areaStops().isEmpty()
     ) {
       for (FeedScopedId id : streetVertex.areaStops()) {
-        AreaStop areaStop = Objects.requireNonNull(stopResolver.getAreaStop(id));
         if (canBoardFlex(state)) {
-          areaStopStates.put(areaStop, state);
+          statesForAreaStopIds.put(id, state);
         }
       }
     }
@@ -88,8 +81,8 @@ class NearbyStopFinderVisitor implements TraverseVisitor<State, Edge> {
     return transitStopsFound;
   }
 
-  Multimap<AreaStop, State> areaStopStates() {
-    return areaStopStates;
+  Multimap<FeedScopedId, State> statesForAreaStopIds() {
+    return statesForAreaStopIds;
   }
 
   private boolean canBoardFlex(State state) {

@@ -16,7 +16,6 @@ import org.opentripplanner.utils.tostring.ToStringBuilder;
 /**
  * An implementation of the {@link RaptorTripSchedule} for unit-testing.
  * <p>
- * The {@link RaptorTripPattern} for this schedule return {@code stopIndex == stopPosInPattern + 1 }
  *
  * @deprecated This was earlier part of Raptor and should not be used outside the Raptor
  *             module. Use the OTP model entities instead.
@@ -82,6 +81,11 @@ public class TestTripSchedule implements TripSchedule {
   @Override
   public int departure(int stopPosInPattern) {
     return departureTimes[stopPosInPattern];
+  }
+
+  @Override
+  public int relativeTravelDuration(int boardTime) {
+    return arrivalTimes[arrivalTimes.length - 1] - boardTime;
   }
 
   public TestTripPattern pattern() {

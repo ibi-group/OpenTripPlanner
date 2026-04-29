@@ -1,10 +1,13 @@
 package org.opentripplanner.raptor.spi;
 
-/**
- * The responsibility is to calculate multi-criteria value (like the generalized cost).
- * <p/>
- * The implementation should be immutable and thread safe.
- */
+///
+/// The responsibility is to calculate multi-criteria value (like the generalized cost).
+///
+/// The implementation should be immutable and thread safe.
+///
+/// See {@link RaptorCostConverter} for resolution and units for time/duration and
+/// c1(generalized-cost).
+///
 public interface RaptorCostCalculator<T extends RaptorTripSchedule> {
   /**
    * The cost is zero (0) if it's not calculated or if the cost "element" have no cost associated.
@@ -28,31 +31,35 @@ public interface RaptorCostCalculator<T extends RaptorTripSchedule> {
   );
 
   /**
-   * Calculate cost of boarding a trip. This should be the cost of the waiting time, any board and
-   * transfer cost, and the penalty for the board stop visit. This cost should NOT include the
-   * previous stop arrival cost, but the incremental cost to be added to the previous stop arrival
-   * cost.
+   * Calculate the cost of riding a trip for the given {@code transitDuration} in seconds.
    */
-  int onTripRelativeRidingCost(int boardTime, T tripScheduledBoarded);
+  int transitCost(int transitDuration, T tripScheduledBoarded);
 
   /**
    * Calculate the value when arriving by transit.
    */
-  int transitArrivalCost(int boardCost, int alightSlack, int transitTime, T trip, int toStopIndex);
+  int transitArrivalCost(
+    int boardCost,
+    int alightSlack,
+    int transitDuration,
+    T trip,
+    int toStopIndex
+  );
 
   /**
-   * Calculate the value, when waiting between the last transit and egress paths
+   * Calculate the cost of waiting, when waiting between two transit legs. The wait duration is
+   * in seconds, and include board and alight slack.
    */
-  int waitCost(int waitTimeInSeconds);
+  int waitCost(int waitDuration);
 
   /**
    * Used for estimating the remaining value for a criteria at a given stop arrival. The calculated
    * value should be an optimistic estimate for the heuristics to work properly. So, to calculate
-   * the generalized cost for given the {@code minTravelTime} and {@code minNumTransfers} returning
-   * the greatest value, which is guaranteed to be less than the
-   * <em>real value</em> would be correct and a good choice.
+   * the generalized cost for given the {@code minTravelDuration} and {@code minNumTransfers}
+   * returning the greatest value, which is guaranteed to be less than the <em>real value</em>
+   * would be correct and a good choice.
    */
-  int calculateRemainingMinCost(int minTravelTime, int minNumTransfers, int fromStopIndex);
+  int calculateRemainingMinCost(int minTravelDuration, int minNumTransfers, int fromStopIndex);
 
   /**
    * This method allows the cost calculator to add cost in addition to the generalized-cost of the

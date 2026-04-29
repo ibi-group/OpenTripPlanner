@@ -338,6 +338,11 @@ public class EnumTypes {
       RoutingErrorCode.WALKING_BETTER_THAN_TRANSIT,
       "The origin and destination are so close to each other, that walking is always better, but no direct mode was specified for the search"
     )
+    .value(
+      "noDirectModeConnection",
+      RoutingErrorCode.NO_DIRECT_MODE_CONNECTION,
+      "No usable itineraries were found for the requested direct mode and no transit was included in the search"
+    )
     .build();
 
   public static final GraphQLEnumType SERVICE_ALTERATION = GraphQLEnumType.newEnum()

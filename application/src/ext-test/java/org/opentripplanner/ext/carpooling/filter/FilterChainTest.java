@@ -6,10 +6,7 @@ import static org.opentripplanner.ext.carpooling.CarpoolTestCoordinates.OSLO_CEN
 import static org.opentripplanner.ext.carpooling.CarpoolTestCoordinates.OSLO_EAST;
 import static org.opentripplanner.ext.carpooling.CarpoolTestCoordinates.OSLO_NORTH;
 import static org.opentripplanner.ext.carpooling.CarpoolTestCoordinates.OSLO_WEST;
-import static org.opentripplanner.ext.carpooling.CarpoolTripTestData.createDestinationStop;
-import static org.opentripplanner.ext.carpooling.CarpoolTripTestData.createOriginStop;
 import static org.opentripplanner.ext.carpooling.CarpoolTripTestData.createSimpleTrip;
-import static org.opentripplanner.ext.carpooling.CarpoolTripTestData.createTripWithCapacity;
 
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -71,30 +68,6 @@ class FilterChainTest {
     chain.accepts(trip, OSLO_EAST, OSLO_WEST);
 
     assertFalse(filter2Called[0], "Filter2 should not have been called due to short-circuit");
-  }
-
-  @Test
-  void standard_includesAllStandardFilters() {
-    var chain = FilterChain.standard();
-
-    // Should contain CapacityFilter and DirectionalCompatibilityFilter
-    // Verify by testing behavior with a trip that has no capacity
-    var stops = List.of(createOriginStop(OSLO_CENTER), createDestinationStop(OSLO_NORTH, 1));
-    var emptyTrip = createTripWithCapacity(0, stops);
-
-    // Should reject due to capacity filter
-    assertFalse(chain.accepts(emptyTrip, OSLO_EAST, OSLO_WEST));
-  }
-
-  @Test
-  void standard_checksDirectionalCompatibility() {
-    var chain = FilterChain.standard();
-
-    // Trip going north, passenger going south
-    var trip = createSimpleTrip(OSLO_CENTER, OSLO_NORTH);
-
-    // Should reject due to directional filter
-    assertFalse(chain.accepts(trip, OSLO_EAST, OSLO_CENTER));
   }
 
   @Test

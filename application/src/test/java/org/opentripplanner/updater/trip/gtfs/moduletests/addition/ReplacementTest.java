@@ -7,7 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.opentripplanner.transit.model._data.FeedScopedIdForTestFactory.id;
+import static org.opentripplanner.core.model.id.FeedScopedIdForTestFactory.id;
 
 import org.junit.jupiter.api.Test;
 import org.opentripplanner.core.model.i18n.I18NString;

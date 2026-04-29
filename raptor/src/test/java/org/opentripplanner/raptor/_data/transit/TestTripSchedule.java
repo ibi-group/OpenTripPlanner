@@ -53,6 +53,11 @@ public class TestTripSchedule implements RaptorTripSchedule {
   }
 
   @Override
+  public int relativeTravelDuration(int boardTime) {
+    return arrivalTimes[arrivalTimes.length - 1] - boardTime;
+  }
+
+  @Override
   public RaptorTripPattern pattern() {
     return pattern;
   }

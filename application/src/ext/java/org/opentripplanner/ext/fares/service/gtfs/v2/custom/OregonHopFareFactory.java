@@ -11,7 +11,7 @@ import org.opentripplanner.ext.fares.model.FareTransferRuleBuilder;
 import org.opentripplanner.ext.fares.model.TimeLimitType;
 import org.opentripplanner.ext.fares.service.gtfs.GtfsFaresService;
 import org.opentripplanner.ext.fares.service.gtfs.v1.DefaultFareService;
-import org.opentripplanner.ext.fares.service.gtfs.v1.DefaultFareServiceFactory;
+import org.opentripplanner.ext.fares.service.gtfs.v1.GtfsFareServiceFactory;
 import org.opentripplanner.ext.fares.service.gtfs.v2.GtfsFaresV2Service;
 import org.opentripplanner.model.fare.FareMedium;
 import org.opentripplanner.model.fare.FareProduct;
@@ -20,7 +20,7 @@ import org.opentripplanner.routing.core.FareType;
 import org.opentripplanner.routing.fares.FareService;
 import org.opentripplanner.transit.model.basic.Money;
 
-public class OregonHopFareFactory extends DefaultFareServiceFactory {
+public class OregonHopFareFactory extends GtfsFareServiceFactory {
 
   static final FeedScopedId TRIMET_ADULT_SINGLE_RIDE = trimetId("TRIMET_ADULT_SINGLE_RIDE");
   static final FeedScopedId TRIMET_HC_SINGLE_RIDE = trimetId("TRIMET_HC_SINGLE_RIDE");

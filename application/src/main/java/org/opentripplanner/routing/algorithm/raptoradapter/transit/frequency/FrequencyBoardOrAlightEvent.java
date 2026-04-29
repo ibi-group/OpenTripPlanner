@@ -112,6 +112,11 @@ abstract class FrequencyBoardOrAlightEvent<T extends DefaultTripSchedule>
   public abstract int departure(int stopPosInPattern);
 
   @Override
+  public int relativeTravelDuration(int boardTime) {
+    return offset - boardTime;
+  }
+
+  @Override
   public RaptorTripPattern pattern() {
     return raptorTripPattern;
   }

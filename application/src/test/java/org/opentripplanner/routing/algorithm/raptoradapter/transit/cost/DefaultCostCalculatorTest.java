@@ -60,11 +60,11 @@ public class DefaultCostCalculatorTest {
   }
 
   @Test
-  public void onTripRidingCost() {
-    assertEquals(0, subject.onTripRelativeRidingCost(0, TRIP_1), "Board cost");
-    assertEquals(0, subject.onTripRelativeRidingCost(0, TRIP_2), "Board cost");
-    assertEquals(-100, subject.onTripRelativeRidingCost(1, TRIP_1), "Board cost");
-    assertEquals(-80, subject.onTripRelativeRidingCost(1, TRIP_2), "Board cost");
+  public void transitCost() {
+    assertEquals(0, subject.transitCost(0, TRIP_1));
+    assertEquals(0, subject.transitCost(0, TRIP_2));
+    assertEquals(100, subject.transitCost(1, TRIP_1));
+    assertEquals(80, subject.transitCost(1, TRIP_2));
   }
 
   @Test

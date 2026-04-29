@@ -3,7 +3,7 @@ package org.opentripplanner.ext.ojp.service;
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.opentripplanner.transit.model._data.TimetableRepositoryForTest.id;
+import static org.opentripplanner.core.model.id.FeedScopedIdForTestFactory.id;
 
 import java.time.Duration;
 import java.util.List;
@@ -102,7 +102,12 @@ class CallAtStopServiceTest {
       @Override
       public List<NearbyStop> findClosestStops(Coordinate coordinate, double radiusMeters) {
         return List.of(
-          new NearbyStop(STOP_A, 100, List.of(), TestStateBuilder.ofWalking().streetEdge().build())
+          new NearbyStop(
+            STOP_A.getId(),
+            100,
+            List.of(),
+            TestStateBuilder.ofWalking().streetEdge().build()
+          )
         );
       }
 

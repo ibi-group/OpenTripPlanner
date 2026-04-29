@@ -12,7 +12,7 @@ final class SingleValueFactorStrategy implements FactorStrategy {
 
   private final int factor;
 
-  SingleValueFactorStrategy(int factor) {
+  private SingleValueFactorStrategy(int factor) {
     this.factor = factor;
   }
 

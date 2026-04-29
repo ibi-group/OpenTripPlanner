@@ -68,23 +68,19 @@ public final class TestCostCalculator implements RaptorCostCalculator<TestTripSc
   }
 
   @Override
-  public int onTripRelativeRidingCost(int boardTime, TestTripSchedule tripScheduledBoarded) {
-    // The relative-transit-time is time spent on transit. We do not know the alight-stop, so
-    // it is impossible to calculate the "correct" time. But the only thing that maters is that
-    // the relative difference between to boardings are correct, assuming riding the same trip.
-    // So, we can use the negative board time as relative-transit-time.
-    return -boardTime * TRANSIT_RELUCTANCE;
+  public int transitCost(int transitDuration, TestTripSchedule tripScheduledBoarded) {
+    return transitDuration * TRANSIT_RELUCTANCE;
   }
 
   @Override
   public int transitArrivalCost(
     int boardCost,
     int alightSlack,
-    int transitTime,
+    int transitDuration,
     TestTripSchedule trip,
     int toStopIndex
   ) {
-    int cost = boardCost + TRANSIT_RELUCTANCE * transitTime + waitFactor * alightSlack;
+    int cost = boardCost + transitCost(transitDuration, trip) + waitFactor * alightSlack;
 
     // Add transfer cost on all alighting events.
     // If it turns out to be the last one this cost will be removed during costEgress phase.
@@ -101,18 +97,22 @@ public final class TestCostCalculator implements RaptorCostCalculator<TestTripSc
   }
 
   @Override
-  public int calculateRemainingMinCost(int minTravelTime, int minNumTransfers, int fromStopIndex) {
+  public int calculateRemainingMinCost(
+    int minTravelDuration,
+    int minNumTransfers,
+    int fromStopIndex
+  ) {
     if (minNumTransfers > -1) {
       return (
         boardCost +
         ((boardCost + transferCost) * minNumTransfers) +
-        (TRANSIT_RELUCTANCE * minTravelTime)
+        (TRANSIT_RELUCTANCE * minTravelDuration)
       );
     } else {
       // Remove cost that was added during alighting similar as we do in the costEgress() method
       return stopBoardAlightTransferCosts == null
-        ? (TRANSIT_RELUCTANCE * minTravelTime)
-        : (TRANSIT_RELUCTANCE * minTravelTime) - stopBoardAlightTransferCosts[fromStopIndex];
+        ? (TRANSIT_RELUCTANCE * minTravelDuration)
+        : (TRANSIT_RELUCTANCE * minTravelDuration) - stopBoardAlightTransferCosts[fromStopIndex];
     }
   }
 

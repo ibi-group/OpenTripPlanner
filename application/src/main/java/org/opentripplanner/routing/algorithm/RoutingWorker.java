@@ -2,8 +2,8 @@ package org.opentripplanner.routing.algorithm;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
@@ -14,7 +14,6 @@ import org.opentripplanner.framework.application.OTPRequestTimeoutException;
 import org.opentripplanner.model.plan.Itinerary;
 import org.opentripplanner.model.plan.grouppriority.TransitGroupPriorityItineraryDecorator;
 import org.opentripplanner.model.plan.paging.cursor.PageCursorInput;
-import org.opentripplanner.raptor.api.request.RaptorTuningParameters;
 import org.opentripplanner.raptor.api.request.SearchParams;
 import org.opentripplanner.routing.algorithm.filterchain.ItineraryListFilterChain;
 import org.opentripplanner.routing.algorithm.mapping.PagingServiceFactory;
@@ -40,7 +39,6 @@ import org.opentripplanner.standalone.api.OtpServerRequestContext;
 import org.opentripplanner.street.linking.TemporaryVerticesContainer;
 import org.opentripplanner.street.model.StreetMode;
 import org.opentripplanner.transit.model.network.grouppriority.TransitGroupPriorityService;
-import org.opentripplanner.utils.time.ServiceDateUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -58,15 +56,6 @@ public class RoutingWorker {
 
   private final RouteRequest request;
   private final OtpServerRequestContext serverContext;
-  /**
-   * The transit service time-zero normalized for the current search. All transit times are relative
-   * to a "time-zero". This enables us to use an integer(small memory footprint). The times are
-   * number for seconds past the {@code transitSearchTimeZero}. In the internal model all times are
-   * stored relative to the {@link java.time.LocalDate}, but to be able
-   * to compare trip times for different service days we normalize all times by calculating an
-   * offset. Now all times for the selected trip patterns become relative to the {@code
-   * transitSearchTimeZero}.
-   */
   private final ZonedDateTime transitSearchTimeZero;
   private final AdditionalSearchDays additionalSearchDays;
   private final TransitGroupPriorityService transitGroupPriorityService;
@@ -77,22 +66,14 @@ public class RoutingWorker {
   @Nullable
   private LinkingContext currentLinkingContext = null;
 
-  public RoutingWorker(
-    OtpServerRequestContext serverContext,
-    RouteRequest orginalRequest,
-    ZoneId zoneId
-  ) {
-    this.request = orginalRequest.withPageCursor();
+  public RoutingWorker(OtpServerRequestContext serverContext, RoutingWorkerRequest workerRequest) {
+    this.request = workerRequest.request();
+    this.transitSearchTimeZero = workerRequest.transitSearchTimeZero();
+    this.additionalSearchDays = workerRequest.additionalSearchDays();
     this.serverContext = serverContext;
     this.debugTimingAggregator = new DebugTimingAggregator(
       serverContext.meterRegistry(),
       request.preferences().system().tags()
-    );
-    this.transitSearchTimeZero = ServiceDateUtils.asStartOfService(request.dateTime(), zoneId);
-    this.additionalSearchDays = createAdditionalSearchDays(
-      serverContext.raptorTuningParameters(),
-      zoneId,
-      request
     );
     this.transitGroupPriorityService = TransitGroupPriorityService.of(
       request.preferences().transit().relaxTransitGroupPriority(),
@@ -159,6 +140,8 @@ public class RoutingWorker {
       result.addErrors(filterChain.getRoutingErrors());
     }
 
+    result.addErrors(checkForEmptyDirectModeResult(result));
+
     if (LOG.isDebugEnabled()) {
       LOG.debug(
         "Return TripPlan with {} filtered itineraries out of {} total.",
@@ -185,23 +168,6 @@ public class RoutingWorker {
       debugTimingAggregator,
       serverContext.transitService(),
       pagingService
-    );
-  }
-
-  private static AdditionalSearchDays createAdditionalSearchDays(
-    RaptorTuningParameters raptorTuningParameters,
-    ZoneId zoneId,
-    RouteRequest request
-  ) {
-    var searchDateTime = ZonedDateTime.ofInstant(request.dateTime(), zoneId);
-    var maxWindow = raptorTuningParameters.dynamicSearchWindowCoefficients().maxWindow();
-
-    return new AdditionalSearchDays(
-      request.arriveBy(),
-      searchDateTime,
-      request.searchWindow(),
-      maxWindow,
-      request.preferences().system().maxJourneyDuration()
     );
   }
 
@@ -359,6 +325,21 @@ public class RoutingWorker {
         )
       );
     }
+  }
+
+  /**
+   * If this is a direct-only search (no transit) and no itineraries were found, return an error
+   * so the client knows why no results were returned.
+   */
+  private Collection<RoutingError> checkForEmptyDirectModeResult(RoutingResult result) {
+    if (
+      !request.journey().transit().enabled() &&
+      result.errors().isEmpty() &&
+      result.itineraries().stream().allMatch(Itinerary::isFlaggedForDeletion)
+    ) {
+      return List.of(new RoutingError(RoutingErrorCode.NO_DIRECT_MODE_CONNECTION, null));
+    }
+    return List.of();
   }
 
   private LinkingContext linkingContext() {

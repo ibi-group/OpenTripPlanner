@@ -13,10 +13,8 @@ import org.opentripplanner.street.geometry.WgsCoordinate;
  * as soon as one filter rejects a trip, evaluation stops.
  * <p>
  * The standard filter chain includes (in order of performance impact):
- * 1. CapacityFilter - Very fast (O(1))
- * 2. TimeBasedFilter - Very fast (O(1))
- * 3. DistanceBasedFilter - Fast (O(1) with 4 distance calculations)
- * 4. DirectionalCompatibilityFilter - Medium (O(n) with n = number of stops)
+ * 1. TimeBasedFilter - Very fast (O(1))
+ * 2. DistanceBasedFilter - Fast (O(1) with 4 distance calculations)
  */
 public class FilterChain implements TripFilter {
 
@@ -33,14 +31,7 @@ public class FilterChain implements TripFilter {
    * the benefit of short-circuit evaluation.
    */
   public static FilterChain standard() {
-    return new FilterChain(
-      List.of(
-        new CapacityFilter(),
-        new TimeBasedFilter(),
-        new DistanceBasedFilter(),
-        new DirectionalCompatibilityFilter()
-      )
-    );
+    return new FilterChain(List.of(new TimeBasedFilter(), new DistanceBasedFilter()));
   }
 
   @Override

@@ -13,6 +13,7 @@ import org.opentripplanner.core.model.accessibility.Accessibility;
 import org.opentripplanner.core.model.i18n.I18NString;
 import org.opentripplanner.core.model.i18n.NonLocalizedString;
 import org.opentripplanner.core.model.id.FeedScopedId;
+import org.opentripplanner.core.model.id.FeedScopedIdForTestFactory;
 import org.opentripplanner.street.geometry.WgsCoordinate;
 import org.opentripplanner.transit.model._data.TimetableRepositoryForTest;
 import org.opentripplanner.transit.model.basic.SubMode;
@@ -38,7 +39,7 @@ class RegularStopTest {
   private static final String PLATFORM_CODE = "platformCode";
 
   private static final RegularStop SUBJECT = SiteRepository.of()
-    .regularStop(TimetableRepositoryForTest.id(ID))
+    .regularStop(FeedScopedIdForTestFactory.id(ID))
     .withName(NAME)
     .withDescription(DESCRIPTION)
     .withCode(CODE)
@@ -87,7 +88,7 @@ class RegularStopTest {
   @Test
   void sameAs() {
     assertTrue(SUBJECT.sameAs(SUBJECT.copy().build()));
-    assertFalse(SUBJECT.sameAs(SUBJECT.copy().withId(TimetableRepositoryForTest.id("X")).build()));
+    assertFalse(SUBJECT.sameAs(SUBJECT.copy().withId(FeedScopedIdForTestFactory.id("X")).build()));
     assertFalse(SUBJECT.sameAs(SUBJECT.copy().withName(new NonLocalizedString("X")).build()));
     assertFalse(
       SUBJECT.sameAs(SUBJECT.copy().withDescription(new NonLocalizedString("X")).build())
@@ -113,7 +114,7 @@ class RegularStopTest {
     var zoneB = FareZone.of(new FeedScopedId("F", "B")).build();
 
     var stop = SiteRepository.of()
-      .regularStop(TimetableRepositoryForTest.id("sortTest"))
+      .regularStop(FeedScopedIdForTestFactory.id("sortTest"))
       .withName(NAME)
       .withCoordinate(COORDINATE)
       .addFareZone(zoneC)

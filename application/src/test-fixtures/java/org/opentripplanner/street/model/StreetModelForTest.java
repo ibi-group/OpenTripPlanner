@@ -1,6 +1,6 @@
 package org.opentripplanner.street.model;
 
-import static org.opentripplanner.transit.model._data.TimetableRepositoryForTest.id;
+import static org.opentripplanner.core.model.id.FeedScopedIdForTestFactory.id;
 
 import java.util.HashSet;
 import java.util.Set;

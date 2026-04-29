@@ -6,9 +6,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.params.provider.Arguments.of;
+import static org.opentripplanner.core.model.id.FeedScopedIdForTestFactory.id;
 import static org.opentripplanner.street.model.VehicleRoutingOptimizeType.SAFE_STREETS;
 import static org.opentripplanner.street.model.VehicleRoutingOptimizeType.TRIANGLE;
-import static org.opentripplanner.transit.model._data.FeedScopedIdForTestFactory.id;
 
 import graphql.schema.DataFetchingEnvironment;
 import graphql.schema.DataFetchingEnvironmentImpl;
@@ -90,7 +90,6 @@ class LegacyRouteRequestMapperTest implements PlanTestConstants {
       SchemaFactory.createSchemaWithDefaultInjection(routeRequest),
       GraphFinder.getInstance(
         graph.hasStreets,
-        transitService::getRegularStop,
         transitService::findRegularStopsByBoundingBox,
         linkingContextFactory
       ),

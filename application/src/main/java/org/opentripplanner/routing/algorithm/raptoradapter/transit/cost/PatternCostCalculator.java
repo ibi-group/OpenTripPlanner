@@ -40,29 +40,29 @@ class PatternCostCalculator<T extends DefaultTripSchedule> implements RaptorCost
   }
 
   @Override
-  public int onTripRelativeRidingCost(int boardTime, T tripScheduledBoarded) {
-    return delegate.onTripRelativeRidingCost(boardTime, tripScheduledBoarded);
+  public int transitCost(int transitDuration, T tripScheduledBoarded) {
+    return delegate.transitCost(transitDuration, tripScheduledBoarded);
   }
 
   @Override
   public int transitArrivalCost(
     int boardCost,
     int alightSlack,
-    int transitTime,
+    int transitDuration,
     T trip,
     int toStopIndex
   ) {
     int defaultCost = delegate.transitArrivalCost(
       boardCost,
       alightSlack,
-      transitTime,
+      transitDuration,
       trip,
       toStopIndex
     );
     boolean includeUnpreferredCost = unpreferredPatterns.get(trip.pattern().patternIndex());
 
     if (includeUnpreferredCost) {
-      int unpreferredCostValue = unpreferredCost.calculateRaptorCost(transitTime);
+      int unpreferredCostValue = unpreferredCost.calculateRaptorCost(transitDuration);
       return defaultCost + unpreferredCostValue;
     } else {
       return defaultCost;
@@ -75,8 +75,12 @@ class PatternCostCalculator<T extends DefaultTripSchedule> implements RaptorCost
   }
 
   @Override
-  public int calculateRemainingMinCost(int minTravelTime, int minNumTransfers, int fromStopIndex) {
-    return delegate.calculateRemainingMinCost(minTravelTime, minNumTransfers, fromStopIndex);
+  public int calculateRemainingMinCost(
+    int minTravelDuration,
+    int minNumTransfers,
+    int fromStopIndex
+  ) {
+    return delegate.calculateRemainingMinCost(minTravelDuration, minNumTransfers, fromStopIndex);
   }
 
   @Override

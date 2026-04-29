@@ -3,11 +3,11 @@ package org.opentripplanner.ext.carpooling;
 import java.time.ZonedDateTime;
 import java.util.List;
 import org.opentripplanner.ext.carpooling.routing.CarpoolAccessEgress;
-import org.opentripplanner.graph_builder.module.nearbystops.StopResolver;
 import org.opentripplanner.model.plan.Itinerary;
 import org.opentripplanner.routing.algorithm.raptoradapter.router.street.AccessEgressType;
 import org.opentripplanner.routing.api.request.RouteRequest;
 import org.opentripplanner.routing.api.request.request.StreetRequest;
+import org.opentripplanner.routing.graphfinder.TransitServiceResolver;
 import org.opentripplanner.routing.linking.LinkingContext;
 
 /**
@@ -24,8 +24,7 @@ public interface CarpoolingService {
    *
    * @param request the routing request containing passenger origin, destination, and preferences
    * @param linkingContext linking context with pre-linked vertices for the request
-   * @return list of carpool itineraries, sorted by quality (additional travel time), may be empty
-   *         if no compatible trips found. Results are limited to avoid overwhelming users.
+   * @return list of carpool itineraries, may be empty if no compatible trips found
    * @throws IllegalArgumentException if request is null
    */
   List<Itinerary> routeDirect(RouteRequest request, LinkingContext linkingContext);
@@ -34,7 +33,7 @@ public interface CarpoolingService {
     RouteRequest request,
     StreetRequest streetRequest,
     AccessEgressType accessOrEgress,
-    StopResolver stopResolver,
+    TransitServiceResolver transitServiceResolver,
     LinkingContext linkingContext,
     ZonedDateTime transitSearchTimeZero
   );

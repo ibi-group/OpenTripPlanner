@@ -44,19 +44,19 @@ public class WheelchairCostCalculator<T extends DefaultTripSchedule>
   }
 
   @Override
-  public int onTripRelativeRidingCost(int boardTime, T tripScheduledBoarded) {
-    return delegate.onTripRelativeRidingCost(boardTime, tripScheduledBoarded);
+  public int transitCost(int transitDuration, T tripScheduledBoarded) {
+    return delegate.transitCost(transitDuration, tripScheduledBoarded);
   }
 
   @Override
   public int transitArrivalCost(
     int boardCost,
     int alightSlack,
-    int transitTime,
+    int transitDuration,
     T trip,
     int toStopIndex
   ) {
-    return delegate.transitArrivalCost(boardCost, alightSlack, transitTime, trip, toStopIndex);
+    return delegate.transitArrivalCost(boardCost, alightSlack, transitDuration, trip, toStopIndex);
   }
 
   @Override
@@ -65,8 +65,12 @@ public class WheelchairCostCalculator<T extends DefaultTripSchedule>
   }
 
   @Override
-  public int calculateRemainingMinCost(int minTravelTime, int minNumTransfers, int fromStopIndex) {
-    return delegate.calculateRemainingMinCost(minTravelTime, minNumTransfers, fromStopIndex);
+  public int calculateRemainingMinCost(
+    int minTravelDuration,
+    int minNumTransfers,
+    int fromStopIndex
+  ) {
+    return delegate.calculateRemainingMinCost(minTravelDuration, minNumTransfers, fromStopIndex);
   }
 
   @Override

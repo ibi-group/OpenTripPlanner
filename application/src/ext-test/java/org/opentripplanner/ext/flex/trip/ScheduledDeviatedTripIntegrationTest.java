@@ -101,11 +101,13 @@ class ScheduledDeviatedTripIntegrationTest {
     );
 
     // from zone 3 to zone 2
-    var from = GenericLocation.fromStopId("Transfer Point for Route 30", feedId, "cujv");
+    var from = GenericLocation.fromStopId(
+      new FeedScopedId(feedId, "cujv"),
+      "Transfer Point for Route 30"
+    );
     var to = GenericLocation.fromStopId(
-      "Zone 1 - PUBLIX Super Market,Zone 1 Collection Point",
-      feedId,
-      "yz85"
+      new FeedScopedId(feedId, "yz85"),
+      "Zone 1 - PUBLIX Super Market,Zone 1 Collection Point"
     );
 
     var itineraries = getItineraries(from, to, serverContext);

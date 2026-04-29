@@ -2,6 +2,7 @@ package org.opentripplanner.graph_builder.module.transfer;
 
 import java.time.Duration;
 import java.util.List;
+import org.opentripplanner.core.model.id.FeedScopedIdForTestFactory;
 import org.opentripplanner.graph_builder.issue.api.DataImportIssueStore;
 import org.opentripplanner.graph_builder.module.transfer.api.RegularTransferParameters;
 import org.opentripplanner.graph_builder.module.transfer.api.TransferParametersForMode;
@@ -153,13 +154,13 @@ class DirectTransferGeneratorTestData extends GraphRoutingTest {
         var agency = TimetableRepositoryForTest.agency("Agency");
 
         tripPattern(
-          TripPattern.of(TimetableRepositoryForTest.id("TP0"))
+          TripPattern.of(FeedScopedIdForTestFactory.id("TP0"))
             .withRoute(route("R0", TransitMode.RAIL, agency))
             .withStopPattern(new StopPattern(List.of(st(S_FAR_AWAY), st(S0))))
             .build()
         );
         tripPattern(
-          TripPattern.of(TimetableRepositoryForTest.id("TP1"))
+          TripPattern.of(FeedScopedIdForTestFactory.id("TP1"))
             .withRoute(route("R1", TransitMode.BUS, agency))
             .withStopPattern(
               new StopPattern(List.of(st(S11, !withBoardingConstraint, true), st(S12)))
@@ -167,7 +168,7 @@ class DirectTransferGeneratorTestData extends GraphRoutingTest {
             .build()
         );
         tripPattern(
-          TripPattern.of(TimetableRepositoryForTest.id("TP2"))
+          TripPattern.of(FeedScopedIdForTestFactory.id("TP2"))
             .withRoute(route("R2", TransitMode.BUS, agency))
             .withStopPattern(new StopPattern(List.of(st(S21), st(S22), st(S_FAR_AWAY))))
             .withScheduledTimeTableBuilder(builder ->
@@ -187,7 +188,7 @@ class DirectTransferGeneratorTestData extends GraphRoutingTest {
 
         if (includeCarFerryTrips) {
           tripPattern(
-            TripPattern.of(TimetableRepositoryForTest.id("TP4"))
+            TripPattern.of(FeedScopedIdForTestFactory.id("TP4"))
               .withRoute(route("R4", TransitMode.FERRY, agency))
               .withStopPattern(new StopPattern(List.of(st(S_FAR_AWAY), st(S0), st(S12))))
               .withScheduledTimeTableBuilder(b ->
@@ -196,7 +197,7 @@ class DirectTransferGeneratorTestData extends GraphRoutingTest {
               .build()
           );
           tripPattern(
-            TripPattern.of(TimetableRepositoryForTest.id("TP5"))
+            TripPattern.of(FeedScopedIdForTestFactory.id("TP5"))
               .withRoute(route("R5", TransitMode.FERRY, agency))
               .withStopPattern(new StopPattern(List.of(st(S22), st(S23))))
               .withScheduledTimeTableBuilder(b ->

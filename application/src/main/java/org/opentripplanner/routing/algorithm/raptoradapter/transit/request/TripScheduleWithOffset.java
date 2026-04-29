@@ -51,6 +51,14 @@ public final class TripScheduleWithOffset implements TripSchedule {
   }
 
   @Override
+  public int relativeTravelDuration(int boardTime) {
+    // sortIndex is the arrival time at stop 0. This allow us to use it to compute the relative
+    // travel duration. It satisfies both invariants of relativeTravelDuration (see JavaDoc on this
+    // method).
+    return sortIndex - boardTime;
+  }
+
+  @Override
   public RaptorTripPattern pattern() {
     return pattern;
   }

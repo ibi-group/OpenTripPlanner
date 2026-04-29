@@ -1,6 +1,6 @@
 package org.opentripplanner.model.plan;
 
-import static org.opentripplanner.transit.model._data.FeedScopedIdForTestFactory.id;
+import static org.opentripplanner.core.model.id.FeedScopedIdForTestFactory.id;
 
 import java.time.LocalDate;
 import java.time.LocalTime;

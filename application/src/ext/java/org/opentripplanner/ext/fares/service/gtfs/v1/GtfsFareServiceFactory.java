@@ -30,9 +30,9 @@ import org.slf4j.LoggerFactory;
  * as well as Fares V2.
  *
  */
-public class DefaultFareServiceFactory implements FareServiceFactory {
+public class GtfsFareServiceFactory implements FareServiceFactory {
 
-  private static final Logger LOG = LoggerFactory.getLogger(DefaultFareServiceFactory.class);
+  private static final Logger LOG = LoggerFactory.getLogger(GtfsFareServiceFactory.class);
 
   protected Map<FeedScopedId, FareRuleSet> regularFareRules = new HashMap<>();
 
