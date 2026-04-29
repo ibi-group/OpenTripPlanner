@@ -8,5 +8,6 @@
       "feedId": "TriMet",
       "source": "https://developer.trimet.org/schedule/gtfs.zip"
     }
-  ]
+  ],
+  "fares": "gtfs"
 }
