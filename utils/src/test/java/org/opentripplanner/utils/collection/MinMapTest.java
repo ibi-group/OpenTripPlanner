@@ -1,4 +1,4 @@
-package org.opentripplanner.graph_builder.module.transfer.filter;
+package org.opentripplanner.utils.collection;
 
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;

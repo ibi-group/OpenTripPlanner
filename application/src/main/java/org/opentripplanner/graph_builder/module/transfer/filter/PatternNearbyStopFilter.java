@@ -11,6 +11,7 @@ import org.opentripplanner.transit.model.network.TripPattern;
 import org.opentripplanner.transit.model.site.RegularStop;
 import org.opentripplanner.transit.model.site.StopLocation;
 import org.opentripplanner.transit.service.TransitService;
+import org.opentripplanner.utils.collection.MinMap;
 
 /**
  * Filters nearby stops based on trip pattern availability.

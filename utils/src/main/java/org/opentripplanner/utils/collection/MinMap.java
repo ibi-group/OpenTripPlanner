@@ -1,4 +1,4 @@
-package org.opentripplanner.graph_builder.module.transfer.filter;
+package org.opentripplanner.utils.collection;
 
 import java.util.Collection;
 import java.util.Comparator;
