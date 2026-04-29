@@ -1,9 +1,10 @@
 package org.opentripplanner.graph_builder.module.transfer.filter;
 
+import static com.google.common.truth.Truth.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
-import com.google.common.truth.Truth;
+import java.util.Comparator;
 import org.junit.jupiter.api.Test;
 
 class MinMapTest {
@@ -28,12 +29,28 @@ class MinMapTest {
   @Test
   void values() {
     subject.putMin("key1", "orange");
-    Truth.assertThat(subject.values()).containsExactly("orange");
+    assertThat(subject.values()).containsExactly("orange");
 
     subject.putMin("key2", "apple");
-    Truth.assertThat(subject.values()).containsExactly("apple", "orange");
+    assertThat(subject.values()).containsExactly("apple", "orange");
 
     subject.putMin("key3", "banana");
-    Truth.assertThat(subject.values()).containsExactly("apple", "banana", "orange");
+    assertThat(subject.values()).containsExactly("apple", "banana", "orange");
+  }
+
+  @Test
+  void customOrder() {
+    var subject = new MinMap<String, String>(Comparator.<String>naturalOrder().reversed());
+    subject.putMin(KEY, "A");
+    assertEquals("A", subject.get(KEY));
+
+    subject.putMin(KEY, "B");
+    assertEquals("B", subject.get(KEY));
+
+    subject.putMin(KEY, "X");
+    assertEquals("X", subject.get(KEY));
+
+    subject.putMin(KEY, "A");
+    assertEquals("X", subject.get(KEY));
   }
 }

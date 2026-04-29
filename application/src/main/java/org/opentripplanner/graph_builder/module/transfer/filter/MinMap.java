@@ -18,6 +18,9 @@ public final class MinMap<K, V> {
     this.comparator = comparator;
   }
 
+  /**
+   * Create a MinMap with natural order for values.
+   */
   public static <K, V extends Comparable<? super V>> MinMap<K, V> ofNaturalOrder() {
     return new MinMap<>(Comparator.<V>naturalOrder());
   }
