@@ -277,7 +277,7 @@ public class OsmModuleTest {
     Vertex bottomV = graph.getVertex(VertexLabel.osm(580290955));
     Vertex topV = graph.getVertex(VertexLabel.osm(559271124));
 
-    GraphPathFinder graphPathFinder = new GraphPathFinder(null);
+    GraphPathFinder graphPathFinder = new GraphPathFinder();
     var pathList = graphPathFinder.graphPathFinderEntryPoint(
       request,
       Set.of(bottomV),

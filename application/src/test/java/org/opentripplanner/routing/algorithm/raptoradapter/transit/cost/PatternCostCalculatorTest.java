@@ -3,9 +3,9 @@ package org.opentripplanner.routing.algorithm.raptoradapter.transit.cost;
 import static graphql.Assert.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.opentripplanner.core.model.id.FeedScopedIdForTestFactory.id;
 import static org.opentripplanner.raptorlegacy._data.transit.TestRoute.route;
 import static org.opentripplanner.transit.model._data.TimetableRepositoryForTest.agency;
-import static org.opentripplanner.transit.model._data.TimetableRepositoryForTest.id;
 
 import java.time.Duration;
 import java.util.List;
@@ -166,10 +166,6 @@ public class PatternCostCalculatorTest {
       }
 
       return "RoutePenaltyTC {" + sb.substring(sb.isEmpty() ? 0 : 2) + "}";
-    }
-
-    boolean isDefault() {
-      return !(unPreferredAgency || unPreferredRoute);
     }
 
     RaptorCostCalculator<TestTripSchedule> createCostCalculator(TestTripSchedule schedule) {

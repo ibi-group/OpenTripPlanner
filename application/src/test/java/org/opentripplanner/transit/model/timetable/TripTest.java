@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import org.opentripplanner.core.model.accessibility.Accessibility;
 import org.opentripplanner.core.model.i18n.NonLocalizedString;
 import org.opentripplanner.core.model.id.FeedScopedId;
+import org.opentripplanner.core.model.id.FeedScopedIdForTestFactory;
 import org.opentripplanner.transit.model._data.TimetableRepositoryForTest;
 import org.opentripplanner.transit.model.basic.SubMode;
 import org.opentripplanner.transit.model.basic.TransitMode;
@@ -37,7 +38,7 @@ class TripTest {
     .build();
   private static final FeedScopedId SERVICE_ID = FeedScopedId.of("x", "serviceId");
   private static final FeedScopedId SHAPE_ID = FeedScopedId.of("x", "shapeId");
-  private static final Trip SUBJECT = Trip.of(TimetableRepositoryForTest.id(ID))
+  private static final Trip SUBJECT = Trip.of(FeedScopedIdForTestFactory.id(ID))
     .withShortName(SHORT_NAME)
     .withRoute(ROUTE)
     .withDirection(DIRECTION)
@@ -63,7 +64,7 @@ class TripTest {
       .withBikesAllowed(BIKE_ACCESS)
       .build();
 
-    var SUBJECT = Trip.of(TimetableRepositoryForTest.id(ID)).withRoute(routeWithModes).build();
+    var SUBJECT = Trip.of(FeedScopedIdForTestFactory.id(ID)).withRoute(routeWithModes).build();
 
     assertEquals(TRANSIT_MODE, SUBJECT.getMode());
     assertEquals(NETEX_SUBMODE, SUBJECT.getNetexSubMode());
@@ -98,7 +99,7 @@ class TripTest {
   @Test
   void sameAs() {
     assertTrue(SUBJECT.sameAs(SUBJECT.copy().build()));
-    assertFalse(SUBJECT.sameAs(SUBJECT.copy().withId(TimetableRepositoryForTest.id("X")).build()));
+    assertFalse(SUBJECT.sameAs(SUBJECT.copy().withId(FeedScopedIdForTestFactory.id("X")).build()));
     assertFalse(SUBJECT.sameAs(SUBJECT.copy().withShortName("X").build()));
     assertFalse(
       SUBJECT.sameAs(SUBJECT.copy().withWheelchairBoarding(Accessibility.NOT_POSSIBLE).build())

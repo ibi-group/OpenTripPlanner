@@ -9,7 +9,7 @@ import org.opentripplanner.street.geometry.WgsCoordinate;
  * Interface for filtering carpool trips before expensive routing calculations.
  * <p>
  * Filters are applied as a pre-screening mechanism to quickly eliminate
- * incompatible trips based on various criteria (direction, capacity, time, distance, etc.).
+ * incompatible trips based on various criteria (capacity, time, distance, etc.).
  * <p>
  * Supports both direct routing (pickup + dropoff) and access/egress routing
  * (single passenger coordinate near a transit stop).

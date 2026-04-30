@@ -126,7 +126,7 @@ public class LinkingContextFactory {
     LinkingContextRequest request
   ) {
     var from = request.from();
-    if (from == null || !from.isSpecified()) {
+    if (from == null) {
       return Set.of();
     }
     var modes = request.accessMode() != StreetMode.NOT_SET
@@ -143,7 +143,7 @@ public class LinkingContextFactory {
     LinkingContextRequest request
   ) {
     var to = request.to();
-    if (to == null || !to.isSpecified()) {
+    if (to == null) {
       return Set.of();
     }
     var modes = request.egressMode() != StreetMode.NOT_SET
@@ -193,8 +193,8 @@ public class LinkingContextFactory {
   }
 
   private Set<TransitStopVertex> getStopVertices(GenericLocation location) {
-    if (location != null && location.stopId != null) {
-      return findStopOrChildStopVertices(location.stopId);
+    if (location != null && location.stopId() != null) {
+      return findStopOrChildStopVertices(location.stopId());
     }
     return Set.of();
   }
@@ -269,10 +269,6 @@ public class LinkingContextFactory {
     EnumSet<StreetMode> streetModes,
     LocationType type
   ) {
-    if (!location.isSpecified()) {
-      return Set.of();
-    }
-
     // Differentiate between driving and non-driving, as driving is not available from transit stops
     List<TraverseMode> modes = streetModes
       .stream()
@@ -281,7 +277,7 @@ public class LinkingContextFactory {
       .toList();
 
     var results = new HashSet<Vertex>();
-    if (location.stopId != null) {
+    if (location.stopId() != null) {
       if (!modes.stream().allMatch(TraverseMode::isInCar)) {
         results.addAll(getStreetVerticesForStop(location));
       }
@@ -299,7 +295,7 @@ public class LinkingContextFactory {
         vertexCreationService.createVertexFromCoordinate(
           container,
           location.getCoordinate(),
-          location.label,
+          location.label(),
           modes,
           type
         )
@@ -311,19 +307,19 @@ public class LinkingContextFactory {
 
   private Set<Vertex> getStreetVerticesForStop(GenericLocation location) {
     // check if there is a stop by the given id
-    var stopVertex = graph.findStopVertex(location.stopId);
+    var stopVertex = graph.findStopVertex(location.stopId());
     if (stopVertex.isPresent()) {
       return Set.of(stopVertex.get());
     }
 
     // station centroids may be used instead of child stop vertices for stations
-    var centroidVertex = graph.findStationCentroidVertex(location.stopId);
+    var centroidVertex = graph.findStationCentroidVertex(location.stopId());
     if (centroidVertex.isPresent()) {
       return Set.of(centroidVertex.get());
     }
 
     // in the regular case you want to resolve a (multi-modal) station into its child stops
-    var childVertices = findStopOrChildStopVertices(location.stopId);
+    var childVertices = findStopOrChildStopVertices(location.stopId());
     if (!childVertices.isEmpty()) {
       return childVertices.stream().map(Vertex.class::cast).collect(Collectors.toUnmodifiableSet());
     }
@@ -339,43 +335,33 @@ public class LinkingContextFactory {
     GenericLocation location,
     LocationType type
   ) {
+    Coordinate coordinate = location.getCoordinate();
     // Fetch coordinate from stop, if not given in request
-    if (location.getCoordinate() == null) {
-      var stopVertex = graph.getStopVertex(location.stopId);
+    if (coordinate == null) {
+      var stopVertex = graph.getStopVertex(location.stopId());
       if (stopVertex != null) {
-        var c = stopVertex.toWgsCoordinate();
-        location = new GenericLocation(
-          location.label,
-          location.stopId,
-          c.latitude(),
-          c.longitude()
-        );
+        coordinate = stopVertex.getCoordinate();
       } else {
         // For car routing, we use station's coordinate instead of child stops' if stop location is
         // a station.
-        var coordinate = findStopLocationsGroupCentroid.apply(location.stopId);
-        if (coordinate.isPresent()) {
-          var c = coordinate.get();
-          location = new GenericLocation(
-            location.label,
-            location.stopId,
-            c.latitude(),
-            c.longitude()
-          );
-        }
+        coordinate = findStopLocationsGroupCentroid
+          .apply(location.stopId())
+          .map(WgsCoordinate::asJtsCoordinate)
+          .orElse(null);
       }
     }
-    return location.getCoordinate() != null
-      ? Optional.of(
-          vertexCreationService.createVertexFromCoordinate(
-            container,
-            location.getCoordinate(),
-            location.label,
-            List.of(TraverseMode.CAR),
-            type
-          )
-        )
-      : Optional.empty();
+    if (coordinate == null) {
+      return Optional.empty();
+    }
+    return Optional.of(
+      vertexCreationService.createVertexFromCoordinate(
+        container,
+        coordinate,
+        location.label(),
+        List.of(TraverseMode.CAR),
+        type
+      )
+    );
   }
 
   private void checkIfVerticesFound(
@@ -398,12 +384,7 @@ public class LinkingContextFactory {
     }
 
     // check that vertices where found if to-location was specified
-    if (
-      to != null &&
-      to.isSpecified() &&
-      toStopVertices.isEmpty() &&
-      isDisconnected(toVertices, LocationType.TO)
-    ) {
+    if (to != null && toStopVertices.isEmpty() && isDisconnected(toVertices, LocationType.TO)) {
       routingErrors.add(
         new RoutingError(getRoutingErrorCodeForDisconnected(to), InputField.TO_PLACE)
       );

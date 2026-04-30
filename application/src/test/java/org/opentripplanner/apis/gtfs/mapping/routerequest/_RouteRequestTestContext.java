@@ -39,12 +39,12 @@ class _RouteRequestTestContext {
   static final Map<String, Object> ARGS = Map.ofEntries(
     entry(
       "origin",
-      Map.ofEntries(entry("location", Map.of("coordinate", mapCoordinate(ORIGIN.x, ORIGIN.y))))
+      Map.ofEntries(entry("location", Map.of("coordinate", mapCoordinate(ORIGIN.y, ORIGIN.x))))
     ),
     entry(
       "destination",
       Map.ofEntries(
-        entry("location", Map.of("coordinate", mapCoordinate(DESTINATION.x, DESTINATION.y)))
+        entry("location", Map.of("coordinate", mapCoordinate(DESTINATION.y, DESTINATION.x)))
       )
     )
   );
@@ -83,7 +83,6 @@ class _RouteRequestTestContext {
       SchemaFactory.createSchemaWithDefaultInjection(routeRequest),
       GraphFinder.getInstance(
         graph.hasStreets,
-        transitService::getRegularStop,
         transitService::findRegularStopsByBoundingBox,
         linkingContextFactory
       ),

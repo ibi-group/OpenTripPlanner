@@ -16,6 +16,7 @@ import org.locationtech.jts.geom.Geometry;
 import org.opentripplanner.core.model.i18n.NonLocalizedString;
 import org.opentripplanner.core.model.i18n.TranslatedString;
 import org.opentripplanner.core.model.id.FeedScopedId;
+import org.opentripplanner.core.model.id.FeedScopedIdForTestFactory;
 import org.opentripplanner.ext.vectortiles.VectorTilesResource;
 import org.opentripplanner.inspector.vector.KeyValue;
 import org.opentripplanner.inspector.vector.LayerParameters;
@@ -28,11 +29,10 @@ import org.opentripplanner.service.vehicleparking.model.VehicleParkingSpaces;
 import org.opentripplanner.service.vehicleparking.model.VehicleParkingState;
 import org.opentripplanner.standalone.config.routerconfig.VectorTileConfig;
 import org.opentripplanner.street.geometry.WgsCoordinate;
-import org.opentripplanner.transit.model._data.TimetableRepositoryForTest;
 
 public class VehicleParkingGroupsLayerTest {
 
-  private static final FeedScopedId ID = TimetableRepositoryForTest.id("id");
+  private static final FeedScopedId ID = FeedScopedIdForTestFactory.id("id");
 
   private VehicleParkingGroup vehicleParkingGroup;
   private VehicleParking vehicleParking;

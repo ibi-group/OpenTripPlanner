@@ -17,35 +17,22 @@ import org.opentripplanner.street.search.state.State;
 import org.opentripplanner.street.search.state.TestStateBuilder;
 import org.opentripplanner.transit.model._data.TransitTestEnvironment;
 import org.opentripplanner.transit.model._data.TransitTestEnvironmentBuilder;
-import org.opentripplanner.transit.model.site.AreaStop;
 import org.opentripplanner.transit.model.site.RegularStop;
 
 class NearbyStopFinderVisitorTest {
 
   private static final TransitTestEnvironmentBuilder ENV = TransitTestEnvironment.of();
   static final RegularStop STOP = ENV.stop("stop-1");
-  static final AreaStop AREA_STOP = ENV.areaStop("area-1");
-
-  private static final StopResolver STOP_RESOLVER = new StopResolver() {
-    @Override
-    public RegularStop getRegularStop(FeedScopedId id) {
-      return STOP;
-    }
-
-    @Override
-    public AreaStop getAreaStop(FeedScopedId id) {
-      return AREA_STOP;
-    }
-  };
+  static final FeedScopedId AREA_STOP_ID = new FeedScopedId("A", "area-1");
 
   @Test
   void collectsTransitStops() {
-    var visitor = new NearbyStopFinderVisitor(STOP_RESOLVER, Set.of(), Set.of(), false);
+    var visitor = new NearbyStopFinderVisitor(Set.of(), Set.of(), false);
 
     var state = TestStateBuilder.ofWalking().streetEdge().stop(STOP).build();
     visitor.visitVertex(state);
 
-    var expected = NearbyStop.nearbyStopForState(state, STOP);
+    var expected = NearbyStop.nearbyStopForState(state, STOP.getId());
     assertEquals(List.of(expected), visitor.transitStopsFound());
   }
 
@@ -53,7 +40,7 @@ class NearbyStopFinderVisitorTest {
   void skipsOriginVertices() {
     var state = TestStateBuilder.ofWalking().streetEdge().stop(STOP).build();
     var originVertices = Set.of(state.getVertex());
-    var visitor = new NearbyStopFinderVisitor(STOP_RESOLVER, originVertices, Set.of(), false);
+    var visitor = new NearbyStopFinderVisitor(originVertices, Set.of(), false);
 
     visitor.visitVertex(state);
 
@@ -64,7 +51,7 @@ class NearbyStopFinderVisitorTest {
   void skipsIgnoreVertices() {
     var state = TestStateBuilder.ofWalking().streetEdge().stop(STOP).build();
     var ignoreVertices = Set.of(state.getVertex());
-    var visitor = new NearbyStopFinderVisitor(STOP_RESOLVER, Set.of(), ignoreVertices, false);
+    var visitor = new NearbyStopFinderVisitor(Set.of(), ignoreVertices, false);
 
     visitor.visitVertex(state);
 
@@ -73,7 +60,7 @@ class NearbyStopFinderVisitorTest {
 
   @Test
   void skipsNonTransitVertices() {
-    var visitor = new NearbyStopFinderVisitor(STOP_RESOLVER, Set.of(), Set.of(), false);
+    var visitor = new NearbyStopFinderVisitor(Set.of(), Set.of(), false);
 
     // State at a regular intersection, not a transit stop
     var state = TestStateBuilder.ofWalking().streetEdge().build();
@@ -88,15 +75,15 @@ class NearbyStopFinderVisitorTest {
       var vertex = StreetModelForTest.intersectionVertex(10, 10);
       var other = StreetModelForTest.intersectionVertex(10.1, 10.1);
       StreetModelForTest.streetEdge(vertex, other, StreetTraversalPermission.CAR);
-      vertex.addAreaStops(Set.of(AREA_STOP.getId()));
+      vertex.addAreaStops(Set.of(AREA_STOP_ID));
 
       var state = new State(vertex, StreetSearchRequest.of().withStartTime(Instant.EPOCH).build());
-      var visitor = new NearbyStopFinderVisitor(STOP_RESOLVER, Set.of(), Set.of(), false);
+      var visitor = new NearbyStopFinderVisitor(Set.of(), Set.of(), false);
       visitor.visitVertex(state);
 
-      assertEquals(1, visitor.areaStopStates().size());
-      assertTrue(visitor.areaStopStates().containsKey(AREA_STOP));
-      assertEquals(state, visitor.areaStopStates().get(AREA_STOP).iterator().next());
+      assertEquals(1, visitor.statesForAreaStopIds().size());
+      assertTrue(visitor.statesForAreaStopIds().containsKey(AREA_STOP_ID));
+      assertEquals(state, visitor.statesForAreaStopIds().get(AREA_STOP_ID).iterator().next());
     });
   }
 
@@ -106,13 +93,13 @@ class NearbyStopFinderVisitorTest {
       var vertex = StreetModelForTest.intersectionVertex(20, 20);
       var other = StreetModelForTest.intersectionVertex(20.1, 20.1);
       StreetModelForTest.streetEdge(vertex, other, StreetTraversalPermission.PEDESTRIAN);
-      vertex.addAreaStops(Set.of(AREA_STOP.getId()));
+      vertex.addAreaStops(Set.of(AREA_STOP_ID));
 
       var state = new State(vertex, StreetSearchRequest.of().withStartTime(Instant.EPOCH).build());
-      var visitor = new NearbyStopFinderVisitor(STOP_RESOLVER, Set.of(), Set.of(), false);
+      var visitor = new NearbyStopFinderVisitor(Set.of(), Set.of(), false);
       visitor.visitVertex(state);
 
-      assertTrue(visitor.areaStopStates().isEmpty());
+      assertTrue(visitor.statesForAreaStopIds().isEmpty());
     });
   }
 
@@ -123,14 +110,14 @@ class NearbyStopFinderVisitorTest {
       var other = StreetModelForTest.intersectionVertex(30.1, 30.1);
       // Create incoming CAR edge: other -> vertex
       StreetModelForTest.streetEdge(other, vertex, StreetTraversalPermission.CAR);
-      vertex.addAreaStops(Set.of(AREA_STOP.getId()));
+      vertex.addAreaStops(Set.of(AREA_STOP_ID));
 
       var state = new State(vertex, StreetSearchRequest.of().withStartTime(Instant.EPOCH).build());
-      var visitor = new NearbyStopFinderVisitor(STOP_RESOLVER, Set.of(), Set.of(), true);
+      var visitor = new NearbyStopFinderVisitor(Set.of(), Set.of(), true);
       visitor.visitVertex(state);
 
-      assertEquals(1, visitor.areaStopStates().size());
-      assertTrue(visitor.areaStopStates().containsKey(AREA_STOP));
+      assertEquals(1, visitor.statesForAreaStopIds().size());
+      assertTrue(visitor.statesForAreaStopIds().containsKey(AREA_STOP_ID));
     });
   }
 }

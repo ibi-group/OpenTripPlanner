@@ -4,8 +4,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
-import javax.annotation.Nullable;
-import org.opentripplanner.astar.spi.TraverseVisitor;
 import org.opentripplanner.astar.strategy.DurationSkipEdgeStrategy;
 import org.opentripplanner.framework.application.OTPRequestTimeoutException;
 import org.opentripplanner.routing.api.request.RouteRequest;
@@ -13,13 +11,11 @@ import org.opentripplanner.routing.api.request.preference.StreetPreferences;
 import org.opentripplanner.routing.error.PathNotFoundException;
 import org.opentripplanner.routing.linking.LinkingContext;
 import org.opentripplanner.street.model.StreetConstants;
-import org.opentripplanner.street.model.edge.Edge;
 import org.opentripplanner.street.model.edge.ExtensionRequestContext;
 import org.opentripplanner.street.model.path.StreetPath;
 import org.opentripplanner.street.model.vertex.Vertex;
 import org.opentripplanner.street.search.EuclideanRemainingWeightHeuristic;
 import org.opentripplanner.street.search.StreetSearchBuilder;
-import org.opentripplanner.street.search.state.State;
 import org.opentripplanner.street.search.strategy.DominanceFunctions;
 import org.opentripplanner.streetadapter.StreetSearchRequestMapper;
 import org.slf4j.Logger;
@@ -51,23 +47,18 @@ public class GraphPathFinder {
 
   private static final Logger LOG = LoggerFactory.getLogger(GraphPathFinder.class);
 
-  @Nullable
-  private final TraverseVisitor<State, Edge> traverseVisitor;
-
   private final Collection<ExtensionRequestContext> extensionRequestContexts;
 
   private final float maxCarSpeed;
 
-  public GraphPathFinder(@Nullable TraverseVisitor<State, Edge> traverseVisitor) {
-    this(traverseVisitor, List.of(), StreetConstants.DEFAULT_MAX_CAR_SPEED);
+  public GraphPathFinder() {
+    this(List.of(), StreetConstants.DEFAULT_MAX_CAR_SPEED);
   }
 
   public GraphPathFinder(
-    @Nullable TraverseVisitor<State, Edge> traverseVisitor,
     Collection<ExtensionRequestContext> extensionRequestContexts,
     float maxCarSpeed
   ) {
-    this.traverseVisitor = traverseVisitor;
     this.extensionRequestContexts = Objects.requireNonNull(extensionRequestContexts);
     this.maxCarSpeed = maxCarSpeed;
   }
@@ -97,12 +88,6 @@ public class GraphPathFinder {
       )
       .withFrom(from)
       .withTo(to);
-
-    // If the search has a traverseVisitor(GraphVisualizer) attached to it, set it as a callback
-    // for the AStar search
-    if (traverseVisitor != null) {
-      streetSearch.withTraverseVisitor(traverseVisitor);
-    }
 
     LOG.debug("rreq={}", request);
 

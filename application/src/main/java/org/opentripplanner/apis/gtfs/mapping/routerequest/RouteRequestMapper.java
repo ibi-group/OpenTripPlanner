@@ -184,7 +184,7 @@ public class RouteRequestMapper {
       var stopId = stopLocation.getGraphQLStopLocationId();
       return FeedScopedId.parseOptional(stopId)
         .map(feedScopedId ->
-          new GenericLocation(locationInput.getGraphQLLabel(), feedScopedId, null, null)
+          GenericLocation.fromStopId(feedScopedId, locationInput.getGraphQLLabel())
         )
         .orElseThrow(() ->
           new IllegalArgumentException("Stop id %s is not of valid format.".formatted(stopId))
@@ -192,11 +192,10 @@ public class RouteRequestMapper {
     }
 
     var coordinate = locationInput.getGraphQLLocation().getGraphQLCoordinate();
-    return new GenericLocation(
-      locationInput.getGraphQLLabel(),
-      null,
+    return GenericLocation.fromCoordinate(
       coordinate.getGraphQLLatitude(),
-      coordinate.getGraphQLLongitude()
+      coordinate.getGraphQLLongitude(),
+      locationInput.getGraphQLLabel()
     );
   }
 

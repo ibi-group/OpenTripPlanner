@@ -368,7 +368,7 @@ public class TransmodelGraphQLSchemaFactory {
       replacementForRelationType
     );
 
-    GraphQLOutputType timetabledPassingTime = TimetabledPassingTimeType.create(
+    var timetabledPassingTime = TimetabledPassingTimeType.create(
       bookingArrangementType,
       noticeType,
       quayType,
@@ -795,8 +795,7 @@ public class TransmodelGraphQLSchemaFactory {
                 .filter(
                   stopAtDistance ->
                     environment.getArgument("authority") == null ||
-                    stopAtDistance.stop
-                      .getId()
+                    stopAtDistance.stopId
                       .getFeedId()
                       .equalsIgnoreCase(environment.getArgument("authority"))
                 )

@@ -404,7 +404,6 @@ public class OsmTagMapper {
     props.createNames("indoor=area", "name.indoor_area");
 
     // Platforms
-    props.createNames("otp:route_ref=*", "name.otp_route_ref");
     props.createNames("highway=platform;ref=*", "name.platform_ref");
     props.createNames("railway=platform;ref=*", "name.platform_ref");
     props.createNames("railway=platform;highway=footway;footway=sidewalk", "name.platform");

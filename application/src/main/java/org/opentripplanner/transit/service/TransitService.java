@@ -122,6 +122,8 @@ public interface TransitService {
 
   /**
    * Return the routes using the given stop, not including real-time updates.
+   * This includes area stops and resolution of members of group stops - if a trip visits a group
+   * stop, all member stops are considered visited, too.
    */
   Set<Route> findRoutes(StopLocation stop);
 

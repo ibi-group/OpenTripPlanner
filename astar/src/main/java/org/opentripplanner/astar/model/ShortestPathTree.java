@@ -2,9 +2,7 @@ package org.opentripplanner.astar.model;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
 import javax.annotation.Nullable;
 import org.opentripplanner.astar.spi.AStarEdge;
@@ -43,29 +41,6 @@ public class ShortestPathTree<
     this.dominanceFunction = dominanceFunction;
     // Initialized with a reasonable size, see #4445
     stateSets = new SegmentedIdentityMap<>(25_000);
-  }
-
-  /** @return a list of GraphPaths, sometimes empty but never null. */
-  @SuppressWarnings("unchecked")
-  public List<GraphPath<State, Edge, Vertex>> getPaths(Vertex dest) {
-    Object existing = stateSets.get(dest);
-    if (existing == null) {
-      return Collections.emptyList();
-    }
-    List<GraphPath<State, Edge, Vertex>> ret = new LinkedList<>();
-    if (!(existing instanceof List)) {
-      State s = (State) existing;
-      if (s.isFinal()) {
-        ret.add(new GraphPath<>(s));
-      }
-    } else {
-      for (State s : (List<State>) existing) {
-        if (s.isFinal()) {
-          ret.add(new GraphPath<>(s));
-        }
-      }
-    }
-    return ret;
   }
 
   /** @return a single optimal, optionally back-optimized path to the given vertex. */
@@ -160,27 +135,6 @@ public class ShortestPathTree<
       }
     }
     return ret;
-  }
-
-  /**
-   * Returns a collection of 'interesting' states for the given Vertex. Depending on the
-   * implementation, this could contain a single optimal state, a set of Pareto-optimal states, or
-   * even states that are not known to be optimal but are judged interesting by some other
-   * criteria.
-   *
-   * @param dest the vertex of interest
-   * @return a collection of 'interesting' states at that vertex
-   */
-  @SuppressWarnings("unchecked")
-  public List<State> getStates(Vertex dest) {
-    Object existing = stateSets.get(dest);
-    if (existing == null) {
-      return null;
-    }
-    if (existing instanceof List) {
-      return (List<State>) existing;
-    }
-    return List.of((State) existing);
   }
 
   /**

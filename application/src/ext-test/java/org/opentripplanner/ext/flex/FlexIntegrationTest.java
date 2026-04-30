@@ -18,6 +18,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.opentripplanner.TestOtpModel;
 import org.opentripplanner.TestServerContext;
+import org.opentripplanner.core.model.id.FeedScopedId;
 import org.opentripplanner.core.model.time.LocalDateInterval;
 import org.opentripplanner.framework.application.OTPFeature;
 import org.opentripplanner.graph_builder.issue.api.DataImportIssueStore;
@@ -123,7 +124,7 @@ public class FlexIntegrationTest {
 
   @Test
   void shouldReturnARouteWithTwoTransfers() {
-    var from = GenericLocation.fromStopId("ALEX DR@ALEX WAY", "MARTA", "97266");
+    var from = GenericLocation.fromStopId(new FeedScopedId("MARTA", "97266"), "ALEX DR@ALEX WAY");
     var to = GenericLocation.fromCoordinate(33.86701256815635, -84.61787939071655);
 
     var itin = getItinerary(from, to, 3);

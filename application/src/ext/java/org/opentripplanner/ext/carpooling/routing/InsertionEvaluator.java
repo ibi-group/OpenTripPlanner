@@ -1,7 +1,6 @@
 package org.opentripplanner.ext.carpooling.routing;
 
 import static org.opentripplanner.ext.carpooling.util.GraphPathUtils.calculateCumulativeDurations;
-import static org.opentripplanner.ext.carpooling.util.GraphPathUtils.calculateDuration;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -36,29 +35,27 @@ public class InsertionEvaluator {
 
   private static final Logger LOG = LoggerFactory.getLogger(InsertionEvaluator.class);
 
-  private static final Duration INITIAL_ADDITIONAL_DURATION = Duration.ofDays(1);
-
-  private final PassengerDelayConstraints delayConstraints;
   private final LinkingContext linkingContext;
   private final StreetVertexUtils streetVertexUtils;
   private final CarpoolRouter carpoolRouter;
+  private final Duration stopDuration;
 
   /**
-   * Creates an evaluator with the specified routing function, delay constraints, and linking context.
+   * Creates an evaluator with the specified routing function and linking context.
    *
-   * @param delayConstraints Constraints for acceptable passenger delays
    * @param linkingContext Linking context with pre-linked vertices for routing
+   * @param stopDuration Duration added at each intermediate stop (from car pickupTime preference)
    */
   public InsertionEvaluator(
-    PassengerDelayConstraints delayConstraints,
     LinkingContext linkingContext,
     StreetVertexUtils streetVertexUtils,
-    CarpoolRouter carpoolRouter
+    CarpoolRouter carpoolRouter,
+    Duration stopDuration
   ) {
-    this.delayConstraints = delayConstraints;
     this.linkingContext = linkingContext;
     this.streetVertexUtils = streetVertexUtils;
     this.carpoolRouter = carpoolRouter;
+    this.stopDuration = stopDuration;
   }
 
   /**
@@ -102,23 +99,7 @@ public class InsertionEvaluator {
       return List.of();
     }
 
-    Duration[] cumulativeDurations = calculateCumulativeDurations(baselineSegments);
-
-    GraphPath<State, Edge, Vertex> pathBetweenOriginAndDestination = carpoolRouter.route(
-      tripWithVertices.vertices().getFirst(),
-      tripWithVertices.vertices().getLast()
-    );
-    if (pathBetweenOriginAndDestination == null) {
-      LOG.error(
-        "Could not route between origin and destination for trip {}",
-        tripWithVertices.trip().getId()
-      );
-      return List.of();
-    }
-
-    Duration durationBetweenOriginAndDestination = calculateDuration(
-      pathBetweenOriginAndDestination
-    );
+    Duration[] cumulativeDurations = calculateCumulativeDurations(baselineSegments, stopDuration);
 
     return tripWithViableAccessEgress
       .viableAccessEgress()
@@ -138,7 +119,6 @@ public class InsertionEvaluator {
           dropOffVertex,
           baselineSegments,
           cumulativeDurations,
-          durationBetweenOriginAndDestination,
           viableAccessEgress.transitStop()
         );
       })
@@ -182,23 +162,7 @@ public class InsertionEvaluator {
       linkingContext
     );
 
-    Duration[] cumulativeDurations = calculateCumulativeDurations(baselineSegments);
-
-    GraphPath<State, Edge, Vertex> pathBetweenOriginAndDestination = carpoolRouter.route(
-      tripWithVertices.vertices().getFirst(),
-      tripWithVertices.vertices().getLast()
-    );
-    if (pathBetweenOriginAndDestination == null) {
-      LOG.error(
-        "Could not route between origin and destination for trip {}",
-        tripWithVertices.trip().getId()
-      );
-      return null;
-    }
-
-    Duration durationBetweenOriginAndDestination = calculateDuration(
-      pathBetweenOriginAndDestination
-    );
+    Duration[] cumulativeDurations = calculateCumulativeDurations(baselineSegments, stopDuration);
 
     return findBestInsertion(
       tripWithVertices,
@@ -207,7 +171,6 @@ public class InsertionEvaluator {
       passengerDropoffVertex,
       baselineSegments,
       cumulativeDurations,
-      durationBetweenOriginAndDestination,
       null
     );
   }
@@ -220,11 +183,9 @@ public class InsertionEvaluator {
     Vertex passengerDropoff,
     GraphPath<State, Edge, Vertex>[] baselineSegments,
     Duration[] cumulativeDurations,
-    Duration durationBetweenOriginAndDestination,
     NearbyStop transitStop
   ) {
     InsertionCandidate bestCandidate = null;
-    Duration minAdditionalDuration = INITIAL_ADDITIONAL_DURATION;
 
     for (InsertionPosition position : viablePositions) {
       InsertionCandidate candidate = evaluateInsertion(
@@ -235,7 +196,6 @@ public class InsertionEvaluator {
         passengerDropoff,
         baselineSegments,
         cumulativeDurations,
-        durationBetweenOriginAndDestination,
         transitStop
       );
 
@@ -243,20 +203,16 @@ public class InsertionEvaluator {
         continue;
       }
 
-      Duration additionalDuration = candidate.additionalDuration();
-
-      // Check if this is the best so far and within deviation budget
       if (
-        additionalDuration.compareTo(minAdditionalDuration) < 0 &&
-        additionalDuration.compareTo(tripWithVertices.trip().deviationBudget()) <= 0
+        bestCandidate == null ||
+        candidate.totalTripDuration().compareTo(bestCandidate.totalTripDuration()) < 0
       ) {
-        minAdditionalDuration = additionalDuration;
         bestCandidate = candidate;
         LOG.debug(
-          "New best insertion: pickup@{}, dropoff@{}, additional={}s",
+          "New best insertion: pickup@{}, dropoff@{}, duration={}s",
           position.pickupPos(),
           position.dropoffPos(),
-          additionalDuration.getSeconds()
+          candidate.totalTripDuration().getSeconds()
         );
       }
     }
@@ -276,7 +232,6 @@ public class InsertionEvaluator {
     Vertex passengerDropoff,
     GraphPath<State, Edge, Vertex>[] baselineSegments,
     Duration[] originalCumulativeDurations,
-    Duration durationBetweenOriginAndDestination,
     NearbyStop transitStop
   ) {
     List<GraphPath<State, Edge, Vertex>> modifiedSegments = buildModifiedSegments(
@@ -292,23 +247,18 @@ public class InsertionEvaluator {
       return null;
     }
 
-    // Calculate total duration
-    Duration totalDuration = Duration.ZERO;
-    for (GraphPath<State, Edge, Vertex> segment : modifiedSegments) {
-      totalDuration = totalDuration.plus(
-        Duration.between(segment.states.getFirst().getTime(), segment.states.getLast().getTime())
-      );
-    }
-
     // Check passenger delay constraints
+    Duration[] modifiedCumulativeDurations = calculateCumulativeDurations(
+      modifiedSegments.toArray(new GraphPath[modifiedSegments.size()]),
+      stopDuration
+    );
     if (
-      !delayConstraints.satisfiesConstraints(
+      !PassengerDelayConstraints.satisfiesConstraints(
         originalCumulativeDurations,
-        calculateCumulativeDurations(
-          modifiedSegments.toArray(new GraphPath[modifiedSegments.size()])
-        ),
+        modifiedCumulativeDurations,
         pickupPos,
-        dropoffPos
+        dropoffPos,
+        tripWithVertices.trip().stops()
       )
     ) {
       LOG.trace(
@@ -324,8 +274,7 @@ public class InsertionEvaluator {
       pickupPos,
       dropoffPos,
       modifiedSegments,
-      durationBetweenOriginAndDestination,
-      totalDuration,
+      stopDuration,
       transitStop
     );
   }

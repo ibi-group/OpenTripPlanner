@@ -40,24 +40,30 @@ class CoachCostCalculator<T extends TripSchedule> implements RaptorCostCalculato
   }
 
   @Override
-  public int onTripRelativeRidingCost(int boardTime, T tripScheduledBoarded) {
-    return delegate.onTripRelativeRidingCost(boardTime, tripScheduledBoarded);
+  public int transitCost(int transitDuration, T tripScheduledBoarded) {
+    return delegate.transitCost(transitDuration, tripScheduledBoarded);
   }
 
   @Override
   public int transitArrivalCost(
     int boardCost,
     int alightSlack,
-    int transitTime,
+    int transitDuration,
     T trip,
     int toStopIndex
   ) {
-    int cost = delegate.transitArrivalCost(boardCost, alightSlack, transitTime, trip, toStopIndex);
+    int cost = delegate.transitArrivalCost(
+      boardCost,
+      alightSlack,
+      transitDuration,
+      trip,
+      toStopIndex
+    );
 
     // This is a bit ugly, since it relies on the fact that the 'transitReluctanceFactorIndex'
     // returns the 'route.getMode().ordinal()'
     if (trip.transitReluctanceFactorIndex() == TransitMode.COACH.ordinal()) {
-      cost += transitTime * EXTRA_RELUCTANCE_ON_COACH;
+      cost += transitDuration * EXTRA_RELUCTANCE_ON_COACH;
     }
     return cost;
   }
@@ -68,8 +74,12 @@ class CoachCostCalculator<T extends TripSchedule> implements RaptorCostCalculato
   }
 
   @Override
-  public int calculateRemainingMinCost(int minTravelTime, int minNumTransfers, int fromStopIndex) {
-    return delegate.calculateRemainingMinCost(minTravelTime, minNumTransfers, fromStopIndex);
+  public int calculateRemainingMinCost(
+    int minTravelDuration,
+    int minNumTransfers,
+    int fromStopIndex
+  ) {
+    return delegate.calculateRemainingMinCost(minTravelDuration, minNumTransfers, fromStopIndex);
   }
 
   @Override

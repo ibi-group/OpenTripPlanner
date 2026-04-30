@@ -6,7 +6,6 @@ import java.util.Collection;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-import java.util.stream.Stream;
 import javax.annotation.Nullable;
 import org.opentripplanner.astar.spi.AStarState;
 import org.opentripplanner.service.vehiclerental.model.RentalVehicleType.PropulsionType;
@@ -19,9 +18,10 @@ import org.opentripplanner.street.model.vertex.Vertex;
 import org.opentripplanner.street.search.TraverseMode;
 import org.opentripplanner.street.search.intersection_model.IntersectionTraversalCalculator;
 import org.opentripplanner.street.search.request.StreetSearchRequest;
+import org.opentripplanner.utils.lang.DoubleUtils;
 import org.opentripplanner.utils.tostring.ToStringBuilder;
 
-public class State implements AStarState<State, Edge, Vertex>, Cloneable {
+public final class State implements AStarState<State, Edge, Vertex> {
 
   private static final State[] EMPTY_STATES = {};
   private final StreetSearchRequest request;
@@ -29,26 +29,26 @@ public class State implements AStarState<State, Edge, Vertex>, Cloneable {
   /* Data which is likely to change at most traversals */
 
   // the current time at this state, in milliseconds since UNIX epoch
-  protected long time_ms;
+  final long time_ms;
 
   // accumulated weight up to this state
-  public double weight;
+  public final double weight;
 
   // associate this state with a vertex in the graph
-  protected Vertex vertex;
+  final Vertex vertex;
 
   // allow path reconstruction from states
-  protected State backState;
+  @Nullable
+  private final State backState;
 
-  public Edge backEdge;
-
-  /* StateData contains data which is unlikely to change as often */
-  public StateData stateData;
+  @Nullable
+  public final Edge backEdge;
 
   // how far have we traversed through the graph
-  public double traversalDistance_m;
+  public final double traversalDistance_m;
 
-  /* CONSTRUCTORS */
+  /* StateData contains data which is unlikely to change as often */
+  public final StateData stateData;
 
   /**
    * Create an initial state, forcing vertex to the specified value. Useful for tests, etc.
@@ -62,11 +62,12 @@ public class State implements AStarState<State, Edge, Vertex>, Cloneable {
     );
   }
 
-  public State(Vertex vertex, Instant startTime, StateData stateData, StreetSearchRequest request) {
+  State(Vertex vertex, Instant startTime, StateData stateData, StreetSearchRequest request) {
     this.request = request;
     this.weight = 0;
-    this.vertex = vertex;
+    this.vertex = Objects.requireNonNull(vertex);
     this.backState = null;
+    this.backEdge = null;
     this.stateData = stateData;
     if (request.arriveBy() && !vertex.rentalRestrictions().noDropOffNetworks().isEmpty()) {
       this.stateData.noRentalDropOffZonesAtStartOfReverseSearch = vertex
@@ -75,6 +76,26 @@ public class State implements AStarState<State, Edge, Vertex>, Cloneable {
     }
     this.traversalDistance_m = 0;
     this.time_ms = startTime.toEpochMilli();
+  }
+
+  public State(
+    StreetSearchRequest request,
+    double weight,
+    Vertex vertex,
+    @Nullable State backState,
+    @Nullable Edge backEdge,
+    StateData stateData,
+    double traversalDistance_m,
+    long time_ms
+  ) {
+    this.request = Objects.requireNonNull(request);
+    this.weight = DoubleUtils.requireNonNegative(weight);
+    this.vertex = Objects.requireNonNull(vertex);
+    this.backState = backState;
+    this.backEdge = backEdge;
+    this.stateData = Objects.requireNonNull(stateData);
+    this.traversalDistance_m = DoubleUtils.requireNonNegative(traversalDistance_m);
+    this.time_ms = time_ms;
   }
 
   /**
@@ -139,13 +160,6 @@ public class State implements AStarState<State, Edge, Vertex>, Cloneable {
    */
   public static boolean isEmpty(State[] s) {
     return s.length == 0;
-  }
-
-  /**
-   * Takes a stream of states and converts it to an array while removing nulls.
-   */
-  public static State[] ofStream(Stream<State> states) {
-    return states.filter(Objects::nonNull).toArray(State[]::new);
   }
 
   /**
@@ -480,16 +494,6 @@ public class State implements AStarState<State, Edge, Vertex>, Cloneable {
     return true;
   }
 
-  protected State clone() {
-    State ret;
-    try {
-      ret = (State) super.clone();
-    } catch (CloneNotSupportedException e1) {
-      throw new IllegalStateException("This is not happening");
-    }
-    return ret;
-  }
-
   /**
    * Returns an efficient iterable that allows traversing the edge chain backwards.
    */
@@ -513,13 +517,6 @@ public class State implements AStarState<State, Edge, Vertex>, Cloneable {
       .toString();
   }
 
-  void checkNegativeWeight() {
-    double dw = this.weight - backState.weight;
-    if (dw < 0) {
-      throw new NegativeWeightException(dw + " on edge " + backEdge);
-    }
-  }
-
   private int getAbsTimeDeltaMilliseconds() {
     return Math.abs(getTimeDeltaMilliseconds());
   }
@@ -536,10 +533,12 @@ public class State implements AStarState<State, Edge, Vertex>, Cloneable {
     // these must be getTime(), not getTimeAccurate(), so that the reversed path (which does not
     // have arriveBy true anymore) has times which round correctly, as the rounding rules
     // depend on arriveBy
-    StreetSearchRequest reversedRequest = request
-      .copyOfReversed(getTime())
-      .withUseRentalAvailability(false)
-      .build();
+    var builder = request.copyOfReversed(getTime());
+    // mutating the builder is a hot spot, only do it if needed
+    if (request.mode().includesRenting()) {
+      builder.withUseRentalAvailability(false);
+    }
+    var reversedRequest = builder.build();
     StateData newStateData = stateData.clone();
     newStateData.backMode = null;
     return new State(this.vertex, getTime(), newStateData, reversedRequest);

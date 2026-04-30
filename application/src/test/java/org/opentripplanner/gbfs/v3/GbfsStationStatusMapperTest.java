@@ -4,12 +4,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.opentripplanner.core.model.id.FeedScopedIdForTestFactory.id;
 import static org.opentripplanner.service.vehiclerental.model.ReturnPolicy.ANY_TYPE;
 import static org.opentripplanner.service.vehiclerental.model.ReturnPolicy.SPECIFIC_TYPES;
 import static org.opentripplanner.street.model.RentalFormFactor.BICYCLE;
 import static org.opentripplanner.street.model.RentalFormFactor.CAR;
 import static org.opentripplanner.street.model.RentalFormFactor.SCOOTER;
-import static org.opentripplanner.transit.model._data.TimetableRepositoryForTest.id;
 import static shadow.org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;

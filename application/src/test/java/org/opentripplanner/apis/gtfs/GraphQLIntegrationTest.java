@@ -3,6 +3,7 @@ package org.opentripplanner.apis.gtfs;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.fail;
 import static org.opentripplanner._support.time.ZoneIds.BERLIN;
+import static org.opentripplanner.core.model.id.FeedScopedIdForTestFactory.id;
 import static org.opentripplanner.model.plan.PlanTestConstants.D10_m;
 import static org.opentripplanner.model.plan.PlanTestConstants.T11_00;
 import static org.opentripplanner.model.plan.PlanTestConstants.T11_01;
@@ -12,7 +13,6 @@ import static org.opentripplanner.model.plan.PlanTestConstants.T11_50;
 import static org.opentripplanner.model.plan.TestItineraryBuilder.newItinerary;
 import static org.opentripplanner.service.realtimevehicles.model.RealtimeVehicle.StopStatus.IN_TRANSIT_TO;
 import static org.opentripplanner.test.support.JsonAssertions.assertEqualJson;
-import static org.opentripplanner.transit.model._data.TimetableRepositoryForTest.id;
 import static org.opentripplanner.transit.model.basic.TransitMode.BUS;
 import static org.opentripplanner.transit.model.basic.TransitMode.FERRY;
 import static org.opentripplanner.transit.model.timetable.OccupancyStatus.FEW_SEATS_AVAILABLE;
@@ -48,6 +48,7 @@ import org.opentripplanner.core.model.accessibility.Accessibility;
 import org.opentripplanner.core.model.i18n.I18NString;
 import org.opentripplanner.core.model.i18n.NonLocalizedString;
 import org.opentripplanner.core.model.id.FeedScopedId;
+import org.opentripplanner.core.model.id.FeedScopedIdForTestFactory;
 import org.opentripplanner.ext.fares.ItineraryFaresDecorator;
 import org.opentripplanner.ext.fares.service.gtfs.v1.DefaultFareService;
 import org.opentripplanner.model.FeedInfoTestFactory;
@@ -208,7 +209,7 @@ class GraphQLIntegrationTest {
     var siteRepository = siteRepositoryBuilder.build();
     var timetableRepository = new TimetableRepository(siteRepository);
 
-    var cal_id = TimetableRepositoryForTest.id("CAL_1");
+    var cal_id = FeedScopedIdForTestFactory.id("CAL_1");
     var trip = TimetableRepositoryForTest.trip("123")
       .withHeadsign(I18NString.of("Trip Headsign"))
       .withServiceId(cal_id)

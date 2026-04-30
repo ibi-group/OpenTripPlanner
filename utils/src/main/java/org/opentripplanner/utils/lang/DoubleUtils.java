@@ -74,6 +74,16 @@ public class DoubleUtils {
     return Double.compare(a, b) == 0;
   }
 
+  /**
+   * Throws an exception if the value is less than zero.
+   */
+  public static double requireNonNegative(double value) {
+    if (value < 0) {
+      throw new IllegalArgumentException("Value is required to be non-negative, but was: " + value);
+    }
+    return value;
+  }
+
   public static double requireInRange(double value, double min, double max) {
     return requireInRange(value, min, max, "value");
   }

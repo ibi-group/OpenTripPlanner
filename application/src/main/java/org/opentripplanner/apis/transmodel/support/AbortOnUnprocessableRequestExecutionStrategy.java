@@ -1,6 +1,7 @@
 package org.opentripplanner.apis.transmodel.support;
 
 import graphql.execution.AsyncExecutionStrategy;
+import graphql.execution.DataFetcherResult;
 import graphql.execution.ExecutionStrategyParameters;
 import graphql.schema.DataFetchingEnvironment;
 import java.io.Closeable;
@@ -37,7 +38,7 @@ public class AbortOnUnprocessableRequestExecutionStrategy
   }
 
   @Override
-  protected <T> CompletableFuture<T> handleFetchingException(
+  protected <T> CompletableFuture<DataFetcherResult<T>> handleFetchingException(
     DataFetchingEnvironment environment,
     ExecutionStrategyParameters params,
     Throwable e

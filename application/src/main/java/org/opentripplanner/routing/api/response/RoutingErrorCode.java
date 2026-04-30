@@ -36,4 +36,11 @@ public enum RoutingErrorCode {
    * The location was found, but no stops could be found within the search radius.
    */
   NO_STOPS_IN_RANGE,
+
+  /**
+   * No usable itineraries were found for a direct-only search (no transit modes requested).
+   * This includes both the case where no route exists and the case where routes were found
+   * but all were filtered out (e.g. by quality or distance filters).
+   */
+  NO_DIRECT_MODE_CONNECTION,
 }

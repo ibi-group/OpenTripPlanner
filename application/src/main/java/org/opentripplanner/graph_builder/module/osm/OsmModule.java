@@ -126,7 +126,7 @@ public class OsmModule implements GraphBuilderModule {
       osmdb,
       graph,
       params.boardingAreaRefTags(),
-      params.includeOsmSubwayEntrances(),
+      params.includeOsmStationEntrances(),
       issueStore
     );
     for (var provider : providers) {
@@ -433,6 +433,7 @@ public class OsmModule implements GraphBuilderModule {
           osmEndNode.hasTag("ele") ||
           osmEndNode.isBoardingLocation() ||
           osmEndNode.isBarrier() ||
+          osmEndNode.isEntrance() ||
           vertexGenerator.nodesInBarrierWays().containsKey(osmEndNode)
         ) {
           segmentCoordinates.add(osmEndNode.getCoordinate());

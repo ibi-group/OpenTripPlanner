@@ -7,7 +7,6 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Collection;
-import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.opentripplanner.astar.TestState;
 import org.opentripplanner.astar.TestVertex;
@@ -31,7 +30,6 @@ class ShortestPathTreeTest {
     assertTrue(spt.add(s));
     assertTrue(spt.visit(s));
     assertEquals(s, spt.getState(v));
-    assertEquals(List.of(s), spt.getStates(v));
   }
 
   @Test
@@ -46,7 +44,6 @@ class ShortestPathTreeTest {
     assertFalse(spt.visit(worse));
     assertTrue(spt.visit(better));
     assertEquals(better, spt.getState(v));
-    assertEquals(List.of(better), spt.getStates(v));
   }
 
   @Test
@@ -58,7 +55,6 @@ class ShortestPathTreeTest {
 
     assertTrue(spt.add(better));
     assertFalse(spt.add(worse));
-    assertEquals(List.of(better), spt.getStates(v));
   }
 
   @Test
@@ -72,7 +68,6 @@ class ShortestPathTreeTest {
     assertTrue(spt.add(s2));
     assertTrue(spt.visit(s1));
     assertTrue(spt.visit(s2));
-    assertEquals(List.of(s1, s2), spt.getStates(v));
   }
 
   @Test
@@ -86,12 +81,6 @@ class ShortestPathTreeTest {
     spt.add(s1);
     // s2 was never added
     assertFalse(spt.visit(s2));
-  }
-
-  @Test
-  void getStatesNullForAbsentVertex() {
-    var spt = new ShortestPathTree<>(BY_WEIGHT);
-    assertNull(spt.getStates(new TestVertex()));
   }
 
   @Test

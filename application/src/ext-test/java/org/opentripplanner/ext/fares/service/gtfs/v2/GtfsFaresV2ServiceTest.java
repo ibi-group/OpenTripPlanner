@@ -2,8 +2,8 @@ package org.opentripplanner.ext.fares.service.gtfs.v2;
 
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.opentripplanner.core.model.id.FeedScopedIdForTestFactory.id;
 import static org.opentripplanner.model.plan.TestItineraryBuilder.newItinerary;
-import static org.opentripplanner.transit.model._data.FeedScopedIdForTestFactory.id;
 import static org.opentripplanner.transit.model._data.TimetableRepositoryForTest.FEED_ID;
 
 import java.util.Set;

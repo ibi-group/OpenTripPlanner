@@ -1,6 +1,6 @@
 package org.opentripplanner.transit.model._data;
 
-import static org.opentripplanner.transit.model._data.FeedScopedIdForTestFactory.id;
+import static org.opentripplanner.core.model.id.FeedScopedIdForTestFactory.id;
 
 import java.util.Optional;
 import java.util.function.Consumer;

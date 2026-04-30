@@ -97,7 +97,7 @@ public class BicycleRoutingTest {
     var linkingContextFactory = new LinkingContextFactory(graph, vertexCreationService);
     var linkingRequest = LinkingContextRequestMapper.map(request);
     var linkingContext = linkingContextFactory.create(temporaryVerticesContainer, linkingRequest);
-    var gpf = new GraphPathFinder(null);
+    var gpf = new GraphPathFinder();
     var paths = gpf.graphPathFinderEntryPoint(request, linkingContext);
 
     GraphPathToItineraryMapper graphPathToItineraryMapper = new GraphPathToItineraryMapper(

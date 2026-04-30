@@ -2,11 +2,11 @@ package org.opentripplanner.graph_builder.module.geometry;
 
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.opentripplanner.core.model.id.FeedScopedIdForTestFactory.id;
 import static org.opentripplanner.graph_builder.issue.api.DataImportIssueStore.NOOP;
 import static org.opentripplanner.street.geometry.GeometryUtils.makeLineString;
 import static org.opentripplanner.street.geometry.SphericalDistanceLibrary.distance;
 import static org.opentripplanner.street.geometry.SphericalDistanceLibrary.moveMeters;
-import static org.opentripplanner.transit.model._data.TimetableRepositoryForTest.id;
 
 import java.util.List;
 import java.util.stream.IntStream;

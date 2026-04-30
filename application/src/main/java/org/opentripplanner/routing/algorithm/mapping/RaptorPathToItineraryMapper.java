@@ -102,10 +102,7 @@ public class RaptorPathToItineraryMapper<T extends TripSchedule> {
       graph.ellipsoidToGeoidDifference
     );
     this.transitService = transitService;
-    this.carpoolItineraryMapper = new CarpoolItineraryMapper(
-      transitService.getTimeZone(),
-      transitSearchTimeZero
-    );
+    this.carpoolItineraryMapper = new CarpoolItineraryMapper(transitSearchTimeZero);
   }
 
   public Itinerary createItinerary(RaptorPath<T> path) {
@@ -474,7 +471,7 @@ public class RaptorPathToItineraryMapper<T extends TripSchedule> {
   }
 
   private Place mapPlace(GenericLocation location) {
-    return Place.normal(location.lat, location.lng, new NonLocalizedString(location.label));
+    return Place.normal(location.wgsCoordinate(), new NonLocalizedString(location.label()));
   }
 
   private ZonedDateTime createZonedDateTime(int timeInSeconds) {
@@ -499,7 +496,7 @@ public class RaptorPathToItineraryMapper<T extends TripSchedule> {
   private Itinerary mapAccessEgressPathLeg(RaptorAccessEgress accessEgress) {
     return accessEgress
       .findOriginal(RoutingAccessEgress.class)
-      .map(RoutingAccessEgress::getLastState)
+      .map(RoutingAccessEgress::getFinalState)
       .map(StreetPath::new)
       .map(path -> graphPathToItineraryMapper.generateItinerary(path, request))
       .orElseThrow();

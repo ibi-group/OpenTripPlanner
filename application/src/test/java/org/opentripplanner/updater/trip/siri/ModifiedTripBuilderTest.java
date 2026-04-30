@@ -12,6 +12,7 @@ import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.opentripplanner.core.model.id.FeedScopedId;
+import org.opentripplanner.core.model.id.FeedScopedIdForTestFactory;
 import org.opentripplanner.model.PickDrop;
 import org.opentripplanner.model.StopTime;
 import org.opentripplanner.model.calendar.CalendarServiceData;
@@ -69,7 +70,7 @@ class ModifiedTripBuilderTest {
     .withStopPattern(TimetableRepositoryForTest.stopPattern(STOP_A_1, STOP_B_1, STOP_C_1))
     .build();
 
-  private static final FeedScopedId SERVICE_ID = TimetableRepositoryForTest.id("CAL_1");
+  private static final FeedScopedId SERVICE_ID = FeedScopedIdForTestFactory.id("CAL_1");
 
   private static final Trip TRIP = TimetableRepositoryForTest.trip("TRIP")
     .withRoute(ROUTE)

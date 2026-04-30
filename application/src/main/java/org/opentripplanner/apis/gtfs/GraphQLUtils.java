@@ -35,6 +35,7 @@ public class GraphQLUtils {
     }
     return switch (code) {
       case LOCATION_NOT_FOUND -> GraphQLRoutingErrorCode.LOCATION_NOT_FOUND;
+      case NO_DIRECT_MODE_CONNECTION -> GraphQLRoutingErrorCode.NO_DIRECT_MODE_CONNECTION;
       case NO_STOPS_IN_RANGE -> GraphQLRoutingErrorCode.NO_STOPS_IN_RANGE;
       case NO_TRANSIT_CONNECTION -> GraphQLRoutingErrorCode.NO_TRANSIT_CONNECTION;
       case NO_TRANSIT_CONNECTION_IN_SEARCH_WINDOW -> GraphQLRoutingErrorCode.NO_TRANSIT_CONNECTION_IN_SEARCH_WINDOW;

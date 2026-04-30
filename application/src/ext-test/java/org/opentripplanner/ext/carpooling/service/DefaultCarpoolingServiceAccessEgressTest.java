@@ -21,13 +21,12 @@ import org.opentripplanner.ext.carpooling.CarpoolingRepository;
 import org.opentripplanner.ext.carpooling.internal.DefaultCarpoolingRepository;
 import org.opentripplanner.ext.carpooling.routing.CarpoolAccessEgress;
 import org.opentripplanner.ext.carpooling.routing.CarpoolTreeStreetRouter;
-import org.opentripplanner.graph_builder.module.nearbystops.SiteRepositoryResolver;
-import org.opentripplanner.graph_builder.module.nearbystops.StopResolver;
 import org.opentripplanner.model.GenericLocation;
 import org.opentripplanner.routing.algorithm.GraphRoutingTest;
 import org.opentripplanner.routing.algorithm.raptoradapter.router.street.AccessEgressType;
 import org.opentripplanner.routing.api.request.RouteRequest;
 import org.opentripplanner.routing.api.request.request.StreetRequest;
+import org.opentripplanner.routing.graphfinder.TransitServiceResolver;
 import org.opentripplanner.routing.linking.LinkingContext;
 import org.opentripplanner.routing.linking.VertexLinkerTestFactory;
 import org.opentripplanner.street.geometry.WgsCoordinate;
@@ -80,7 +79,7 @@ class DefaultCarpoolingServiceAccessEgressTest extends GraphRoutingTest {
 
   private DefaultCarpoolingService service;
   private CarpoolingRepository repository;
-  private StopResolver stopResolver;
+  private TransitServiceResolver transitServiceResolver;
   private LinkingContext linkingContext;
 
   private TransitStopVertex stopT1;
@@ -177,9 +176,9 @@ class DefaultCarpoolingServiceAccessEgressTest extends GraphRoutingTest {
 
     Graph graph = model.graph();
     var timetableRepository = model.timetableRepository();
-    stopResolver = new SiteRepositoryResolver(timetableRepository.getSiteRepository());
     VertexLinker vertexLinker = VertexLinkerTestFactory.of(graph);
     TransitService transitService = new DefaultTransitService(timetableRepository);
+    transitServiceResolver = new TransitServiceResolver(transitService);
     repository = new DefaultCarpoolingRepository();
 
     // LinkingContext: P1 -> {iP1}, P2 -> {iP2}, P3 -> {iP3}
@@ -256,7 +255,7 @@ class DefaultCarpoolingServiceAccessEgressTest extends GraphRoutingTest {
       request,
       new StreetRequest(StreetMode.WALK),
       AccessEgressType.ACCESS,
-      stopResolver,
+      transitServiceResolver,
       linkingContext,
       SEARCH_TIME
     );
@@ -276,7 +275,7 @@ class DefaultCarpoolingServiceAccessEgressTest extends GraphRoutingTest {
       request,
       new StreetRequest(StreetMode.WALK),
       AccessEgressType.EGRESS,
-      stopResolver,
+      transitServiceResolver,
       linkingContext,
       SEARCH_TIME
     );
@@ -292,7 +291,7 @@ class DefaultCarpoolingServiceAccessEgressTest extends GraphRoutingTest {
       request,
       new StreetRequest(StreetMode.CARPOOL),
       AccessEgressType.ACCESS,
-      stopResolver,
+      transitServiceResolver,
       linkingContext,
       SEARCH_TIME
     );
@@ -312,7 +311,7 @@ class DefaultCarpoolingServiceAccessEgressTest extends GraphRoutingTest {
       request,
       new StreetRequest(StreetMode.CARPOOL),
       AccessEgressType.ACCESS,
-      stopResolver,
+      transitServiceResolver,
       linkingContext,
       SEARCH_TIME
     );
@@ -333,7 +332,7 @@ class DefaultCarpoolingServiceAccessEgressTest extends GraphRoutingTest {
       request,
       new StreetRequest(StreetMode.CARPOOL),
       AccessEgressType.ACCESS,
-      stopResolver,
+      transitServiceResolver,
       linkingContext,
       SEARCH_TIME
     );
@@ -348,8 +347,8 @@ class DefaultCarpoolingServiceAccessEgressTest extends GraphRoutingTest {
       assertFalse(accessEgress.getSegments().isEmpty(), "Segments should not be empty");
     }
 
-    int stopT3Index = stopResolver.getRegularStop(stopT3.getId()).getIndex();
-    int stopT4Index = stopResolver.getRegularStop(stopT4.getId()).getIndex();
+    int stopT3Index = transitServiceResolver.getStop(stopT3.getId()).getIndex();
+    int stopT4Index = transitServiceResolver.getStop(stopT4.getId()).getIndex();
     assertTrue(
       results.stream().anyMatch(r -> r.stop() == stopT3Index),
       "At least one access result should include stopT3"
@@ -373,7 +372,7 @@ class DefaultCarpoolingServiceAccessEgressTest extends GraphRoutingTest {
       request,
       new StreetRequest(StreetMode.CARPOOL),
       AccessEgressType.EGRESS,
-      stopResolver,
+      transitServiceResolver,
       linkingContext,
       SEARCH_TIME
     );
@@ -385,8 +384,8 @@ class DefaultCarpoolingServiceAccessEgressTest extends GraphRoutingTest {
       assertNotNull(accessEgress.getSegments(), "Segments should not be null");
     }
 
-    int stopT1Index = stopResolver.getRegularStop(stopT1.getId()).getIndex();
-    int stopT2Index = stopResolver.getRegularStop(stopT2.getId()).getIndex();
+    int stopT1Index = transitServiceResolver.getStop(stopT1.getId()).getIndex();
+    int stopT2Index = transitServiceResolver.getStop(stopT2.getId()).getIndex();
     assertTrue(
       results.stream().anyMatch(r -> r.stop() == stopT1Index),
       "At least one egress result should include stopT1"
@@ -410,7 +409,7 @@ class DefaultCarpoolingServiceAccessEgressTest extends GraphRoutingTest {
       request,
       new StreetRequest(StreetMode.CARPOOL),
       AccessEgressType.ACCESS,
-      stopResolver,
+      transitServiceResolver,
       linkingContext,
       transitSearchTimeZero
     );
@@ -436,8 +435,8 @@ class DefaultCarpoolingServiceAccessEgressTest extends GraphRoutingTest {
       );
     }
 
-    int stopT3Index = stopResolver.getRegularStop(stopT3.getId()).getIndex();
-    int stopT4Index = stopResolver.getRegularStop(stopT4.getId()).getIndex();
+    int stopT3Index = transitServiceResolver.getStop(stopT3.getId()).getIndex();
+    int stopT4Index = transitServiceResolver.getStop(stopT4.getId()).getIndex();
     assertTrue(
       results.stream().anyMatch(r -> r.stop() == stopT3Index),
       "At least one access result should include stopT3"
@@ -465,7 +464,7 @@ class DefaultCarpoolingServiceAccessEgressTest extends GraphRoutingTest {
       request,
       new StreetRequest(StreetMode.CARPOOL),
       AccessEgressType.ACCESS,
-      stopResolver,
+      transitServiceResolver,
       linkingContext,
       SEARCH_TIME
     );
@@ -482,8 +481,8 @@ class DefaultCarpoolingServiceAccessEgressTest extends GraphRoutingTest {
       );
     }
 
-    int stopT3Index = stopResolver.getRegularStop(stopT3.getId()).getIndex();
-    int stopT4Index = stopResolver.getRegularStop(stopT4.getId()).getIndex();
+    int stopT3Index = transitServiceResolver.getStop(stopT3.getId()).getIndex();
+    int stopT4Index = transitServiceResolver.getStop(stopT4.getId()).getIndex();
     assertTrue(
       results.stream().anyMatch(r -> r.stop() == stopT3Index),
       "At least one access result should include stopT3"
@@ -502,11 +501,10 @@ class DefaultCarpoolingServiceAccessEgressTest extends GraphRoutingTest {
       4,
       List.of(
         CarpoolTripTestData.createOriginStopWithTime(coordA, departureTime, departureTime),
-        CarpoolTripTestData.createStopAt(1, coordB),
-        CarpoolTripTestData.createStopAt(2, coordC),
+        CarpoolTripTestData.createStopAt(coordB),
+        CarpoolTripTestData.createStopAt(coordC),
         CarpoolTripTestData.createDestinationStopWithTime(
           coordD,
-          3,
           departureTime.plusHours(1),
           departureTime.plusHours(1)
         )
@@ -521,15 +519,15 @@ class DefaultCarpoolingServiceAccessEgressTest extends GraphRoutingTest {
       request,
       new StreetRequest(StreetMode.CARPOOL),
       AccessEgressType.ACCESS,
-      stopResolver,
+      transitServiceResolver,
       linkingContext,
       SEARCH_TIME
     );
 
     assertFalse(results.isEmpty(), "Trip with intermediate stops should produce results");
 
-    int stopT3Index = stopResolver.getRegularStop(stopT3.getId()).getIndex();
-    int stopT4Index = stopResolver.getRegularStop(stopT4.getId()).getIndex();
+    int stopT3Index = transitServiceResolver.getStop(stopT3.getId()).getIndex();
+    int stopT4Index = transitServiceResolver.getStop(stopT4.getId()).getIndex();
     assertTrue(
       results.stream().anyMatch(r -> r.stop() == stopT3Index),
       "At least one access result should include stopT3"
@@ -552,7 +550,7 @@ class DefaultCarpoolingServiceAccessEgressTest extends GraphRoutingTest {
       request,
       new StreetRequest(StreetMode.CARPOOL),
       AccessEgressType.ACCESS,
-      stopResolver,
+      transitServiceResolver,
       linkingContext,
       SEARCH_TIME
     );
@@ -570,8 +568,8 @@ class DefaultCarpoolingServiceAccessEgressTest extends GraphRoutingTest {
       );
     }
 
-    int stopT3Index = stopResolver.getRegularStop(stopT3.getId()).getIndex();
-    int stopT4Index = stopResolver.getRegularStop(stopT4.getId()).getIndex();
+    int stopT3Index = transitServiceResolver.getStop(stopT3.getId()).getIndex();
+    int stopT4Index = transitServiceResolver.getStop(stopT4.getId()).getIndex();
     assertTrue(
       results.stream().anyMatch(r -> r.stop() == stopT3Index),
       "At least one access result should include stopT3"
@@ -632,20 +630,24 @@ class DefaultCarpoolingServiceAccessEgressTest extends GraphRoutingTest {
       request,
       new StreetRequest(StreetMode.CARPOOL),
       AccessEgressType.ACCESS,
-      stopResolver,
+      transitServiceResolver,
       linkingContext,
       transitSearchTimeZero
     );
 
     assertFalse(results.isEmpty(), "Should find access results");
 
+    // Departure time of the passenger is when the car arrives at the pickup (P2). The
+    // boarding dwell at P2 is part of the CarpoolAccessEgress duration, not added before
+    // the departure time.
+    var pickupTime = RouteRequest.defaultValue().preferences().car().pickupTime();
     var expectedDeparture = (int) Duration.between(
       transitSearchTimeZero.toInstant(),
       departureTime.plus(drivingDurationAToP2).toInstant()
     ).getSeconds();
 
-    int stopT3Index = stopResolver.getRegularStop(stopT3.getId()).getIndex();
-    int stopT4Index = stopResolver.getRegularStop(stopT4.getId()).getIndex();
+    int stopT3Index = transitServiceResolver.getStop(stopT3.getId()).getIndex();
+    int stopT4Index = transitServiceResolver.getStop(stopT4.getId()).getIndex();
     var targetStopIndices = Set.of(stopT3Index, stopT4Index);
 
     Map<Integer, Duration> expectedDrivingP2ToStop = Map.of(
@@ -681,15 +683,15 @@ class DefaultCarpoolingServiceAccessEgressTest extends GraphRoutingTest {
       );
 
       var drivingP2ToStop = expectedDrivingP2ToStop.get(accessEgress.stop());
-      // The service adds CARPOOL_STOP_DURATION (1 min) for the passenger pickup at P2
+      // Boarding dwell at P2 is now part of the passenger's ride duration, so the arrival
+      // time is the departure (arrival at P2) plus boarding plus driving from P2 to the stop.
       var expectedArrival =
-        expectedDeparture +
-        (int) drivingP2ToStop.getSeconds() +
-        (int) DefaultCarpoolingService.CARPOOL_STOP_DURATION.getSeconds();
+        expectedDeparture + (int) pickupTime.getSeconds() + (int) drivingP2ToStop.getSeconds();
       assertEquals(
         expectedArrival,
         accessEgress.getArrivalTimeOfPassenger(),
-        "Arrival time should equal passenger departure plus driving time from P2 to stop plus pickup duration"
+        "Arrival time should equal passenger departure plus boarding dwell plus driving " +
+          "time from P2 to stop"
       );
     }
   }

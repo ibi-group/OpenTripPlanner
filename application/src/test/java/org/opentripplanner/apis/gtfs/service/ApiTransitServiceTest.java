@@ -2,7 +2,7 @@ package org.opentripplanner.apis.gtfs.service;
 
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.opentripplanner.transit.model._data.TimetableRepositoryForTest.id;
+import static org.opentripplanner.core.model.id.FeedScopedIdForTestFactory.id;
 import static org.opentripplanner.updater.spi.UpdateResultAssertions.assertSuccess;
 import static org.opentripplanner.updater.trip.UpdateIncrementality.FULL_DATASET;
 
@@ -88,7 +88,7 @@ class ApiTransitServiceTest {
    * Tests that you get a single {@link TripTimeOnDate} for a stop in a pattern even if several
    * trips in the pattern have the same stop skipped.
    *
-   * @see https://github.com/opentripplanner/OpenTripPlanner/issues/6654
+   * @link https://github.com/opentripplanner/OpenTripPlanner/issues/6654
    */
   @Test
   void skipStopInMultipleTripsInPattern() {

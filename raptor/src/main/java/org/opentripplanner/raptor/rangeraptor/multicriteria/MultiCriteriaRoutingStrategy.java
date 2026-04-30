@@ -169,20 +169,18 @@ public class MultiCriteriaRoutingStrategy<T extends RaptorTripSchedule, R extend
     }
 
     final int boardC1 = calculateCostAtBoardTime(prevArrival, boarding);
-
     final int relativeBoardC1 = boardC1 + calculateOnTripRelativeCost(boardTime, trip);
 
-    patternRides.add(
-      patternRideFactory.createPatternRide(
-        prevArrival,
-        stopIndex,
-        boarding.stopPositionInPattern(),
-        boardTime,
-        boardC1,
-        relativeBoardC1,
-        trip
-      )
+    var patternRide = patternRideFactory.createPatternRide(
+      prevArrival,
+      stopIndex,
+      boarding.stopPositionInPattern(),
+      boardTime,
+      boardC1,
+      relativeBoardC1,
+      trip
     );
+    patternRides.add(patternRide);
   }
 
   private void boardWithRegularTransfer(
@@ -247,13 +245,13 @@ public class MultiCriteriaRoutingStrategy<T extends RaptorTripSchedule, R extend
   }
 
   /**
-   * Calculate a cost for riding a trip. It should include the cost from the beginning of the
-   * journey all the way until a trip is boarded. The cost is used to compare trips boarding the
-   * same pattern with the same number of transfers. It is ok for the cost to be relative to any
+   * Calculate a cost for riding a trip. The cost is used to compare trips boarding in the same
+   * pattern with the same number of transfers. It is ok for the cost to be relative to any
    * point in place or time - as long as it can be used to compare to paths that started at the
-   * origin in the same iteration, having used the same number-of-rounds to board the same trip.
+   * origin in the same iteration, having used the same number-of-rounds to board trips in the same
+   * pattern.
    */
   private int calculateOnTripRelativeCost(int boardTime, T tripSchedule) {
-    return c1Calculator.onTripRelativeRidingCost(boardTime, tripSchedule);
+    return c1Calculator.transitCost(tripSchedule.relativeTravelDuration(boardTime), tripSchedule);
   }
 }

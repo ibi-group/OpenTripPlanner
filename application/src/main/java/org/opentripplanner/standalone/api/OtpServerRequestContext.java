@@ -7,7 +7,6 @@ import java.util.List;
 import javax.annotation.Nullable;
 import org.opentripplanner.apis.gtfs.GtfsApiParameters;
 import org.opentripplanner.apis.transmodel.TransmodelAPIParameters;
-import org.opentripplanner.astar.spi.TraverseVisitor;
 import org.opentripplanner.ext.carpooling.CarpoolingService;
 import org.opentripplanner.ext.dataoverlay.configuration.DataOverlayParameterBindings;
 import org.opentripplanner.ext.dataoverlay.routing.DataOverlayContext;
@@ -40,9 +39,7 @@ import org.opentripplanner.standalone.config.DebugUiConfig;
 import org.opentripplanner.standalone.config.routerconfig.VectorTileConfig;
 import org.opentripplanner.street.graph.Graph;
 import org.opentripplanner.street.linking.VertexLinker;
-import org.opentripplanner.street.model.edge.Edge;
 import org.opentripplanner.street.model.edge.ExtensionRequestContext;
-import org.opentripplanner.street.search.state.State;
 import org.opentripplanner.street.service.StreetLimitationParametersService;
 import org.opentripplanner.transfer.regular.RegularTransferService;
 import org.opentripplanner.transit.service.TransitService;
@@ -124,17 +121,9 @@ public interface OtpServerRequestContext {
 
   MeterRegistry meterRegistry();
 
-  /**
-   * Callback which is injected into the {@code DirectStreetRouter}, used to visualize the
-   * search.
-   */
-  @HttpRequestScoped
-  TraverseVisitor<State, Edge> traverseVisitor();
-
   default GraphFinder graphFinder() {
     return GraphFinder.getInstance(
       graph().hasStreets,
-      transitService()::getRegularStop,
       transitService()::findRegularStopsByBoundingBox,
       linkingContextFactory()
     );

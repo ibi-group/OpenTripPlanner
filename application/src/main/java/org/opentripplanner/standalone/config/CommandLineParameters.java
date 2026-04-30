@@ -128,12 +128,6 @@ public class CommandLineParameters {
   public Integer port = DEFAULT_PORT;
 
   @Parameter(
-    names = { "--visualize" },
-    description = "Open a graph visualizer window for debugging."
-  )
-  public boolean visualize;
-
-  @Parameter(
     names = { "--abortOnUnknownConfig" },
     description = "Abort the startup if configuration files are found to contain unknown parameters."
   )

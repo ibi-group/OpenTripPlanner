@@ -295,10 +295,13 @@ public abstract class SnapshotTestBase {
 
   private String formatPlace(GenericLocation location) {
     String formatted;
-    if (location.stopId != null) {
-      formatted = String.format("%s::%s", location.label, location.stopId);
+    if (location.stopId() != null) {
+      formatted = String.format("%s::%s", location.label(), location.stopId());
+    } else if (location.wgsCoordinate() != null) {
+      var coord = location.wgsCoordinate();
+      formatted = String.format("%s::%s,%s", location.label(), coord.latitude(), coord.longitude());
     } else {
-      formatted = String.format("%s::%s,%s", location.label, location.lat, location.lng);
+      formatted = String.format("%s::null", location.label());
     }
     return URLEncoder.encode(formatted, StandardCharsets.UTF_8);
   }

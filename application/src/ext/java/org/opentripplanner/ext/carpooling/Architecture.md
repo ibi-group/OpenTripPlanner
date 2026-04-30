@@ -18,15 +18,12 @@ org.opentripplanner.ext.carpooling/
 │   └── CarpoolStreetRouter  # Street routing for carpooling
 ├── filter/                   # Trip pre-filtering
 │   ├── TripFilter           # Filter interface
-│   ├── CapacityFilter       # Checks available capacity
 │   ├── TimeBasedFilter      # Time window filtering
-│   ├── DistanceBasedFilter  # Geographic distance checks
-│   └── DirectionalCompatibilityFilter # Directional alignment
+│   └── DistanceBasedFilter  # Geographic distance checks
 ├── constraints/              # Post-routing constraints
 │   └── PassengerDelayConstraints # Protects existing passengers
 ├── util/                     # Utilities
-│   ├── BeelineEstimator     # Fast travel time estimates
-│   └── DirectionalCalculator # Geographic bearing calculations
+│   └── BeelineEstimator     # Fast travel time estimates
 ├── updater/                  # Real-time updates
 │   ├── SiriETCarpoolingUpdater # SIRI-ET integration
 │   └── CarpoolSiriMapper    # Maps SIRI to domain model
@@ -44,7 +41,6 @@ Fast pre-screening to eliminate incompatible trips:
 - **Capacity Filter**: Checks if any seats are available
 - **Time-Based Filter**: Ensures departure time compatibility
 - **Distance-Based Filter**: Validates pickup/dropoff are within 50km of driver's route
-- **Directional Compatibility Filter**: Verifies passenger direction aligns with trip route
 
 ### 2. Routing Phase
 Optimal insertion point calculation:
@@ -55,7 +51,6 @@ Optimal insertion point calculation:
 
 ### 3. Constraint Validation
 - **Capacity constraints**: Ensures vehicle capacity is not exceeded
-- **Directional constraints**: Prevents backtracking (90° tolerance)
 - **Passenger delay constraints**: Protects existing passengers (max 5 minutes additional delay)
 - **Deviation budget**: Respects driver's maximum acceptable detour time
 

@@ -84,8 +84,7 @@ public class GraphBuilderModules {
           osmConfiguredDataSource.dataSource(),
           osmConfiguredDataSource.config().osmTagMapper(),
           osmConfiguredDataSource.config().timeZone(),
-          config.osmCacheDataInMem,
-          issueStore
+          config.osmCacheDataInMem
         )
       );
     }
@@ -106,7 +105,7 @@ public class GraphBuilderModules {
       .withIncludeInclinedEdgeLevelInfo(config.includeInclinedEdgeLevelInfo)
       .withMaxAreaNodes(config.maxAreaNodes)
       .withBoardingAreaRefTags(config.boardingLocationTags)
-      .withIncludeOsmSubwayEntrances(config.osmDefaults.includeOsmSubwayEntrances())
+      .withIncludeOsmStationEntrances(config.osmDefaults.includeOsmStationEntrances())
       .withIssueStore(issueStore)
       .build();
   }

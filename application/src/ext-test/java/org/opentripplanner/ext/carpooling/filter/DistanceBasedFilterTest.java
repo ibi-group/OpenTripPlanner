@@ -214,8 +214,8 @@ class DistanceBasedFilterTest {
   @Test
   void accepts_tripWithMultipleStops_passengerNearAnySegment() {
     // Trip with multiple stops - filter checks ALL segments
-    var stop1 = createStopAt(0, LAKE_EAST);
-    var stop2 = createStopAt(1, LAKE_SOUTH);
+    var stop1 = createStopAt(LAKE_EAST);
+    var stop2 = createStopAt(LAKE_SOUTH);
     var trip = createTripWithStops(LAKE_NORTH, java.util.List.of(stop1, stop2), LAKE_WEST);
 
     // Passenger journey near the LAKE_SOUTH to LAKE_WEST segment

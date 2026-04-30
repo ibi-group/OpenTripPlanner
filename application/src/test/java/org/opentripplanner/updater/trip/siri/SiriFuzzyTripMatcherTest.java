@@ -1,7 +1,7 @@
 package org.opentripplanner.updater.trip.siri;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.opentripplanner.transit.model._data.FeedScopedIdForTestFactory.id;
+import static org.opentripplanner.core.model.id.FeedScopedIdForTestFactory.id;
 import static org.opentripplanner.updater.spi.UpdateErrorType.MULTIPLE_FUZZY_TRIP_MATCHES;
 import static org.opentripplanner.updater.spi.UpdateErrorType.NO_FUZZY_TRIP_MATCH;
 import static org.opentripplanner.updater.spi.UpdateResultAssertions.assertFailure;
