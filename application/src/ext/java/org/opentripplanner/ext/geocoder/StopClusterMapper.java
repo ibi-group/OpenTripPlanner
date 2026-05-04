@@ -196,8 +196,11 @@ class StopClusterMapper {
 
   StopCluster.Location toLocation(FeedScopedId id) {
     var loc = transitService.getStopLocation(id);
+    if (loc == null && stopConsolidationService != null) {
+      loc = stopConsolidationService.primaryStop(id).orElse(null);
+    }
     if (loc != null) {
-      var feedPublisher = toFeedPublisher(transitService.getFeedInfo(id.getFeedId()));
+      var feedPublisher = toFeedPublisher(transitService.getFeedInfo(loc.getId().getFeedId()));
       var modes = transitService.findTransitModes(loc).stream().map(Enum::name).toList();
       var agencies = agenciesForStopLocation(loc)
         .stream()
