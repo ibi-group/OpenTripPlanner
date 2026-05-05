@@ -18,17 +18,17 @@ public interface RangeRaptorWorker<T extends RaptorTripSchedule> {
    * Apply access for the current round, including round zero - before the first transit.
    * This is applied in each round because the access may include transit (FLEX).
    */
-  void applyStreetStopAccess();
+  void applyAccessArrivedOnStreet();
 
   /**
    * Apply access for the current round, when the access arrives to the stop on-board (FLEX).
    */
-  void applyOnBoardStopAccess();
+  void applyAccessArrivedOnBoard();
 
   /**
    * Find on-board access for round (accesses on-board an already started trip)
    */
-  void applyOnBoardTripAccess();
+  void applyAccessStartOnBoard();
 
   /**
    * Perform a transit search for the current round.

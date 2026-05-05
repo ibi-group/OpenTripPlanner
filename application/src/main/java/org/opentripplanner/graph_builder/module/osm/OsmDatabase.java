@@ -29,6 +29,7 @@ import org.opentripplanner.graph_builder.issues.TurnRestrictionBad;
 import org.opentripplanner.graph_builder.issues.TurnRestrictionException;
 import org.opentripplanner.graph_builder.issues.TurnRestrictionUnknown;
 import org.opentripplanner.graph_builder.module.osm.TurnRestrictionTag.Direction;
+import org.opentripplanner.osm.OsmProvider;
 import org.opentripplanner.osm.model.OsmEntity;
 import org.opentripplanner.osm.model.OsmLevel;
 import org.opentripplanner.osm.model.OsmLevelFactory;
@@ -538,7 +539,8 @@ public class OsmDatabase {
               continue;
             }
 
-            way.addNodeRef(ringSegment.nA.getId(), i + 1);
+            way = way.copy().insertNodeRef(ringSegment.nA.getId(), i + 1).build();
+            waysById.put(way.getId(), way);
 
             if (
               checkDistanceWithin(ringSegment.nA, nA, epsilon) ||
@@ -557,7 +559,8 @@ public class OsmDatabase {
               continue;
             }
 
-            way.addNodeRef(ringSegment.nB.getId(), i + 1);
+            way = way.copy().insertNodeRef(ringSegment.nB.getId(), i + 1).build();
+            waysById.put(way.getId(), way);
 
             if (
               checkDistanceWithin(ringSegment.nB, nA, epsilon) ||
@@ -569,7 +572,7 @@ public class OsmDatabase {
             break;
           } else {
             // create a node
-            splitNode = createVirtualNode(p.getCoordinate());
+            splitNode = createVirtualNode(way.getOsmProvider(), p.getCoordinate());
             nCreatedNodes++;
             LOG.debug(
               "Adding virtual {}, intersection of {} ({}--{}) and area {} ({}--{}) at {}.",
@@ -582,7 +585,8 @@ public class OsmDatabase {
               ringSegment.nB,
               p
             );
-            way.addNodeRef(splitNode.getId(), i + 1);
+            way = way.copy().insertNodeRef(splitNode.getId(), i + 1).build();
+            waysById.put(way.getId(), way);
 
             /*
              * If we split the way, re-start the way segments loop as the newly created segments
@@ -668,11 +672,12 @@ public class OsmDatabase {
    * @param c The location of the node to create.
    * @return The created node.
    */
-  private OsmNode createVirtualNode(Coordinate c) {
-    OsmNode node = new OsmNode();
-    node.lon = c.x;
-    node.lat = c.y;
-    node.setId(virtualNodeId);
+  private OsmNode createVirtualNode(OsmProvider osmProvider, Coordinate c) {
+    OsmNode node = OsmNode.of()
+      .withId(virtualNodeId)
+      .withLatLon(c.y, c.x)
+      .withOsmProvider(osmProvider)
+      .build();
     virtualNodeId--;
     waysNodeIds.add(node.getId());
     nodesById.put(node.getId(), node);
@@ -823,7 +828,8 @@ public class OsmDatabase {
         // if it is an OSM way (rather than a node) and it doesn't already contain the tag
         // we add it
         if (way != null && isOsmWay && !way.hasTag(key)) {
-          way.addTag(key, "yes");
+          var updatedWay = way.copy().withTag(key, "yes").build();
+          waysById.put(updatedWay.getId(), updatedWay);
         }
       });
   }

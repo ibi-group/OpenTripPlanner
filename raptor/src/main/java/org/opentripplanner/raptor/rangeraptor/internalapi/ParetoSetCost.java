@@ -30,12 +30,4 @@ public enum ParetoSetCost {
   public boolean includeC1() {
     return this != NONE;
   }
-
-  /**
-   * Use c2 as input to the pareto function. The c2 value is used as a criteria, or it is used
-   * to modify the function ({@link #USE_C1_RELAXED_IF_C2_IS_OPTIMAL}).
-   */
-  public boolean includeC2() {
-    return this == USE_C1_AND_C2 || this == USE_C1_RELAXED_IF_C2_IS_OPTIMAL;
-  }
 }

@@ -114,9 +114,4 @@ public class TestConstrainedBoardingSearch
     );
     transfersByToStopPosExist.set(sourceStopPos);
   }
-
-  void clear() {
-    transfersByFromStopPos.clear();
-    transfersByToStopPosExist.clear();
-  }
 }

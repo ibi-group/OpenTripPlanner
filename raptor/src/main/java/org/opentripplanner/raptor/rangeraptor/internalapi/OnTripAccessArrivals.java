@@ -4,6 +4,7 @@ import gnu.trove.map.TIntObjectMap;
 import gnu.trove.map.hash.TIntObjectHashMap;
 import java.util.ArrayList;
 import java.util.List;
+import org.opentripplanner.raptor.api.model.RaptorTripScheduleStopPosition;
 import org.opentripplanner.raptor.api.view.ArrivalView;
 import org.opentripplanner.raptor.spi.RaptorTripSchedule;
 
@@ -16,28 +17,31 @@ import org.opentripplanner.raptor.spi.RaptorTripSchedule;
  * stop. Each such arrival carries a {@code RaptorTripScheduleStopPosition}
  * that identifies exactly which route, trip, and stop position the passenger must board from.
  */
-public final class OnBoardTripAccessPathsForRoute<T extends RaptorTripSchedule> {
+public final class OnTripAccessArrivals<T extends RaptorTripSchedule> {
 
-  private final TIntObjectMap<List<ArrivalView<T>>> arrivals = new TIntObjectHashMap<>();
+  private final TIntObjectMap<List<OnTripAccessArrival<T>>> arrivalsForStopPosition =
+    new TIntObjectHashMap<>();
 
   /** Returns {@code true} if there are on-board arrivals waiting to board at {@code stopPos}. */
-  public boolean containsKey(int stopPos) {
-    return arrivals.containsKey(stopPos);
+  public boolean arrivalExistForStopPosition(int stopPos) {
+    return arrivalsForStopPosition.containsKey(stopPos);
   }
 
   /** Returns all on-board arrivals that should board at {@code stopPos}. */
-  public Iterable<? extends ArrivalView<T>> listArrivals(int stopPos) {
-    return arrivals.get(stopPos);
+  public Iterable<OnTripAccessArrival<T>> listArrivals(int stopPos) {
+    return arrivalsForStopPosition.get(stopPos);
   }
 
   /** Adds an on-board arrival, indexing it by its boarding stop position in the pattern. */
-  public void add(ArrivalView<T> arrival) {
-    var boardingConstraint = arrival.subsequentBoardingConstraint();
-    var list = arrivals.get(boardingConstraint.stopPositionInPattern());
+  public void add(
+    ArrivalView<T> accessStopArrival,
+    RaptorTripScheduleStopPosition boardingConstraint
+  ) {
+    var list = arrivalsForStopPosition.get(boardingConstraint.stopPositionInPattern());
     if (list == null) {
       list = new ArrayList<>();
-      arrivals.put(boardingConstraint.stopPositionInPattern(), list);
+      arrivalsForStopPosition.put(boardingConstraint.stopPositionInPattern(), list);
     }
-    list.add(arrival);
+    list.add(new OnTripAccessArrival<>(accessStopArrival, boardingConstraint));
   }
 }

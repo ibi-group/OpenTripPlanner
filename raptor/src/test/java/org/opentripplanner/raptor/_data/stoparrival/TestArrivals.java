@@ -42,15 +42,6 @@ public class TestArrivals {
     );
   }
 
-  public static ArrivalView<TestTripSchedule> access(
-    int stop,
-    int departureTime,
-    int arrivalTime,
-    int c1
-  ) {
-    return access(stop, departureTime, arrivalTime, c1, RaptorConstants.NOT_SET);
-  }
-
   public static ArrivalView<TestTripSchedule> transfer(
     int round,
     int arrivalTime,

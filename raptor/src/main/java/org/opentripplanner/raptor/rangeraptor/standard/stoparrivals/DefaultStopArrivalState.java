@@ -61,11 +61,6 @@ class DefaultStopArrivalState<T extends RaptorTripSchedule> implements StopArriv
     return onBoardArrivalTime != NOT_SET;
   }
 
-  @Override
-  public final boolean reachedOnStreet() {
-    return arrivedByTransfer();
-  }
-
   /* Access */
 
   @Override

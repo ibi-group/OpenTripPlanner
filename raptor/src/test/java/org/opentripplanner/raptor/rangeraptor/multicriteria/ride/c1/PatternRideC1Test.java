@@ -1,13 +1,9 @@
 package org.opentripplanner.raptor.rangeraptor.multicriteria.ride.c1;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.opentripplanner.raptor.spi.RaptorCostCalculator.ZERO_COST;
 
 import org.junit.jupiter.api.Test;
-import org.opentripplanner.raptor.spi.RaptorTripSchedule;
 
 public class PatternRideC1Test {
 
@@ -56,15 +52,5 @@ public class PatternRideC1Test {
         new PatternRideC1<>(null, 0, 0, 0, C1_LOW, C1_LOW, TRIP_SORT_INDEX_1, null)
       )
     );
-  }
-
-  @Test
-  public void testUpdateC2() {
-    var originalRide = new PatternRideC1<RaptorTripSchedule>(null, 0, 0, 0, 0, 0, 0, null);
-
-    var updatedRide = originalRide.updateC2(1);
-
-    assertSame(originalRide, updatedRide);
-    assertEquals(ZERO_COST, updatedRide.c2());
   }
 }

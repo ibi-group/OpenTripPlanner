@@ -22,9 +22,6 @@ public interface StopArrivalState<T extends RaptorTripSchedule> {
 
   /* Access */
 
-  /** Stop arrival reached, at least one time (any round/iteration). */
-  boolean reachedOnStreet();
-
   /**
    * Return true is the best option is an access arrival.
    */

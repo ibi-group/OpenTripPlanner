@@ -18,7 +18,6 @@ import org.opentripplanner.routing.api.request.request.TransitRequestBuilder;
 import org.opentripplanner.routing.api.request.request.filter.SelectRequest;
 import org.opentripplanner.routing.api.request.request.filter.TransitFilterRequest;
 import org.opentripplanner.street.model.StreetMode;
-import org.opentripplanner.transit.model.basic.MainAndSubMode;
 import org.opentripplanner.transit.model.basic.NarrowedTransitMode;
 import org.opentripplanner.transit.model.basic.ReplacementRequirement;
 import org.opentripplanner.utils.collection.CollectionUtils;
@@ -140,11 +139,7 @@ public class ModePreferencesMapper {
       .map(GraphQLTypes.GraphQLTransitPreferencesInput::getGraphQLFilters)
       .orElse(List.of());
     if (CollectionUtils.hasValue(graphQlFilters)) {
-      var mainModes = modes
-        .stream()
-        .map(mode -> new MainAndSubMode(mode.getMode()))
-        .toList();
-      var filters = FilterMapper.mapFilters(mainModes, graphQlFilters);
+      var filters = FilterMapper.mapFilters(modes, graphQlFilters);
       journey.withTransit(b -> b.withFilters(filters));
     }
     // if there isn't a transit filter or a mode set, then we can keep the default which is to include

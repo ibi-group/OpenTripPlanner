@@ -53,8 +53,8 @@ public class EgressArrivalToPathAdapter<T extends RaptorTripSchedule>
     this.slackProvider = slackProvider;
     this.cursor = cursor;
     this.rejectedArrivals = paths.isDebugOn() ? new ArrayList<>() : null;
-    lifeCycle.onSetupIteration(ignore -> setupIteration());
-    lifeCycle.onRoundComplete(ignore -> roundComplete());
+    lifeCycle.onSetupIteration(_ -> setupIteration());
+    lifeCycle.onRoundComplete(_ -> roundComplete());
   }
 
   @Override

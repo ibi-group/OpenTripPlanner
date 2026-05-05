@@ -46,7 +46,7 @@ public class StationEntrancesTest {
   public static void setUp() {
     var osmProvider = TestOsmProvider.of()
       .addWayFromNodes(
-        way -> way.addTag("highway", "footway"),
+        way -> way.withTag("highway", "footway"),
         ENTRANCE_IN_STOP_AREA,
         ENTRANCE_OUTSIDE_STOP_AREA,
         SUBWAY_ENTRANCE_OUTSIDE_STOP_AREA

@@ -45,10 +45,6 @@ public final class RaptorAccessEgressToStringParser {
     return new RaptorAccessEgressToStringParser(stopIndexResolver, input).parse();
   }
 
-  public String label() {
-    return label;
-  }
-
   public int stopIndex() {
     return stopIndex;
   }
@@ -61,7 +57,7 @@ public final class RaptorAccessEgressToStringParser {
     return free;
   }
 
-  public boolean isStopReachedOnBoard() {
+  public boolean arrivedOnBoard() {
     return stopReachedOnBoard;
   }
 

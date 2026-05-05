@@ -64,10 +64,6 @@ public enum RaptorModuleTestConfig {
     return oneIteration;
   }
 
-  boolean withManyIterations() {
-    return !oneIteration;
-  }
-
   boolean isReverse() {
     return reverse;
   }

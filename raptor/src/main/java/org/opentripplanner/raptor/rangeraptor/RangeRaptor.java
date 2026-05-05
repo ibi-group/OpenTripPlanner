@@ -125,8 +125,8 @@ public final class RangeRaptor<T extends RaptorTripSchedule> implements RaptorRo
    */
   private void runRaptorForMinute(int iterationDepartureTime) {
     setupIteration(iterationDepartureTime);
-    worker.applyStreetStopAccess();
-    worker.applyOnBoardTripAccess();
+    worker.applyAccessArrivedOnStreet();
+    worker.applyAccessStartOnBoard();
 
     while (hasMoreRounds()) {
       lifeCycle.prepareForNextRound(roundTracker.nextRound());
@@ -136,14 +136,14 @@ public final class RangeRaptor<T extends RaptorTripSchedule> implements RaptorRo
       worker.routeTransit();
       lifeCycle.transitsForRoundComplete();
 
-      worker.applyOnBoardStopAccess();
+      worker.applyAccessArrivedOnBoard();
 
       worker.applyTransfers();
       lifeCycle.transfersForRoundComplete();
 
       lifeCycle.roundComplete(worker.isDestinationReachedInCurrentRound());
 
-      worker.applyStreetStopAccess();
+      worker.applyAccessArrivedOnStreet();
     }
 
     // This state is repeatedly modified as the outer loop progresses over departure minutes.

@@ -15,7 +15,7 @@ import org.opentripplanner.raptor._data.RaptorTestConstants;
 import org.opentripplanner.raptor._data.transit.TestAccessEgress;
 import org.opentripplanner.raptor._data.transit.TestTransfer;
 import org.opentripplanner.raptor.api.model.RaptorAccessEgress;
-import org.opentripplanner.raptor.api.request.RaptorViaLocation;
+import org.opentripplanner.raptor.api.request.via.RaptorViaLocation;
 import org.opentripplanner.raptor.rangeraptor.transit.AccessPaths;
 import org.opentripplanner.raptor.rangeraptor.transit.EgressPaths;
 import org.opentripplanner.raptor.rangeraptor.transit.ViaConnections;
@@ -76,8 +76,8 @@ class StopsWithArriveByTransitCriteriaResolverTest implements RaptorTestConstant
 
   @Test
   void viaTransferFromStopIsIncluded() {
-    var viaLocation = RaptorViaLocation.via("Via", Duration.ZERO)
-      .addViaTransfer(STOP_C, TestTransfer.transfer(STOP_D, 120))
+    var viaLocation = RaptorViaLocation.viaVisit("Via")
+      .addTransfer(STOP_C, TestTransfer.transfer(STOP_D, 120))
       .build();
     var viaConnections = new ViaConnections(viaLocation.connections());
 
@@ -91,7 +91,7 @@ class StopsWithArriveByTransitCriteriaResolverTest implements RaptorTestConstant
 
   @Test
   void viaSameStopConnectionIsNotIncluded() {
-    var viaLocation = RaptorViaLocation.via("Via", Duration.ZERO).addViaStop(STOP_C).build();
+    var viaLocation = RaptorViaLocation.viaVisit("Via").addStop(STOP_C).build();
     var viaConnections = new ViaConnections(viaLocation.connections());
 
     var result = StopsWithArriveByTransitCriteriaResolver.resolve(
@@ -114,8 +114,8 @@ class StopsWithArriveByTransitCriteriaResolverTest implements RaptorTestConstant
 
   @Test
   void allThreeSourcesContributeDistinctStops() {
-    var viaLocation = RaptorViaLocation.via("Via", Duration.ZERO)
-      .addViaTransfer(STOP_C, TestTransfer.transfer(STOP_D, 90))
+    var viaLocation = RaptorViaLocation.viaVisit("Via", Duration.ZERO)
+      .addTransfer(STOP_C, TestTransfer.transfer(STOP_D, 90))
       .build();
     var viaConnections = new ViaConnections(viaLocation.connections());
 
@@ -132,8 +132,8 @@ class StopsWithArriveByTransitCriteriaResolverTest implements RaptorTestConstant
 
   @Test
   void sameStopFromMultipleSourcesIsIncludedOnce() {
-    var viaLocation = RaptorViaLocation.via("Via", Duration.ZERO)
-      .addViaTransfer(STOP_A, TestTransfer.transfer(STOP_D, 90))
+    var viaLocation = RaptorViaLocation.viaVisit("Via", Duration.ZERO)
+      .addTransfer(STOP_A, TestTransfer.transfer(STOP_D, 90))
       .build();
     var viaConnections = new ViaConnections(viaLocation.connections());
 

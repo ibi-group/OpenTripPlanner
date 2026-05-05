@@ -18,7 +18,6 @@ import org.opentripplanner.raptor._data.transit.TestTripSchedule;
 import org.opentripplanner.raptor.api.request.RaptorRequestBuilder;
 import org.opentripplanner.raptor.configure.RaptorTestFactory;
 import org.opentripplanner.raptor.moduletests.support.RaptorModuleTestCase;
-import org.opentripplanner.raptor.spi.RaptorCostConverter;
 import org.opentripplanner.raptor.spi.TestSlackProvider;
 
 /**
@@ -31,9 +30,6 @@ import org.opentripplanner.raptor.spi.TestSlackProvider;
 public class F01_AccessWithRidesTest implements RaptorTestConstants {
 
   private static final int TRANSFER_SLACK = 60;
-  private static final int C1_ONE_STOP = RaptorCostConverter.toRaptorCost(2 * 60);
-  private static final int C1_TRANSFER_SLACK = RaptorCostConverter.toRaptorCost(TRANSFER_SLACK);
-  private static final int C1_ONE_SEC = RaptorCostConverter.toRaptorCost(1);
 
   private final TestTransitData data = new TestTransitData();
   private final RaptorRequestBuilder<TestTripSchedule> requestBuilder = data.requestBuilder();

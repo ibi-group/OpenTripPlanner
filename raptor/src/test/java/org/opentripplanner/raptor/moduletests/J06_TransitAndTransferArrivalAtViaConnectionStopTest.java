@@ -3,6 +3,7 @@ package org.opentripplanner.raptor.moduletests;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.opentripplanner.raptor._data.api.PathUtils.pathsToString;
 import static org.opentripplanner.raptor._data.transit.TestTransfer.transfer;
+import static org.opentripplanner.raptor.api.request.via.RaptorViaLocation.viaVisit;
 
 import java.time.Duration;
 import org.junit.jupiter.api.Test;
@@ -11,7 +12,6 @@ import org.opentripplanner.raptor._data.RaptorTestConstants;
 import org.opentripplanner.raptor._data.transit.TestTransitData;
 import org.opentripplanner.raptor._data.transit.TestTripSchedule;
 import org.opentripplanner.raptor.api.request.RaptorProfile;
-import org.opentripplanner.raptor.api.request.RaptorViaLocation;
 import org.opentripplanner.raptor.configure.RaptorTestFactory;
 
 /**
@@ -84,9 +84,7 @@ class J06_TransitAndTransferArrivalAtViaConnectionStopTest implements RaptorTest
       .latestArrivalTime(T00_30)
       .searchWindow(Duration.ofMinutes(10))
       .timetable(true)
-      .addViaLocation(
-        RaptorViaLocation.via("D→F").addViaTransfer(STOP_D, transfer(STOP_F, D1_m)).build()
-      );
+      .addViaLocation(viaVisit("D→F").addTransfer(STOP_D, transfer(STOP_F, D1_m)).build());
 
     assertEquals(
       "Walk 1m ~ A ~ BUS R1 0:05 0:08 ~ C ~ BUS R2 0:10 0:15 ~ D ~ Walk 1m ~ F " +

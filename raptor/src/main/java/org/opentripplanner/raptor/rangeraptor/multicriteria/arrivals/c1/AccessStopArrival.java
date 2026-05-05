@@ -4,8 +4,6 @@ import static org.opentripplanner.raptor.api.model.AbstractAccessEgressDecorator
 import static org.opentripplanner.raptor.api.view.PathLegType.ACCESS;
 
 import org.opentripplanner.raptor.api.model.RaptorAccessEgress;
-import org.opentripplanner.raptor.api.model.RaptorStartOnBoardAccess;
-import org.opentripplanner.raptor.api.model.RaptorTripScheduleStopPosition;
 import org.opentripplanner.raptor.api.view.AccessPathView;
 import org.opentripplanner.raptor.api.view.PathLegType;
 import org.opentripplanner.raptor.rangeraptor.multicriteria.arrivals.McStopArrival;
@@ -51,7 +49,7 @@ final class AccessStopArrival<T extends RaptorTripSchedule> extends McStopArriva
 
   @Override
   public boolean arrivedOnBoard() {
-    return access.stopReachedOnBoard();
+    return access.arrivedOnBoard();
   }
 
   @Override
@@ -74,17 +72,5 @@ final class AccessStopArrival<T extends RaptorTripSchedule> extends McStopArriva
   @Override
   public McStopArrival<T> addSlackToArrivalTime(int slack) {
     return new AccessStopArrival<>(departureTime, accessEgressWithExtraSlack(access, slack));
-  }
-
-  @Override
-  public RaptorTripScheduleStopPosition subsequentBoardingConstraint() {
-    if (access instanceof RaptorStartOnBoardAccess startOnBoardAccess) {
-      return new RaptorTripScheduleStopPosition(
-        startOnBoardAccess.tripBoarding().routeIndex(),
-        startOnBoardAccess.tripBoarding().tripScheduleIndex(),
-        startOnBoardAccess.tripBoarding().stopPositionInPattern()
-      );
-    }
-    throw new UnsupportedOperationException();
   }
 }

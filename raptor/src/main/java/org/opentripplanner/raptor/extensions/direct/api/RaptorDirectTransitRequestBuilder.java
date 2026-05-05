@@ -1,13 +1,11 @@
 package org.opentripplanner.raptor.extensions.direct.api;
 
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import org.opentripplanner.raptor.api.model.RaptorAccessEgress;
 import org.opentripplanner.raptor.api.model.RelaxFunction;
 import org.opentripplanner.raptor.api.request.SearchParams;
-import org.opentripplanner.raptor.spi.RaptorConstants;
 
 /**
  * Mutable version of {@link SearchParams}.
@@ -41,19 +39,9 @@ public class RaptorDirectTransitRequestBuilder {
     return this;
   }
 
-  public RaptorDirectTransitRequestBuilder searchWindow(Duration searchWindow) {
-    return searchWindowInSeconds(
-      searchWindow == null ? RaptorConstants.NOT_SET : (int) searchWindow.toSeconds()
-    );
-  }
-
   public RaptorDirectTransitRequestBuilder withRelaxC1(RelaxFunction relaxC1) {
     this.relaxC1 = relaxC1;
     return this;
-  }
-
-  public Collection<RaptorAccessEgress> accessPaths() {
-    return accessPaths;
   }
 
   public RaptorDirectTransitRequestBuilder addAccessPaths(
@@ -65,10 +53,6 @@ public class RaptorDirectTransitRequestBuilder {
 
   public RaptorDirectTransitRequestBuilder addAccessPaths(RaptorAccessEgress... accessPaths) {
     return addAccessPaths(Arrays.asList(accessPaths));
-  }
-
-  public Collection<RaptorAccessEgress> egressPaths() {
-    return egressPaths;
   }
 
   public RaptorDirectTransitRequestBuilder addEgressPaths(

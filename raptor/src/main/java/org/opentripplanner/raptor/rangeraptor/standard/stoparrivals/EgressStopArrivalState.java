@@ -34,14 +34,6 @@ final class EgressStopArrivalState<T extends RaptorTripSchedule>
     this.callback = transitCallback;
   }
 
-  public int round() {
-    return round;
-  }
-
-  public int stop() {
-    return stop;
-  }
-
   @Override
   public void arriveByTransit(int arrivalTime, int boardStop, int boardTime, T trip) {
     super.arriveByTransit(arrivalTime, boardStop, boardTime, trip);
@@ -54,7 +46,7 @@ final class EgressStopArrivalState<T extends RaptorTripSchedule>
   public void transferToStop(int fromStop, int arrivalTime, RaptorTransfer transferPath) {
     super.transferToStop(fromStop, arrivalTime, transferPath);
     for (RaptorAccessEgress egressPath : egressPaths) {
-      if (egressPath.stopReachedOnBoard()) {
+      if (egressPath.arrivedOnBoard()) {
         // Raptor does not support currently egress directly after flex access.
         // There has to be at least one transit in between.
         // Hence, stopReachedOnBoard=false

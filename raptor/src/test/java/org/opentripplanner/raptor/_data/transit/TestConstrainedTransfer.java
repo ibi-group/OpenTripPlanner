@@ -2,7 +2,6 @@ package org.opentripplanner.raptor._data.transit;
 
 import static org.opentripplanner.raptor.spi.RaptorConstants.NOT_SET;
 
-import java.util.function.Consumer;
 import javax.annotation.Nullable;
 import org.opentripplanner.raptor.spi.RaptorBoardOrAlightEvent;
 import org.opentripplanner.raptor.spi.RaptorConstrainedTransfer;
@@ -73,18 +72,6 @@ class TestConstrainedTransfer
   @Override
   public boolean empty() {
     return false;
-  }
-
-  @Override
-  public void boardWithFallback(
-    Consumer<RaptorBoardOrAlightEvent<TestTripSchedule>> boardCallback,
-    Consumer<RaptorBoardOrAlightEvent<TestTripSchedule>> alternativeBoardingFallback
-  ) {
-    if (empty()) {
-      alternativeBoardingFallback.accept(this);
-    } else if (!transferConstraint.isNotAllowed()) {
-      boardCallback.accept(this);
-    }
   }
 
   public boolean isFacilitated() {

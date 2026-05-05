@@ -47,8 +47,6 @@ import org.opentripplanner.utils.time.TimeUtils;
 public class AccessAndEgressWithOpeningHoursPathTestCase implements RaptorTestConstants {
 
   private static final int ZERO = 0;
-  // The transit reluctance is ignored, any value should work
-  private static final int TRANSIT_RELUCTANCE_INDEX = -1;
   public static final double WAIT_RELUCTANCE = 0.8;
   public static final int BOARD_C1_SEC = 60;
   public static final int TRANSFER_C1_SEC = 120;

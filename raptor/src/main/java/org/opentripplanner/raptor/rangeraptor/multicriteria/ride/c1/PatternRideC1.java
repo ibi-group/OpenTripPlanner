@@ -76,9 +76,4 @@ public record PatternRideC1<T extends RaptorTripSchedule>(
       .addObj("trip", trip)
       .toString();
   }
-
-  @Override
-  public PatternRide<T> updateC2(int newC2) {
-    return this;
-  }
 }

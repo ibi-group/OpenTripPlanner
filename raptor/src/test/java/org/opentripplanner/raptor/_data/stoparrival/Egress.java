@@ -44,6 +44,6 @@ public class Egress extends AbstractStopArrival {
 
   @Override
   public boolean arrivedOnBoard() {
-    return egressPath.stopReachedOnBoard();
+    return egressPath.arrivedOnBoard();
   }
 }

@@ -53,7 +53,7 @@ public class HashGridTest {
           hashGridObjs2.add(obj);
         }
       }
-      List<DummyObject> strtreeObjs = hashGrid.query(searchEnv);
+      List<DummyObject> strtreeObjs = strTree.query(searchEnv);
       // Need to remove non intersecting
       Set<DummyObject> strtreeObjs2 = new HashSet<>();
       for (DummyObject obj : strtreeObjs) {

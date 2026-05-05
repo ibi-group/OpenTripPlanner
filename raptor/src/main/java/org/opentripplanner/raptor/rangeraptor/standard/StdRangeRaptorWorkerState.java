@@ -108,11 +108,11 @@ public final class StdRangeRaptorWorkerState<T extends RaptorTripSchedule>
       return;
     }
 
-    boolean reachedOnBoard =
-      accessPath.stopReachedOnBoard() && newBestTransitArrivalTime(stop, arrivalTime);
+    boolean arrivedOnBoard =
+      accessPath.arrivedOnBoard() && newBestTransitArrivalTime(stop, arrivalTime);
     boolean bestTime = newOverallBestTime(stop, arrivalTime);
 
-    if (reachedOnBoard || bestTime) {
+    if (arrivedOnBoard || bestTime) {
       stopArrivalsState.setAccessTime(arrivalTime, accessPath, bestTime);
     } else {
       stopArrivalsState.rejectAccessTime(arrivalTime, accessPath);

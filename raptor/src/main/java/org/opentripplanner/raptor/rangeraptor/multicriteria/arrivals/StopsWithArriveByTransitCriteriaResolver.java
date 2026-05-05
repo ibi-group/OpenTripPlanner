@@ -4,6 +4,7 @@ import gnu.trove.set.TIntSet;
 import gnu.trove.set.hash.TIntHashSet;
 import javax.annotation.Nullable;
 import org.opentripplanner.raptor.api.model.RaptorAccessEgress;
+import org.opentripplanner.raptor.api.request.via.RaptorTransferViaConnection;
 import org.opentripplanner.raptor.rangeraptor.transit.AccessPaths;
 import org.opentripplanner.raptor.rangeraptor.transit.EgressPaths;
 import org.opentripplanner.raptor.rangeraptor.transit.ViaConnections;
@@ -73,7 +74,7 @@ public class StopsWithArriveByTransitCriteriaResolver {
     for (var it = egressByStop.keySet().iterator(); it.hasNext(); ) {
       int stop = it.next();
       var egressList = egressByStop.get(stop);
-      if (egressList.stream().anyMatch(e -> e.stopReachedByWalking())) {
+      if (egressList.stream().anyMatch(e -> e.arrivedOnStreet())) {
         stops.add(stop);
       }
     }
@@ -83,11 +84,14 @@ public class StopsWithArriveByTransitCriteriaResolver {
     if (viaConnections == null) {
       return;
     }
+
     for (var it = viaConnections.byFromStop().iterator(); it.hasNext(); ) {
       it.advance();
       var stop = it.key();
       var viaConnectionsFromStop = it.value();
-      if (viaConnectionsFromStop.stream().anyMatch(via -> !via.isSameStop())) {
+      if (
+        viaConnectionsFromStop.stream().anyMatch(via -> via instanceof RaptorTransferViaConnection)
+      ) {
         stops.add(stop);
       }
     }

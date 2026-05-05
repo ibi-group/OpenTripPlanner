@@ -68,6 +68,6 @@ final class AccessStopArrivalC2<T extends RaptorTripSchedule> extends AbstractSt
 
   @Override
   public boolean arrivedOnBoard() {
-    return access.stopReachedOnBoard();
+    return access.arrivedOnBoard();
   }
 }

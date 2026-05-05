@@ -65,23 +65,23 @@ public class RangeRaptorWorkerComposite<T extends RaptorTripSchedule>
   }
 
   @Override
-  public void applyStreetStopAccess() {
+  public void applyAccessArrivedOnStreet() {
     for (RangeRaptorWorker<T> child : children) {
-      child.applyStreetStopAccess();
+      child.applyAccessArrivedOnStreet();
     }
   }
 
   @Override
-  public void applyOnBoardStopAccess() {
+  public void applyAccessArrivedOnBoard() {
     for (RangeRaptorWorker<T> child : children) {
-      child.applyOnBoardStopAccess();
+      child.applyAccessArrivedOnBoard();
     }
   }
 
   @Override
-  public void applyOnBoardTripAccess() {
+  public void applyAccessStartOnBoard() {
     for (RangeRaptorWorker<T> child : children) {
-      child.applyOnBoardTripAccess();
+      child.applyAccessStartOnBoard();
     }
   }
 

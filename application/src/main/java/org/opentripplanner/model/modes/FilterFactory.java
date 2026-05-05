@@ -99,6 +99,24 @@ class FilterFactory {
       // esle ignore empty
     }
 
+    var narrowedModeFiltersByMainMode = stream(map, AllowNarrowedTransitModeFilter.class).collect(
+      Collectors.groupingBy(AllowNarrowedTransitModeFilter::mainMode)
+    );
+
+    for (TransitMode mainMode : narrowedModeFiltersByMainMode.keySet()) {
+      if (mainModes.contains(mainMode)) {
+        continue;
+      }
+
+      var narrowedModeFilters = narrowedModeFiltersByMainMode.get(mainMode);
+
+      if (narrowedModeFilters.size() == 1) {
+        result.addAll(narrowedModeFilters);
+      } else if (narrowedModeFilters.size() > 1) {
+        result.add(new AllowNarrowedTransitModesFilter(narrowedModeFilters));
+      }
+    }
+
     if (result.size() == 1) {
       return result.get(0);
     }

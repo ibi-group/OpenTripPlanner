@@ -10,9 +10,10 @@ import java.util.Collections;
 import java.util.function.Function;
 import java.util.stream.Stream;
 import javax.annotation.Nullable;
+import org.opentripplanner.raptor.api.model.RaptorTripScheduleStopPosition;
 import org.opentripplanner.raptor.api.view.ArrivalView;
 import org.opentripplanner.raptor.rangeraptor.debug.DebugHandlerFactory;
-import org.opentripplanner.raptor.rangeraptor.internalapi.OnBoardTripAccessPathsForRoute;
+import org.opentripplanner.raptor.rangeraptor.internalapi.OnTripAccessArrivals;
 import org.opentripplanner.raptor.spi.IntIterator;
 import org.opentripplanner.raptor.spi.RaptorTripSchedule;
 import org.opentripplanner.raptor.util.BitSetIterator;
@@ -21,16 +22,21 @@ import org.opentripplanner.raptor.util.paretoset.ParetoSet;
 import org.opentripplanner.raptor.util.paretoset.ParetoSetEventListener;
 
 /**
- * This class serve as a wrapper for all stop arrival pareto set, one set for each stop. It also
- * keep track of stops visited since "last mark".
+ * Holds the multi-criteria stop arrival state for all stops. Each stop has its own
+ * {@link ParetoSet} of {@link McStopArrival}s, keeping only Pareto-optimal arrivals across
+ * arrival time, round, and cost. Stops that need to distinguish on-board arrivals (e.g. for
+ * via-connection pass-through) use an extended comparator.
  * <p>
+ * Also tracks which stops have been touched since the last call to
+ * {@link #clearTouchedStopsAndSetStopMarkers()}, so the routing loop can iterate only over
+ * relevant stops.
  *
  * @param <T> The TripSchedule type defined by the user of the raptor API.
  */
 public final class McStopArrivals<T extends RaptorTripSchedule> {
 
   private final ParetoSet<McStopArrival<T>>[] arrivals;
-  private final TIntObjectMap<OnBoardTripAccessPathsForRoute<T>> onBoardTripArrivalsByRouteQueue;
+  private final TIntObjectMap<OnTripAccessArrivals<T>> onBoardTripArrivalsByRouteQueue;
 
   private final BitSet touchedStops;
 
@@ -38,6 +44,15 @@ public final class McStopArrivals<T extends RaptorTripSchedule> {
   private final DebugStopArrivalsStatistics debugStats;
   private final ParetoComparator<McStopArrival<T>> comparator;
 
+  /**
+   * @param nStops             total number of stops in the transit network.
+   * @param onBoardArrivalStops stops where on-board arrivals is better than on-street arrivals;
+   *                           these stops need a pareto comparator that also considers whether the
+   *                           traveller arrived on board.
+   * @param arrivalListeners   per-stop listeners (via, egress, debug), keyed by stop index.
+   * @param comparatorFactory  factory for creating the Pareto comparators used per stop.
+   * @param debugHandlerFactory factory for debug handlers and loggers.
+   */
   public McStopArrivals(
     int nStops,
     TIntSet onBoardArrivalStops,
@@ -72,16 +87,25 @@ public final class McStopArrivals<T extends RaptorTripSchedule> {
     }
   }
 
+  /** Return {@code true} if the given stop has at least one Pareto-optimal arrival. */
   public boolean reached(int stopIndex) {
     return arrivals[stopIndex] != null && !arrivals[stopIndex].isEmpty();
   }
 
-  /** Slow! do not use during routing! */
+  /**
+   * Return the best (earliest) arrival time across all arrivals at the given stop.
+   * <p>
+   * Slow — do not use during routing.
+   */
   public int bestArrivalTime(int stopIndex) {
     return minInt(arrivals[stopIndex].stream(), McStopArrival::arrivalTime);
   }
 
-  /** Slow! do not use during routing! */
+  /**
+   * Return {@code true} if the stop was reached by at least one transit leg.
+   * <p>
+   * Slow — do not use during routing.
+   */
   public boolean reachedByTransit(int stopIndex) {
     return (
       arrivals[stopIndex] != null &&
@@ -89,24 +113,38 @@ public final class McStopArrivals<T extends RaptorTripSchedule> {
     );
   }
 
-  /** Slow! do not use during routing! */
+  /**
+   * Return the best (earliest) transit arrival time at the given stop.
+   * <p>
+   * Slow — do not use during routing.
+   */
   public int bestTransitArrivalTime(int stopIndex) {
     return transitStopArrivalsMinInt(stopIndex, McStopArrival::arrivalTime);
   }
 
-  /** Slow! do not use during routing! */
+  /**
+   * Return the smallest number of transfers among all transit arrivals at the given stop.
+   * <p>
+   * Slow — do not use during routing.
+   */
   public int smallestNumberOfTransfers(int stopIndex) {
     return transitStopArrivalsMinInt(stopIndex, McStopArrival::numberOfTransfers);
   }
 
+  /** Return {@code true} if any stop has been touched since the last marker reset. */
   public boolean updateExist() {
     return !touchedStops.isEmpty();
   }
 
+  /** Return an iterator over all stops touched since the last marker reset. */
   public IntIterator stopsTouchedIterator() {
     return new BitSetIterator(touchedStops);
   }
 
+  /**
+   * Add a stop arrival to the Pareto set for its stop. If the arrival is accepted,
+   * the stop is marked as touched.
+   */
   public void addStopArrival(McStopArrival<T> arrival) {
     boolean added = findOrCreateSet(arrival.stop()).add(arrival);
 
@@ -119,18 +157,30 @@ public final class McStopArrivals<T extends RaptorTripSchedule> {
     debugStats.debugStatInfo(arrivals);
   }
 
+  /**
+   * Return {@code true} if the given stop has any arrivals added after the last marker was set
+   * (i.e. arrivals in the current round).
+   */
   public boolean hasArrivalsAfterMarker(int stop) {
     var it = arrivals[stop];
     return it != null && it.hasElementsAfterMarker();
   }
 
-  /** List all transits arrived this round. */
+  /**
+   * Return all arrivals at the given stop that were added after the last marker was set
+   * (i.e. arrivals in the current round).
+   */
   public Iterable<McStopArrival<T>> listArrivalsAfterMarker(final int stop) {
     var it = arrivals[stop];
     // Avoid creating new objects in a tight loop
     return it == null ? Collections::emptyIterator : it.elementsAfterMarker();
   }
 
+  /**
+   * For each touched stop, advance the marker to the end of its Pareto set (so that subsequent
+   * calls to {@link #listArrivalsAfterMarker} return only new arrivals), then clear the
+   * touched-stop tracking for the next round.
+   */
   public void clearTouchedStopsAndSetStopMarkers() {
     IntIterator it = stopsTouchedIterator();
     while (it.hasNext()) {
@@ -139,29 +189,44 @@ public final class McStopArrivals<T extends RaptorTripSchedule> {
     touchedStops.clear();
   }
 
+  /**
+   * Remove and return the queued on-board trip arrivals for the given route, or {@code null} if
+   * none exist. Each call consumes the arrivals — they are removed from the queue.
+   */
   @Nullable
-  public OnBoardTripAccessPathsForRoute<T> consumeOnBoardStopArrivals(int routeIndex) {
-    OnBoardTripAccessPathsForRoute<T> arrivals = null;
-    if (onBoardTripArrivalsByRouteQueue.containsKey(routeIndex)) {
-      arrivals = onBoardTripArrivalsByRouteQueue.get(routeIndex);
-      onBoardTripArrivalsByRouteQueue.remove(routeIndex);
-    }
-    return arrivals;
+  public OnTripAccessArrivals<T> consumeOnTripStopArrivalsForRoute(int routeIndex) {
+    return onBoardTripArrivalsByRouteQueue.remove(routeIndex);
   }
 
-  public void addOnBoardTripArrival(McStopArrival<T> arrival) {
-    var boardingConstraint = arrival.subsequentBoardingConstraint();
-    var access = onBoardTripArrivalsByRouteQueue.get(boardingConstraint.routeIndex());
-    if (access == null) {
-      access = new OnBoardTripAccessPathsForRoute<>();
-      onBoardTripArrivalsByRouteQueue.put(boardingConstraint.routeIndex(), access);
+  /**
+   * Queue an on-board trip arrival for processing when the corresponding route is visited.
+   * The arrival is grouped by route index so that the routing loop can retrieve all on-board
+   * arrivals for a route in one call to {@link #consumeOnTripStopArrivalsForRoute}.
+   * <p>
+   * Also ensures the Pareto set for {@code applyToStopIndex} is initialised and marks the stop
+   * as touched so the routing loop will visit it.
+   *
+   * @param boardingArrival       the arrival state from which boarding occurs.
+   * @param applyToStopIndex      the stop where the on-board boarding should be applied.
+   * @param onBoardTripConstraint  the trip and stop-position constraint for the on-board access.
+   */
+  public void addOnBoardTripArrival(
+    ArrivalView<T> boardingArrival,
+    int applyToStopIndex,
+    RaptorTripScheduleStopPosition onBoardTripConstraint
+  ) {
+    int routeIndex = onBoardTripConstraint.routeIndex();
+    var arrivalsForRoute = onBoardTripArrivalsByRouteQueue.get(routeIndex);
+    if (arrivalsForRoute == null) {
+      arrivalsForRoute = new OnTripAccessArrivals<T>();
+      onBoardTripArrivalsByRouteQueue.put(routeIndex, arrivalsForRoute);
     }
-    access.add(arrival);
+    arrivalsForRoute.add(boardingArrival, onBoardTripConstraint);
 
     // Then update the state, both touchedStops and init the pareto-set for the given stop to
     // prevent NPE when the state is fetched later. The set is empty, which is ok.
-    findOrCreateSet(arrival.stop());
-    touchedStops.set(arrival.stop());
+    findOrCreateSet(applyToStopIndex);
+    touchedStops.set(applyToStopIndex);
   }
 
   /* private methods */

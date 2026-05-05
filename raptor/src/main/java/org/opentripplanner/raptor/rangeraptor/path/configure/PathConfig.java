@@ -58,7 +58,6 @@ public class PathConfig<T extends RaptorTripSchedule> {
       comparator,
       ctx.calculator(),
       costConfig.includeC1() ? ctx.costCalculator() : null,
-      ctx.acceptC2AtDestination(),
       ctx.slackProvider(),
       createPathMapper(costConfig.includeC1()),
       ctx.debugFactory(),
@@ -122,7 +121,6 @@ public class PathConfig<T extends RaptorTripSchedule> {
           costCalculator,
           stopNameResolver,
           txConstraintsSearch,
-          lifeCycle,
           profile.useApproximateTripSearch()
         );
   }

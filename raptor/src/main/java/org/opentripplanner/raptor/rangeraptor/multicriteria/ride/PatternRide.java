@@ -58,10 +58,4 @@ import org.opentripplanner.raptor.util.paretoset.ParetoSet;
  * @param <T> The TripSchedule type defined by the user of the raptor API.
  */
 public interface PatternRide<T extends RaptorTripSchedule>
-  extends PatternRideView<T, McStopArrival<T>> {
-  /**
-   * Change the ride by setting a new c2 value. Since the ride is immutable the
-   * new ride is copied and returned.
-   */
-  PatternRide<T> updateC2(int newC2);
-}
+  extends PatternRideView<T, McStopArrival<T>> {}
