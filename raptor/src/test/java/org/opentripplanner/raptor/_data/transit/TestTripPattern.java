@@ -105,11 +105,6 @@ public class TestTripPattern implements RaptorTripPattern {
       this.stopIndexes = stopIndexes;
     }
 
-    public Builder pattern(int... stopIndexes) {
-      this.stopIndexes = stopIndexes;
-      return this;
-    }
-
     /**
      * Set alight and board restriction using a "coded" string, use space as a separator
      * between stops.
@@ -125,16 +120,6 @@ public class TestTripPattern implements RaptorTripPattern {
      */
     public Builder restrictions(String restrictions) {
       this.restrictions = restrictions;
-      return this;
-    }
-
-    public Builder slackIndex(int index) {
-      this.slackIndex = index;
-      return this;
-    }
-
-    public Builder patternIndex(int index) {
-      this.patternIndex = index;
       return this;
     }
 

@@ -11,7 +11,6 @@ import org.opentripplanner.raptor.spi.RaptorTripSchedule;
 public interface PatternRideView<T extends RaptorTripSchedule, A extends ArrivalView<T>> {
   A prevArrival();
   int boardStopIndex();
-  int boardPos();
   int boardTime();
   T trip();
   int relativeC1();

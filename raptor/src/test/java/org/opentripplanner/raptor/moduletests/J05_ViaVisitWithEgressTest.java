@@ -7,7 +7,6 @@ import static org.opentripplanner.raptor._data.RaptorTestConstants.STOP_D;
 import static org.opentripplanner.raptor._data.RaptorTestConstants.T00_00;
 import static org.opentripplanner.raptor._data.RaptorTestConstants.T01_00;
 import static org.opentripplanner.raptor._data.api.PathUtils.pathsToString;
-import static org.opentripplanner.raptor.api.request.RaptorViaLocation.via;
 
 import java.time.Duration;
 import org.junit.jupiter.api.BeforeEach;
@@ -18,6 +17,7 @@ import org.opentripplanner.raptor._data.transit.TestTransitData;
 import org.opentripplanner.raptor._data.transit.TestTripSchedule;
 import org.opentripplanner.raptor.api.request.RaptorProfile;
 import org.opentripplanner.raptor.api.request.RaptorRequestBuilder;
+import org.opentripplanner.raptor.api.request.via.RaptorViaLocation;
 import org.opentripplanner.raptor.configure.RaptorTestFactory;
 
 /**
@@ -210,15 +210,7 @@ class J05_ViaVisitWithEgressTest {
   }
 
   private void viaStop(int stop) {
-    var via = via(data.stopNameResolver().apply(stop)).addViaStop(stop).build();
+    var via = RaptorViaLocation.viaVisit(data.stopNameResolver().apply(stop)).addStop(stop).build();
     requestBuilder.searchParams().addViaLocation(via);
-  }
-
-  private void viaStops(String label, int... stops) {
-    var builder = via(label);
-    for (int stop : stops) {
-      builder.addViaStop(stop);
-    }
-    requestBuilder.searchParams().addViaLocation(builder.build());
   }
 }

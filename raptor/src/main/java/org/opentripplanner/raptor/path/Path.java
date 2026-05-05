@@ -88,19 +88,9 @@ public class Path<T extends RaptorTripSchedule> implements RaptorPath<T> {
     this(iterationDepartureTime, accessLeg, c1, RaptorConstants.NOT_SET);
   }
 
-  /** Copy constructor */
-  protected Path(RaptorPath<T> original) {
-    this(
-      original.rangeRaptorIterationDepartureTime(),
-      original.accessLeg(),
-      original.c1(),
-      original.c2()
-    );
-  }
-
   /**
    * Create a "dummy" path without legs. Can be used to test if a path is pareto optimal without
-   * creating the hole path.
+   * creating the whole path.
    */
   public static <T extends RaptorTripSchedule> RaptorPath<T> dummyPath(
     int iteration,
@@ -227,10 +217,6 @@ public class Path<T extends RaptorTripSchedule> implements RaptorPath<T> {
     return buildString(false, null, null);
   }
 
-  protected String toString(boolean detailed, RaptorStopNameResolver stopNameResolver) {
-    return buildString(detailed, stopNameResolver, null);
-  }
-
   protected String buildString(
     boolean detailed,
     @Nullable RaptorStopNameResolver stopNameResolver,
@@ -300,7 +286,7 @@ public class Path<T extends RaptorTripSchedule> implements RaptorPath<T> {
   private static <S extends RaptorTripSchedule> EgressPathLeg<S> findEgressLeg(PathLeg<S> leg) {
     return (EgressPathLeg<S>) leg
       .stream()
-      .reduce((a, b) -> b)
+      .reduce((_, b) -> b)
       .orElseThrow();
   }
 

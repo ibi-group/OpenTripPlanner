@@ -257,7 +257,7 @@ public interface RaptorAccessEgress {
    * This information is used to generate transfers from that stop to other stops only when this
    * method returns true.
    */
-  default boolean stopReachedOnBoard() {
+  default boolean arrivedOnBoard() {
     return false;
   }
 
@@ -265,10 +265,10 @@ public interface RaptorAccessEgress {
    * Is this {@link RaptorAccessEgress} is connected to the given {@code stop} directly by
    * <b>walking</b>(or other street mode)? This should be {@code true} if the access/egress
    * is NOT reached on-board.
-   * @see #stopReachedOnBoard()
+   * @see #arrivedOnBoard()
    */
-  default boolean stopReachedByWalking() {
-    return !stopReachedOnBoard();
+  default boolean arrivedOnStreet() {
+    return !arrivedOnBoard();
   }
 
   /**
@@ -293,7 +293,7 @@ public interface RaptorAccessEgress {
     if (isFree()) {
       buf.append("Free");
     } else if (hasRides()) {
-      buf.append(stopReachedOnBoard() ? "Flex" : "Flex+Walk");
+      buf.append(arrivedOnBoard() ? "Flex" : "Flex+Walk");
     } else {
       // This is not always walking, but inside Raptor we do not care if this is
       // biking, walking or car - any on street is treated the same. So, for

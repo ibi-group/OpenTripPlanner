@@ -15,11 +15,7 @@ import org.opentripplanner.raptor.spi.RaptorConstants;
 
 public class ForwardTransitCalculatorTest implements RaptorTestConstants {
 
-  public static final int T00_31 = hm2time(0, 31);
-  public static final int BOARD_SLACK = D20_s;
-  public static final int ALIGHT_SLACK = D10_s;
-  public static final int TRANSFER_SLACK = D1_m;
-
+  private static final int T00_31 = hm2time(0, 31);
   private static final int STOP = 8;
 
   private static final RaptorAccessEgress WALK_8_m = walk(STOP, D8_m);

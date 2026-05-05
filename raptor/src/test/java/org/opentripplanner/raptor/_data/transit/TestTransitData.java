@@ -64,11 +64,6 @@ public class TestTransitData
     setUpDebugToStdErr();
   }
 
-  /// Create an new instance and call {@link #withTimetables(String)}
-  public static TestTransitData of(String routeTimetables) {
-    return new TestTransitData().withTimetables(routeTimetables);
-  }
-
   public TestTransitData access(String... accessList) {
     access(Arrays.stream(accessList).map(TestAccessEgress::of).toArray(TestAccessEgress[]::new));
     return this;

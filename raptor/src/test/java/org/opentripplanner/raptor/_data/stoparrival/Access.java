@@ -27,6 +27,6 @@ class Access extends AbstractStopArrival {
 
   @Override
   public boolean arrivedOnBoard() {
-    return access.stopReachedOnBoard();
+    return access.arrivedOnBoard();
   }
 }

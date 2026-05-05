@@ -5,7 +5,8 @@ import java.util.Iterator;
 import java.util.List;
 import javax.annotation.Nullable;
 import org.opentripplanner.raptor.api.model.RaptorAccessEgress;
-import org.opentripplanner.raptor.rangeraptor.internalapi.OnBoardTripAccessPathsForRoute;
+import org.opentripplanner.raptor.api.model.RaptorStartOnBoardAccess;
+import org.opentripplanner.raptor.rangeraptor.internalapi.OnTripAccessArrivals;
 import org.opentripplanner.raptor.rangeraptor.internalapi.RaptorRouterResult;
 import org.opentripplanner.raptor.rangeraptor.internalapi.RaptorWorkerState;
 import org.opentripplanner.raptor.rangeraptor.internalapi.WorkerLifeCycle;
@@ -63,7 +64,7 @@ public final class McRangeRaptorWorkerState<T extends RaptorTripSchedule>
     this.transitCalculator = transitCalculator;
 
     // Attach to the RR life cycle
-    lifeCycle.onSetupIteration(ignore -> setupIteration());
+    lifeCycle.onSetupIteration(_ -> setupIteration());
     lifeCycle.onTransitsForRoundComplete(this::transitsForRoundComplete);
     lifeCycle.onTransfersForRoundComplete(this::transfersForRoundComplete);
   }
@@ -96,7 +97,7 @@ public final class McRangeRaptorWorkerState<T extends RaptorTripSchedule>
     return arrivals.hasArrivalsAfterMarker(stopIndex);
   }
 
-  public void setAccessToStop(RaptorAccessEgress accessPath, int departureTime) {
+  public void addAccessToStop(RaptorAccessEgress accessPath, int departureTime) {
     addStopArrival(stopArrivalFactory.createAccessStopArrival(departureTime, accessPath));
   }
 
@@ -123,13 +124,13 @@ public final class McRangeRaptorWorkerState<T extends RaptorTripSchedule>
   }
 
   @Nullable
-  OnBoardTripAccessPathsForRoute<T> consumeOnBoardStopArrivals(int routeIndex) {
-    return arrivals.consumeOnBoardStopArrivals(routeIndex);
+  OnTripAccessArrivals<T> consumeOnTripStopArrivalsForRoute(int routeIndex) {
+    return arrivals.consumeOnTripStopArrivalsForRoute(routeIndex);
   }
 
-  public void addOnBoardAccessStopArrival(RaptorAccessEgress accessPath, int departureTime) {
-    var arrival = stopArrivalFactory.createAccessStopArrival(departureTime, accessPath);
-    arrivals.addOnBoardTripArrival(arrival);
+  public void addOnTripAccessStopArrival(RaptorStartOnBoardAccess accessPath, int arrivalTime) {
+    var arrival = stopArrivalFactory.createAccessStopArrival(arrivalTime, accessPath);
+    arrivals.addOnBoardTripArrival(arrival, arrival.stop(), accessPath.tripBoarding());
   }
 
   /**

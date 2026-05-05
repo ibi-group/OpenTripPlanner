@@ -127,7 +127,7 @@ public class TestAccessEgress {
         }
 
         @Override
-        public boolean stopReachedOnBoard() {
+        public boolean arrivedOnBoard() {
           return stopReachedOnBoard;
         }
       };

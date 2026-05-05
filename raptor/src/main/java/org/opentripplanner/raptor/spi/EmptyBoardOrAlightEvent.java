@@ -1,6 +1,5 @@
 package org.opentripplanner.raptor.spi;
 
-import java.util.function.Consumer;
 import org.opentripplanner.utils.time.TimeUtils;
 
 record EmptyBoardOrAlightEvent<T extends RaptorTripSchedule>(int earliestBoardTime) implements
@@ -33,14 +32,6 @@ record EmptyBoardOrAlightEvent<T extends RaptorTripSchedule>(int earliestBoardTi
   @Override
   public boolean empty() {
     return true;
-  }
-
-  @Override
-  public void boardWithFallback(
-    Consumer<RaptorBoardOrAlightEvent<T>> boardCallback,
-    Consumer<RaptorBoardOrAlightEvent<T>> alternativeBoardingFallback
-  ) {
-    alternativeBoardingFallback.accept(this);
   }
 
   @Override

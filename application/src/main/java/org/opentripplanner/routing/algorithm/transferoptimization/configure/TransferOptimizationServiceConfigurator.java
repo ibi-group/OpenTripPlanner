@@ -3,7 +3,7 @@ package org.opentripplanner.routing.algorithm.transferoptimization.configure;
 import java.util.List;
 import java.util.function.IntFunction;
 import javax.annotation.Nullable;
-import org.opentripplanner.raptor.api.request.RaptorViaLocation;
+import org.opentripplanner.raptor.api.request.via.RaptorViaLocation;
 import org.opentripplanner.raptor.spi.RaptorCostCalculator;
 import org.opentripplanner.raptor.spi.RaptorStopNameResolver;
 import org.opentripplanner.raptor.spi.RaptorTransitDataProvider;

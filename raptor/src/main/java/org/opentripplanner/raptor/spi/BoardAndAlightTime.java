@@ -19,20 +19,6 @@ public class BoardAndAlightTime {
     this.alightStopPos = alightStopPos;
   }
 
-  public static BoardAndAlightTime create(
-    RaptorTripSchedule trip,
-    int boardStop,
-    int boardTime,
-    int alightStop,
-    int alightTime
-  ) {
-    return new BoardAndAlightTime(
-      trip,
-      trip.findDepartureStopPosition(boardTime, boardStop),
-      trip.findArrivalStopPosition(alightTime, alightStop)
-    );
-  }
-
   public int boardTime() {
     return trip.departure(boardStopPos);
   }

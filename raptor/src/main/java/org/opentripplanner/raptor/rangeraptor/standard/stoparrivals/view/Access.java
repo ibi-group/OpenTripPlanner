@@ -60,6 +60,6 @@ final class Access<T extends RaptorTripSchedule>
 
   @Override
   public boolean arrivedOnBoard() {
-    return access.stopReachedOnBoard();
+    return access.arrivedOnBoard();
   }
 }

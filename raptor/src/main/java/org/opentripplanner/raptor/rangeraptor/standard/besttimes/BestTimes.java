@@ -52,8 +52,8 @@ public final class BestTimes {
     this.reachedByTransitCurrentRound = new BitSet(nStops);
 
     // Attach to Worker life cycle
-    lifeCycle.onSetupIteration(ignore -> setupIteration());
-    lifeCycle.onPrepareForNextRound(round -> prepareForNextRound());
+    lifeCycle.onSetupIteration(_ -> setupIteration());
+    lifeCycle.onPrepareForNextRound(_ -> prepareForNextRound());
   }
 
   public int time(int stop) {
@@ -126,10 +126,6 @@ public final class BestTimes {
       return true;
     }
     return false;
-  }
-
-  public int size() {
-    return times.length;
   }
 
   public SingleCriteriaStopArrivals extractBestOverallArrivals() {

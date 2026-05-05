@@ -5,7 +5,6 @@ import static org.opentripplanner.raptor.api.model.RaptorValueType.C2;
 
 import java.util.function.IntFunction;
 import javax.annotation.Nullable;
-import org.opentripplanner.raptor.api.model.RaptorTripScheduleStopPosition;
 import org.opentripplanner.raptor.spi.RaptorConstants;
 import org.opentripplanner.raptor.spi.RaptorCostCalculator;
 import org.opentripplanner.raptor.spi.RaptorTransfer;
@@ -112,46 +111,60 @@ public interface ArrivalView<T extends RaptorTripSchedule> {
     return null;
   }
 
-  /* Access stop arrival */
-
   /**
-   * First stop arrival, arrived by a given access path.
+   * The type of leg used to arrive at this stop.
    */
   PathLegType arrivedBy();
 
+  /**
+   * Return {@code true} if this arrival was reached by the given {@code expected} leg type.
+   */
   default boolean arrivedBy(PathLegType expected) {
     return arrivedBy().is(expected);
   }
 
+  /**
+   * The access path view for this arrival. Only valid when {@link #arrivedBy()} returns
+   * {@link PathLegType#ACCESS}.
+   */
   default AccessPathView accessPath() {
     throw new UnsupportedOperationException();
   }
 
-  /* Transit */
-
+  /**
+   * The transit path view for this arrival. Only valid when {@link #arrivedBy()} returns
+   * {@link PathLegType#TRANSIT}.
+   */
   default TransitPathView<T> transitPath() {
     throw new UnsupportedOperationException();
   }
 
-  /* Transfer */
-
+  /**
+   * The transfer used to reach this stop. Only valid when {@link #arrivedBy()} returns
+   * {@link PathLegType#TRANSFER}.
+   */
   default RaptorTransfer transfer() {
     throw new UnsupportedOperationException();
   }
 
-  /* Egress */
-
+  /**
+   * The egress path view for this arrival. Only valid when {@link #arrivedBy()} returns
+   * {@link PathLegType#EGRESS}.
+   */
   default EgressPathView egressPath() {
     throw new UnsupportedOperationException();
   }
 
+  /**
+   * Return {@code true} if the traveller arrived at this stop while on board a vehicle (i.e. via
+   * transit or flex with an in-seat transfer), as opposed to arriving on foot via access or
+   * transfer.
+   */
   boolean arrivedOnBoard();
 
-  default RaptorTripScheduleStopPosition subsequentBoardingConstraint() {
-    throw new UnsupportedOperationException();
-  }
-
-  /** Use this to create a {@code toString()} implementation. */
+  /**
+   * Use this to create a {@code toString()} implementation.
+   */
   default String asString() {
     String arrival =
       "[" +

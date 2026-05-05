@@ -43,50 +43,47 @@ public class OsmNodeTest {
   }
 
   @Test
+  void lowerCaseKeys() {
+    var entity = OsmNode.of().withTag("foo", "bar").withTag("FOO", "baz").build();
+    assertEquals("baz", entity.getTag("foo"));
+  }
+
+  @Test
   public void isBarrier() {
-    OsmNode node = new OsmNode();
+    OsmNode node = OsmNode.of().build();
     assertFalse(node.isBarrier());
 
-    node = new OsmNode();
-    node.addTag("barrier", "unknown");
+    node = OsmNode.of().withTag("barrier", "unknown").build();
     assertFalse(node.isBarrier());
 
-    node = new OsmNode();
-    node.addTag("barrier", "bollard");
+    node = OsmNode.of().withTag("barrier", "bollard").build();
     assertTrue(node.isBarrier());
 
-    node = new OsmNode();
-    node.addTag("access", "no");
+    node = OsmNode.of().withTag("access", "no").build();
     assertTrue(node.isBarrier());
   }
 
   @Test
   public void isTaggedBarrierCrossing() {
-    OsmNode node = new OsmNode();
+    OsmNode node = OsmNode.of().build();
     assertFalse(node.isTaggedBarrierCrossing());
 
-    node = new OsmNode();
-    node.addTag("barrier", "gate");
+    node = OsmNode.of().withTag("barrier", "gate").build();
     assertTrue(node.isTaggedBarrierCrossing());
 
-    node = new OsmNode();
-    node.addTag("motor_vehicle", "yes");
+    node = OsmNode.of().withTag("motor_vehicle", "yes").build();
     assertTrue(node.isTaggedBarrierCrossing());
 
-    node = new OsmNode();
-    node.addTag("motor_vehicle", "no");
+    node = OsmNode.of().withTag("motor_vehicle", "no").build();
     assertTrue(node.isTaggedBarrierCrossing());
 
-    node = new OsmNode();
-    node.addTag("access", "yes");
+    node = OsmNode.of().withTag("access", "yes").build();
     assertTrue(node.isTaggedBarrierCrossing());
 
-    node = new OsmNode();
-    node.addTag("access", "no");
+    node = OsmNode.of().withTag("access", "no").build();
     assertTrue(node.isTaggedBarrierCrossing());
 
-    node = new OsmNode();
-    node.addTag("entrance", "main");
+    node = OsmNode.of().withTag("entrance", "main").build();
     assertTrue(node.isTaggedBarrierCrossing());
   }
 

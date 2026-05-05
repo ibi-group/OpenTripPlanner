@@ -207,7 +207,7 @@ public class TripTimesSearch<T extends RaptorTripSchedule> {
         fromPos = nextFromPos;
         toPos = nextToPos;
       }
-    } catch (IllegalStateException ignore) {
+    } catch (IllegalStateException _) {
       /* No more times/loop exist */
     }
 

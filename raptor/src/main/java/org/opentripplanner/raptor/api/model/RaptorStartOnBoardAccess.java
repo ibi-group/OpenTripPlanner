@@ -44,7 +44,7 @@ public interface RaptorStartOnBoardAccess extends RaptorAccessEgress {
   }
 
   @Override
-  default boolean stopReachedByWalking() {
+  default boolean arrivedOnStreet() {
     return false;
   }
 

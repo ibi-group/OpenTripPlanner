@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
-import org.opentripplanner.raptor.api.request.RaptorViaLocation;
+import org.opentripplanner.raptor.api.request.via.RaptorViaLocation;
 import org.opentripplanner.raptor.spi.RaptorTripSchedule;
 import org.opentripplanner.routing.algorithm.transferoptimization.model.OptimizedPathTail;
 import org.opentripplanner.routing.algorithm.transferoptimization.model.PathTailFilter;

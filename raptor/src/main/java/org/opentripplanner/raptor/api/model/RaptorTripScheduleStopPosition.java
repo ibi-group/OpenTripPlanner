@@ -46,7 +46,7 @@ public final class RaptorTripScheduleStopPosition {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    RaptorTripScheduleStopPosition that = (RaptorTripScheduleStopPosition) o;
+    var that = (RaptorTripScheduleStopPosition) o;
     return (
       routeIndex == that.routeIndex &&
       tripScheduleIndex == that.tripScheduleIndex &&

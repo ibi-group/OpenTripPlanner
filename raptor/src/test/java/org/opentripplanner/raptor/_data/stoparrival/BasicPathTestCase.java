@@ -88,7 +88,6 @@ public class BasicPathTestCase implements RaptorTestConstants {
   private static final int BOARD_C1_SEC = 60;
   private static final int TRANSFER_C1_SEC = 120;
   public static final double WAIT_RELUCTANCE = 0.8;
-  private static final int C2 = 7;
 
   /** Stop cost for stop NA, A, C, E .. H is zero(0), B: 30s, and D: 60s. ?=0, A=1 .. H=8 */
   private static final int[] STOP_C1_S = { 0, 0, 3_000, 0, 6_000, 0, 0, 0, 0, 0 };
@@ -177,11 +176,6 @@ public class BasicPathTestCase implements RaptorTestConstants {
     EGRESS_DURATION,
     EGRESS_C1
   );
-  // this is of course not a real flex egress
-  private static final RaptorAccessEgress FLEX = TestAccessEgress.flex(
-    STOP_E,
-    EGRESS_DURATION
-  ).withCost(EGRESS_C1);
 
   public static final String LINE_11 = "L11";
   public static final String LINE_21 = "L21";
@@ -318,37 +312,6 @@ public class BasicPathTestCase implements RaptorTestConstants {
       leg2.asTransitLeg()
     );
     return new Path<>(RAPTOR_ITERATION_START_TIME, leg1, TOTAL_C1, 7);
-  }
-
-  public static RaptorPath<TestTripSchedule> flexTripAsPath() {
-    PathLeg<TestTripSchedule> leg6 = new EgressPathLeg<>(FLEX, EGRESS_START, EGRESS_END, EGRESS_C1);
-    var transfer = TestTransfer.transfer(STOP_E, TX_END - TX_START);
-    PathLeg<TestTripSchedule> leg3 = new TransferPathLeg<>(
-      STOP_B,
-      TX_START,
-      TX_END,
-      transfer.c1(),
-      transfer,
-      leg6
-    );
-    var leg2 = new TransitPathLeg<>(
-      TRIP_1,
-      L11_START,
-      L11_END,
-      TRIP_1.findDepartureStopPosition(L11_START, STOP_A),
-      TRIP_1.findArrivalStopPosition(L11_END, STOP_B),
-      EMPTY_CONSTRAINTS,
-      LINE_11_C1,
-      leg3
-    );
-    AccessPathLeg<TestTripSchedule> leg1 = new AccessPathLeg<>(
-      ACCESS,
-      ACCESS_START,
-      ACCESS_END,
-      ACCESS_C1,
-      leg2.asTransitLeg()
-    );
-    return new Path<>(RAPTOR_ITERATION_START_TIME, leg1, TOTAL_C1, C2);
   }
 
   public static List<Integer> basicTripStops() {

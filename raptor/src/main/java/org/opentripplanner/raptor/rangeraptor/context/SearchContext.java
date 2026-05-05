@@ -9,7 +9,6 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.IntPredicate;
 import java.util.function.ToIntFunction;
 import javax.annotation.Nullable;
 import org.opentripplanner.raptor.api.debug.RaptorTimers;
@@ -67,9 +66,6 @@ public class SearchContext<T extends RaptorTripSchedule> {
   private final DebugHandlerFactory<T> debugFactory;
   private final LifeCycleSubscriptions lifeCycleSubscriptions = new LifeCycleSubscriptions();
 
-  @Nullable
-  private final IntPredicate acceptC2AtDestination;
-
   private final List<SearchContextViaSegments<T>> segments;
 
   /** Lazy initialized */
@@ -81,8 +77,7 @@ public class SearchContext<T extends RaptorTripSchedule> {
     RaptorTransitDataProvider<T> transitData,
     AccessPaths accessPaths,
     List<ViaConnections> viaConnections,
-    EgressPaths egressPaths,
-    @Nullable IntPredicate acceptC2AtDestination
+    EgressPaths egressPaths
   ) {
     this.request = request;
     this.tuningParameters = tuningParameters;
@@ -95,21 +90,15 @@ public class SearchContext<T extends RaptorTripSchedule> {
       lifeCycle()
     );
     this.debugFactory = new DebugHandlerFactory<>(debugRequest(request), lifeCycle());
-    this.acceptC2AtDestination = acceptC2AtDestination;
     this.segments = initSegments(accessPaths, viaConnections, egressPaths);
   }
 
-  /**
-   * @param acceptC2AtDestination Currently only the pass-through has a constraint on the c2 value
-   *                             for accepting it at the destination, if not this is {@code null}.
-   */
   public static <T extends RaptorTripSchedule> SearchContextBuilder<T> of(
     RaptorRequest<T> request,
     RaptorTuningParameters tuningParameters,
-    RaptorTransitDataProvider<T> transit,
-    @Nullable IntPredicate acceptC2AtDestination
+    RaptorTransitDataProvider<T> transit
   ) {
-    return new SearchContextBuilder<>(request, tuningParameters, transit, acceptC2AtDestination);
+    return new SearchContextBuilder<>(request, tuningParameters, transit);
   }
 
   public List<SearchContextViaSegments<T>> segments() {
@@ -177,11 +166,6 @@ public class SearchContext<T extends RaptorTripSchedule> {
 
   public RaptorTimers performanceTimers() {
     return request.performanceTimers();
-  }
-
-  @Nullable
-  public IntPredicate acceptC2AtDestination() {
-    return acceptC2AtDestination;
   }
 
   /** Number of stops in transit graph. */

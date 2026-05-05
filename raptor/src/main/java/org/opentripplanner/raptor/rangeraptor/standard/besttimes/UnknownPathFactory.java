@@ -103,7 +103,7 @@ public class UnknownPathFactory<T extends RaptorTripSchedule> {
 
   private int calculateStopArrivalTime(RaptorAccessEgress egress) {
     int stop = egress.stop();
-    if (egress.stopReachedByWalking()) {
+    if (egress.arrivedOnStreet()) {
       if (bestTimes.isStopReachedByTransit(stop)) {
         return bestTimes.transitArrivalTime(stop);
       }

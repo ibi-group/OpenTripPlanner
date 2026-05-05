@@ -2,10 +2,13 @@ package org.opentripplanner.osm.model;
 
 public class RelationBuilder {
 
-  private final OsmRelation relation = new OsmRelation();
+  private final OsmRelationBuilder builder = OsmRelation.of();
 
   public static RelationBuilder ofMultiPolygon() {
-    return ofType("multipolygon").withTag("highway", "pedestrian");
+    var builder = new RelationBuilder();
+    builder.withTag("type", "multipolygon");
+    builder.withTag("highway", "pedestrian");
+    return builder;
   }
 
   public static RelationBuilder ofTurnRestriction(String restrictionType) {
@@ -18,12 +21,12 @@ public class RelationBuilder {
 
   public static RelationBuilder ofType(String type) {
     var builder = new RelationBuilder();
-    builder.relation.addTag("type", type);
+    builder.builder.addTag("type", type);
     return builder;
   }
 
   public RelationBuilder withTag(String key, String value) {
-    relation.addTag(key, value);
+    builder.addTag(key, value);
     return this;
   }
 
@@ -40,7 +43,7 @@ public class RelationBuilder {
   }
 
   public OsmRelation build() {
-    return relation;
+    return builder.build();
   }
 
   private RelationBuilder withMember(long id, String role, OsmMemberType osmMemberType) {
@@ -48,7 +51,7 @@ public class RelationBuilder {
     member.setRole(role);
     member.setType(osmMemberType);
     member.setRef(id);
-    relation.addMember(member);
+    builder.addMember(member);
     return this;
   }
 }

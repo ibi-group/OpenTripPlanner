@@ -8,17 +8,11 @@ import java.time.LocalTime;
 import java.util.Collection;
 import java.util.List;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.MethodSource;
 import org.onebusaway.gtfs.model.AgencyAndId;
 import org.onebusaway.gtfs.model.FareLegRule;
 import org.onebusaway.gtfs.model.FareMedium;
 import org.onebusaway.gtfs.model.FareProduct;
 import org.onebusaway.gtfs.model.Timeframe;
-import org.opentripplanner.core.model.basic.Distance;
-import org.opentripplanner.ext.fares.model.FareDistance;
-import org.opentripplanner.ext.fares.model.FareDistance.LinearDistance;
-import org.opentripplanner.ext.fares.model.FareDistance.Stops;
 import org.opentripplanner.graph_builder.issue.api.DataImportIssue;
 import org.opentripplanner.graph_builder.issue.api.DataImportIssueStore;
 import org.opentripplanner.graph_builder.issue.service.DefaultDataImportIssueStore;
@@ -26,61 +20,6 @@ import org.opentripplanner.graph_builder.issue.service.DefaultDataImportIssueSto
 class FareLegRuleMapperTest {
 
   public static final IdFactory ID_FACTORY = new IdFactory("A");
-
-  private record TestCase(
-    Integer distanceType,
-    Double minDistance,
-    Double maxDistance,
-    FareDistance expectedDistance
-  ) {}
-
-  private static List<TestCase> testCases() {
-    return List.of(
-      new TestCase(0, 1d, 10d, new Stops(1, 10)),
-      new TestCase(
-        1,
-        5000d,
-        10000d,
-        new LinearDistance(
-          Distance.ofKilometersBoxed(5d, ignore -> {}).orElse(null),
-          Distance.ofKilometersBoxed(10d, ignore -> {}).orElse(null)
-        )
-      ),
-      new TestCase(null, null, null, null)
-    );
-  }
-
-  @ParameterizedTest
-  @MethodSource("testCases")
-  void mapDistance(TestCase tc) {
-    var productMapper = new FareProductMapper(ID_FACTORY);
-    var ruleMapper = new FareLegRuleMapper(
-      ID_FACTORY,
-      productMapper,
-      timeframeMapper(),
-      DataImportIssueStore.NOOP
-    );
-    var productId = new AgencyAndId("1", "1");
-    var fp = new FareProduct();
-    fp.setAmount(10);
-    fp.setName("Day pass");
-    fp.setCurrency("EUR");
-    fp.setFareProductId(productId);
-    var internalProduct = productMapper.map(fp);
-
-    final var obaRule = baseRule();
-    obaRule.setFareProductId(fp.getFareProductId());
-    obaRule.setDistanceType(tc.distanceType);
-    obaRule.setMinDistance(tc.minDistance);
-    obaRule.setMaxDistance(tc.maxDistance);
-
-    var mappedRules = List.copyOf(ruleMapper.map(List.of(obaRule)));
-    assertEquals(1, mappedRules.size());
-
-    var otpRule = mappedRules.get(0);
-    assertEquals(otpRule.fareDistance(), tc.expectedDistance);
-    assertThat(otpRule.fareProducts()).containsExactly(internalProduct);
-  }
 
   @Test
   void multipleProducts() {

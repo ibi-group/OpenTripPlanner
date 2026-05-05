@@ -97,7 +97,7 @@ public class StopsCursor<T extends RaptorTripSchedule> {
    */
   public ArrivalView<T> access(int round, int stop, RaptorAccessEgress access) {
     var arrival = arrivals.get(round, stop);
-    int time = access.stopReachedOnBoard() ? arrival.onBoardArrivalTime() : arrival.time();
+    int time = access.arrivedOnBoard() ? arrival.onBoardArrivalTime() : arrival.time();
     return new Access<>(round, time, access);
   }
 

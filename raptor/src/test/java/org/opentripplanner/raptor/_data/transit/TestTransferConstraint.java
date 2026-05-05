@@ -39,10 +39,6 @@ public class TestTransferConstraint implements Serializable, RaptorTransferConst
     return new TestTransferConstraint(Type.GUARANTEED);
   }
 
-  public static RaptorTransferConstraint regular() {
-    return RaptorTransferConstraint.REGULAR_TRANSFER;
-  }
-
   public boolean isGuaranteed() {
     return type.is(Type.GUARANTEED);
   }

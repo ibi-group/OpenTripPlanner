@@ -78,10 +78,6 @@ public class PathBuilderLeg<T extends RaptorTripSchedule> {
 
   /* accessors */
 
-  public int fromTime() {
-    return fromTime;
-  }
-
   public int fromStop() {
     return prev.toStop();
   }
@@ -625,19 +621,6 @@ public class PathBuilderLeg<T extends RaptorTripSchedule> {
     final int waitCost = costCalculator.waitCost(waitTimeAfterPrevStopArrival(slackProvider));
 
     return waitCost + egressCost;
-  }
-
-  private static IllegalStateException egressDepartureNotAvailable(
-    int arrivalTime,
-    RaptorAccessEgress egressPath
-  ) {
-    return new IllegalStateException(
-      "Unable to reconstruct path. Transit does not arrive in time to board flex access." +
-        " Arrived: " +
-        TimeUtils.timeToStrCompact(arrivalTime) +
-        " Egress: " +
-        egressPath
-    );
   }
 
   private static int assertTimeExist(int time, RaptorAccessEgress path, String details) {

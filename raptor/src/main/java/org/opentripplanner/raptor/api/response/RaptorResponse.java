@@ -47,6 +47,7 @@ public class RaptorResponse<T extends RaptorTripSchedule> {
   /**
    * The end state of the search, with arrival times and lowest number of transfers. If multiple
    * routing workers are called, the main worker result is returned.
+   * <p>
    */
   public StopArrivals getArrivals() {
     return arrivals;
@@ -65,7 +66,7 @@ public class RaptorResponse<T extends RaptorTripSchedule> {
   /**
    * Return {@code true} if the heuristic and the main search does not find any connections.
    * Searching again with another time/search-window will not produce any results. There is no paths
-   * in the set of days provided in the transit data with the request usd.
+   * in the set of days provided in the transit data with the request used.
    */
   public boolean noConnectionFound() {
     return paths.isEmpty() && !heuristicPathExist;

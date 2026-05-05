@@ -86,8 +86,8 @@ public class AccessPaths {
     }
 
     paths = decorateWithTimePenaltyLogic(paths);
-    var arrivedOnStreetByNumOfRides = groupByRound(paths, RaptorAccessEgress::stopReachedByWalking);
-    var arrivedOnBoardByNumOfRides = groupByRound(paths, RaptorAccessEgress::stopReachedOnBoard);
+    var arrivedOnStreetByNumOfRides = groupByRound(paths, RaptorAccessEgress::arrivedOnStreet);
+    var arrivedOnBoardByNumOfRides = groupByRound(paths, RaptorAccessEgress::arrivedOnBoard);
     int maxNumberOfRides = Math.max(
       maxNumberOfRounds(arrivedOnStreetByNumOfRides),
       maxNumberOfRounds(arrivedOnBoardByNumOfRides)
@@ -139,7 +139,7 @@ public class AccessPaths {
   /**
    * Return the on-board accesses
    */
-  public List<RaptorStartOnBoardAccess> startOnBoardAccessPaths() {
+  public List<RaptorStartOnBoardAccess> listStartOnBoardAccesses() {
     return startOnBoardAccessPaths;
   }
 

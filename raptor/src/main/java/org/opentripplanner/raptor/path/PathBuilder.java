@@ -145,11 +145,6 @@ public abstract class PathBuilder<T extends RaptorTripSchedule> {
     return costCalculator;
   }
 
-  @Nullable
-  protected RaptorStopNameResolver stopNameResolver() {
-    return stopNameResolver;
-  }
-
   public void access(RaptorAccessEgress access) {
     add(PathBuilderLeg.accessLeg(access));
   }
