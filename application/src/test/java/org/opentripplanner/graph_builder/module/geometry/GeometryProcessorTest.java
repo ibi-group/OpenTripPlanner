@@ -325,6 +325,27 @@ class GeometryProcessorTest {
   }
 
   @Test
+  void tripWithoutShapeIdFallsBackToStraightLines() {
+    var builder = new TransitDataImportBuilder(REPO, NOOP);
+
+    // Trip with no shape_id at all
+    var trip = TimetableRepositoryForTest.trip("t").build();
+    var stops = List.of(STOP_A, STOP_B, STOP_C);
+    var stopTimes = IntStream.range(0, stops.size())
+      .mapToObj(index -> TEST_MODEL.stopTime(trip, index, stops.get(index)))
+      .toList();
+    builder.getStopTimesSortedByTrip().put(trip, stopTimes);
+
+    var processor = new GeometryProcessor(builder, 150, NOOP);
+    var linestrings = processor.createHopGeometries(trip);
+
+    assertLineStringWithinTolerance(
+      List.of(makeLineString(0, 0, 0, 0.1), makeLineString(0, 0.1, 0, 0.2)),
+      linestrings
+    );
+  }
+
+  @Test
   void ignoreInvalidReference() {
     var issueStore = new DefaultDataImportIssueStore();
     var builder = new TransitDataImportBuilder(REPO, issueStore);

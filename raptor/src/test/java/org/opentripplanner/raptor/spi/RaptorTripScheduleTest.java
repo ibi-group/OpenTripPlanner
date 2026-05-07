@@ -1,13 +1,14 @@
 package org.opentripplanner.raptor.spi;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.opentripplanner.utils.time.TimeUtils.time;
 import static org.opentripplanner.utils.time.TimeUtils.timeToStrLong;
 
 import org.junit.jupiter.api.Test;
 import org.opentripplanner.raptor._data.transit.TestTripPattern;
 import org.opentripplanner.raptor._data.transit.TestTripSchedule;
 
-public class RaptorTripScheduleTest {
+class RaptorTripScheduleTest {
 
   private final TestTripSchedule subject = TestTripSchedule.schedule(
     TestTripPattern.pattern("L23", 1, 1, 2, 3, 5, 8, 1)
@@ -17,30 +18,52 @@ public class RaptorTripScheduleTest {
     .build();
 
   @Test
-  public void arrival() {
+  void arrival() {
     assertEquals("10:00:00", timeToStrLong(subject.arrival(0)));
     assertEquals("10:05:00", timeToStrLong(subject.arrival(1)));
     assertEquals("10:55:00", timeToStrLong(subject.arrival(6)));
   }
 
   @Test
-  public void departure() {
+  void departure() {
     assertEquals("10:01:00", timeToStrLong(subject.departure(0)));
     assertEquals("10:46:00", timeToStrLong(subject.departure(5)));
     assertEquals("10:56:00", timeToStrLong(subject.departure(6)));
   }
 
   @Test
-  public void findArrivalStopPosition() {
+  void findArrivalStopPosition() {
     assertEquals("10:00:00", timeToStrLong(subject.arrival(0, 1)));
     assertEquals("10:05:00", timeToStrLong(subject.arrival(1, 1)));
     assertEquals("10:55:00", timeToStrLong(subject.arrival(2, 1)));
   }
 
   @Test
-  public void findDepartureStopPosition() {
+  void findDepartureStopPosition() {
     assertEquals("10:01:00", timeToStrLong(subject.departure(0, 1)));
     assertEquals("10:46:00", timeToStrLong(subject.departure(0, 8)));
     assertEquals("10:56:00", timeToStrLong(subject.departure(2, 1)));
+  }
+
+  @Test
+  void restrictedFindArrivalStopPosition() {
+    var subject = TestTripSchedule.schedule(
+      TestTripPattern.of("flex-with-repeating-stops", 1, 1, 2, 3).restrictions("* * - *").build()
+    )
+      .times(time("09:00"), time("09:10"), RaptorConstants.TIME_NOT_SET, time("09:30"))
+      .build();
+
+    assertEquals(0, subject.findArrivalStopPosition(time("09:06"), 1));
+  }
+
+  @Test
+  void restrictedFindDepartureStopPosition() {
+    var subject = TestTripSchedule.schedule(
+      TestTripPattern.of("restricted-repeating-stops", 1, 1, 1, 3).restrictions("* A * *").build()
+    )
+      .times(time("09:00"), time("09:10"), time("09:15"), time("09:30"))
+      .build();
+
+    assertEquals(2, subject.findDepartureStopPosition(time("09:09"), 1));
   }
 }
