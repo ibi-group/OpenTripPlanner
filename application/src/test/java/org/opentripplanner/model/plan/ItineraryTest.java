@@ -27,7 +27,7 @@ import org.opentripplanner.transit.model.timetable.ScheduledTripTimes;
 public class ItineraryTest implements PlanTestConstants {
 
   private static final Cost COST = Cost.costOfSeconds(720);
-  private static final double DISTANCE_DELTA = 0.01;
+  private static final double DISTANCE_DELTA = 1.0;
   // Geometry-based distance from PlanTestConstants A (5.0, 8.0) to B (6.0, 8.5)
   private static final double A_TO_B_DISTANCE = 124205.32;
 

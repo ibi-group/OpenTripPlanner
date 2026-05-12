@@ -23,7 +23,6 @@ import org.opentripplanner.model.plan.TransitLeg;
 import org.opentripplanner.model.plan.legreference.LegReference;
 import org.opentripplanner.model.plan.legreference.ScheduledTransitLegReference;
 import org.opentripplanner.routing.alertpatch.TransitAlert;
-import org.opentripplanner.street.geometry.GeometryUtils;
 import org.opentripplanner.transfer.constrained.model.ConstrainedTransfer;
 import org.opentripplanner.transit.model.basic.TransitMode;
 import org.opentripplanner.transit.model.framework.AbstractTransitEntity;
@@ -37,7 +36,6 @@ import org.opentripplanner.transit.model.timetable.Trip;
 import org.opentripplanner.transit.model.timetable.TripOnServiceDate;
 import org.opentripplanner.transit.model.timetable.TripTimes;
 import org.opentripplanner.transit.model.timetable.booking.BookingInfo;
-import org.opentripplanner.utils.lang.DoubleUtils;
 import org.opentripplanner.utils.lang.IntUtils;
 import org.opentripplanner.utils.lang.Sandbox;
 import org.opentripplanner.utils.time.ServiceDateUtils;
@@ -119,15 +117,10 @@ public class ScheduledTransitLeg implements TransitLeg {
 
     this.generalizedCost = builder.generalizedCost();
 
-    LineString transitLegCoordinates = LegConstructionSupport.extractSubGeometry(
-      tripPattern,
+    this.legGeometry = tripPattern.geometryBetween(boardStopPosInPattern, alightStopPosInPattern);
+    this.distanceMeters = tripPattern.distanceBetween(
       boardStopPosInPattern,
       alightStopPosInPattern
-    );
-    this.legGeometry = transitLegCoordinates;
-
-    this.distanceMeters = DoubleUtils.roundTo2Decimals(
-      GeometryUtils.sumDistances(transitLegCoordinates.getCoordinateSequence())
     );
     this.transitAlerts = Set.copyOf(builder.alerts());
     this.fromViaLocationType = builder.fromViaLocationType();

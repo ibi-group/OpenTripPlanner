@@ -133,7 +133,6 @@ class AccessEgressFetcher {
         streetRequest,
         type,
         transitServiceResolver,
-        linkingContext,
         transitSearchTimeZero
       );
       results.addAll(carpoolAccessEgressList);

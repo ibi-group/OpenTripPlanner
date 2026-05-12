@@ -2,11 +2,13 @@ package org.opentripplanner.graph_builder.module.nearbystops;
 
 import static java.util.Objects.requireNonNull;
 
-import com.google.common.collect.ArrayListMultimap;
-import com.google.common.collect.Multimap;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.function.Predicate;
 import org.opentripplanner.astar.spi.TraverseVisitor;
 import org.opentripplanner.core.model.id.FeedScopedId;
 import org.opentripplanner.framework.application.OTPFeature;
@@ -18,6 +20,7 @@ import org.opentripplanner.street.model.vertex.TransitStopVertex;
 import org.opentripplanner.street.model.vertex.Vertex;
 import org.opentripplanner.street.search.TraverseMode;
 import org.opentripplanner.street.search.state.State;
+import org.opentripplanner.utils.collection.MinMap;
 
 /**
  * A {@link TraverseVisitor} that collects transit stops and flex area stops during an A* search,
@@ -29,12 +32,17 @@ import org.opentripplanner.street.search.state.State;
  */
 class NearbyStopFinderVisitor implements TraverseVisitor<State, Edge> {
 
+  private static final Predicate<Edge> CAN_BOARD_FLEX_PREDICATE = e ->
+    e instanceof StreetEdge se && se.getPermission().allows(TraverseMode.CAR);
+
   private final Set<Vertex> originVertices;
   private final Set<Vertex> ignoreVertices;
   private final boolean reverseDirection;
 
   private final List<NearbyStop> transitStopsFound = new ArrayList<>();
-  private final Multimap<FeedScopedId, State> statesForAreaStopIds = ArrayListMultimap.create();
+  private final MinMap<FeedScopedId, State> statesForAreaStopIds = new MinMap<>(
+    Comparator.comparingDouble(State::getWeight)
+  );
 
   NearbyStopFinderVisitor(
     Set<Vertex> originVertices,
@@ -65,7 +73,7 @@ class NearbyStopFinderVisitor implements TraverseVisitor<State, Edge> {
     ) {
       for (FeedScopedId id : streetVertex.areaStops()) {
         if (canBoardFlex(state)) {
-          statesForAreaStopIds.put(id, state);
+          statesForAreaStopIds.putMin(id, state);
         }
       }
     }
@@ -81,17 +89,13 @@ class NearbyStopFinderVisitor implements TraverseVisitor<State, Edge> {
     return transitStopsFound;
   }
 
-  Multimap<FeedScopedId, State> statesForAreaStopIds() {
-    return statesForAreaStopIds;
+  Collection<Map.Entry<FeedScopedId, State>> statesForAreaStopIds() {
+    return statesForAreaStopIds.entries();
   }
 
   private boolean canBoardFlex(State state) {
-    var edges = reverseDirection
-      ? state.getVertex().getIncoming()
-      : state.getVertex().getOutgoing();
-
-    return edges
-      .stream()
-      .anyMatch(e -> e instanceof StreetEdge se && se.getPermission().allows(TraverseMode.CAR));
+    return reverseDirection
+      ? state.getVertex().hasAnyIncomingMatching(CAN_BOARD_FLEX_PREDICATE)
+      : state.getVertex().hasAnyOutgoingMatching(CAN_BOARD_FLEX_PREDICATE);
   }
 }
