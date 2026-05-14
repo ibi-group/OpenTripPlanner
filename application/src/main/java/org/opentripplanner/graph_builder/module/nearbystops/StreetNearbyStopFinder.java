@@ -6,8 +6,6 @@ import com.google.common.collect.Sets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 import org.opentripplanner.astar.strategy.DurationSkipEdgeStrategy;
@@ -137,12 +135,9 @@ public class StreetNearbyStopFinder implements NearbyStopFinder {
     stopsFound.addAll(visitor.transitStopsFound());
 
     if (OTPFeature.FlexRouting.isOn()) {
-      for (var statesForAreaStopIds : visitor.statesForAreaStopIds().asMap().entrySet()) {
+      for (var statesForAreaStopIds : visitor.statesForAreaStopIds()) {
         var areaStopId = statesForAreaStopIds.getKey();
-        var states = statesForAreaStopIds.getValue();
-        // Select the vertex from all vertices that are reachable per AreaStop by taking
-        // the minimum walking distance
-        State min = Collections.min(states, Comparator.comparing(State::getWeight));
+        var min = statesForAreaStopIds.getValue();
 
         // If the best state for this AreaStop is a SplitterVertex, we want to get the
         // TemporaryStreetLocation instead. This allows us to reach SplitterVertices in both

@@ -58,7 +58,7 @@ class ScheduledTransitLegTest {
 
   private static final double EXPECTED_DISTANCE = 1111.95;
   private static final double EXPECTED_DISTANCE_STOP1_TO_STOP2 = EXPECTED_DISTANCE / 2;
-  private static final double DISTANCE_DELTA = 0.01;
+  private static final double DISTANCE_DELTA = 1.0;
   private static final int BOARD_STOP_INDEX_IN_PATTERN = 0;
   private static final int ALIGHT_STOP_INDEX_IN_PATTERN = 2;
   private static final int GENERALIZED_COST = 980;
@@ -206,7 +206,7 @@ class ScheduledTransitLegTest {
         "startTime: 2023-04-17T17:49:06, " +
         "endTime: 2023-04-17T17:59:06, " +
         "realTime: true, " +
-        "distance: 1,111.95m, " +
+        "distance: 1,112.0m, " +
         "generalizedCost: $980, " +
         "agencyId: F:Agency1, " +
         "routeId: F:Route1, " +

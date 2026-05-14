@@ -5,6 +5,7 @@ import org.opentripplanner.core.model.id.FeedScopedId;
 import org.opentripplanner.ext.flex.trip.FlexTrip;
 import org.opentripplanner.routing.graphfinder.NearbyStop;
 import org.opentripplanner.transit.service.TransitService;
+import org.opentripplanner.utils.collection.MinMap;
 
 /**
  * Filters nearby stops based on flex trip availability.
@@ -31,7 +32,7 @@ class FlexTripNearbyStopFilter implements NearbyStopFilter {
     Collection<NearbyStop> nearbyStops,
     boolean reverseDirection
   ) {
-    MinMap<FlexTrip<?, ?>, NearbyStop> closestStopForFlexTrip = new MinMap<>();
+    MinMap<FlexTrip<?, ?>, NearbyStop> closestStopForFlexTrip = MinMap.ofNaturalOrder();
     for (var it : nearbyStops) {
       var stopId = it.stopId;
       var flexTrips = transitService.getFlexIndex().getFlexTripsByStopId(stopId);

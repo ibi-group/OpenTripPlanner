@@ -23,7 +23,8 @@ import org.opentripplanner.ext.flex.template.FlexServiceDate;
 import org.opentripplanner.ext.flex.trip.FlexTrip;
 import org.opentripplanner.framework.application.OTPRequestTimeoutException;
 import org.opentripplanner.model.plan.Itinerary;
-import org.opentripplanner.routing.algorithm.mapping.GraphPathToItineraryMapper;
+import org.opentripplanner.routing.algorithm.mapping.LegsToItineraryMapper;
+import org.opentripplanner.routing.algorithm.mapping.StreetPathToLegsMapper;
 import org.opentripplanner.routing.api.request.RouteRequest;
 import org.opentripplanner.routing.graphfinder.NearbyStop;
 import org.opentripplanner.routing.graphfinder.TransitServiceResolver;
@@ -53,7 +54,7 @@ public class FlexRouter {
   private final FlexIndex flexIndex;
   private final FlexPathCalculator accessFlexPathCalculator;
   private final FlexPathCalculator egressFlexPathCalculator;
-  private final GraphPathToItineraryMapper graphPathToItineraryMapper;
+  private final StreetPathToLegsMapper streetPathToLegsMapper;
   private final FlexAccessEgressCallbackAdapter callbackService;
 
   /* Request data */
@@ -89,7 +90,7 @@ public class FlexRouter {
       transitService.getCalendarService()::getServiceDatesForServiceId
     );
     this.callbackService = new CallbackAdapter();
-    this.graphPathToItineraryMapper = new GraphPathToItineraryMapper(
+    this.streetPathToLegsMapper = new StreetPathToLegsMapper(
       new TransitServiceResolver(transitService),
       transitService.getTimeZone(),
       graph.streetNotesService,
@@ -143,13 +144,10 @@ public class FlexRouter {
 
     for (DirectFlexPath it : directFlexPaths) {
       var startTime = startOfTime.plusSeconds(it.startTime());
-      var itinerary = graphPathToItineraryMapper
-        .generateItinerary(new StreetPath(it.state()), request)
-        .withTimeShiftToStartAt(startTime);
-
-      if (itinerary != null) {
-        itineraries.add(itinerary);
-      }
+      var path = new StreetPath(it.state());
+      var legs = streetPathToLegsMapper.map(path, request, startTime);
+      var itinerary = LegsToItineraryMapper.map(legs, false, path.calculateElevations());
+      itinerary.ifPresent(itineraries::add);
     }
     return itineraries;
   }

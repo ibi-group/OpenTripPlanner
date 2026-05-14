@@ -171,6 +171,8 @@ type Contact {
 type DatedServiceJourney {
   "Returns scheduled passingTimes for this dated service journey, updated with real-time-updates (if available). "
   estimatedCalls: [EstimatedCall!]! @timingData
+  "Whether this is an extra journey, either from planned data or added in realtime"
+  extraJourney: Boolean!
   id: ID!
   "JourneyPattern for the dated service journey."
   journeyPattern: JourneyPattern
@@ -191,7 +193,7 @@ type DatedServiceJourney {
   replacementForRelation: [ReplacementForRelation!]!
   "The service journey this Dated Service Journey is based on"
   serviceJourney: ServiceJourney!
-  "Alterations specified on the Trip in the planned data"
+  "Alterations specified on the Trip in the planned data. Note: realtime alterations are not included"
   tripAlteration: ServiceAlteration
 }
 
@@ -837,7 +839,7 @@ type QueryType {
   "Input type for executing a travel search for a trip between two locations. Returns trip patterns describing suggested alternatives for the trip."
   trip(
     "Time and cost penalty on access/egress modes."
-    accessEgressPenalty: [PenaltyForStreetMode!] = [{streetMode : car_park, timePenalty : "20m + 2.0 t", costFactor : 1.5}, {streetMode : car_pickup, timePenalty : "20m + 2.0 t", costFactor : 1.5}, {streetMode : car_rental, timePenalty : "20m + 2.0 t", costFactor : 1.5}, {streetMode : flexible, timePenalty : "10m + 1.30 t", costFactor : 1.3}],
+    accessEgressPenalty: [PenaltyForStreetMode!] = [{streetMode : car_park, timePenalty : "20m + 2.0 t", costFactor : 1.5}, {streetMode : car_pickup, timePenalty : "20m + 2.0 t", costFactor : 1.5}, {streetMode : car_rental, timePenalty : "20m + 2.0 t", costFactor : 1.5}, {streetMode : flexible, timePenalty : "10m + 1.3 t", costFactor : 1.3}],
     "The alightSlack is the minimum extra time after exiting a public transport vehicle. This is the default value used, if not overridden by the 'alightSlackList'."
     alightSlackDefault: Int = 0,
     "List of alightSlack for a given set of modes. Defaults: []"
@@ -992,7 +994,7 @@ type QueryType {
     "Walk cost is multiplied by this value. This is the main parameter to use for limiting walking."
     walkReluctance: Float = 2.0,
     "The maximum walk speed along streets, in meters per second."
-    walkSpeed: Float = 1.33,
+    walkSpeed: Float = 1.35,
     "Whether the trip must be wheelchair accessible. Supported for the street part to the search, not implemented for the transit yet."
     wheelchairAccessible: Boolean = false,
     "Parameters for indicating the only authorities, lines or quays to be used in the trip patterns"
@@ -2311,7 +2313,7 @@ input ItineraryFilters {
   groupedOtherThanSameLegsMaxCostMultiplier: Float = 2.0
   "Add an additional cost for short transfers on long transit itineraries. See javaDoc on `AddMinSafeTransferCostFilter` details."
   minSafeTransferTimeFactor: Float @deprecated(reason : "This filter is removed, it has undesired side-effects")
-  "Set a relative limit for all transit itineraries. The limit is calculated based on the transit itinerary generalized-cost and the time between itineraries Itineraries without transit legs are excluded from this filter. Example: costLimitFunction(x) = 3600 + 2.0 x and intervalRelaxFactor = 0.5. If the lowest cost returned is 10 000, then the limit is set to: 3 600 + 2 * 10 000 = 26 600 plus half of the time between either departure or arrival times of the itinerary. Default: {\"costLimitFunction\": 15m + 1.50 t, \"intervalRelaxFactor\": 0.4}"
+  "Set a relative limit for all transit itineraries. The limit is calculated based on the transit itinerary generalized-cost and the time between itineraries Itineraries without transit legs are excluded from this filter. Example: costLimitFunction(x) = 3600 + 2.0 x and intervalRelaxFactor = 0.5. If the lowest cost returned is 10 000, then the limit is set to: 3 600 + 2 * 10 000 = 26 600 plus half of the time between either departure or arrival times of the itinerary. Default: {\"costLimitFunction\": 15m + 1.5 t, \"intervalRelaxFactor\": 0.4}"
   transitGeneralizedCostLimit: TransitGeneralizedCostFilterParams
 }
 

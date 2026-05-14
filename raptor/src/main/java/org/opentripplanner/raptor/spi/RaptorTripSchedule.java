@@ -98,7 +98,7 @@ public interface RaptorTripSchedule {
     RaptorTripPattern p = pattern();
     int i = p.numberOfStopsInPattern() - 1;
 
-    while (arrival(i) > latestArrivalTime) {
+    while (!p.alightingPossibleAt(i) || arrival(i) > latestArrivalTime) {
       --i;
       if (i == -1) {
         return -1;
@@ -125,7 +125,7 @@ public interface RaptorTripSchedule {
     final int size = p.numberOfStopsInPattern();
     int i = 0;
 
-    while (departure(i) < earliestDepartureTime) {
+    while (!p.boardingPossibleAt(i) || departure(i) < earliestDepartureTime) {
       ++i;
       if (i == size) {
         return -1;

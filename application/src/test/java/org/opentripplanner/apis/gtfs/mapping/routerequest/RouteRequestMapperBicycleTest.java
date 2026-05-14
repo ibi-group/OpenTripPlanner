@@ -56,7 +56,7 @@ class RouteRequestMapperBicycleTest {
     var walkSpeed = 7d;
     var mountDismountTime = Duration.ofSeconds(23);
     var mountDismountCost = Cost.costOfSeconds(35);
-    var walkReluctance = 6.3;
+    var walkReluctance = 6.5;
     bicycleArgs.put(
       "preferences",
       Map.ofEntries(

@@ -11,6 +11,7 @@ import org.opentripplanner.transit.model.network.TripPattern;
 import org.opentripplanner.transit.model.site.RegularStop;
 import org.opentripplanner.transit.model.site.StopLocation;
 import org.opentripplanner.transit.service.TransitService;
+import org.opentripplanner.utils.collection.MinMap;
 
 /**
  * Filters nearby stops based on trip pattern availability.
@@ -43,7 +44,7 @@ class PatternNearbyStopFilter implements NearbyStopFilter {
     boolean reverseDirection
   ) {
     // Track the closest stop on each pattern passing nearby.
-    MinMap<FeedScopedId, NearbyStop> closestStopForPattern = new MinMap<>();
+    MinMap<FeedScopedId, NearbyStop> closestStopForPattern = MinMap.ofNaturalOrder();
 
     // The end result
     Set<NearbyStop> uniqueStopsResult = new HashSet<>();
