@@ -9,6 +9,9 @@ import static org.opentripplanner.client.model.RequestMode.BUS;
 import static org.opentripplanner.client.model.RequestMode.FLEX_ACCESS;
 import static org.opentripplanner.client.model.RequestMode.FLEX_DIRECT;
 import static org.opentripplanner.client.model.RequestMode.FLEX_EGRESS;
+import static org.opentripplanner.client.model.RequestMode.RAIL;
+import static org.opentripplanner.client.model.RequestMode.SUBWAY;
+import static org.opentripplanner.client.model.RequestMode.TRAM;
 import static org.opentripplanner.client.model.RequestMode.TRANSIT;
 import static org.opentripplanner.client.model.RequestMode.WALK;
 
@@ -43,7 +46,7 @@ public class SeattleSmokeTest {
   private static final Coordinate UNIVERSITY = new Coordinate(47.649259, -122.305008);
 
   private static final Coordinate ESPERANCE = new Coordinate(47.797330, -122.351560592);
-  private static final Coordinate SHORELINE = new Coordinate(47.7568, -122.3483);
+  private static final Coordinate SHORELINE = new Coordinate(47.756799, -122.348377);
   private static final Coordinate MOUNTAINLAKE_TERRACE = new Coordinate(47.7900, -122.30379581);
   private static final Coordinate OLIVE_WAY = new Coordinate(47.61309420, -122.336314916);
 
@@ -97,10 +100,10 @@ public class SeattleSmokeTest {
 
   @Test
   public void flexAndTransit() {
-    var modes = Set.of(WALK, BUS, FLEX_DIRECT, FLEX_EGRESS, FLEX_ACCESS);
+    var modes = Set.of(WALK, RAIL, SUBWAY, TRAM, FLEX_EGRESS, FLEX_ACCESS);
     SmokeTest.basicRouteTest(
       new SmokeTestRequest(SHORELINE, UNIVERSITY, modes),
-      List.of("BUS", "WALK")
+      List.of("BUS", "WALK", "TRAM", "WALK")
     );
   }
 
