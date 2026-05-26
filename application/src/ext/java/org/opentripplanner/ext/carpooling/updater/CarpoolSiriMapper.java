@@ -19,6 +19,7 @@ import org.opentripplanner.ext.carpooling.model.CarpoolStop;
 import org.opentripplanner.ext.carpooling.model.CarpoolTrip;
 import org.opentripplanner.ext.carpooling.model.CarpoolTripBuilder;
 import org.opentripplanner.street.geometry.WgsCoordinate;
+import org.opentripplanner.transit.model.organization.ContactInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import uk.org.siri.siri21.AimedFlexibleArea;
@@ -72,13 +73,24 @@ public class CarpoolSiriMapper {
 
     int totalCapacity = extractTotalCapacity(tripId, calls);
 
-    return new CarpoolTripBuilder(new FeedScopedId(FEED_ID, tripId))
+    var builder = new CarpoolTripBuilder(new FeedScopedId(FEED_ID, tripId))
       .withStartTime(startTime)
       .withEndTime(endTime)
       .withProvider(journey.getOperatorRef().getValue())
       .withTotalCapacity(totalCapacity)
-      .withStops(stops)
-      .build();
+      .withStops(stops);
+
+    var publicContact = journey.getPublicContact();
+    if (publicContact != null) {
+      builder.withPublicContactInformation(
+        ContactInfo.of()
+          .withPhoneNumber(publicContact.getPhoneNumber())
+          .withBookingUrl(publicContact.getUrl())
+          .build()
+      );
+    }
+
+    return builder.build();
   }
 
   /**

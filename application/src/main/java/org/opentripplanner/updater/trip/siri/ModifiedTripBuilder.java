@@ -24,8 +24,6 @@ import org.opentripplanner.updater.spi.DataValidationExceptionMapper;
 import org.opentripplanner.updater.spi.UpdateException;
 import org.opentripplanner.updater.trip.siri.mapping.PickDropMapper;
 import org.opentripplanner.utils.time.ServiceDateUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import uk.org.siri.siri21.EstimatedVehicleJourney;
 import uk.org.siri.siri21.OccupancyEnumeration;
 
@@ -34,8 +32,6 @@ import uk.org.siri.siri21.OccupancyEnumeration;
  * EstimatedVehicleJourney.
  */
 class ModifiedTripBuilder {
-
-  private static final Logger LOG = LoggerFactory.getLogger(ModifiedTripBuilder.class);
 
   private final TripTimes existingTripTimes;
   private final TripPattern pattern;
@@ -120,12 +116,6 @@ class ModifiedTripBuilder {
     try {
       stopPattern = createStopPattern(pattern, calls, entityResolver);
     } catch (UpdateException e) {
-      LOG.info(
-        "Invalid SIRI-ET data for trip {} - {} at stop index {}",
-        existingTripTimes.getTrip().getId(),
-        e.errorType(),
-        e.stopIndex()
-      );
       throw e.withTripId(existingTripTimes.getTrip().getId());
     }
 
@@ -146,26 +136,14 @@ class ModifiedTripBuilder {
     int numStopsInUpdate = builder.numberOfStops();
     int numStopsInPattern = pattern.numberOfStops();
     if (numStopsInUpdate != numStopsInPattern) {
-      LOG.info(
-        "Invalid SIRI-ET data for trip {} - Inconsistent number of updated stops ({}) and stops in pattern ({})",
-        builder.getTrip().getId(),
-        numStopsInUpdate,
-        numStopsInPattern
-      );
       throw UpdateException.of(existingTripTimes.getTrip().getId(), TOO_FEW_STOPS);
     }
 
     // TODO - Handle DataValidationException at the outermost level (pr trip)
     try {
       var newTimes = builder.build();
-      LOG.debug("A valid TripUpdate object was applied using the Timetable class update method.");
       return new TripUpdate(stopPattern, newTimes, serviceDate, dataSource);
     } catch (DataValidationException e) {
-      LOG.info(
-        "Invalid SIRI-ET data for trip {} - TripTimes failed to validate after applying SIRI delay propagation. {}",
-        builder.getTrip().getId(),
-        e.getMessage()
-      );
       throw DataValidationExceptionMapper.map(e);
     }
   }

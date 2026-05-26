@@ -1100,7 +1100,11 @@ type Pattern implements Node {
   same, even if their ids have changed.
   """
   semanticHash: String
-  "List of stops served by this pattern"
+  """
+  List of stops in order in which they are visited by this pattern.
+    
+  If a stop is visited more than once, it will appear several times.
+  """
   stops: [Stop!]
   "Trips which run on this pattern"
   trips: [Trip!]

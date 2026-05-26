@@ -33,7 +33,6 @@ import org.opentripplanner.routing.algorithm.raptoradapter.transit.RoutingAccess
 import org.opentripplanner.routing.algorithm.raptoradapter.transit.TripSchedule;
 import org.opentripplanner.routing.algorithm.transferoptimization.api.OptimizedPath;
 import org.opentripplanner.routing.api.request.RouteRequest;
-import org.opentripplanner.routing.graphfinder.TransitServiceResolver;
 import org.opentripplanner.routing.via.model.ViaCoordinateTransfer;
 import org.opentripplanner.service.streetdetails.StreetDetailsService;
 import org.opentripplanner.street.geometry.GeometryUtils;
@@ -52,6 +51,7 @@ import org.opentripplanner.transfer.regular.model.PathTransfer;
 import org.opentripplanner.transit.model.timetable.TripIdAndServiceDate;
 import org.opentripplanner.transit.model.timetable.TripOnServiceDate;
 import org.opentripplanner.transit.service.TransitService;
+import org.opentripplanner.transit.service.TransitServiceResolver;
 import org.opentripplanner.utils.collection.ListUtils;
 
 /**

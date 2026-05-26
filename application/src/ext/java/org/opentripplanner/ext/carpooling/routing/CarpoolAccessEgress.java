@@ -4,6 +4,7 @@ import java.time.ZonedDateTime;
 import java.util.List;
 import javax.annotation.Nullable;
 import org.opentripplanner.astar.model.GraphPath;
+import org.opentripplanner.ext.carpooling.model.CarpoolTrip;
 import org.opentripplanner.ext.carpooling.util.GraphPathUtils;
 import org.opentripplanner.framework.model.TimeAndCost;
 import org.opentripplanner.raptor.spi.RaptorConstants;
@@ -52,6 +53,9 @@ public class CarpoolAccessEgress implements RoutingAccessEgress {
   private final TimeAndCost penalty;
   private final double carpoolReluctance;
 
+  private final EndpointLabel startLabel;
+  private final EndpointLabel endLabel;
+
   /**
    * @param stop Raptor stop index of the transit-side endpoint — the stop the passenger boards
    *        transit at (for access) or alights from transit at (for egress).
@@ -62,20 +66,31 @@ public class CarpoolAccessEgress implements RoutingAccessEgress {
    * @param penalty optional Raptor time/cost penalty added on top of the leg, applied via
    *        {@link #withPenalty(TimeAndCost)}; pass {@link TimeAndCost#ZERO} for no penalty.
    * @param carpoolReluctance multiplier on ride seconds when computing {@link #c1()}; the walk
-   *        portions use the walks' own A* weights and are not multiplied by this.
+   *        portions are billed at the walks' own A* weights and are not multiplied by this.
+   * @param startLabel label data for the first leg's {@code from} place. For an access this is
+   *        the passenger origin ({@link EndpointLabel#forLocation(org.opentripplanner.model.GenericLocation)});
+   *        for an egress it is the transit stop the passenger alighted from
+   *        ({@link EndpointLabel#forStop(org.opentripplanner.transit.model.site.StopLocation)}).
+   *        The mapper resolves the label into a {@code Place}.
+   * @param endLabel symmetric to {@code startLabel}: label data for the last leg's {@code to}
+   *        place. Transit stop for an access, passenger destination for an egress.
    */
   public CarpoolAccessEgress(
     int stop,
     int passengerDepartureTime,
     InsertionCandidate insertionCandidate,
     TimeAndCost penalty,
-    double carpoolReluctance
+    double carpoolReluctance,
+    EndpointLabel startLabel,
+    EndpointLabel endLabel
   ) {
     this.stop = stop;
     this.passengerDepartureTime = passengerDepartureTime;
     this.insertionCandidate = insertionCandidate;
     this.penalty = penalty;
     this.carpoolReluctance = carpoolReluctance;
+    this.startLabel = startLabel;
+    this.endLabel = endLabel;
     this.timePenalty = penalty.isZero() ? RaptorConstants.TIME_NOT_SET : penalty.timeInSeconds();
 
     var walkToPickup = insertionCandidate.walkToPickup();
@@ -185,8 +200,37 @@ public class CarpoolAccessEgress implements RoutingAccessEgress {
       this.passengerDepartureTime,
       this.insertionCandidate,
       penalty,
-      this.carpoolReluctance
+      this.carpoolReluctance,
+      this.startLabel,
+      this.endLabel
     );
+  }
+
+  /**
+   * The underlying carpool trip — i.e. the driver's committed route, schedule, and public-contact
+   * details. Exposed for the itinerary mapper, which reads trip-level metadata (start time,
+   * {@code publicContactInformation}, ...) to build the carpool leg's {@code pickupBookingInfo}.
+   * Mirrors how the direct path reads the same data straight off the {@link InsertionCandidate}.
+   */
+  public CarpoolTrip trip() {
+    return insertionCandidate.trip();
+  }
+
+  /**
+   * Label data for the first leg's {@code from} place. For an access this carries the passenger
+   * origin; for an egress, the transit stop the passenger alighted from. Read by the itinerary
+   * mapper to name the chain's outermost start endpoint.
+   */
+  public EndpointLabel startLabel() {
+    return startLabel;
+  }
+
+  /**
+   * Symmetric to {@link #startLabel()}: label data for the last leg's {@code to} place. Transit
+   * stop for an access, passenger destination for an egress.
+   */
+  public EndpointLabel endLabel() {
+    return endLabel;
   }
 
   /**

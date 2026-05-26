@@ -77,13 +77,14 @@ public class StateEditor {
       traversingBackward = true;
       this.vertex = fromVertex;
     } else {
-      // Parent state is not at either end of edge.
-      LOG.warn("Edge is not connected to parent state: {}", e);
-      LOG.warn("   from   vertex: {}", fromVertex);
-      LOG.warn("   to     vertex: {}", toVertex);
-      LOG.warn("   parent vertex: {}", parentVertex);
-      defectiveTraversal = true;
-      this.vertex = null;
+      throw new IllegalStateException(
+        "Edge is not connected to parent state: %s, from=%s, to=%s, parent=%s".formatted(
+          e,
+          fromVertex,
+          toVertex,
+          parentVertex
+        )
+      );
     }
 
     if (traversingBackward != parent.getRequest().arriveBy()) {

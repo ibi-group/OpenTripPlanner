@@ -3,11 +3,13 @@ package org.opentripplanner.ext.carpooling.model;
 import java.time.ZonedDateTime;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import javax.annotation.Nullable;
 import org.opentripplanner.street.geometry.WgsCoordinate;
 import org.opentripplanner.transit.model.framework.AbstractTransitEntity;
 import org.opentripplanner.transit.model.framework.LogInfo;
 import org.opentripplanner.transit.model.framework.TransitBuilder;
+import org.opentripplanner.transit.model.organization.ContactInfo;
 
 /**
  * Represents a driver's carpool journey with planned route, timing, and passenger capacity.
@@ -65,6 +67,9 @@ public class CarpoolTrip
   // Ordered list of stops along the carpool route where passengers can be picked up or dropped off
   private final List<CarpoolStop> stops;
 
+  @Nullable
+  private final ContactInfo publicContactInformation;
+
   public CarpoolTrip(CarpoolTripBuilder builder) {
     super(builder.getId());
     this.startTime = builder.startTime();
@@ -72,6 +77,7 @@ public class CarpoolTrip
     this.provider = builder.provider();
     this.totalCapacity = builder.totalCapacity();
     this.stops = Collections.unmodifiableList(builder.stops());
+    this.publicContactInformation = builder.publicContactInformation();
   }
 
   /**
@@ -108,6 +114,17 @@ public class CarpoolTrip
     return endTime;
   }
 
+  /**
+   * Returns the latest expected arrival time of the destination stop if available, otherwise
+   * falls back to {@link #endTime()}.
+   *
+   * @return the latest expected end time of the trip
+   */
+  public ZonedDateTime latestEndTime() {
+    var latest = getDestination().getLatestExpectedArrivalTime();
+    return latest != null ? latest : endTime;
+  }
+
   public String provider() {
     return provider;
   }
@@ -131,6 +148,11 @@ public class CarpoolTrip
    */
   public List<CarpoolStop> stops() {
     return stops;
+  }
+
+  @Nullable
+  public ContactInfo publicContactInformation() {
+    return publicContactInformation;
   }
 
   /**
@@ -226,7 +248,8 @@ public class CarpoolTrip
       getId().equals(other.getId()) &&
       startTime.equals(other.startTime) &&
       endTime.equals(other.endTime) &&
-      stops.equals(other.stops)
+      stops.equals(other.stops) &&
+      Objects.equals(publicContactInformation, other.publicContactInformation)
     );
   }
 
