@@ -58,6 +58,9 @@ public class CarpoolLeg implements Leg {
 
   private final double distanceMeters;
 
+  @Nullable
+  private final BookingInfo pickupBookingInfo;
+
   CarpoolLeg(CarpoolLegBuilder builder) {
     this.startTime = Objects.requireNonNull(builder.startTime());
     this.endTime = Objects.requireNonNull(builder.endTime());
@@ -68,6 +71,7 @@ public class CarpoolLeg implements Leg {
     this.to = builder.to();
     this.geometry = builder.geometry();
     this.distanceMeters = builder.distanceMeters();
+    this.pickupBookingInfo = builder.pickupBookingInfo();
   }
 
   /**
@@ -325,8 +329,7 @@ public class CarpoolLeg implements Leg {
   @Nullable
   @Override
   public BookingInfo pickupBookingInfo() {
-    // TODO CARPOOLING
-    return null;
+    return pickupBookingInfo;
   }
 
   @Nullable

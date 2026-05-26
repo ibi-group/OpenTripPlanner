@@ -76,7 +76,7 @@ class FuzzyTripMatchingTest implements RealtimeTestConstants {
 
     var result = siri.applyEstimatedTimetableWithFuzzyMatcher(updates);
     assertEquals(0, result.successful(), "Should fail gracefully");
-    assertFailure(UpdateErrorType.NO_FUZZY_TRIP_MATCH, result);
+    assertFailure(UpdateErrorType.INVALID_DEPARTURE_TIME, result);
   }
 
   /**

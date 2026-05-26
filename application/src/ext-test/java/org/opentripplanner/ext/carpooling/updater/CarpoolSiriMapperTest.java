@@ -2,6 +2,7 @@ package org.opentripplanner.ext.carpooling.updater;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.opentripplanner.ext.carpooling.CarpoolEstimatedVehicleJourneyData.arrivalIsAfterDepartureTime;
 import static org.opentripplanner.ext.carpooling.CarpoolEstimatedVehicleJourneyData.journeyWithDifferentCapacitiesPerCall;
@@ -9,6 +10,7 @@ import static org.opentripplanner.ext.carpooling.CarpoolEstimatedVehicleJourneyD
 import static org.opentripplanner.ext.carpooling.CarpoolEstimatedVehicleJourneyData.journeyWithLatestExpectedArrivalTimeAimedOnly;
 import static org.opentripplanner.ext.carpooling.CarpoolEstimatedVehicleJourneyData.journeyWithOnboardCounts;
 import static org.opentripplanner.ext.carpooling.CarpoolEstimatedVehicleJourneyData.journeyWithPerStopLatestExpectedArrivalTimes;
+import static org.opentripplanner.ext.carpooling.CarpoolEstimatedVehicleJourneyData.journeyWithPublicContact;
 import static org.opentripplanner.ext.carpooling.CarpoolEstimatedVehicleJourneyData.journeyWithTotalCapacity;
 import static org.opentripplanner.ext.carpooling.CarpoolEstimatedVehicleJourneyData.lessThanTwoStops;
 import static org.opentripplanner.ext.carpooling.CarpoolEstimatedVehicleJourneyData.minimalCompleteJourney;
@@ -239,5 +241,25 @@ public class CarpoolSiriMapperTest {
     assertEquals(Duration.ZERO, mapped.stops().get(0).getDeviationBudget());
     assertEquals(Duration.ofMinutes(3), mapped.stops().get(1).getDeviationBudget());
     assertEquals(Duration.ofMinutes(10), mapped.stops().get(2).getDeviationBudget());
+  }
+
+  // -- publicContact tests --
+
+  @Test
+  void mapSiriToCarpoolTrip_withPublicContact_mapsContactInformation() {
+    var journey = journeyWithPublicContact("+4712345678", "https://example.com/book");
+    var mapped = mapper.mapSiriToCarpoolTrip(journey);
+
+    assertNotNull(mapped.publicContactInformation());
+    assertEquals("+4712345678", mapped.publicContactInformation().getPhoneNumber());
+    assertEquals("https://example.com/book", mapped.publicContactInformation().getBookingUrl());
+  }
+
+  @Test
+  void mapSiriToCarpoolTrip_withoutPublicContact_contactInformationIsNull() {
+    var journey = minimalCompleteJourney();
+    var mapped = mapper.mapSiriToCarpoolTrip(journey);
+
+    assertNull(mapped.publicContactInformation());
   }
 }
