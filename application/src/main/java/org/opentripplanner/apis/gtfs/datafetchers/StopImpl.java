@@ -14,14 +14,18 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.annotation.Nullable;
-import org.opentripplanner.apis.gtfs.GraphQLRequestContext;
 import org.opentripplanner.apis.gtfs.GraphQLUtils;
+import org.opentripplanner.apis.gtfs.GtfsGraphQLRequestContext;
 import org.opentripplanner.apis.gtfs.generated.GraphQLDataFetchers;
 import org.opentripplanner.apis.gtfs.generated.GraphQLTypes;
+import org.opentripplanner.apis.gtfs.mapping.ArrivalDepartureMapper;
+import org.opentripplanner.apis.gtfs.model.StopCallOnTripOnServiceDate;
 import org.opentripplanner.apis.gtfs.service.ApiTransitService;
 import org.opentripplanner.apis.gtfs.support.filter.PatternByDateFilterUtil;
 import org.opentripplanner.apis.gtfs.support.time.LocalDateRangeUtil;
+import org.opentripplanner.apis.gtfs.support.time.OffsetDateTimeRangeUtil;
 import org.opentripplanner.core.model.id.FeedScopedId;
+import org.opentripplanner.core.model.time.LocalDateRange;
 import org.opentripplanner.model.StopTimesInPattern;
 import org.opentripplanner.model.TripTimeOnDate;
 import org.opentripplanner.place.api.NearbyStop;
@@ -46,14 +50,19 @@ public class StopImpl implements GraphQLDataFetchers.GraphQLStop {
   @Override
   public DataFetcher<Iterable<TransitAlert>> alerts() {
     return environment -> {
-      TransitAlertService alertService = getTransitService(environment).getTransitAlertService();
+      TransitAlertService alertService = getTransitAlertService(environment);
       var args = new GraphQLTypes.GraphQLStopAlertsArgs(environment.getArguments());
       List<GraphQLTypes.GraphQLStopAlertType> types = args.getGraphQLTypes();
       FeedScopedId id = getValue(environment, StopLocation::getId, AbstractTransitEntity::getId);
+      List<FeedScopedId> ids = getValue(
+        environment,
+        StopLocation::getIdAndParentStationId,
+        station -> List.of(station.getId())
+      );
       if (types != null) {
         Collection<TransitAlert> alerts = new ArrayList<>();
         if (types.contains(GraphQLTypes.GraphQLStopAlertType.STOP)) {
-          alerts.addAll(alertService.getStopAlerts(id));
+          alerts.addAll(alertService.getStopLocationsAlerts(ids));
         }
         if (
           types.contains(GraphQLTypes.GraphQLStopAlertType.STOP_ON_ROUTES) ||
@@ -121,7 +130,7 @@ public class StopImpl implements GraphQLDataFetchers.GraphQLStop {
         }
         return alerts.stream().distinct().collect(Collectors.toList());
       } else {
-        return alertService.getStopAlerts(id);
+        return alertService.getStopLocationsAlerts(ids);
       }
     };
   }
@@ -130,6 +139,39 @@ public class StopImpl implements GraphQLDataFetchers.GraphQLStop {
   @Deprecated
   public DataFetcher<Object> cluster() {
     return environment -> null;
+  }
+
+  @Override
+  public DataFetcher<Iterable<StopCallOnTripOnServiceDate>> canceledCalls() {
+    return environment -> {
+      var args = new GraphQLTypes.GraphQLStopCanceledCallsArgs(environment.getArguments());
+      var rawRanges = args.getGraphQLServiceDateRanges();
+      var serviceDateRanges =
+        rawRanges == null
+          ? List.of(LocalDateRange.ofUnbounded())
+          : LocalDateRangeUtil.mapRanges(rawRanges);
+      var arrivalDeparture = ArrivalDepartureMapper.map(args.getGraphQLArrivalDeparture());
+      var callTimePeriods = OffsetDateTimeRangeUtil.mapRanges(
+        args.getGraphQLTimeRanges(),
+        "timeRanges"
+      );
+      var service = new ApiTransitService(getTransitService(environment));
+      return getValue(
+        environment,
+        stop ->
+          service.findCanceledStopCalls(stop, serviceDateRanges, callTimePeriods, arrivalDeparture),
+        station ->
+          station
+            .getChildStops()
+            .stream()
+            .flatMap(stop ->
+              service
+                .findCanceledStopCalls(stop, serviceDateRanges, callTimePeriods, arrivalDeparture)
+                .stream()
+            )
+            .collect(Collectors.toList())
+      );
+    };
   }
 
   @Override
@@ -458,7 +500,7 @@ public class StopImpl implements GraphQLDataFetchers.GraphQLStop {
   }
 
   private RegularTransferService getTransferService(DataFetchingEnvironment environment) {
-    return environment.<GraphQLRequestContext>getContext().transferService();
+    return environment.<GtfsGraphQLRequestContext>getContext().transferService();
   }
 
   @Override
@@ -494,8 +536,10 @@ public class StopImpl implements GraphQLDataFetchers.GraphQLStop {
   @Override
   public DataFetcher<GraphQLTypes.GraphQLWheelchairBoarding> wheelchairBoarding() {
     return environment -> {
-      var boarding = getValue(environment, StopLocation::getWheelchairAccessibility, station ->
-        null
+      var boarding = getValue(
+        environment,
+        StopLocation::getWheelchairAccessibility,
+        station -> null
       );
       return GraphQLUtils.toGraphQL(boarding);
     };
@@ -526,7 +570,11 @@ public class StopImpl implements GraphQLDataFetchers.GraphQLStop {
   }
 
   private TransitService getTransitService(DataFetchingEnvironment environment) {
-    return environment.<GraphQLRequestContext>getContext().transitService();
+    return environment.<GtfsGraphQLRequestContext>getContext().transitService();
+  }
+
+  private TransitAlertService getTransitAlertService(DataFetchingEnvironment environment) {
+    return environment.<GtfsGraphQLRequestContext>getContext().transitAlertService();
   }
 
   private static <T> T getValue(

@@ -9,7 +9,7 @@ import org.opentripplanner.standalone.config.ConfigModel;
 import org.opentripplanner.standalone.config.OtpConfigLoader;
 import org.opentripplanner.street.graph.Graph;
 import org.opentripplanner.transfer.regular.TransferRepository;
-import org.opentripplanner.transit.service.TimetableRepository;
+import org.opentripplanner.transit.service.TransitRepository;
 import org.opentripplanner.transit.speed_test.options.SpeedTestCmdLineOpts;
 
 /**
@@ -18,11 +18,12 @@ import org.opentripplanner.transit.speed_test.options.SpeedTestCmdLineOpts;
 class SetupHelper {
 
   static LoadModel loadGraph(File baseDir, @Nullable URI path) {
-    File file = path == null
-      ? OtpDataStore.graphFile(baseDir)
-      : path.isAbsolute()
-        ? new File(path)
-        : new File(baseDir, path.getPath());
+    File file =
+      path == null
+        ? OtpDataStore.graphFile(baseDir)
+        : path.isAbsolute()
+          ? new File(path)
+          : new File(baseDir, path.getPath());
     SerializedGraphObject serializedGraphObject = SerializedGraphObject.load(file);
     Graph graph = serializedGraphObject.graph;
 
@@ -32,14 +33,14 @@ class SetupHelper {
       );
     }
 
-    TimetableRepository timetableRepository = serializedGraphObject.timetableRepository;
+    TransitRepository transitRepository = serializedGraphObject.transitRepository;
     TransferRepository transferRepository = serializedGraphObject.transferRepository;
-    timetableRepository.index();
+    transitRepository.index();
     transferRepository.index();
     graph.index();
     return new LoadModel(
       graph,
-      timetableRepository,
+      transitRepository,
       transferRepository,
       serializedGraphObject.buildConfig
     );

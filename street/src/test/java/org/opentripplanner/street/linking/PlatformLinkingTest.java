@@ -8,6 +8,7 @@ import static org.opentripplanner.street.linking.VisibilityMode.COMPUTE_AREA_VIS
 import static org.opentripplanner.street.model.StreetModelFactory.intersectionVertex;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
@@ -17,9 +18,10 @@ import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.geom.Polygon;
 import org.opentripplanner.core.model.i18n.I18NString;
 import org.opentripplanner.core.model.i18n.LocalizedString;
+import org.opentripplanner.service.vehiclerental.GeofencingZoneService;
 import org.opentripplanner.street.geometry.GeometryUtils;
 import org.opentripplanner.street.graph.Graph;
-import org.opentripplanner.street.graph.GraphDataFetcher;
+import org.opentripplanner.street.graph.summary.GraphSummarizer;
 import org.opentripplanner.street.model.StreetModelFactory;
 import org.opentripplanner.street.model.StreetTraversalPermission;
 import org.opentripplanner.street.model.edge.Area;
@@ -169,6 +171,7 @@ public class PlatformLinkingTest {
 
     var linker = new VertexLinker(
       graph.graph(),
+      GeofencingZoneService.EMPTY,
       VisibilityMode.COMPUTE_AREA_VISIBILITY_LINES,
       50,
       true
@@ -396,7 +399,7 @@ public class PlatformLinkingTest {
     );
   }
 
-  private GraphDataFetcher prepareTest(Coordinate[] platform, int[] visible, Coordinate[] stops) {
+  private GraphSummarizer prepareTest(Coordinate[] platform, int[] visible, Coordinate[] stops) {
     var graph = new Graph();
 
     ArrayList<IntersectionVertex> vertices = new ArrayList<>();
@@ -412,22 +415,27 @@ public class PlatformLinkingTest {
     closedGeom[platform.length] = closedGeom[0];
 
     Polygon polygon = GeometryUtils.getGeometryFactory().createPolygon(closedGeom);
-    AreaGroup areaGroup = new AreaGroup(polygon);
 
     // visibility vertices are platform entrance points and convex corners
     // which should be directly linked with stops
+    Set<IntersectionVertex> visibilityVertices = new HashSet<>();
     for (int i : visible) {
-      areaGroup.addVisibilityVertices(Set.of(vertices.get(i)));
+      visibilityVertices.add(vertices.get(i));
     }
 
     // AreaGroup must include a valid Area which defines area attributes
-    Area area = new Area();
-    area.setName(new LocalizedString("test platform"));
-    area.setWalkSafety(0.5f);
-    area.setBicycleSafety(0.5f);
-    area.setPermission(StreetTraversalPermission.PEDESTRIAN_AND_BICYCLE);
-    area.setGeometry(polygon);
-    areaGroup.addArea(area);
+    Area area = Area.of()
+      .withName(new LocalizedString("test platform"))
+      .withWalkSafety(0.5f)
+      .withBicycleSafety(0.5f)
+      .withPermission(StreetTraversalPermission.PEDESTRIAN_AND_BICYCLE)
+      .withGeometry(polygon)
+      .build();
+
+    AreaGroup areaGroup = AreaGroup.of(polygon)
+      .withVisibilityVertices(visibilityVertices)
+      .addArea(area)
+      .build();
 
     for (int i = 0; i < platform.length; i++) {
       int next_i = (i + 1) % platform.length;
@@ -461,12 +469,13 @@ public class PlatformLinkingTest {
 
     graph.index();
 
-    return new GraphDataFetcher(graph);
+    return new GraphSummarizer(graph);
   }
 
-  private void linkStops(GraphDataFetcher graph, int maxAreaNodes, boolean permanent) {
+  private void linkStops(GraphSummarizer graph, int maxAreaNodes, boolean permanent) {
     var linker = new VertexLinker(
       graph.graph(),
+      GeofencingZoneService.EMPTY,
       COMPUTE_AREA_VISIBILITY_LINES,
       maxAreaNodes,
       false
@@ -516,9 +525,10 @@ public class PlatformLinkingTest {
     AreaGroup area,
     String nameString
   ) {
-    LineString line = GEOMETRY_FACTORY.createLineString(
-      new Coordinate[] { v1.getCoordinate(), v2.getCoordinate() }
-    );
+    LineString line = GEOMETRY_FACTORY.createLineString(new Coordinate[] {
+      v1.getCoordinate(),
+      v2.getCoordinate(),
+    });
     I18NString name = new LocalizedString(nameString);
     return new AreaEdgeBuilder()
       .withFromVertex(v1)

@@ -13,20 +13,18 @@ import org.opentripplanner.core.model.accessibility.Accessibility;
 import org.opentripplanner.core.model.i18n.I18NString;
 import org.opentripplanner.model.PickDrop;
 import org.opentripplanner.model.fare.FareOffer;
-import org.opentripplanner.model.plan.leg.ElevationProfile;
 import org.opentripplanner.model.plan.leg.LegCallTime;
 import org.opentripplanner.model.plan.leg.ScheduledTransitLeg;
 import org.opentripplanner.model.plan.leg.StopArrival;
 import org.opentripplanner.model.plan.legreference.LegReference;
 import org.opentripplanner.model.plan.walkstep.WalkStep;
 import org.opentripplanner.routing.alertpatch.TransitAlert;
-import org.opentripplanner.street.model.note.StreetNote;
+import org.opentripplanner.street.model.elevation.ElevationProfile;
 import org.opentripplanner.transfer.constrained.model.ConstrainedTransfer;
 import org.opentripplanner.transit.model.network.Route;
 import org.opentripplanner.transit.model.organization.Agency;
 import org.opentripplanner.transit.model.organization.Operator;
 import org.opentripplanner.transit.model.site.FareZone;
-import org.opentripplanner.transit.model.timetable.RealTimeState;
 import org.opentripplanner.transit.model.timetable.Trip;
 import org.opentripplanner.transit.model.timetable.TripOnServiceDate;
 import org.opentripplanner.transit.model.timetable.booking.BookingInfo;
@@ -243,11 +241,6 @@ public interface Leg {
     return false;
   }
 
-  @Nullable
-  default RealTimeState realTimeState() {
-    return null;
-  }
-
   /**
    * Whether this Leg describes a flexible trip. The reason we need this is that FlexTrip does not
    * inherit from Trip, so that the information that the Trip is flexible would be lost when
@@ -369,10 +362,6 @@ public interface Leg {
    */
   default List<WalkStep> listWalkSteps() {
     return List.of();
-  }
-
-  default Set<StreetNote> listStreetNotes() {
-    return Set.of();
   }
 
   Set<TransitAlert> listTransitAlerts();

@@ -13,21 +13,27 @@ import java.util.stream.Collectors;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.LineString;
-import org.opentripplanner.apis.gtfs.GraphQLRequestContext;
+import org.opentripplanner.apis.gtfs.GtfsGraphQLRequestContext;
 import org.opentripplanner.apis.gtfs.generated.GraphQLDataFetchers;
 import org.opentripplanner.apis.gtfs.generated.GraphQLTypes;
+import org.opentripplanner.apis.gtfs.generated.GraphQLTypes.GraphQLPatternTripsOnServiceDateArgs;
+import org.opentripplanner.apis.gtfs.service.ApiTransitService;
+import org.opentripplanner.apis.gtfs.support.time.LocalDateRangeUtil;
+import org.opentripplanner.apis.gtfs.support.time.OffsetDateTimeRangeUtil;
 import org.opentripplanner.apis.support.SemanticHash;
-import org.opentripplanner.core.model.id.FeedScopedId;
 import org.opentripplanner.framework.graphql.GraphQLUtils;
 import org.opentripplanner.routing.alertpatch.EntitySelector;
 import org.opentripplanner.routing.alertpatch.TransitAlert;
 import org.opentripplanner.routing.services.TransitAlertService;
 import org.opentripplanner.service.realtimevehicles.RealtimeVehicleService;
 import org.opentripplanner.service.realtimevehicles.model.RealtimeVehicle;
+import org.opentripplanner.transit.api.model.FilterValues;
+import org.opentripplanner.transit.api.request.TripOnServiceDateRequest;
 import org.opentripplanner.transit.model.network.Route;
 import org.opentripplanner.transit.model.network.TripPattern;
 import org.opentripplanner.transit.model.organization.Agency;
 import org.opentripplanner.transit.model.timetable.Trip;
+import org.opentripplanner.transit.model.timetable.TripOnServiceDate;
 import org.opentripplanner.transit.model.timetable.TripTimes;
 import org.opentripplanner.transit.service.TransitService;
 import org.opentripplanner.utils.time.ServiceDateUtils;
@@ -37,7 +43,7 @@ public class PatternImpl implements GraphQLDataFetchers.GraphQLPattern {
   @Override
   public DataFetcher<Iterable<TransitAlert>> alerts() {
     return environment -> {
-      TransitAlertService alertService = getTransitService(environment).getTransitAlertService();
+      TransitAlertService alertService = getTransitAlertService(environment);
       var args = new GraphQLTypes.GraphQLPatternAlertsArgs(environment.getArguments());
       List<GraphQLTypes.GraphQLPatternAlertType> types = args.getGraphQLTypes();
       if (types != null) {
@@ -84,9 +90,10 @@ public class PatternImpl implements GraphQLDataFetchers.GraphQLPattern {
                     alert
                       .entities()
                       .stream()
-                      .anyMatch(entity ->
-                        (entity instanceof EntitySelector.StopAndRoute stopAndRoute &&
-                          stopAndRoute.routeId().equals(getRoute(environment).getId()))
+                      .anyMatch(
+                        entity ->
+                          entity instanceof EntitySelector.StopAndRoute stopAndRoute &&
+                          stopAndRoute.routeId().equals(getRoute(environment).getId())
                       )
                   )
                   .toList()
@@ -94,8 +101,9 @@ public class PatternImpl implements GraphQLDataFetchers.GraphQLPattern {
               getSource(environment)
                 .getStops()
                 .forEach(stop -> {
-                  FeedScopedId stopId = stop.getId();
-                  alerts.addAll(alertService.getStopAlerts(stopId));
+                  alerts.addAll(
+                    alertService.getStopLocationsAlerts(stop.getIdAndParentStationId())
+                  );
                 });
               break;
             case STOPS_ON_TRIPS:
@@ -109,9 +117,10 @@ public class PatternImpl implements GraphQLDataFetchers.GraphQLPattern {
                       alert
                         .entities()
                         .stream()
-                        .anyMatch(entity ->
-                          (entity instanceof EntitySelector.StopAndTrip stopAndTrip &&
-                            stopAndTrip.tripId().equals(getSource(environment).getId()))
+                        .anyMatch(
+                          entity ->
+                            entity instanceof EntitySelector.StopAndTrip stopAndTrip &&
+                            stopAndTrip.tripId().equals(getSource(environment).getId())
                         )
                     )
                     .toList()
@@ -225,9 +234,56 @@ public class PatternImpl implements GraphQLDataFetchers.GraphQLPattern {
   }
 
   @Override
+  public DataFetcher<Iterable<TripOnServiceDate>> tripsOnServiceDate() {
+    return env -> {
+      var serviceDate = new GraphQLPatternTripsOnServiceDateArgs(
+        env.getArguments()
+      ).getGraphQLServiceDate();
+
+      var apiService = new ApiTransitService(getTransitService(env));
+      return getTrips(env)
+        .stream()
+        .flatMap(t ->
+          apiService.findOrCreateTripOnServiceDate(t.getId(), serviceDate).stream()
+        )::iterator;
+    };
+  }
+
+  @Override
   public DataFetcher<Iterable<RealtimeVehicle>> vehiclePositions() {
     return environment ->
       getRealtimeVehiclesService(environment).getRealtimeVehicles(this.getSource(environment));
+  }
+
+  @Override
+  public DataFetcher<Iterable<TripOnServiceDate>> canceledTrips() {
+    return environment -> {
+      var pattern = getSource(environment);
+      var transitService = getTransitService(environment);
+      var args = new GraphQLTypes.GraphQLPatternCanceledTripsArgs(environment.getArguments());
+
+      var serviceDateRanges = LocalDateRangeUtil.mapRanges(args.getGraphQLServiceDateRanges());
+      var runningTimePeriods = OffsetDateTimeRangeUtil.mapRanges(
+        args.getGraphQLRunningTimeRanges(),
+        "runningTimeRanges"
+      );
+
+      var requestBuilder = TripOnServiceDateRequest.of().withIncludePatterns(
+        FilterValues.ofEmptyIsEverything("patterns", List.of(pattern.getId()))
+      );
+      if (serviceDateRanges != null) {
+        requestBuilder.withIncludeServiceDateRanges(
+          FilterValues.ofRequired("serviceDateRanges", serviceDateRanges)
+        );
+      }
+      if (runningTimePeriods != null) {
+        requestBuilder.withIncludeRunningTimePeriods(
+          FilterValues.ofRequired("runningTimeRanges", runningTimePeriods)
+        );
+      }
+
+      return transitService.findCanceledTrips(requestBuilder.build());
+    };
   }
 
   private Agency getAgency(DataFetchingEnvironment environment) {
@@ -247,11 +303,15 @@ public class PatternImpl implements GraphQLDataFetchers.GraphQLPattern {
   }
 
   private RealtimeVehicleService getRealtimeVehiclesService(DataFetchingEnvironment environment) {
-    return environment.<GraphQLRequestContext>getContext().realTimeVehicleService();
+    return environment.<GtfsGraphQLRequestContext>getContext().realTimeVehicleService();
   }
 
   private TransitService getTransitService(DataFetchingEnvironment environment) {
-    return environment.<GraphQLRequestContext>getContext().transitService();
+    return environment.<GtfsGraphQLRequestContext>getContext().transitService();
+  }
+
+  private TransitAlertService getTransitAlertService(DataFetchingEnvironment environment) {
+    return environment.<GtfsGraphQLRequestContext>getContext().transitAlertService();
   }
 
   private TripPattern getSource(DataFetchingEnvironment environment) {

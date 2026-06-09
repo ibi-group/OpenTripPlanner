@@ -29,7 +29,8 @@ public class TransitAlertBuilder extends AbstractEntityBuilder<TransitAlert, Tra
   private String siriCodespace;
   private Integer version;
   private final Set<EntitySelector> entities = new HashSet<>();
-  private final List<TimePeriod> timePeriods = new ArrayList<>();
+  /** If the source data has no validity information, the alert is always active. */
+  private AlertCalendar calendar = AlertCalendar.ofAlwaysActive();
 
   TransitAlertBuilder(FeedScopedId id) {
     super(id);
@@ -52,7 +53,7 @@ public class TransitAlertBuilder extends AbstractEntityBuilder<TransitAlert, Tra
     this.updatedTime = original.updatedTime();
     this.siriCodespace = original.siriCodespace();
     this.entities.addAll(original.entities());
-    this.timePeriods.addAll(original.timePeriods());
+    this.calendar = original.calendar();
   }
 
   public I18NString headerText() {
@@ -213,17 +214,15 @@ public class TransitAlertBuilder extends AbstractEntityBuilder<TransitAlert, Tra
     return this;
   }
 
-  public Collection<TimePeriod> timePeriods() {
-    return timePeriods;
+  public AlertCalendar calendar() {
+    return calendar;
   }
 
-  public TransitAlertBuilder addTimePeriod(TimePeriod timePeriod) {
-    timePeriods.add(timePeriod);
-    return this;
-  }
-
-  public TransitAlertBuilder addTimePeriods(Collection<TimePeriod> periods) {
-    timePeriods.addAll(periods);
+  /**
+   * Sets the validity of the alert.
+   */
+  public TransitAlertBuilder withCalendar(AlertCalendar calendar) {
+    this.calendar = calendar;
     return this;
   }
 

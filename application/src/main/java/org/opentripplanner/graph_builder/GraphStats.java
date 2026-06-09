@@ -27,7 +27,7 @@ import org.opentripplanner.street.model.vertex.StreetVertex;
 import org.opentripplanner.street.model.vertex.TransitStopVertex;
 import org.opentripplanner.street.model.vertex.Vertex;
 import org.opentripplanner.transit.model.network.TripPattern;
-import org.opentripplanner.transit.service.TimetableRepository;
+import org.opentripplanner.transit.service.TransitRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -60,7 +60,7 @@ public class GraphStats {
 
   private Graph graph;
 
-  private TimetableRepository timetableRepository;
+  private TransitRepository transitRepository;
 
   private CsvWriter writer;
 
@@ -97,7 +97,7 @@ public class GraphStats {
     File graphFile = new File(graphPath);
     SerializedGraphObject serializedGraphObject = SerializedGraphObject.load(graphFile);
     graph = serializedGraphObject.graph;
-    timetableRepository = serializedGraphObject.timetableRepository;
+    transitRepository = serializedGraphObject.transitRepository;
 
     /* open output stream (same for all commands) */
     if (outPath != null) {
@@ -216,17 +216,15 @@ public class GraphStats {
     public void run() {
       LOG.info("counting number of trips per pattern...");
       try {
-        writer.writeRecord(
-          new String[] {
-            "nTripsInPattern",
-            "frequency",
-            "cumulativePatterns",
-            "empiricalDistPatterns",
-            "cumulativeTrips",
-            "empiricalDistTrips",
-          }
-        );
-        Collection<TripPattern> patterns = timetableRepository.getAllTripPatterns();
+        writer.writeRecord(new String[] {
+          "nTripsInPattern",
+          "frequency",
+          "cumulativePatterns",
+          "empiricalDistPatterns",
+          "cumulativeTrips",
+          "empiricalDistTrips",
+        });
+        Collection<TripPattern> patterns = transitRepository.getAllTripPatterns();
         Multiset<Integer> counts = TreeMultiset.create();
         int nPatterns = patterns.size();
         LOG.info("total number of patterns is: {}", nPatterns);
@@ -243,16 +241,14 @@ public class GraphStats {
         for (Multiset.Entry<Integer> count : counts.entrySet()) {
           cPatterns += count.getCount();
           cTrips += count.getCount() * count.getElement();
-          writer.writeRecord(
-            new String[] {
-              count.getElement().toString(),
-              Integer.toString(count.getCount()),
-              Integer.toString(cPatterns),
-              Double.toString(cPatterns / (double) nPatterns),
-              Integer.toString(cTrips),
-              Double.toString(cTrips / (double) nTrips),
-            }
-          );
+          writer.writeRecord(new String[] {
+            count.getElement().toString(),
+            Integer.toString(count.getCount()),
+            Integer.toString(cPatterns),
+            Double.toString(cPatterns / (double) nPatterns),
+            Integer.toString(cTrips),
+            Double.toString(cTrips / (double) nTrips),
+          });
         }
       } catch (IOException e) {
         LOG.error("Exception writing CSV: {}", e.getMessage());

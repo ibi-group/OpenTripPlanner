@@ -14,7 +14,7 @@ import java.util.Collections;
 import java.util.List;
 import org.opentripplanner.netex.index.hierarchy.HierarchicalMap;
 import org.opentripplanner.netex.index.hierarchy.HierarchicalMapById;
-import org.opentripplanner.transit.model._data.TimetableRepositoryForTest;
+import org.opentripplanner.transit.model._data.TransitRepositoryForTest;
 import org.opentripplanner.transit.model.framework.DefaultEntityById;
 import org.opentripplanner.transit.model.framework.EntityById;
 import org.opentripplanner.transit.model.site.RegularStop;
@@ -63,7 +63,7 @@ public class NetexTestDataSample {
     .withName(new MultilingualString().withValue("everyday"));
   private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
-  private final TimetableRepositoryForTest testModel = TimetableRepositoryForTest.of();
+  private final TransitRepositoryForTest testModel = TransitRepositoryForTest.of();
 
   private final JourneyPattern journeyPattern;
   private final HierarchicalMapById<JourneyPattern_VersionStructure> journeyPatternById =
@@ -94,7 +94,7 @@ public class NetexTestDataSample {
     JAXBElement<LineRefStructure> lineRef = createWrappedRef(line.getId(), LineRefStructure.class);
 
     // Add OTP Route (correspond to Netex Line)
-    otpRouteByid.add(TimetableRepositoryForTest.route(line.getId()).build());
+    otpRouteByid.add(TransitRepositoryForTest.route(line.getId()).build());
 
     // Add Netex Route (not the same as an OTP Route)
     String routeId = "RUT:Route:1";
@@ -188,9 +188,7 @@ public class NetexTestDataSample {
         DatedServiceJourney datedServiceJourney = new DatedServiceJourney()
           .withId(DATED_SERVICE_JOURNEY_ID.get(i))
           .withJourneyRef(
-            List.of(
-              MappingSupport.createWrappedRef(SERVICE_JOURNEY_ID, ServiceJourneyRefStructure.class)
-            )
+            MappingSupport.createWrappedRef(SERVICE_JOURNEY_ID, ServiceJourneyRefStructure.class)
           )
           .withServiceAlteration(ServiceAlterationEnumeration.PLANNED)
           .withOperatingDayRef(new OperatingDayRefStructure().withRef(operatingDay.getId()));

@@ -58,6 +58,7 @@ import org.opentripplanner.apis.transmodel.model.framework.AuthorityType;
 import org.opentripplanner.apis.transmodel.model.framework.BrandingType;
 import org.opentripplanner.apis.transmodel.model.framework.EmissionType;
 import org.opentripplanner.apis.transmodel.model.framework.InfoLinkType;
+import org.opentripplanner.apis.transmodel.model.framework.LocationInputType;
 import org.opentripplanner.apis.transmodel.model.framework.MultilingualStringType;
 import org.opentripplanner.apis.transmodel.model.framework.NoticeType;
 import org.opentripplanner.apis.transmodel.model.framework.OperatorType;
@@ -81,6 +82,7 @@ import org.opentripplanner.apis.transmodel.model.plan.ElevationProfileStepType;
 import org.opentripplanner.apis.transmodel.model.plan.LegType;
 import org.opentripplanner.apis.transmodel.model.plan.PathGuidanceType;
 import org.opentripplanner.apis.transmodel.model.plan.PlanPlaceType;
+import org.opentripplanner.apis.transmodel.model.plan.RefetchTripPatternQuery;
 import org.opentripplanner.apis.transmodel.model.plan.RoutingErrorType;
 import org.opentripplanner.apis.transmodel.model.plan.TripPatternTimePenaltyType;
 import org.opentripplanner.apis.transmodel.model.plan.TripPatternType;
@@ -109,6 +111,7 @@ import org.opentripplanner.apis.transmodel.model.timetable.DatedServiceJourneyQu
 import org.opentripplanner.apis.transmodel.model.timetable.DatedServiceJourneyType;
 import org.opentripplanner.apis.transmodel.model.timetable.EmpiricalDelayType;
 import org.opentripplanner.apis.transmodel.model.timetable.InterchangeType;
+import org.opentripplanner.apis.transmodel.model.timetable.RealTimeTripStateType;
 import org.opentripplanner.apis.transmodel.model.timetable.ReplacedByRelationType;
 import org.opentripplanner.apis.transmodel.model.timetable.ReplacementForRelationType;
 import org.opentripplanner.apis.transmodel.model.timetable.ServiceJourneyType;
@@ -166,6 +169,7 @@ public class TransmodelGraphQLSchemaFactory {
   private final ServiceJourneyType serviceJourneyTypeFactory;
   private final DatedServiceJourneyType datedServiceJourneyTypeFactory;
   private final TripQuery tripQueryFactory;
+  private final RefetchTripPatternQuery refetchTripPatternQueryFactory;
   private final ViaTripQuery viaTripQueryFactory;
   private final GroupOfLinesType groupOfLinesTypeFactory;
   private final DatedServiceJourneyQuery datedServiceJourneyQueryFactory;
@@ -200,6 +204,7 @@ public class TransmodelGraphQLSchemaFactory {
     this.serviceJourneyTypeFactory = new ServiceJourneyType(idMapper);
     this.datedServiceJourneyTypeFactory = new DatedServiceJourneyType(idMapper);
     this.tripQueryFactory = new TripQuery(idMapper);
+    this.refetchTripPatternQueryFactory = new RefetchTripPatternQuery(idMapper);
     this.viaTripQueryFactory = new ViaTripQuery(idMapper);
     this.groupOfLinesTypeFactory = new GroupOfLinesType(idMapper);
     this.datedServiceJourneyQueryFactory = new DatedServiceJourneyQuery(idMapper);
@@ -330,6 +335,9 @@ public class TransmodelGraphQLSchemaFactory {
 
     GraphQLOutputType sjEstimatedCallsType = SJEstimatedCallsType.create();
 
+    GraphQLOutputType replacementForRelationType = replacementForRelationTypeFactory.create();
+    GraphQLOutputType replacedByRelationType = replacedByRelationTypeFactory.create();
+
     GraphQLOutputType estimatedCallType = EstimatedCallType.create(
       bookingArrangementType,
       noticeType,
@@ -340,6 +348,7 @@ public class TransmodelGraphQLSchemaFactory {
       sjEstimatedCallsType,
       DatedServiceJourneyType.REF,
       empiricalDelay,
+      replacedByRelationType,
       dateTimeScalar
     );
 
@@ -356,16 +365,15 @@ public class TransmodelGraphQLSchemaFactory {
       TimetabledPassingTimeType.REF
     );
 
-    GraphQLOutputType replacementForRelationType = replacementForRelationTypeFactory.create();
-    GraphQLOutputType replacedByRelationType = replacedByRelationTypeFactory.create();
-
+    GraphQLObjectType realTimeJourneyStateType = RealTimeTripStateType.create();
     GraphQLOutputType datedServiceJourneyType = datedServiceJourneyTypeFactory.create(
       serviceJourneyType,
       journeyPatternType,
       estimatedCallType,
       quayType,
       replacedByRelationType,
-      replacementForRelationType
+      replacementForRelationType,
+      realTimeJourneyStateType
     );
 
     var timetabledPassingTime = TimetabledPassingTimeType.create(
@@ -423,6 +431,7 @@ public class TransmodelGraphQLSchemaFactory {
 
     GraphQLInputObjectType durationPerStreetModeInput = StreetModeDurationInputType.create();
     GraphQLInputObjectType penaltyForStreetMode = PenaltyForStreetModeType.create();
+    GraphQLInputObjectType locationInputType = LocationInputType.create(dateTimeScalar);
 
     GraphQLFieldDefinition tripQuery = tripQueryFactory.create(
       routing,
@@ -430,7 +439,15 @@ public class TransmodelGraphQLSchemaFactory {
       tripType,
       durationPerStreetModeInput,
       penaltyForStreetMode,
-      dateTimeScalar
+      dateTimeScalar,
+      locationInputType
+    );
+
+    GraphQLFieldDefinition refetchTripPatternQuery = refetchTripPatternQueryFactory.create(
+      routing,
+      tripPatternType,
+      durationPerStreetModeInput,
+      locationInputType
     );
 
     GraphQLOutputType viaTripType = ViaTripType.create(tripPatternType, routingErrorType);
@@ -442,7 +459,8 @@ public class TransmodelGraphQLSchemaFactory {
       viaTripType,
       viaLocationInputType,
       viaSegmentInputType,
-      dateTimeScalar
+      dateTimeScalar,
+      locationInputType
     );
 
     GraphQLInputObjectType inputPlaceIds = GraphQLInputObjectType.newInputObject()
@@ -487,6 +505,7 @@ public class TransmodelGraphQLSchemaFactory {
     GraphQLObjectType queryType = GraphQLObjectType.newObject()
       .name("QueryType")
       .field(tripQuery)
+      .field(refetchTripPatternQuery)
       .field(viaTripQuery)
       .field(
         GraphQLFieldDefinition.newFieldDefinition()
@@ -922,13 +941,12 @@ public class TransmodelGraphQLSchemaFactory {
             @SuppressWarnings("rawtypes")
             Map filterByIds = environment.getArgument("filterByIds");
             if (filterByIds != null) {
-              filterByStops = idMapper.parseListNullSafe(((List<String>) filterByIds.get("quays")));
-              filterByRoutes = idMapper.parseListNullSafe(
-                ((List<String>) filterByIds.get("lines"))
-              );
-              filterByBikeRentalStations = filterByIds.get("bikeRentalStations") != null
-                ? (List<String>) filterByIds.get("bikeRentalStations")
-                : List.of();
+              filterByStops = idMapper.parseListNullSafe((List<String>) filterByIds.get("quays"));
+              filterByRoutes = idMapper.parseListNullSafe((List<String>) filterByIds.get("lines"));
+              filterByBikeRentalStations =
+                filterByIds.get("bikeRentalStations") != null
+                  ? (List<String>) filterByIds.get("bikeRentalStations")
+                  : List.of();
             }
 
             List<TransitMode> filterByTransportModes = environment.getArgument("filterByModes");
@@ -1440,9 +1458,9 @@ public class TransmodelGraphQLSchemaFactory {
               .build()
           )
           .dataFetcher(environment -> {
-            Collection<TransitAlert> alerts = GqlUtil.getTransitService(environment)
-              .getTransitAlertService()
-              .getAllAlerts();
+            Collection<TransitAlert> alerts = GqlUtil.getTransitAlertService(
+              environment
+            ).getAllAlerts();
 
             Set<String> codespaces = new HashSet<>();
 
@@ -1457,7 +1475,7 @@ public class TransmodelGraphQLSchemaFactory {
             }
 
             if (environment.getArgument("codespaces") instanceof List) {
-              codespaces.addAll((environment.getArgument("codespaces")));
+              codespaces.addAll(environment.getArgument("codespaces"));
             }
 
             if (!codespaces.isEmpty()) {
@@ -1495,9 +1513,9 @@ public class TransmodelGraphQLSchemaFactory {
             if (situationNumber.isBlank()) {
               return null;
             }
-            return GqlUtil.getTransitService(environment)
-              .getTransitAlertService()
-              .getAlertById(idMapper.parseNullSafe(situationNumber).orElse(null));
+            return GqlUtil.getTransitAlertService(environment).getAlertById(
+              idMapper.parseNullSafe(situationNumber).orElse(null)
+            );
           })
           .build()
       )
@@ -1522,7 +1540,10 @@ public class TransmodelGraphQLSchemaFactory {
             if (ref == null) {
               return null;
             }
-            return ref.getLeg(GqlUtil.getTransitService(environment));
+            return ref.getLeg(
+              GqlUtil.getTransitService(environment),
+              GqlUtil.getTransitAlertService(environment)
+            );
           })
           .build()
       )

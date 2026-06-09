@@ -6,7 +6,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
-import org.opentripplanner.apis.gtfs.GraphQLRequestContext;
+import org.opentripplanner.apis.gtfs.GtfsGraphQLRequestContext;
 import org.opentripplanner.apis.gtfs.generated.GraphQLDataFetchers;
 import org.opentripplanner.apis.gtfs.generated.GraphQLTypes;
 import org.opentripplanner.apis.gtfs.model.FeedPublisher;
@@ -26,7 +26,7 @@ public class FeedImpl implements GraphQLDataFetchers.GraphQLFeed {
   @Override
   public DataFetcher<Iterable<TransitAlert>> alerts() {
     return environment -> {
-      TransitAlertService alertService = getTransitService(environment).getTransitAlertService();
+      TransitAlertService alertService = getTransitAlertService(environment);
       var args = new GraphQLTypes.GraphQLFeedAlertsArgs(environment.getArguments());
       List<GraphQLTypes.GraphQLFeedAlertType> types = args.getGraphQLTypes();
       if (types != null) {
@@ -93,7 +93,11 @@ public class FeedImpl implements GraphQLDataFetchers.GraphQLFeed {
   }
 
   private TransitService getTransitService(DataFetchingEnvironment environment) {
-    return environment.<GraphQLRequestContext>getContext().transitService();
+    return environment.<GtfsGraphQLRequestContext>getContext().transitService();
+  }
+
+  private TransitAlertService getTransitAlertService(DataFetchingEnvironment environment) {
+    return environment.<GtfsGraphQLRequestContext>getContext().transitAlertService();
   }
 
   private String getSource(DataFetchingEnvironment environment) {

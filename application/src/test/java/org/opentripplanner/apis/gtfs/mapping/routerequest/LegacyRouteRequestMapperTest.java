@@ -23,9 +23,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.opentripplanner._support.time.ZoneIds;
-import org.opentripplanner.apis.gtfs.GraphQLRequestContext;
+import org.opentripplanner.apis.gtfs.GtfsGraphQLRequestContext;
 import org.opentripplanner.apis.gtfs.SchemaFactory;
+import org.opentripplanner.apis.gtfs.TestGtfsGraphQLRequestContext;
 import org.opentripplanner.apis.gtfs.TestRoutingService;
 import org.opentripplanner.apis.gtfs.generated.GraphQLTypes;
 import org.opentripplanner.apis.support.graphql.DataFetchingSupport;
@@ -38,35 +40,39 @@ import org.opentripplanner.routing.api.request.RouteRequest;
 import org.opentripplanner.routing.api.request.preference.TimeSlopeSafetyTriangle;
 import org.opentripplanner.routing.api.request.preference.TransferPreferences;
 import org.opentripplanner.routing.api.request.preference.VehicleParkingPreferences;
+import org.opentripplanner.routing.impl.TransitAlertServiceImpl;
 import org.opentripplanner.routing.linking.LinkingContextFactory;
 import org.opentripplanner.routing.linking.VertexLinkerTestFactory;
 import org.opentripplanner.routing.linking.internal.VertexCreationService;
+import org.opentripplanner.service.realtimevehicles.internal.DefaultRealtimeVehicleRepository;
 import org.opentripplanner.service.realtimevehicles.internal.DefaultRealtimeVehicleService;
+import org.opentripplanner.service.realtimevehicles.internal.RealtimeVehicleRepositoryLifecycle;
 import org.opentripplanner.service.vehicleparking.internal.DefaultVehicleParkingRepository;
 import org.opentripplanner.service.vehicleparking.internal.DefaultVehicleParkingService;
+import org.opentripplanner.service.vehiclerental.internal.DefaultVehicleRentalRepository;
 import org.opentripplanner.service.vehiclerental.internal.DefaultVehicleRentalService;
 import org.opentripplanner.street.graph.Graph;
 import org.opentripplanner.street.search.TraverseMode;
 import org.opentripplanner.transfer.regular.TransferServiceTestFactory;
-import org.opentripplanner.transit.model._data.TimetableRepositoryForTest;
+import org.opentripplanner.transit.model._data.TransitRepositoryForTest;
 import org.opentripplanner.transit.service.DefaultTransitService;
-import org.opentripplanner.transit.service.TimetableRepository;
+import org.opentripplanner.transit.service.TransitRepository;
 
 class LegacyRouteRequestMapperTest implements PlanTestConstants {
 
-  private static final GraphQLRequestContext CONTEXT;
+  private static final GtfsGraphQLRequestContext CONTEXT;
   private static final FeedScopedId TRIP_ID_1 = id("t1");
   private static final FeedScopedId TRIP_ID_2 = id("t2");
 
   static {
     Graph graph = new Graph();
-    var testModel = TimetableRepositoryForTest.of();
+    var testModel = TransitRepositoryForTest.of();
     var stopModelBuilder = testModel
       .siteRepositoryBuilder()
       .withRegularStop(testModel.stop("stop1").build());
-    var timetableRepository = new TimetableRepository(stopModelBuilder.build());
-    timetableRepository.initTimeZone(ZoneIds.BERLIN);
-    final DefaultTransitService transitService = new DefaultTransitService(timetableRepository);
+    var transitRepository = new TransitRepository(stopModelBuilder.build());
+    transitRepository.initTimeZone(ZoneIds.BERLIN);
+    final DefaultTransitService transitService = new DefaultTransitService(transitRepository);
     var transferService = TransferServiceTestFactory.defaultTransferService();
     var routeRequest = RouteRequest.defaultValue();
     var vertexLinker = VertexLinkerTestFactory.of(graph);
@@ -80,14 +86,18 @@ class LegacyRouteRequestMapperTest implements PlanTestConstants {
         return Optional.ofNullable(group).map(locationsGroup -> locationsGroup.getCoordinate());
       }
     );
-    CONTEXT = new GraphQLRequestContext(
+    CONTEXT = new TestGtfsGraphQLRequestContext(
       new TestRoutingService(List.of()),
       transitService,
+      new TransitAlertServiceImpl(),
       transferService,
       new DefaultFareService(),
-      new DefaultVehicleRentalService(),
+      new DefaultVehicleRentalService(new DefaultVehicleRentalRepository()),
       new DefaultVehicleParkingService(new DefaultVehicleParkingRepository()),
-      new DefaultRealtimeVehicleService(transitService),
+      new DefaultRealtimeVehicleService(
+        new RealtimeVehicleRepositoryLifecycle().freeze(new DefaultRealtimeVehicleRepository()),
+        transitService
+      ),
       SchemaFactory.createSchemaWithDefaultInjection(routeRequest),
       new StreetNearbyPlaceFinder(linkingContextFactory),
       StreetNearbyStopFinder.of(linkingContextFactory).build(),
@@ -353,6 +363,23 @@ class LegacyRouteRequestMapperTest implements PlanTestConstants {
       CONTEXT
     );
     assertEquals(List.of(), noParamsReq.listViaLocations());
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = { true, false })
+  void omitCanceled(boolean omitCanceled) {
+    Map<String, Object> arguments = decorateWithRequiredParams(
+      Map.of("omitCanceled", omitCanceled)
+    );
+
+    var routeRequest = LegacyRouteRequestMapper.toRouteRequest(
+      executionContext(arguments),
+      CONTEXT
+    );
+    assertEquals(
+      !omitCanceled,
+      routeRequest.preferences().transit().includeRealtimeCancellations()
+    );
   }
 
   private static Map<String, Object> mode(String mode) {

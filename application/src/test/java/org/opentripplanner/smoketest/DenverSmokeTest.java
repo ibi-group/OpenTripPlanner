@@ -36,7 +36,7 @@ public class DenverSmokeTest {
     var modes = Set.of(TRANSIT, WALK);
     SmokeTest.basicRouteTest(
       new SmokeTestRequest(SOUTH_BROADWAY, TWIN_LAKE, modes),
-      List.of("WALK", "BUS", "WALK", "BUS", "WALK")
+      List.of("WALK", "TRAM", "WALK", "BUS", "WALK")
     );
   }
 

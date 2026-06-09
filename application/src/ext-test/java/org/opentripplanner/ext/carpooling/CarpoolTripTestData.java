@@ -262,13 +262,11 @@ public class CarpoolTripTestData {
     List<CarpoolStop> stops
   ) {
     var actualStartTime = startTime != null ? startTime : ZonedDateTime.now();
-    var builder = new CarpoolTripBuilder(FeedScopedId.ofNullable("TEST", "trip-" + ++idCounter))
+    return new CarpoolTripBuilder(FeedScopedId.ofNullable("TEST", "trip-" + ++idCounter))
       .withStops(stops)
       .withTotalCapacity(capacity)
-      .withStartTime(actualStartTime);
-    if (startTime != null) {
-      builder.withEndTime(startTime.plusHours(1));
-    }
-    return builder.build();
+      .withStartTime(actualStartTime)
+      .withEndTime(actualStartTime.plusHours(1))
+      .build();
   }
 }

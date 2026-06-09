@@ -1,19 +1,18 @@
 package org.opentripplanner.transit.model.timetable;
 
-import static org.opentripplanner.transit.model.timetable.TimetableValidationError.ErrorCode.NEGATIVE_DWELL_TIME;
-import static org.opentripplanner.transit.model.timetable.TimetableValidationError.ErrorCode.NEGATIVE_HOP_TIME;
-
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.function.Supplier;
 import javax.annotation.Nullable;
-import org.opentripplanner.core.framework.deduplicator.DeduplicatorService;
 import org.opentripplanner.core.model.accessibility.Accessibility;
+import org.opentripplanner.core.model.deduplicator.DeduplicatorService;
 import org.opentripplanner.core.model.i18n.I18NString;
+import org.opentripplanner.core.model.id.FeedScopedId;
 import org.opentripplanner.framework.error.OtpError;
 import org.opentripplanner.transit.model.framework.DataValidationException;
 import org.opentripplanner.transit.model.framework.Deduplicator;
@@ -101,7 +100,7 @@ public final class ScheduledTripTimes implements TripTimes<ScheduledTripTimes> {
     return new ScheduledTripTimesBuilder(deduplicator);
   }
 
-  public ScheduledTripTimesBuilder copyOf(Deduplicator deduplicator) {
+  public ScheduledTripTimesBuilder copyOf(DeduplicatorService deduplicator) {
     return new ScheduledTripTimesBuilder(
       timeShift,
       serviceCode,
@@ -137,7 +136,9 @@ public final class ScheduledTripTimes implements TripTimes<ScheduledTripTimes> {
 
   @Override
   public ScheduledTripTimes withAdjustedTimes(Duration shiftDelta) {
-    return copyOfNoDuplication().plusTimeShift((int) shiftDelta.toSeconds()).build();
+    return copyOfNoDuplication()
+      .plusTimeShift((int) shiftDelta.toSeconds())
+      .build();
   }
 
   @Override
@@ -201,8 +202,8 @@ public final class ScheduledTripTimes implements TripTimes<ScheduledTripTimes> {
   }
 
   @Override
-  public boolean isScheduled() {
-    return true;
+  public boolean hasAnyUpdates() {
+    return false;
   }
 
   @Override
@@ -216,17 +217,27 @@ public final class ScheduledTripTimes implements TripTimes<ScheduledTripTimes> {
   }
 
   @Override
+  public boolean isAdded() {
+    return false;
+  }
+
+  @Override
+  public boolean isTripPatternModified() {
+    return false;
+  }
+
+  @Override
   public boolean isDeleted() {
     return false;
   }
 
   @Override
-  public RealTimeState getRealTimeState() {
-    return RealTimeState.SCHEDULED;
+  public boolean isTimesModified() {
+    return false;
   }
 
   @Override
-  public boolean isCancelledStop(int stopPos) {
+  public boolean isCanceledStop(int stopPos) {
     return false;
   }
 
@@ -266,9 +277,14 @@ public final class ScheduledTripTimes implements TripTimes<ScheduledTripTimes> {
   }
 
   @Override
+  public Optional<FeedScopedId> getVehicleId() {
+    return Optional.empty();
+  }
+
+  @Override
   @Nullable
   public I18NString getHeadsign(final int stopPos) {
-    return (headsigns != null && headsigns[stopPos] != null)
+    return headsigns != null && headsigns[stopPos] != null
       ? headsigns[stopPos]
       : getTrip().getHeadsign();
   }
@@ -389,44 +405,6 @@ public final class ScheduledTripTimes implements TripTimes<ScheduledTripTimes> {
     validateTimeInRange("arrivalTime", arrivalTimes, arrivalTimes.length - 1);
     // TODO: This class is used by FLEX, so we can not validate increasing TripTimes
     // validateNonIncreasingTimes();
-  }
-
-  /**
-   * When creating scheduled trip times we could potentially imply negative running or dwell times.
-   * We really don't want those being used in routing. This method checks that all times are
-   * increasing. The first stop arrival time and the last stops departure time is NOT checked -
-   * these should be ignored by raptor.
-   *
-   * TODO: This should be make private as the constructor should ensure the data consistency
-   */
-  public void validateNonIncreasingTimes() {
-    final int lastStopPos = arrivalTimes.length - 1;
-
-    // This check is currently used since Flex trips may have only one stop. This class should
-    // not be used to represent FLEX, so remove this check and create new data classes for FLEX
-    // trips.
-    if (lastStopPos < 1) {
-      return;
-    }
-    int prevDep = getDepartureTime(0);
-
-    for (int i = 1; true; ++i) {
-      final int arr = getArrivalTime(i);
-      final int dep = getDepartureTime(i);
-
-      if (prevDep > arr) {
-        throw new DataValidationException(new TimetableValidationError(NEGATIVE_HOP_TIME, i, trip));
-      }
-      if (i == lastStopPos) {
-        return;
-      }
-      if (dep < arr) {
-        throw new DataValidationException(
-          new TimetableValidationError(NEGATIVE_DWELL_TIME, i, trip)
-        );
-      }
-      prevDep = dep;
-    }
   }
 
   private int timeShifted(int time) {

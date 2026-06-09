@@ -9,12 +9,12 @@ import org.opentripplanner.core.model.id.FeedScopedId;
 import org.opentripplanner.model.plan.leg.ScheduledTransitLeg;
 import org.opentripplanner.model.plan.leg.ScheduledTransitLegBuilder;
 import org.opentripplanner.routing.algorithm.mapping.AlertToLegMapper;
+import org.opentripplanner.routing.services.TransitAlertService;
 import org.opentripplanner.transit.model.network.TripPattern;
 import org.opentripplanner.transit.model.site.StopLocation;
 import org.opentripplanner.transit.model.timetable.Timetable;
 import org.opentripplanner.transit.model.timetable.Trip;
 import org.opentripplanner.transit.model.timetable.TripOnServiceDate;
-import org.opentripplanner.transit.model.timetable.TripTimes;
 import org.opentripplanner.transit.service.TransitService;
 import org.opentripplanner.utils.collection.TwoWayLinearSearch;
 import org.opentripplanner.utils.lang.ObjectUtils;
@@ -82,7 +82,10 @@ public record ScheduledTransitLegReference(
    */
   @Override
   @Nullable
-  public ScheduledTransitLeg getLeg(TransitService transitService) {
+  public ScheduledTransitLeg getLeg(
+    TransitService transitService,
+    TransitAlertService transitAlertService
+  ) {
     Trip trip;
     TripOnServiceDate tripOnServiceDate = null;
 
@@ -175,7 +178,7 @@ public record ScheduledTransitLegReference(
     }
 
     Timetable timetable = transitService.findTimetable(tripPattern, serviceDate);
-    TripTimes tripTimes = timetable.getTripTimes(trip);
+    var tripTimes = timetable.getTripTimes(trip);
 
     if (tripTimes == null) {
       logInvalidLegRef(
@@ -216,7 +219,7 @@ public record ScheduledTransitLegReference(
       .build();
 
     return (ScheduledTransitLeg) new AlertToLegMapper(
-      transitService.getTransitAlertService(),
+      transitAlertService,
       transitService::findMultiModalStation
     ).decorateWithAlerts(leg, false);
   }

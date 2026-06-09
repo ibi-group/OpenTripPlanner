@@ -13,7 +13,6 @@ import org.opentripplanner.routing.alertpatch.EntitySelector;
 import org.opentripplanner.routing.alertpatch.TransitAlert;
 import org.opentripplanner.routing.alertpatch.TransitAlertBuilder;
 import org.opentripplanner.routing.impl.TransitAlertServiceImpl;
-import org.opentripplanner.transit.service.TimetableRepository;
 
 class AlertMetricsTest {
 
@@ -32,7 +31,7 @@ class AlertMetricsTest {
   void registerMultiGauge() {
     var alert1 = alertBuilder("1").withSeverity(INFO).build();
     var alert2 = alertBuilder("2").withEffect(DETOUR).build();
-    var service = new TransitAlertServiceImpl(new TimetableRepository());
+    var service = new TransitAlertServiceImpl();
     service.setAlerts(List.of(alert1, alert2));
 
     var binder = new AlertMetrics(() -> service);
@@ -42,9 +41,9 @@ class AlertMetricsTest {
     binder.recordMetrics();
 
     var expected = """
-      alerts(GAUGE)[feedId='F', severity='INFO']; value=1.0
-      alerts(GAUGE)[effect='DETOUR', feedId='F']; value=1.0
-      """.trim();
+    alerts(GAUGE)[feedId='F', severity='INFO']; value=1.0
+    alerts(GAUGE)[effect='DETOUR', feedId='F']; value=1.0
+    """.trim();
     assertEquals(expected, registry.getMetersAsString());
   }
 

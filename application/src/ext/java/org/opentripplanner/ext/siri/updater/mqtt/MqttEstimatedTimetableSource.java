@@ -2,7 +2,6 @@ package org.opentripplanner.ext.siri.updater.mqtt;
 
 import static org.opentripplanner.utils.lang.StringUtils.hasNoValue;
 
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.hivemq.client.mqtt.datatypes.MqttQos;
 import com.hivemq.client.mqtt.lifecycle.MqttClientDisconnectedContext;
 import com.hivemq.client.mqtt.mqtt5.Mqtt5AsyncClient;
@@ -84,17 +83,15 @@ public class MqttEstimatedTimetableSource implements AsyncEstimatedTimetableSour
   public MqttEstimatedTimetableSource(MqttSiriETUpdaterParameters parameters) {
     this.parameters = parameters;
 
-    ThreadFactory primingThreadFactory = new ThreadFactoryBuilder()
-      .setNameFormat("primingSiriMqttUpdater-%d")
-      .build();
+    ThreadFactory primingThreadFactory = Thread.ofPlatform()
+      .name("primingSiriMqttUpdater-", 0)
+      .factory();
     this.primingExecutor = Executors.newFixedThreadPool(
       parameters.numberOfPrimingWorkers(),
       primingThreadFactory
     );
 
-    ThreadFactory liveThreadFactory = new ThreadFactoryBuilder()
-      .setNameFormat("liveSiriMqttUpdater-%d")
-      .build();
+    ThreadFactory liveThreadFactory = Thread.ofPlatform().name("liveSiriMqttUpdater-", 0).factory();
     this.liveExecutor = Executors.newSingleThreadExecutor(liveThreadFactory);
 
     registerMetrics();
@@ -182,29 +179,29 @@ public class MqttEstimatedTimetableSource implements AsyncEstimatedTimetableSour
   }
 
   private void registerMetrics() {
-    FunctionCounter.builder("mqtt_siri_message_size", liveMessageSize, AtomicLong::get)
+    FunctionCounter.builder("mqtt.siri.message.size", liveMessageSize, AtomicLong::get)
       .tags("type", "live", "stage", "received")
       .register(Metrics.globalRegistry);
-    FunctionCounter.builder("mqtt_siri_message_size", primingMessageSize, AtomicLong::get)
+    FunctionCounter.builder("mqtt.siri.message.size", primingMessageSize, AtomicLong::get)
       .tags("type", "priming", "stage", "received")
       .register(Metrics.globalRegistry);
-    FunctionCounter.builder("mqtt_siri_messages", liveMessageCounter, AtomicLong::get)
+    FunctionCounter.builder("mqtt.siri.messages", liveMessageCounter, AtomicLong::get)
       .tags("type", "live", "stage", "received")
       .register(Metrics.globalRegistry);
-    FunctionCounter.builder("mqtt_siri_messages", primingMessageCounter, AtomicLong::get)
+    FunctionCounter.builder("mqtt.siri.messages", primingMessageCounter, AtomicLong::get)
       .tags("type", "priming", "stage", "received")
       .register(Metrics.globalRegistry);
-    FunctionCounter.builder("mqtt_siri_messages", processedLiveMessageCounter, AtomicLong::get)
+    FunctionCounter.builder("mqtt.siri.messages", processedLiveMessageCounter, AtomicLong::get)
       .tags("type", "live", "stage", "processed")
       .register(Metrics.globalRegistry);
-    FunctionCounter.builder("mqtt_siri_messages", processedPrimingMessageCounter, AtomicLong::get)
+    FunctionCounter.builder("mqtt.siri.messages", processedPrimingMessageCounter, AtomicLong::get)
       .tags("type", "priming", "stage", "processed")
       .register(Metrics.globalRegistry);
 
-    Gauge.builder("mqtt_siri_queue_size", primingMessageQueue, Collection::size)
+    Gauge.builder("mqtt.siri.queue.size", primingMessageQueue, Collection::size)
       .tags("type", "priming")
       .register(Metrics.globalRegistry);
-    Gauge.builder("mqtt_siri_queue_size", liveMessageQueue, Collection::size)
+    Gauge.builder("mqtt.siri.queue.size", liveMessageQueue, Collection::size)
       .tags("type", "live")
       .register(Metrics.globalRegistry);
   }

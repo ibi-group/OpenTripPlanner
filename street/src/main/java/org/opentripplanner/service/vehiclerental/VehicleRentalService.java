@@ -12,8 +12,12 @@ import org.opentripplanner.service.vehiclerental.model.VehicleRentalVehicle;
  * The read-only service for getting information about rental vehicles.
  * <p>
  * For writing data see {@link VehicleRentalRepository}
+ * <p>
+ * Extends {@link GeofencingZoneService} so consumers that only need zone queries can depend on the
+ * narrower interface — geofencing zones are part of rental data (registered per network by the
+ * GBFS updater) and the rental service is their natural owner.
  */
-public interface VehicleRentalService {
+public interface VehicleRentalService extends GeofencingZoneService {
   Collection<VehicleRentalPlace> getVehicleRentalPlaces();
 
   VehicleRentalPlace getVehicleRentalPlace(FeedScopedId id);
@@ -27,6 +31,15 @@ public interface VehicleRentalService {
   VehicleRentalStation getVehicleRentalStation(FeedScopedId id);
 
   boolean hasRentalBikes();
+
+  /**
+   * The vehicle rental networks known to OTP, in alphabetical order.
+   * <p>
+   * Rental places and geofencing zones are unioned because a network can have one without the
+   * other: zones applied during the graph build are present before any updater has reported a
+   * vehicle, and a network may equally publish vehicles but no zones.
+   */
+  List<String> listNetworks();
 
   /**
    * Gets all the vehicle rental stations inside the envelope. This is currently done by iterating

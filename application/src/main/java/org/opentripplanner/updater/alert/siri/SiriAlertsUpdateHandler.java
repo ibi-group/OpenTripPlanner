@@ -1,26 +1,30 @@
 package org.opentripplanner.updater.alert.siri;
 
 import java.time.Duration;
-import java.time.ZonedDateTime;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import javax.annotation.Nullable;
 import org.opentripplanner.core.model.i18n.I18NString;
 import org.opentripplanner.core.model.i18n.NonLocalizedString;
 import org.opentripplanner.core.model.i18n.TranslatedString;
 import org.opentripplanner.core.model.id.FeedScopedId;
+import org.opentripplanner.core.model.time.TimePeriod;
+import org.opentripplanner.routing.alertpatch.AlertCalendar;
 import org.opentripplanner.routing.alertpatch.AlertUrl;
 import org.opentripplanner.routing.alertpatch.EntitySelector;
-import org.opentripplanner.routing.alertpatch.TimePeriod;
 import org.opentripplanner.routing.alertpatch.TransitAlert;
 import org.opentripplanner.routing.alertpatch.TransitAlertBuilder;
 import org.opentripplanner.routing.services.TransitAlertService;
-import org.opentripplanner.updater.RealTimeUpdateContext;
+import org.opentripplanner.updater.TransitRealTimeUpdateContext;
 import org.opentripplanner.updater.alert.siri.mapping.AffectsMapper;
 import org.opentripplanner.updater.alert.siri.mapping.SiriSeverityMapper;
+import org.opentripplanner.updater.trip.siri.SiriFuzzyTripMatcher;
+import org.opentripplanner.updater.trip.siri.SiriFuzzyTripMatcherCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import uk.org.siri.siri21.DefaultedTextStructure;
@@ -54,20 +58,25 @@ public class SiriAlertsUpdateHandler {
   private final TransitAlertService transitAlertService;
   private final Duration earlyStart;
 
+  @Nullable
+  private final SiriFuzzyTripMatcherCache siriFuzzyTripMatcherCache;
+
   /**
    * @param earlyStart display the alerts to users this long before their activePeriod begins
    */
   public SiriAlertsUpdateHandler(
     String feedId,
     TransitAlertService transitAlertService,
-    Duration earlyStart
+    Duration earlyStart,
+    @Nullable SiriFuzzyTripMatcherCache siriFuzzyTripMatcherCache
   ) {
     this.feedId = feedId;
     this.transitAlertService = transitAlertService;
     this.earlyStart = earlyStart;
+    this.siriFuzzyTripMatcherCache = siriFuzzyTripMatcherCache;
   }
 
-  public void update(ServiceDelivery delivery, RealTimeUpdateContext context) {
+  public void update(ServiceDelivery delivery, TransitRealTimeUpdateContext context) {
     for (SituationExchangeDeliveryStructure sxDelivery : delivery.getSituationExchangeDeliveries()) {
       SituationExchangeDeliveryStructure.Situations situations = sxDelivery.getSituations();
       if (situations != null) {
@@ -75,8 +84,9 @@ public class SiriAlertsUpdateHandler {
         int addedCounter = 0;
         int expiredCounter = 0;
         for (PtSituationElement sxElement : situations.getPtSituationElements()) {
-          boolean expireSituation = (sxElement.getProgress() != null &&
-            sxElement.getProgress().equals(WorkflowStatusEnumeration.CLOSED));
+          boolean expireSituation =
+            sxElement.getProgress() != null &&
+            sxElement.getProgress().equals(WorkflowStatusEnumeration.CLOSED);
 
           if (sxElement.getSituationNumber() == null) {
             continue;
@@ -127,7 +137,7 @@ public class SiriAlertsUpdateHandler {
    */
   private TransitAlert mapSituationToAlert(
     PtSituationElement situation,
-    RealTimeUpdateContext context
+    TransitRealTimeUpdateContext context
   ) {
     TransitAlertBuilder alert = createAlertWithTexts(situation);
 
@@ -153,40 +163,36 @@ public class SiriAlertsUpdateHandler {
       alert.withVersion(situation.getVersion().getValue().intValue());
     }
 
-    ArrayList<TimePeriod> periods = new ArrayList<>();
     if (situation.getValidityPeriods().size() > 0) {
+      ArrayList<TimePeriod> periods = new ArrayList<>();
       for (HalfOpenTimestampOutputRangeStructure activePeriod : situation.getValidityPeriods()) {
-        final long realStart = activePeriod.getStartTime() != null
-          ? getEpochSecond(activePeriod.getStartTime())
-          : 0;
-        final long start = activePeriod.getStartTime() != null
-          ? realStart - earlyStart.toSeconds()
-          : 0;
+        final Instant start =
+          activePeriod.getStartTime() != null
+            ? activePeriod.getStartTime().toInstant().minus(earlyStart)
+            : null;
+        final Instant end =
+          activePeriod.getEndTime() != null ? activePeriod.getEndTime().toInstant() : null;
 
-        final long realEnd = activePeriod.getEndTime() != null
-          ? getEpochSecond(activePeriod.getEndTime())
-          : TimePeriod.OPEN_ENDED;
-        final long end = activePeriod.getEndTime() != null ? realEnd : TimePeriod.OPEN_ENDED;
-
-        periods.add(new TimePeriod(start, end));
+        periods.add(TimePeriod.of(start, end));
       }
+      alert.withCalendar(AlertCalendar.of(periods));
     } else {
       // Per the GTFS-rt spec, if an alert has no TimeRanges, than it should always be shown.
-      periods.add(new TimePeriod(0, TimePeriod.OPEN_ENDED));
+      alert.withCalendar(AlertCalendar.ofAlwaysActive());
     }
-
-    alert.addTimePeriods(periods);
 
     if (situation.getPriority() != null) {
       alert.withPriority(situation.getPriority().intValue());
     }
 
+    var fuzzyTripMatcher =
+      siriFuzzyTripMatcherCache != null
+        ? new SiriFuzzyTripMatcher(siriFuzzyTripMatcherCache, context.transitService())
+        : null;
     alert.addEntites(
-      new AffectsMapper(
-        feedId,
-        context.siriFuzzyTripMatcher(),
-        context.transitService()
-      ).mapAffects(situation.getAffects())
+      new AffectsMapper(feedId, fuzzyTripMatcher, context.transitService()).mapAffects(
+        situation.getAffects()
+      )
     );
 
     if (alert.entities().isEmpty()) {
@@ -208,10 +214,6 @@ public class SiriAlertsUpdateHandler {
     }
 
     return alert.build();
-  }
-
-  private long getEpochSecond(ZonedDateTime startTime) {
-    return startTime.toEpochSecond();
   }
 
   /*

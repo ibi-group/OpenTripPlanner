@@ -16,8 +16,14 @@ import org.opentripplanner.ext.ojp.RequestHandler;
 import org.opentripplanner.ext.ojp.parameters.OjpApiParameters;
 import org.opentripplanner.ext.ojp.service.CallAtStopService;
 import org.opentripplanner.ext.ojp.service.OjpService;
+import org.opentripplanner.place.NearbyStopFinder;
+import org.opentripplanner.place.nearbystopfinder.StraightLineNearbyStopFinder;
+import org.opentripplanner.place.nearbystopfinder.StreetNearbyStopFinder;
+import org.opentripplanner.routing.api.RoutingService;
 import org.opentripplanner.routing.api.request.RouteRequest;
-import org.opentripplanner.standalone.api.OtpServerRequestContext;
+import org.opentripplanner.routing.linking.LinkingContextFactory;
+import org.opentripplanner.street.graph.Graph;
+import org.opentripplanner.transit.service.TransitService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,34 +33,43 @@ public class OjpResource {
   private static final Logger LOG = LoggerFactory.getLogger(OjpResource.class);
 
   private static final String EXPLORER_HTML = """
-      <!doctype html>
-      <html lang="en">
-        <head>
-          <meta charset="utf-8"/>
-          <meta name="viewport" content="width=device-width,initial-scale=1"/>
-          <title>OJP Explorer</title>
-          <script defer="defer" src="https://leonardehrenfried.github.io/ojp-mini-client/static/js/main.1a443aab.js"></script>
-          <link href="https://leonardehrenfried.github.io/ojp-mini-client/static/css/main.320826b9.css" rel="stylesheet">
-        </head>
-        <body><noscript>You need to enable JavaScript to run this app.</noscript><div id="root"></div></body>
-      </html>
-    """;
+    <!doctype html>
+    <html lang="en">
+      <head>
+        <meta charset="utf-8"/>
+        <meta name="viewport" content="width=device-width,initial-scale=1"/>
+        <title>OJP Explorer</title>
+        <script defer="defer" src="https://leonardehrenfried.github.io/ojp-mini-client/static/js/main.1a443aab.js"></script>
+        <link href="https://leonardehrenfried.github.io/ojp-mini-client/static/css/main.320826b9.css" rel="stylesheet">
+      </head>
+      <body><noscript>You need to enable JavaScript to run this app.</noscript><div id="root"></div></body>
+    </html>
+  """;
 
   private final RequestHandler handler;
   private final RouteRequest defaultRouteRequest;
 
-  public OjpResource(@Context OtpServerRequestContext context) {
-    var transitService = context.transitService();
-    var callAtStopService = new CallAtStopService(transitService, context.nearbyStopFinder());
-    var idMapper = idMapper(context.ojpApiParameters());
+  public OjpResource(
+    @Context TransitService transitService,
+    @Context Graph graph,
+    @Context LinkingContextFactory linkingContextFactory,
+    @Context OjpApiParameters ojpApiParameters,
+    @Context RouteRequest defaultRouteRequest,
+    @Context RoutingService routingService
+  ) {
+    NearbyStopFinder nearbyStopFinder = graph.hasStreets
+      ? StreetNearbyStopFinder.of(linkingContextFactory).build()
+      : new StraightLineNearbyStopFinder(transitService::findRegularStopsByBoundingBox);
+    var callAtStopService = new CallAtStopService(transitService, nearbyStopFinder);
+    var idMapper = idMapper(ojpApiParameters);
     var ojpService = new OjpService(
       callAtStopService,
-      context.routingService(),
+      routingService,
       idMapper,
       transitService.getTimeZone()
     );
     this.handler = new RequestHandler(ojpService, OjpCodec::serialize, "OJP");
-    this.defaultRouteRequest = context.defaultRouteRequest();
+    this.defaultRouteRequest = defaultRouteRequest;
   }
 
   @POST

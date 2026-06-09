@@ -19,6 +19,7 @@ import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.locationtech.jts.geom.Coordinate;
 import org.opentripplanner.core.model.i18n.I18NString;
+import org.opentripplanner.ext.flex.FlexParameters;
 import org.opentripplanner.ext.flex.flexpathcalculator.FlexPathCalculator;
 import org.opentripplanner.ext.flex.flexpathcalculator.ScheduledFlexPathCalculator;
 import org.opentripplanner.ext.flex.flexpathcalculator.StreetFlexPathCalculator;
@@ -31,19 +32,14 @@ import org.opentripplanner.place.api.NearbyStop;
 import org.opentripplanner.street.model.vertex.StreetLocation;
 import org.opentripplanner.street.search.request.StreetSearchRequest;
 import org.opentripplanner.street.search.state.State;
-import org.opentripplanner.transit.model._data.TimetableRepositoryForTest;
+import org.opentripplanner.transit.model._data.TransitRepositoryForTest;
 import org.opentripplanner.transit.model.site.RegularStop;
 import org.opentripplanner.transit.model.site.StopLocation;
 import org.opentripplanner.transit.model.timetable.Trip;
 
 class FlexTemplateFactoryTest {
 
-  private static final TimetableRepositoryForTest MODEL = TimetableRepositoryForTest.of();
-
-  /**
-   * This is pass-through information
-   */
-  private static final Duration MAX_TRANSFER_DURATION = Duration.ofMinutes(10);
+  private static final TransitRepositoryForTest MODEL = TransitRepositoryForTest.of();
 
   /**
    * Any calculator will do. The only thing we will test here is that a new scheduled calculator
@@ -79,7 +75,7 @@ class FlexTemplateFactoryTest {
   private static final StopLocation GROUP_STOP_12 = MODEL.groupStop("G", STOP_G1, STOP_G2);
   private static final StopLocation GROUP_STOP_34 = MODEL.groupStop("G", STOP_G3, STOP_G4);
 
-  private static final Trip TRIP = TimetableRepositoryForTest.trip("Trip").build();
+  private static final Trip TRIP = TransitRepositoryForTest.trip("Trip").build();
   private static final int T_10_00 = time("10:00");
   private static final int T_10_10 = time("10:10");
   private static final int T_10_20 = time("10:20");
@@ -94,7 +90,7 @@ class FlexTemplateFactoryTest {
       stopTime(2, STOP_B, BOARD_AND_ALIGHT, T_10_10)
     );
 
-    var factory = FlexTemplateFactory.of(CALCULATOR, MAX_TRANSFER_DURATION);
+    var factory = FlexTemplateFactory.of(CALCULATOR, FlexParameters.defaultValues());
 
     // Create template with access boarding at stop A
     var subject = factory.createAccessTemplates(closestTrip(flexTrip, STOP_A, 0));
@@ -126,7 +122,7 @@ class FlexTemplateFactoryTest {
       stopTime(2, STOP_B, BOARD_AND_ALIGHT, T_10_10)
     );
 
-    var factory = FlexTemplateFactory.of(CALCULATOR, MAX_TRANSFER_DURATION);
+    var factory = FlexTemplateFactory.of(CALCULATOR, FlexParameters.defaultValues());
 
     // Create template with egress alighting at stop B
     var subject = factory.createEgressTemplates(closestTrip(flexTrip, STOP_B, 1));
@@ -160,7 +156,7 @@ class FlexTemplateFactoryTest {
       stopTime(4, STOP_D, ALIGHT_ONLY, T_10_30)
     );
 
-    var factory = FlexTemplateFactory.of(CALCULATOR, MAX_TRANSFER_DURATION);
+    var factory = FlexTemplateFactory.of(CALCULATOR, FlexParameters.defaultValues());
 
     // Create template with boarding at stop A
     var subject = factory.createAccessTemplates(closestTrip(flexTrip, STOP_A, 0));
@@ -201,7 +197,7 @@ class FlexTemplateFactoryTest {
       stopTime(4, STOP_D, ALIGHT_ONLY, T_10_30)
     );
 
-    var factory = FlexTemplateFactory.of(CALCULATOR, MAX_TRANSFER_DURATION);
+    var factory = FlexTemplateFactory.of(CALCULATOR, FlexParameters.defaultValues());
 
     // Create template with boarding at stop A
     var subject = factory.createEgressTemplates(closestTrip(flexTrip, STOP_D, 3));
@@ -241,7 +237,7 @@ class FlexTemplateFactoryTest {
       stopTime(2, GROUP_STOP_34, ALIGHT_ONLY, T_10_20)
     );
 
-    var factory = FlexTemplateFactory.of(CALCULATOR, MAX_TRANSFER_DURATION);
+    var factory = FlexTemplateFactory.of(CALCULATOR, FlexParameters.defaultValues());
 
     // Create template with access boarding at stop A
     var subject = factory.createAccessTemplates(closestTrip(flexTrip, STOP_G1, 0));
@@ -264,7 +260,7 @@ class FlexTemplateFactoryTest {
       stopTime(2, GROUP_STOP_34, ALIGHT_ONLY, T_10_20)
     );
 
-    var factory = FlexTemplateFactory.of(CALCULATOR, MAX_TRANSFER_DURATION);
+    var factory = FlexTemplateFactory.of(CALCULATOR, FlexParameters.defaultValues());
 
     // Create template with access boarding at stop A
     var subject = factory.createEgressTemplates(closestTrip(flexTrip, STOP_G4, 1));
@@ -288,7 +284,7 @@ class FlexTemplateFactoryTest {
       stopTime(10, STOP_C, ALIGHT_ONLY, T_10_30)
     );
 
-    var factory = FlexTemplateFactory.of(CALCULATOR, MAX_TRANSFER_DURATION);
+    var factory = FlexTemplateFactory.of(CALCULATOR, FlexParameters.defaultValues());
 
     // Create template with access boarding at stop A
     var subject = factory.createAccessTemplates(closestTrip(flexTrip, STOP_B, 1));
@@ -310,7 +306,7 @@ class FlexTemplateFactoryTest {
       stopTime(10, STOP_C, ALIGHT_ONLY, T_10_30)
     );
 
-    var factory = FlexTemplateFactory.of(CALCULATOR, MAX_TRANSFER_DURATION);
+    var factory = FlexTemplateFactory.of(CALCULATOR, FlexParameters.defaultValues());
 
     // Create template with access boarding at stop A
     var subject = factory.createEgressTemplates(closestTrip(flexTrip, STOP_B, 1));

@@ -35,7 +35,7 @@ public class TripPatternForDateMapper {
   /**
    * @param serviceCodesRunningForDate - READ ONLY
    */
-  TripPatternForDateMapper(Map<LocalDate, TIntSet> serviceCodesRunningForDate) {
+  public TripPatternForDateMapper(Map<LocalDate, TIntSet> serviceCodesRunningForDate) {
     this.serviceCodesRunningForDate = serviceCodesRunningForDate;
   }
 
@@ -62,9 +62,9 @@ public class TripPatternForDateMapper {
       return null;
     }
 
-    List<TripTimes> times = new ArrayList<>();
+    List<TripTimes<?>> times = new ArrayList<>();
 
-    for (TripTimes tripTimes : timetable.getTripTimes()) {
+    for (TripTimes<?> tripTimes : timetable.getTripTimes()) {
       if (!serviceCodesRunning.contains(tripTimes.getServiceCode())) {
         continue;
       }

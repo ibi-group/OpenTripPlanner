@@ -10,7 +10,6 @@ import org.opentripplanner.osm.model.OsmEntity;
 import org.opentripplanner.osm.wayproperty.specifier.BestMatchSpecifier;
 import org.opentripplanner.osm.wayproperty.specifier.OsmSpecifier;
 import org.opentripplanner.street.model.StreetTraversalPermission;
-import org.opentripplanner.street.model.note.StreetNoteMatcher;
 
 public class WayPropertySetBuilder {
 
@@ -21,20 +20,19 @@ public class WayPropertySetBuilder {
   final List<CreativeNamerPicker> creativeNamers = new ArrayList<>();
   final List<SlopeOverridePicker> slopeOverrides = new ArrayList<>();
   final List<SpeedPicker> speedPickers = new ArrayList<>();
-  final List<NotePicker> notes = new ArrayList<>();
   final List<MixinProperties> mixins = new ArrayList<>();
   FunctionUtils.TriFunction<
     StreetTraversalPermission,
     Float,
     OsmEntity,
     Double
-  > defaultWalkSafetyForPermission = WayPropertySet.DEFAULT_SAFETY_RESOLVER;
+  > defaultWalkSafetyForPermission = WayPropertySet.DEFAULT_WALK_SAFETY_RESOLVER;
   FunctionUtils.TriFunction<
     StreetTraversalPermission,
     Float,
     OsmEntity,
     Double
-  > defaultBicycleSafetyForPermission = WayPropertySet.DEFAULT_SAFETY_RESOLVER;
+  > defaultBicycleSafetyForPermission = WayPropertySet.DEFAULT_BICYCLE_SAFETY_RESOLVER;
 
   WayPropertySetBuilder() {}
 
@@ -61,10 +59,6 @@ public class WayPropertySetBuilder {
     creativeNamers.add(new CreativeNamerPicker(spec, namer));
   }
 
-  public void addNote(OsmSpecifier osmSpecifier, NoteProperties properties) {
-    notes.add(new NotePicker(osmSpecifier, properties));
-  }
-
   public void setSlopeOverride(OsmSpecifier spec, boolean override) {
     slopeOverrides.add(new SlopeOverridePicker(spec, override));
   }
@@ -78,12 +72,6 @@ public class WayPropertySetBuilder {
     addCreativeNamer(new BestMatchSpecifier(spec), namer);
   }
 
-  public void createNotes(String spec, String patternKey, StreetNoteMatcher matcher) {
-    // TODO: notes aren't localized
-    NoteProperties properties = new NoteProperties(patternKey, matcher);
-    addNote(new BestMatchSpecifier(spec), properties);
-  }
-
   public void setDefaultWalkSafetyForPermission(
     FunctionUtils.TriFunction<
       StreetTraversalPermission,
@@ -92,7 +80,7 @@ public class WayPropertySetBuilder {
       Double
     > defaultWalkSafetyForPermission
   ) {
-    if (!this.defaultWalkSafetyForPermission.equals(WayPropertySet.DEFAULT_SAFETY_RESOLVER)) {
+    if (!this.defaultWalkSafetyForPermission.equals(WayPropertySet.DEFAULT_WALK_SAFETY_RESOLVER)) {
       throw new IllegalStateException("A custom default walk safety resolver was already set");
     }
     this.defaultWalkSafetyForPermission = defaultWalkSafetyForPermission;
@@ -106,7 +94,9 @@ public class WayPropertySetBuilder {
       Double
     > defaultBicycleSafetyForPermission
   ) {
-    if (!this.defaultBicycleSafetyForPermission.equals(WayPropertySet.DEFAULT_SAFETY_RESOLVER)) {
+    if (
+      !this.defaultBicycleSafetyForPermission.equals(WayPropertySet.DEFAULT_BICYCLE_SAFETY_RESOLVER)
+    ) {
       throw new IllegalStateException("A custom default cycling safety resolver was already set");
     }
     this.defaultBicycleSafetyForPermission = defaultBicycleSafetyForPermission;
@@ -180,7 +170,6 @@ public class WayPropertySetBuilder {
     this.creativeNamers.addAll(other.listCreativeNamers());
     this.slopeOverrides.addAll(other.listSlopeOverrides());
     this.speedPickers.addAll(other.listSpeedPickers());
-    this.notes.addAll(other.listNotes());
     this.mixins.addAll(other.listMixins());
     return this;
   }

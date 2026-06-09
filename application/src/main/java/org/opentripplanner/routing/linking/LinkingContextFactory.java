@@ -121,6 +121,16 @@ public class LinkingContextFactory {
     return new LinkingContext(verticesByLocation, fromStopVertices, toStopVertices);
   }
 
+  /// Get vertices or create a temporary vertex for a given GenericLocation
+  public Set<Vertex> getOrCreateStreetVertices(
+    TemporaryVerticesContainer container,
+    GenericLocation location,
+    LocationType locationType,
+    StreetMode streetMode
+  ) {
+    return getStreetVerticesForLocation(container, location, EnumSet.of(streetMode), locationType);
+  }
+
   private Set<Vertex> getFromVertices(
     TemporaryVerticesContainer container,
     LinkingContextRequest request
@@ -129,9 +139,10 @@ public class LinkingContextFactory {
     if (from == null) {
       return Set.of();
     }
-    var modes = request.accessMode() != StreetMode.NOT_SET
-      ? EnumSet.of(request.accessMode())
-      : EnumSet.noneOf(StreetMode.class);
+    var modes =
+      request.accessMode() != StreetMode.NOT_SET
+        ? EnumSet.of(request.accessMode())
+        : EnumSet.noneOf(StreetMode.class);
     if (request.directMode() != StreetMode.NOT_SET) {
       modes.add(request.directMode());
     }
@@ -146,9 +157,10 @@ public class LinkingContextFactory {
     if (to == null) {
       return Set.of();
     }
-    var modes = request.egressMode() != StreetMode.NOT_SET
-      ? EnumSet.of(request.egressMode())
-      : EnumSet.noneOf(StreetMode.class);
+    var modes =
+      request.egressMode() != StreetMode.NOT_SET
+        ? EnumSet.of(request.egressMode())
+        : EnumSet.noneOf(StreetMode.class);
     if (request.directMode() != StreetMode.NOT_SET) {
       modes.add(request.directMode());
     }
@@ -278,10 +290,10 @@ public class LinkingContextFactory {
 
     var results = new HashSet<Vertex>();
     if (location.stopId() != null) {
-      if (!modes.stream().allMatch(TraverseMode::isInCar)) {
+      if (!modes.stream().allMatch(TraverseMode::isDrivingIsh)) {
         results.addAll(getStreetVerticesForStop(location));
       }
-      if (modes.stream().anyMatch(TraverseMode::isInCar)) {
+      if (modes.stream().anyMatch(TraverseMode::isDrivingIsh)) {
         // Ensure that there is a car routable vertex (that can originate from stop's coordinate).
         var carRoutableVertex = getCarRoutableStreetVertex(container, location, type);
         carRoutableVertex.ifPresent(results::add);
@@ -377,7 +389,11 @@ public class LinkingContextFactory {
     List<RoutingError> routingErrors = new ArrayList<>();
 
     // check that vertices where found if from-location was specified
-    if (fromStopVertices.isEmpty() && isDisconnected(fromVertices, LocationType.FROM)) {
+    if (
+      !from.isOnBoard() &&
+      fromStopVertices.isEmpty() &&
+      isDisconnected(fromVertices, LocationType.FROM)
+    ) {
       routingErrors.add(
         new RoutingError(getRoutingErrorCodeForDisconnected(from), InputField.FROM_PLACE)
       );

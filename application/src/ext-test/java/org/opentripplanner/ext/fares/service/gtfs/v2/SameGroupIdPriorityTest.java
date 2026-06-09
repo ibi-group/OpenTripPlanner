@@ -2,6 +2,7 @@ package org.opentripplanner.ext.fares.service.gtfs.v2;
 
 import static com.google.common.truth.Truth.assertThat;
 import static org.opentripplanner.core.model.id.FeedScopedIdForTestFactory.id;
+import static org.opentripplanner.ext.fares.service.gtfs.v2.FareLookupService.DEFAULT_FREE_TRANSFER_MATCH_PREDICATE;
 
 import com.google.common.collect.ImmutableMultimap;
 import com.google.common.collect.Multimap;
@@ -18,13 +19,13 @@ import org.opentripplanner.ext.fares.model.FareLegRuleBuilder;
 import org.opentripplanner.ext.fares.model.FareTestConstants;
 import org.opentripplanner.model.plan.TestTransitLeg;
 import org.opentripplanner.model.plan.TransitLeg;
-import org.opentripplanner.transit.model._data.TimetableRepositoryForTest;
+import org.opentripplanner.transit.model._data.TransitRepositoryForTest;
 import org.opentripplanner.transit.model.network.Route;
 
 class SameGroupIdPriorityTest implements FareTestConstants {
 
   private static final FeedScopedId A_1 = id("a1");
-  private static final Route ROUTE = TimetableRepositoryForTest.route("route1")
+  private static final Route ROUTE = TransitRepositoryForTest.route("route1")
     .withGroupOfRoutes(List.of(NETWORK_A))
     .build();
   private static final ImmutableMultimap<FeedScopedId, FeedScopedId> EMPTY_STOP_AREAS =
@@ -115,7 +116,8 @@ class SameGroupIdPriorityTest implements FareTestConstants {
       List.of(r1, r2),
       List.of(),
       tc.stopAreas,
-      ImmutableMultimap.of()
+      ImmutableMultimap.of(),
+      DEFAULT_FREE_TRANSFER_MATCH_PREDICATE
     );
 
     assertThat(service.legRules(leg()).stream().map(FareLegRule::id)).containsExactlyElementsIn(

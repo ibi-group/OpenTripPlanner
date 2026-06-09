@@ -2,10 +2,14 @@ package org.opentripplanner.apis.gtfs.datafetchers;
 
 import graphql.schema.DataFetcher;
 import graphql.schema.DataFetchingEnvironment;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
+import org.dataloader.DataLoader;
 import org.locationtech.jts.geom.Geometry;
-import org.opentripplanner.apis.gtfs.GraphQLRequestContext;
+import org.opentripplanner.apis.gtfs.GtfsGraphQLRequestContext;
 import org.opentripplanner.apis.gtfs.generated.GraphQLDataFetchers;
 import org.opentripplanner.apis.gtfs.generated.GraphQLTypes;
 import org.opentripplanner.apis.gtfs.mapping.LocalDateMapper;
@@ -15,11 +19,14 @@ import org.opentripplanner.apis.gtfs.mapping.RealtimeStateMapper;
 import org.opentripplanner.apis.gtfs.service.ApiTransitService;
 import org.opentripplanner.apis.gtfs.support.filter.StopArrivalByTypeFilter;
 import org.opentripplanner.ext.carpooling.model.CarpoolLeg;
+import org.opentripplanner.ext.fares.ItineraryFareDataLoader;
 import org.opentripplanner.ext.ridehailing.model.RideEstimate;
 import org.opentripplanner.ext.ridehailing.model.RideHailingLeg;
 import org.opentripplanner.framework.graphql.GraphQLUtils;
 import org.opentripplanner.model.TripTimeOnDate;
 import org.opentripplanner.model.fare.FareOffer;
+import org.opentripplanner.model.fare.ItineraryFare;
+import org.opentripplanner.model.plan.Itinerary;
 import org.opentripplanner.model.plan.Leg;
 import org.opentripplanner.model.plan.TransitLeg;
 import org.opentripplanner.model.plan.leg.LegCallTime;
@@ -35,8 +42,10 @@ import org.opentripplanner.routing.alternativelegs.NavigationDirection;
 import org.opentripplanner.transit.model.network.Route;
 import org.opentripplanner.transit.model.organization.Agency;
 import org.opentripplanner.transit.model.timetable.Trip;
+import org.opentripplanner.transit.model.timetable.TripOnServiceDate;
 import org.opentripplanner.transit.model.timetable.booking.BookingInfo;
 import org.opentripplanner.transit.service.TransitService;
+import org.opentripplanner.utils.collection.ListUtils;
 
 public class LegImpl implements GraphQLDataFetchers.GraphQLLeg {
 
@@ -97,8 +106,41 @@ public class LegImpl implements GraphQLDataFetchers.GraphQLLeg {
   }
 
   @Override
+  @SuppressWarnings("unchecked")
   public DataFetcher<Iterable<FareOffer>> fareProducts() {
-    return environment -> getSource(environment).fareOffers();
+    // Returns a CompletableFuture so the DataLoader can batch all legs from the same itinerary
+    // into a single calculateFares call. Cast to raw DataFetcher to avoid a JVM checkcast to
+    // Iterable — graphql-java handles CompletableFuture return values at runtime.
+    DataFetcher<?> fetcher = environment -> {
+      Map<String, ?> ctx = environment.getLocalContext();
+      DataLoader<Itinerary, ItineraryFare> loader = environment.getDataLoader(
+        ItineraryFareDataLoader.KEY
+      );
+      if (ctx == null || loader == null) {
+        return List.of();
+      }
+      Itinerary itinerary = (Itinerary) ctx.get(ItineraryImpl.ITINERARY_CONTEXT_KEY);
+      if (itinerary == null) {
+        return List.of();
+      }
+      Leg leg = getSource(environment);
+      return loader.load(itinerary).thenApply(fare -> {
+        if (fare == null || fare.isEmpty()) {
+          return List.<FareOffer>of();
+        }
+        var legOffers = new ArrayList<>(fare.getLegProducts().get(leg));
+        // Itinerary-level products (e.g. day passes) only apply to transit legs
+        var itineraryOffers = leg.isTransitLeg()
+          ? fare
+              .getItineraryProducts()
+              .stream()
+              .map(fp -> FareOffer.of(itinerary.legs().getFirst().startTime(), fp))
+              .toList()
+          : List.<FareOffer>of();
+        return (Iterable<FareOffer>) ListUtils.combine(itineraryOffers, legOffers);
+      });
+    };
+    return (DataFetcher<Iterable<FareOffer>>) fetcher;
   }
 
   @Override
@@ -206,8 +248,11 @@ public class LegImpl implements GraphQLDataFetchers.GraphQLLeg {
   @Override
   public DataFetcher<GraphQLTypes.GraphQLRealtimeState> realtimeState() {
     return environment -> {
-      var state = getSource(environment).realTimeState();
-      return RealtimeStateMapper.map(state);
+      var leg = getSource(environment);
+      if (leg instanceof ScheduledTransitLeg stl) {
+        return RealtimeStateMapper.map(stl.tripTimes());
+      }
+      return null;
     };
   }
 
@@ -289,6 +334,20 @@ public class LegImpl implements GraphQLDataFetchers.GraphQLLeg {
   }
 
   @Override
+  public DataFetcher<TripOnServiceDate> tripOnServiceDate() {
+    return environment -> {
+      Leg leg = getSource(environment);
+      Trip trip = leg.trip();
+      if (trip == null || leg.serviceDate() == null) {
+        return null;
+      }
+      return new ApiTransitService(transitService(environment))
+        .findOrCreateTripOnServiceDate(trip.getId(), leg.serviceDate())
+        .orElse(null);
+    };
+  }
+
+  @Override
   public DataFetcher<Boolean> walkingBike() {
     return environment -> getSource(environment).walkingBike();
   }
@@ -315,24 +374,24 @@ public class LegImpl implements GraphQLDataFetchers.GraphQLLeg {
 
         boolean limitToExactOriginStop =
           originModesWithParentStation == null ||
-          !(originModesWithParentStation
-              .stream()
-              .map(GraphQLTypes.GraphQLTransitMode::toString)
-              .toList()
-              .contains(originalLeg.mode().name()));
+          !originModesWithParentStation
+            .stream()
+            .map(GraphQLTypes.GraphQLTransitMode::toString)
+            .toList()
+            .contains(originalLeg.mode().name());
 
         boolean limitToExactDestinationStop =
           destinationModesWithParentStation == null ||
-          !(destinationModesWithParentStation
-              .stream()
-              .map(GraphQLTypes.GraphQLTransitMode::toString)
-              .toList()
-              .contains(originalLeg.mode().name()));
+          !destinationModesWithParentStation
+            .stream()
+            .map(GraphQLTypes.GraphQLTransitMode::toString)
+            .toList()
+            .contains(originalLeg.mode().name());
 
         var res = AlternativeLegs.getAlternativeLegs(
           environment.getSource(),
           numberOfLegs,
-          environment.<GraphQLRequestContext>getContext().transitService(),
+          environment.<GtfsGraphQLRequestContext>getContext().transitService(),
           direction,
           AlternativeLegsFilter.NO_FILTER,
           limitToExactOriginStop,
@@ -369,6 +428,6 @@ public class LegImpl implements GraphQLDataFetchers.GraphQLLeg {
   }
 
   private TransitService transitService(DataFetchingEnvironment environment) {
-    return environment.<GraphQLRequestContext>getContext().transitService();
+    return environment.<GtfsGraphQLRequestContext>getContext().transitService();
   }
 }

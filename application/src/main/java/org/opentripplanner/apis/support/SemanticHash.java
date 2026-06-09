@@ -4,7 +4,7 @@ import com.google.common.hash.HashCode;
 import com.google.common.hash.HashFunction;
 import com.google.common.hash.Hasher;
 import com.google.common.hash.Hashing;
-import com.google.common.io.BaseEncoding;
+import java.util.Base64;
 import org.opentripplanner.transit.model.network.TripPattern;
 import org.opentripplanner.transit.model.site.StopLocation;
 import org.opentripplanner.transit.model.timetable.Trip;
@@ -35,16 +35,16 @@ public class SemanticHash {
    */
   public static String forTripPattern(TripPattern tripPattern, Trip trip) {
     HashFunction murmur = Hashing.murmur3_32();
-    BaseEncoding encoder = BaseEncoding.base64Url().omitPadding();
+    Base64.Encoder encoder = Base64.getUrlEncoder().withoutPadding();
     StringBuilder sb = new StringBuilder(50);
-    sb.append(encoder.encode(forStopPattern(tripPattern, murmur).asBytes()));
+    sb.append(encoder.encodeToString(forStopPattern(tripPattern, murmur).asBytes()));
     if (trip != null) {
-      TripTimes tripTimes = tripPattern.getScheduledTimetable().getTripTimes(trip);
+      var tripTimes = tripPattern.getScheduledTimetable().getTripTimes(trip);
       if (tripTimes == null) {
         return null;
       }
       sb.append(':');
-      sb.append(encoder.encode(forTripTimes(tripTimes, murmur).asBytes()));
+      sb.append(encoder.encodeToString(forTripTimes(tripTimes, murmur).asBytes()));
     }
     return sb.toString();
   }
@@ -83,7 +83,7 @@ public class SemanticHash {
    * <li>this hash function needs to stay stable when users switch from 0.10.x to 1.0</li>
    * </ol>
    */
-  private static HashCode forTripTimes(TripTimes tripTimes, final HashFunction hashFunction) {
+  private static HashCode forTripTimes(TripTimes<?> tripTimes, final HashFunction hashFunction) {
     final Hasher hasher = hashFunction.newHasher();
     for (int hop = 0; hop < tripTimes.getNumStops() - 1; hop++) {
       hasher.putInt(tripTimes.getScheduledDepartureTime(hop));

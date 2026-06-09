@@ -3,10 +3,11 @@ package org.opentripplanner.apis.gtfs.datafetchers;
 import graphql.schema.DataFetcher;
 import graphql.schema.DataFetchingEnvironment;
 import org.opentripplanner.apis.gtfs.generated.GraphQLDataFetchers;
-import org.opentripplanner.model.plan.leg.ElevationProfile;
+import org.opentripplanner.street.model.elevation.ElevationProfile;
 
 public class elevationProfileComponentImpl
-  implements GraphQLDataFetchers.GraphQLElevationProfileComponent {
+  implements GraphQLDataFetchers.GraphQLElevationProfileComponent
+{
 
   @Override
   public DataFetcher<Double> distance() {

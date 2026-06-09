@@ -14,12 +14,13 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
-import org.opentripplanner.core.framework.deduplicator.DeduplicatorService;
+import org.opentripplanner.core.model.deduplicator.DeduplicatorService;
 import org.opentripplanner.ext.flex.trip.UnscheduledTrip;
 import org.opentripplanner.framework.application.OTPFeature;
 import org.opentripplanner.graph_builder.issue.api.DataImportIssueStore;
 import org.opentripplanner.model.StopTime;
 import org.opentripplanner.service.vehicleparking.internal.DefaultVehicleParkingRepository;
+import org.opentripplanner.service.vehiclerental.GeofencingZoneService;
 import org.opentripplanner.street.geometry.WgsCoordinate;
 import org.opentripplanner.street.graph.Graph;
 import org.opentripplanner.street.linking.VertexLinker;
@@ -30,7 +31,7 @@ import org.opentripplanner.street.model.edge.StreetTransitStopLink;
 import org.opentripplanner.street.model.vertex.OsmBoardingLocationVertex;
 import org.opentripplanner.street.model.vertex.SplitterVertex;
 import org.opentripplanner.street.model.vertex.TransitStopVertex;
-import org.opentripplanner.transit.model._data.TimetableRepositoryForTest;
+import org.opentripplanner.transit.model._data.TransitRepositoryForTest;
 import org.opentripplanner.transit.model.network.CarAccess;
 import org.opentripplanner.transit.model.network.Route;
 import org.opentripplanner.transit.model.network.StopPattern;
@@ -40,7 +41,7 @@ import org.opentripplanner.transit.model.site.StopLocation;
 import org.opentripplanner.transit.model.timetable.Trip;
 import org.opentripplanner.transit.model.timetable.TripTimesFactory;
 import org.opentripplanner.transit.service.SiteRepository;
-import org.opentripplanner.transit.service.TimetableRepository;
+import org.opentripplanner.transit.service.TransitRepository;
 
 class StreetLinkerModuleTest {
 
@@ -82,7 +83,7 @@ class StreetLinkerModuleTest {
   void linkFlexStop() {
     OTPFeature.FlexRouting.testOn(() -> {
       var model = new TestModel();
-      var flexTrip = TimetableRepositoryForTest.of().unscheduledTrip(
+      var flexTrip = TransitRepositoryForTest.of().unscheduledTrip(
         "flex",
         model.stop(),
         model.stop()
@@ -115,7 +116,7 @@ class StreetLinkerModuleTest {
   void linkFlexStopWithBoardingLocation() {
     OTPFeature.FlexRouting.testOn(() -> {
       var model = new TestModel().withStopLinkedToBoardingLocation();
-      var flexTrip = TimetableRepositoryForTest.of().unscheduledTrip(
+      var flexTrip = TransitRepositoryForTest.of().unscheduledTrip(
         "flex",
         model.stop(),
         model.stop()
@@ -159,7 +160,7 @@ class StreetLinkerModuleTest {
   @Test
   void linkCarsAllowedStop() {
     var model = new TestModel();
-    var carsAllowedTrip = TimetableRepositoryForTest.of()
+    var carsAllowedTrip = TransitRepositoryForTest.of()
       .trip("carsAllowedTrip")
       .withCarsAllowed(CarAccess.ALLOWED)
       .build();
@@ -191,7 +192,7 @@ class StreetLinkerModuleTest {
     private final TransitStopVertex stopVertex;
     private final StreetLinkerModule module;
     private final RegularStop stop;
-    private final TimetableRepository timetableRepository;
+    private final TransitRepository transitRepository;
     private final Graph graph;
 
     public TestModel() {
@@ -217,7 +218,7 @@ class StreetLinkerModuleTest {
         .build();
       builder.withRegularStop(stop);
 
-      timetableRepository = new TimetableRepository(builder.build());
+      transitRepository = new TransitRepository(builder.build());
 
       stopVertex = TransitStopVertex.of()
         .withId(stop.getId())
@@ -229,9 +230,9 @@ class StreetLinkerModuleTest {
 
       module = new StreetLinkerModule(
         graph,
-        new VertexLinker(graph, TRAVERSE_AREA_EDGES, 0, false),
+        new VertexLinker(graph, GeofencingZoneService.EMPTY, TRAVERSE_AREA_EDGES, 0, false),
         new DefaultVehicleParkingRepository(),
-        timetableRepository,
+        transitRepository,
         DataImportIssueStore.NOOP
       );
 
@@ -257,11 +258,11 @@ class StreetLinkerModuleTest {
     }
 
     public void withFlexTrip(UnscheduledTrip flexTrip) {
-      timetableRepository.addFlexTrip(flexTrip.getId(), flexTrip);
+      transitRepository.addFlexTrip(flexTrip.getId(), flexTrip);
     }
 
     public void withCarsAllowedTrip(Trip trip, StopLocation... stops) {
-      Route route = TimetableRepositoryForTest.route("carsAllowedRoute").build();
+      Route route = TransitRepositoryForTest.route("carsAllowedRoute").build();
       var stopTimes = Arrays.stream(stops)
         .map(s -> {
           var stopTime = new StopTime();
@@ -274,7 +275,7 @@ class StreetLinkerModuleTest {
         .toList();
       StopPattern stopPattern = new StopPattern(stopTimes);
       var tripTimes = TripTimesFactory.tripTimes(trip, stopTimes, DeduplicatorService.NOOP);
-      TripPattern tripPattern = TimetableRepositoryForTest.tripPattern(
+      TripPattern tripPattern = TransitRepositoryForTest.tripPattern(
         "carsAllowedTripPattern",
         route
       )
@@ -282,7 +283,7 @@ class StreetLinkerModuleTest {
         .withScheduledTimeTableBuilder(builder -> builder.addTripTimes(tripTimes))
         .build();
 
-      timetableRepository.addTripPattern(tripPattern.getId(), tripPattern);
+      transitRepository.addTripPattern(tripPattern.getId(), tripPattern);
     }
 
     /**

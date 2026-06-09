@@ -2,16 +2,15 @@
 
 ## Contact Info
 
-- Kyyti Group Oy, Finland
+- Leonard Ehrenfried, [mail@leonard.io](mailto:mail@leonard.io)
 - Entur, Norway
-- Hannes Junnila
 
 ## Documentation
 
 To enable this turn on `FlexRouting` as a feature in `otp-config.json`.
 
-The GTFS feeds must conform to the final, approved version of the draft which has been 
-merged into the [mainline specification](https://gtfs.org/schedule/reference/) in March 2024.
+The GTFS feeds must conform to the final, approved version of the draft which has been merged into
+the [mainline specification](https://gtfs.org/schedule/reference/) in March 2024.
 
 ### Experimental features
 
@@ -20,13 +19,14 @@ This sandbox feature also has experimental support for the following fields:
 - `safe_duration_factor`
 - `safe_duration_offset`
 
-These features are currently [undergoing specification](https://github.com/MobilityData/gtfs-flex/pull/79) 
-and their definition might change. OTP's implementation will be also be changed so be careful
-when relying on this feature.
+These features are currently
+[undergoing specification](https://github.com/MobilityData/gtfs-flex/pull/79) and their definition
+might change. OTP's implementation will be also be changed so be careful when relying on this
+feature.
 
 ## Configuration
 
-This feature allows a limited number of config options. To change the configuration, add the 
+This feature allows a limited number of config options. To change the configuration, add the
 following to `router-config.json`.
 
 <!-- config BEGIN -->
@@ -49,13 +49,26 @@ following to `router-config.json`.
 
 | Config Parameter                                     |    Type    | Summary                                                                                                                       |  Req./Opt. | Default Value | Since |
 |------------------------------------------------------|:----------:|-------------------------------------------------------------------------------------------------------------------------------|:----------:|---------------|:-----:|
+| [boardCost](#flex_boardCost)                         |  `integer` | A board cost added to the generalized cost of a flex leg.                                                                     | *Optional* | `600`         |  2.10 |
 | [maxAccessWalkDuration](#flex_maxAccessWalkDuration) | `duration` | The maximum duration the passenger will be allowed to walk to reach a flex stop or zone.                                      | *Optional* | `"PT45M"`     |  2.3  |
 | [maxEgressWalkDuration](#flex_maxEgressWalkDuration) | `duration` | The maximum duration the passenger will be allowed to walk after leaving the flex vehicle at the final destination.           | *Optional* | `"PT45M"`     |  2.3  |
 | [maxFlexTripDuration](#flex_maxFlexTripDuration)     | `duration` | How long can a non-scheduled flex trip at maximum be.                                                                         | *Optional* | `"PT45M"`     |  2.3  |
 | [maxTransferDuration](#flex_maxTransferDuration)     | `duration` | How long should a passenger be allowed to walk after getting out of a flex vehicle and transferring to a flex or transit one. | *Optional* | `"PT5M"`      |  2.3  |
+| reluctance                                           |  `double`  | A factor multiplied with the travel time of a flex leg to calculate the weight.                                               | *Optional* | `1.0`         |  2.10 |
 
 
 ### Details
+
+<h4 id="flex_boardCost">boardCost</h4>
+
+**Since version:** `2.10` ∙ **Type:** `integer` ∙ **Cardinality:** `Optional` ∙ **Default value:** `600`   
+**Path:** /flex 
+
+A board cost added to the generalized cost of a flex leg.
+
+This cost is applied once per any type of flex leg including access/egress and direct legs,
+penalizing the act of boarding the flex vehicle.
+
 
 <h4 id="flex_maxAccessWalkDuration">maxAccessWalkDuration</h4>
 
@@ -127,15 +140,16 @@ A lower value means that the routing is faster.
   acceptable. (April 2021)
 - Also link transit stops used by flex trips to the closest car traversable edge. This allows flex
   street routing all the way to the stop. (April 2021)
-- Fix performance issues with the
-  StreetFlexPathCalculator [#3460](https://github.com/opentripplanner/OpenTripPlanner/pull/3460)
-- Improve performance of flex access/egress
-  routing [#3661](https://github.com/opentripplanner/OpenTripPlanner/pull/3661)
-- Allow getting on and off at the same flex stop
-  time [#3720](https://github.com/opentripplanner/OpenTripPlanner/pull/3720)
-- Calculate fare for flex
-  routes [#3743](https://github.com/opentripplanner/OpenTripPlanner/pull/3743)
+- Fix performance issues with the StreetFlexPathCalculator
+  [#3460](https://github.com/opentripplanner/OpenTripPlanner/pull/3460)
+- Improve performance of flex access/egress routing
+  [#3661](https://github.com/opentripplanner/OpenTripPlanner/pull/3661)
+- Allow getting on and off at the same flex stop time
+  [#3720](https://github.com/opentripplanner/OpenTripPlanner/pull/3720)
+- Calculate fare for flex routes
+  [#3743](https://github.com/opentripplanner/OpenTripPlanner/pull/3743)
 
 ### OTP 2.3
-- Enable configuration of `maxFlexTripDuration` and change of type of `maxTransferDuration`
-  routes [#4642](https://github.com/opentripplanner/OpenTripPlanner/pull/4642)
+
+- Enable configuration of `maxFlexTripDuration` and change of type of `maxTransferDuration` routes
+  [#4642](https://github.com/opentripplanner/OpenTripPlanner/pull/4642)

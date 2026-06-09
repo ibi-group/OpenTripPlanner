@@ -21,8 +21,8 @@ import org.opentripplanner.model.plan.Itinerary;
 import org.opentripplanner.model.plan.Place;
 import org.opentripplanner.model.plan.PlanTestConstants;
 import org.opentripplanner.street.geometry.WgsCoordinate;
-import org.opentripplanner.transit.model._data.TransitTestEnvironment;
-import org.opentripplanner.transit.model._data.TransitTestEnvironmentBuilder;
+import org.opentripplanner.transit.model.TransitTestEnvironment;
+import org.opentripplanner.transit.model.TransitTestEnvironmentBuilder;
 
 class EmissionItineraryDecoratorTest implements PlanTestConstants {
 
@@ -79,16 +79,16 @@ class EmissionItineraryDecoratorTest implements PlanTestConstants {
 
     int t0 = START_TIME;
     combinedWithFlex = newItinerary(A)
-      .drive(t0, t0 += 90, C)
-      .rail(4, t0 += 90, t0 += 90, D)
-      .bus(routeA, 20, t0, t0 += 90, E)
+      .drive(t0, (t0 += 90), C)
+      .rail(4, (t0 += 90), (t0 += 90), D)
+      .bus(routeA, 20, t0, (t0 += 90), E)
       .flex(t0 + 90, END_TIME, B)
       .build();
 
     combinedNoFlex = newItinerary(A)
-      .drive(t0, t0 += 90, C)
-      .rail(4, t0 += 90, t0 + 90, D)
-      .bus(routeA, 20, t0, t0 += 90, E)
+      .drive(t0, (t0 += 90), C)
+      .rail(4, (t0 += 90), t0 + 90, D)
+      .bus(routeA, 20, t0, (t0 += 90), E)
       .bus(routeB, 23, t0, END_TIME, B)
       .build();
 

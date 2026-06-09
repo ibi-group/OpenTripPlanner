@@ -4,21 +4,22 @@ import com.google.common.annotations.VisibleForTesting;
 import jakarta.inject.Inject;
 import java.io.Serializable;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 import javax.annotation.Nullable;
 import org.locationtech.jts.geom.Envelope;
 import org.locationtech.jts.geom.Geometry;
+import org.locationtech.jts.geom.LineString;
 import org.opentripplanner.core.model.id.FeedScopedId;
+import org.opentripplanner.service.vehiclerental.model.GeofencingZone;
 import org.opentripplanner.street.Scope;
 import org.opentripplanner.street.geometry.CompactElevationProfile;
 import org.opentripplanner.street.geometry.GeometryUtils;
-import org.opentripplanner.street.internal.notes.StreetNotesService;
 import org.opentripplanner.street.model.edge.Edge;
 import org.opentripplanner.street.model.edge.StreetEdge;
 import org.opentripplanner.street.model.openinghours.OpeningHoursCalendarService;
@@ -38,10 +39,10 @@ import org.slf4j.LoggerFactory;
  * In OTP1, the Graph contained vertices and edges representing the entire transportation network,
  * including edges representing both street segments and public transit lines connecting stops. In
  * OTP2, the Graph edges now represent only the street network. Transit routing is performed on
- * other data structures suited to the Raptor algorithm (the TimetableRepository). Some transit-related
+ * other data structures suited to the Raptor algorithm (the TransitRepository). Some transit-related
  * vertices are still present in the Graph, specifically those representing transit stops,
  * entrances, and elevators. Their presence in the street graph creates a connection between the two
- * routable data structures (identifying where stops in the TimetableRepository are located relative to
+ * routable data structures (identifying where stops in the TransitRepository are located relative to
  * roads).
  * <p>
  * Other data structures related to street routing, such as elevation data and vehicle parking
@@ -58,9 +59,6 @@ public class Graph implements Serializable {
 
   private static final Logger LOG = LoggerFactory.getLogger(Graph.class);
 
-  /** Attaches text notes to street edges, which do not affect routing. */
-  public final StreetNotesService streetNotesService = new StreetNotesService();
-
   // Ideally we could just get rid of vertex labels, but they're used in tests and graph building.
   private final Map<VertexLabel, Vertex> vertices = new ConcurrentHashMap<>();
 
@@ -71,6 +69,15 @@ public class Graph implements Serializable {
 
   /** The convex hull of all the graph vertices. Generated at the time the Graph is built. */
   private Geometry convexHull = null;
+
+  /**
+   * Vehicle rental geofencing zones applied to the street graph during the graph build, by network.
+   * The boundary markers derived from them live on the vertices; these are the zones themselves,
+   * kept so the serve phase can index them for containment queries. Networks whose zones are
+   * applied by an updater instead are absent here.
+   */
+  private final Map<String, Set<GeofencingZone>> vehicleRentalGeofencingZones =
+    new ConcurrentHashMap<>();
 
   /** True if OSM data was loaded into this Graph. */
   public boolean hasStreets = false;
@@ -142,7 +149,6 @@ public class Graph implements Serializable {
   }
 
   public void removeEdge(Edge e, Scope scope) {
-    streetNotesService.removeStaticNotes(e);
     e.remove();
     if (streetIndex != null) {
       streetIndex.remove(e, scope);
@@ -203,33 +209,42 @@ public class Graph implements Serializable {
   }
 
   /**
-   * Return all the edges in the graph. Derived from vertices on demand.
+   * Lazily iterate over all the edges in the graph, derived from vertices on demand, without
+   * materializing an intermediate collection. Can be reused/iterated over multiple times.
+   * <p>
+   * Use {@link ListUtils#ofIterable} to materialize a {@link List} if a {@link Collection} is
+   * required (e.g. serialization).
+   * <p>
+   * THREAD SAFTY - This method does not support concurent use. The behavior is undefined.
    */
-  public Collection<Edge> getEdges() {
-    Set<Edge> edges = new HashSet<>();
-    for (Vertex v : this.getVertices()) {
-      edges.addAll(v.getOutgoing());
-    }
-    return edges;
-  }
-
-  public <T extends Edge> List<T> getEdgesOfType(Class<T> cls) {
-    return this.getEdges()
-      .stream()
-      .filter(cls::isInstance)
-      .map(cls::cast)
-      .collect(Collectors.toList());
+  public Iterable<Edge> listEdges() {
+    return () ->
+      this.vertices
+        .values()
+        .stream()
+        .flatMap(v -> v.getOutgoing().stream())
+        .iterator();
   }
 
   /**
-   * Return only the StreetEdges in the graph.
+   * Lazily iterate over all edges of a certain type in the graph, without materializing an
+   * intermediate collection. Walks the vertices and yielding only the ones that are instances
+   * of {@code clazz}.
+   * <p>
+   * The iterable may contain duplicates and can only be iterated once.
+   * <p>
+   * Note: Under concurrent modification this method may return edges that have been removed from
+   * the graph or not return edges that have been added to the graph after this method has been
+   * called.
    */
-  public Collection<StreetEdge> getStreetEdges() {
-    return getEdgesOfType(StreetEdge.class);
+  public <T extends Edge> Iterable<T> findEdges(Class<T> clazz) {
+    return StreamSupport.stream(listEdges().spliterator(), false)
+      .filter(clazz::isInstance)
+      .map(clazz::cast)::iterator;
   }
 
   public boolean containsVertex(Vertex v) {
-    return (v != null) && vertices.get(v.getLabel()) == v;
+    return v != null && vertices.get(v.getLabel()) == v;
   }
 
   public void remove(Vertex vertex) {
@@ -319,6 +334,14 @@ public class Graph implements Serializable {
   }
 
   /**
+   * Find all edges near the segments of the given line strings.
+   */
+  public Set<Edge> findEdgesAlongLineStrings(Collection<LineString> lineStrings, Scope scope) {
+    requireIndex();
+    return streetIndex.findEdgesAlongLineStrings(lineStrings, scope);
+  }
+
+  /**
    * Insert edge into the index with the give scope.
    */
   public void insert(StreetEdge edge, Scope scope) {
@@ -338,6 +361,19 @@ public class Graph implements Serializable {
    */
   public Geometry getConvexHull() {
     return convexHull;
+  }
+
+  /**
+   * Records the geofencing zones applied for a rental network during the graph build. Replaces any
+   * earlier registration for the same network, which has exactly one source of zones.
+   */
+  public void setVehicleRentalGeofencingZones(String network, Collection<GeofencingZone> zones) {
+    vehicleRentalGeofencingZones.put(network, Set.copyOf(zones));
+  }
+
+  /** The geofencing zones applied during the graph build, by rental network. */
+  public Map<String, Set<GeofencingZone>> vehicleRentalGeofencingZones() {
+    return Map.copyOf(vehicleRentalGeofencingZones);
   }
 
   public void initEllipsoidToGeoidDifference(double value, double lat, double lon) {

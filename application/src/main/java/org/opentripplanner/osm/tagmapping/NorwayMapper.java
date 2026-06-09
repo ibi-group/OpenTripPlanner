@@ -14,6 +14,7 @@ import org.opentripplanner.osm.model.OsmEntity;
 import org.opentripplanner.osm.wayproperty.WayPropertySet;
 import org.opentripplanner.osm.wayproperty.specifier.BestMatchSpecifier;
 import org.opentripplanner.osm.wayproperty.specifier.Condition;
+import org.opentripplanner.osm.wayproperty.specifier.Condition.Not;
 import org.opentripplanner.osm.wayproperty.specifier.ExactMatchSpecifier;
 import org.opentripplanner.osm.wayproperty.specifier.LogicalOrSpecifier;
 
@@ -34,38 +35,39 @@ class NorwayMapper extends OsmTagMapper {
     var hasSidewalk = new Condition.OneOf("sidewalk", "yes", "left", "right", "both");
     // e.g sidewalk:left=yes
     var hasPrefixSidewalk = new Condition.Equals("sidewalk", "yes");
-    props.setDefaultWalkSafetyForPermission((permission, speedLimit, way) ->
-      switch (permission) {
-        case ALL, PEDESTRIAN_AND_CAR -> {
-          if (
-            hasSidewalk.isMatch(way) ||
-            hasPrefixSidewalk.isLeftMatch(way) ||
-            hasPrefixSidewalk.isRightMatch(way)
-          ) {
-            yield 1.1;
+    props.setDefaultWalkSafetyForPermission(
+      (permission, speedLimit, way) ->
+        switch (permission) {
+          case ALL, PEDESTRIAN_AND_CAR -> {
+            if (
+              hasSidewalk.isMatch(way) ||
+              hasPrefixSidewalk.isLeftMatch(way) ||
+              hasPrefixSidewalk.isRightMatch(way)
+            ) {
+              yield 1.1;
+            }
+            // 90 km/h or over
+            else if (speedLimit >= 25f) {
+              yield 3.;
+            }
+            // ~60 km/h or over
+            else if (speedLimit >= 16.6f) {
+              yield 1.9;
+            }
+            // ~40 km/h or over
+            else if (speedLimit >= 11.1f) {
+              yield 1.6;
+            }
+            // 30 km/h or lower
+            else {
+              yield 1.45;
+            }
           }
-          // 90 km/h or over
-          else if (speedLimit >= 25f) {
-            yield 3.;
-          }
-          // ~60 km/h or over
-          else if (speedLimit >= 16.6f) {
-            yield 1.9;
-          }
-          // ~40 km/h or over
-          else if (speedLimit >= 11.1f) {
-            yield 1.6;
-          }
-          // 30 km/h or lower
-          else {
-            yield 1.45;
-          }
+          case PEDESTRIAN_AND_BICYCLE -> 1.15;
+          case PEDESTRIAN -> 1.;
+          // these don't include walking
+          case BICYCLE_AND_CAR, BICYCLE, CAR, NONE -> 3.;
         }
-        case PEDESTRIAN_AND_BICYCLE -> 1.15;
-        case PEDESTRIAN -> 1.;
-        // these don't include walking
-        case BICYCLE_AND_CAR, BICYCLE, CAR, NONE -> 3.;
-      }
     );
 
     var cycleSafetyVeryHighTraffic = 10.;
@@ -160,15 +162,16 @@ class NorwayMapper extends OsmTagMapper {
       }
     };
 
-    props.setDefaultBicycleSafetyForPermission((permission, speedLimit, way) ->
-      switch (permission) {
-        case ALL -> cycleSafetyHighway.apply(speedLimit, way);
-        case BICYCLE_AND_CAR -> cycleSafetyVeryHighTraffic;
-        case PEDESTRIAN_AND_BICYCLE -> 1.12;
-        case BICYCLE -> 1.05;
-        // these don't include cycling
-        case PEDESTRIAN_AND_CAR, PEDESTRIAN, CAR, NONE -> cycleSafetyVeryHighTraffic;
-      }
+    props.setDefaultBicycleSafetyForPermission(
+      (permission, speedLimit, way) ->
+        switch (permission) {
+          case ALL -> cycleSafetyHighway.apply(speedLimit, way);
+          case BICYCLE_AND_CAR -> cycleSafetyVeryHighTraffic;
+          case PEDESTRIAN_AND_BICYCLE -> 1.12;
+          case BICYCLE -> 1.05;
+          // these don't include cycling
+          case PEDESTRIAN_AND_CAR, PEDESTRIAN, CAR, NONE -> cycleSafetyVeryHighTraffic;
+        }
     );
 
     props.setProperties(
@@ -239,9 +242,11 @@ class NorwayMapper extends OsmTagMapper {
     // Discourage cycling along tram tracks
     props.setMixinProperties(
       new ExactMatchSpecifier(
-        new Condition.OneOf("embedded_rails", "tram", "light_rail", "disused")
+        new Condition.OneOf("embedded_rails", "tram", "light_rail", "rail", "disused", "yes"),
+        new Not(new Condition.Equals("cycleway", "lane")),
+        new Not(new Condition.Equals("cycleway:both", "lane"))
       ),
-      ofBicycleSafety(1.2)
+      ofBicycleSafety(2)
     );
 
     // Discourage cycling and walking in road tunnels
@@ -638,7 +643,7 @@ class NorwayMapper extends OsmTagMapper {
     // 110 km/h
     props.setMaxPossibleCarSpeed(30.56f);
 
-    super.populateNotesAndNames(props);
+    super.populateNames(props);
 
     props.setSlopeOverride(new BestMatchSpecifier("bridge=*"), true);
     props.setSlopeOverride(new BestMatchSpecifier("cutting=*"), true);

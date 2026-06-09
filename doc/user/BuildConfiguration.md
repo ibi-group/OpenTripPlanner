@@ -2,7 +2,7 @@
   NOTE! Part of this document is generated. Make sure you edit the template, not the generated doc.
 
    - Template directory is:  /doc/templates
-   - Generated directory is: /doc/user 
+   - Generated directory is: /doc/user
 -->
 
 # Graph Build Configuration
@@ -10,7 +10,6 @@
 This table lists all the JSON properties that can be defined in a `build-config.json` file. These
 will be stored in the graph itself, and affect any server that subsequently loads that graph.
 Sections follow that describe particular settings in more depth.
-
 
 ## Parameters Overview
 
@@ -37,8 +36,7 @@ Sections follow that describe particular settings in more depth.
 | [multiThreadElevationCalculations](#multiThreadElevationCalculations)                       |       `boolean`      | Configuring multi-threading during elevation calculations.                                                                                                     | *Optional* | `false`                           |  2.0  |
 | [osmCacheDataInMem](#osmCacheDataInMem)                                                     |       `boolean`      | If OSM data should be cached in memory during processing.                                                                                                      | *Optional* | `false`                           |  2.0  |
 | [osmNaming](#osmNaming)                                                                     |        `enum`        | A custom OSM namer to use.                                                                                                                                     | *Optional* | `"default"`                       |  1.5  |
-| platformEntriesLinking                                                                      |       `boolean`      | Link unconnected entries to public transport platforms.                                                                                                        | *Optional* | `false`                           |  2.0  |
-| [readCachedElevations](#readCachedElevations)                                               |       `boolean`      | Whether to read cached elevation data.                                                                                                                         | *Optional* | `true`                            |  2.0  |
+| [platformEntriesLinking](#platformEntriesLinking)                                           |       `boolean`      | Link stairways, elevators and other entries that fall inside a platform's outline into that platform's walking area.                                           | *Optional* | `false`                           |  2.0  |
 | staticBikeParkAndRide                                                                       |       `boolean`      | Whether we should create bike P+R stations from OSM data.                                                                                                      | *Optional* | `false`                           |  1.5  |
 | staticParkAndRide                                                                           |       `boolean`      | Whether we should create car P+R stations from OSM data.                                                                                                       | *Optional* | `true`                            |  1.5  |
 | stopConsolidationFile                                                                       |         `uri`        | Name of the CSV-formatted file in the build directory which contains the configuration for stop consolidation.                                                 | *Optional* |                                   |  2.5  |
@@ -47,8 +45,11 @@ Sections follow that describe particular settings in more depth.
 | [transitModelTimeZone](#transitModelTimeZone)                                               |      `time-zone`     | Time zone for the graph.                                                                                                                                       | *Optional* |                                   |  2.2  |
 | [transitServiceEnd](#transitServiceEnd)                                                     |      `duration`      | Limit the import of transit services to the given end date.                                                                                                    | *Optional* | `"P3Y"`                           |  2.0  |
 | [transitServiceStart](#transitServiceStart)                                                 |      `duration`      | Limit the import of transit services to the given START date.                                                                                                  | *Optional* | `"-P1Y"`                          |  2.0  |
-| [writeCachedElevations](#writeCachedElevations)                                             |       `boolean`      | Reusing elevation data from previous builds                                                                                                                    | *Optional* | `false`                           |  2.0  |
 | [boardingLocationTags](#boardingLocationTags)                                               |      `string[]`      | What OSM tags should be looked on for the source of matching stops to platforms and stops.                                                                     | *Optional* |                                   |  2.2  |
+| [cache](#cache)                                                                             |       `object`       | Configuration for the graph-build file cache.                                                                                                                  | *Optional* |                                   |  2.10 |
+|    [enabled](#cache_enabled)                                                                |       `boolean`      | Master switch for the graph-build cache.                                                                                                                       | *Optional* | `false`                           |  2.10 |
+|    [path](#cache_path)                                                                      |         `uri`        | Root directory for cache files.                                                                                                                                | *Optional* |                                   |  2.10 |
+|    [tasks](#cache_tasks)                                                                    |      `enum set`      | Which graph-build computations to cache between builds.                                                                                                        | *Optional* |                                   |  2.10 |
 | [dataOverlay](sandbox/DataOverlay.md)                                                       |       `object`       | Config for the DataOverlay Sandbox module                                                                                                                      | *Optional* |                                   |  2.2  |
 | [dem](#dem)                                                                                 |      `object[]`      | Specify parameters for DEM extracts.                                                                                                                           | *Optional* |                                   |  2.2  |
 |       [elevationUnitMultiplier](#dem_0_elevationUnitMultiplier)                             |       `double`       | Specify a multiplier to convert elevation units from source to meters. Overrides the value specified in `demDefaults`.                                         | *Optional* | `1.0`                             |  2.3  |
@@ -56,6 +57,8 @@ Sections follow that describe particular settings in more depth.
 | demDefaults                                                                                 |       `object`       | Default properties for DEM extracts.                                                                                                                           | *Optional* |                                   |  2.3  |
 |    [elevationUnitMultiplier](#demDefaults_elevationUnitMultiplier)                          |       `double`       | Specify a multiplier to convert elevation units from source to meters.                                                                                         | *Optional* | `1.0`                             |  2.3  |
 | [elevationBucket](#elevationBucket)                                                         |       `object`       | Used to download NED elevation tiles from the given AWS S3 bucket.                                                                                             | *Optional* |                                   |   na  |
+| [elevatorRefTags](#elevatorRefTags)                                                         |      `object[]`      | Groups of OSM tags whose values are combined into an elevator id.                                                                                              | *Optional* |                                   |  2.10 |
+|       [tagGroup](#elevatorRefTags_0_tagGroup)                                               |      `string[]`      | The ordered OSM tag keys whose values are combined into one id.                                                                                                | *Optional* |                                   |  2.10 |
 | [emission](sandbox/Emission.md)                                                             |       `object`       | Emissions configuration.                                                                                                                                       | *Optional* |                                   |  2.5  |
 | empiricalDelay                                                                              |       `object`       | Empirical delay configuration.                                                                                                                                 | *Optional* |                                   |  2.9  |
 | [fares](sandbox/Fares.md)                                                                   |       `object`       | Fare configuration.                                                                                                                                            | *Optional* |                                   |  2.0  |
@@ -99,12 +102,12 @@ Sections follow that describe particular settings in more depth.
 |       [bikesAllowedStopMaxTransferDuration](#tpfm_BIKE_bikesAllowedStopMaxTransferDuration) |      `duration`      | This is used for specifying a `maxTransferDuration` value to use with transfers between stops which are visited by trips that allow bikes.                     | *Optional* |                                   |  2.9  |
 |       [carsAllowedStopMaxTransferDuration](#tpfm_BIKE_carsAllowedStopMaxTransferDuration)   |      `duration`      | This is used for specifying a `maxTransferDuration` value to use with transfers between stops which are visited by trips that allow cars.                      | *Optional* |                                   |  2.7  |
 |       [disableDefaultTransfers](#tpfm_BIKE_disableDefaultTransfers)                         |       `boolean`      | This disables default transfer calculations.                                                                                                                   | *Optional* | `false`                           |  2.7  |
-|       maxTransferDuration                                                                   |      `duration`      | This overwrites the default `maxTransferDuration` for the given mode.                                                                                          | *Optional* |                                   |  2.7  |
+|       [maxTransferDuration](#tpfm_BIKE_maxTransferDuration)                                 |      `duration`      | This overwrites the default `maxTransferDuration` for the given mode.                                                                                          | *Optional* |                                   |  2.7  |
 |    CAR                                                                                      |       `object`       | NA                                                                                                                                                             | *Optional* |                                   |  2.7  |
 |       [bikesAllowedStopMaxTransferDuration](#tpfm_CAR_bikesAllowedStopMaxTransferDuration)  |      `duration`      | This is used for specifying a `maxTransferDuration` value to use with transfers between stops which are visited by trips that allow bikes.                     | *Optional* |                                   |  2.9  |
 |       [carsAllowedStopMaxTransferDuration](#tpfm_CAR_carsAllowedStopMaxTransferDuration)    |      `duration`      | This is used for specifying a `maxTransferDuration` value to use with transfers between stops which are visited by trips that allow cars.                      | *Optional* |                                   |  2.7  |
 |       [disableDefaultTransfers](#tpfm_CAR_disableDefaultTransfers)                          |       `boolean`      | This disables default transfer calculations.                                                                                                                   | *Optional* | `false`                           |  2.7  |
-|       maxTransferDuration                                                                   |      `duration`      | This overwrites the default `maxTransferDuration` for the given mode.                                                                                          | *Optional* |                                   |  2.7  |
+|       [maxTransferDuration](#tpfm_CAR_maxTransferDuration)                                  |      `duration`      | This overwrites the default `maxTransferDuration` for the given mode.                                                                                          | *Optional* |                                   |  2.7  |
 | [transferRequests](RouteRequest.md)                                                         |      `object[]`      | Routing requests to use for pre-calculating stop-to-stop transfers.                                                                                            | *Optional* |                                   |  2.1  |
 | [transitFeeds](#transitFeeds)                                                               |      `object[]`      | Scan for transit data files                                                                                                                                    | *Optional* |                                   |  2.2  |
 |    { object }                                                                               |       `object`       | Nested object in array. The object type is determined by the parameters.                                                                                       | *Optional* |                                   |  2.2  |
@@ -128,29 +131,28 @@ Sections follow that describe particular settings in more depth.
 |       source                                                                                |         `uri`        | The unique URI pointing to the data file.                                                                                                                      | *Required* |                                   |  2.2  |
 |       [ferryIdsNotAllowedForBicycle](#tf_1_ferryIdsNotAllowedForBicycle)                    |      `string[]`      | List ferries which do not allow bikes.                                                                                                                         | *Optional* |                                   |  2.0  |
 | [transitRouteToStationCentroid](#transitRouteToStationCentroid)                             |  `feed-scoped-id[]`  | List stations that should route to centroid.                                                                                                                   | *Optional* |                                   |  2.7  |
+| [vehicleRentalGeofencing](#vehicleRentalGeofencing)                                         |       `object`       | Load GBFS geofencing zones into the graph during graph build.                                                                                                  | *Optional* |                                   |  2.10 |
 
 <!-- PARAMETERS-TABLE END -->
 
-
 ## Specifying URIs
 
-As a general rule, references to data files are specified as absolute URIs and must start with the 
-protocol name.   
+As a general rule, references to data files are specified as absolute URIs and must start with the
+protocol name.
 
 **Example**
 
 Local files: `"file:///Users/kelvin/otp/streetGraph.obj"`  
 HTTPS resources: `"https://download.geofabrik.de/europe/norway-latest.osm.pbf"`  
-Google Cloud Storage files: `"gs://otp-test-bucket/a/b/graph.obj"`  
+Google Cloud Storage files: `"gs://otp-test-bucket/a/b/graph.obj"`
 
 Alternatively if a relative URI can be provided, it is interpreted as a path relative to the
 [base directory](Configuration.md#Base-Directory).
 
 **Example**
 
-File relative to the base directory (inside the base directory): `streetGraph.obj`   
+File relative to the base directory (inside the base directory): `streetGraph.obj`  
 File relative to the base directory (outside the base directory): `../street-graphs/streetGraph.obj`
-
 
 ### Example With Multiple Data Sources
 
@@ -190,23 +192,22 @@ OTP2 will still scan the base directory for all other types such as DEM files. S
 array for a particular file type will ensure that no inputs of that type are loaded, including by
 local directory scanning.
 
-
 <h2 id="limit-transit-service-period">Limit the transit service period</h2>
 
 The properties `transitServiceStart` and `transitServiceEnd` can be used to limit the service dates.
 This affects both GTFS service calendars and dates. The service calendar is reduced and dates
 outside the period are dropped. OTP2 will compute a transit schedule for every day for which it can
-find at least one trip running. On the other hand, OTP will waste resources if a service end date
-is *unbounded* or very large (`9999-12-31`). To avoid this, limit the OTP service period. Also, if
-you provide a service with multiple feeds they may have different service end dates. To avoid
+find at least one trip running. On the other hand, OTP will waste resources if a service end date is
+_unbounded_ or very large (`9999-12-31`). To avoid this, limit the OTP service period. Also, if you
+provide a service with multiple feeds they may have different service end dates. To avoid
 inconsistent results, the period can be limited, so all feeds have data for the entire period. The
 default is to use a period of 1 year before, and 3 years after the day the graph is built. Limiting
-the period will *not* improve the search performance, but OTP will build faster and load faster in
+the period will _not_ improve the search performance, but OTP will build faster and load faster in
 most cases.
 
-The `transitServiceStart` and `transitServiceEnd` parameters are set using an absolute date
-like `2020-12-31` or a period like `P1Y6M5D` relative to the graph build date. Negative periods is
-used to specify dates in the past. The period is computed using the system time-zone, not the feed
+The `transitServiceStart` and `transitServiceEnd` parameters are set using an absolute date like
+`2020-12-31` or a period like `P1Y6M5D` relative to the graph build date. Negative periods is used
+to specify dates in the past. The period is computed using the system time-zone, not the feed
 time-zone. Also, remember that the service day might be more than 24 hours. So be sure to include
 enough slack to account for the this. Setting the limits too wide have very little impact and is in
 general better than trying to be exact. The period and date format follow the ISO 8601 standard.
@@ -218,7 +219,7 @@ general better than trying to be exact. The period and date format follow the IS
 {
   // Include 3 months of history
   "transitServiceStart" : "-P3M",
-  // Include 1 year 6 month and 5 days of scheduled data in the future 
+  // Include 1 year 6 month and 5 days of scheduled data in the future
   "transitServiceEnd" : "P1Y6M5D"
 }
 ```
@@ -235,13 +236,14 @@ or region are tagged affects routing. As an example roads tagged with `highway=t
 walkable in Norway, but forbidden in some other countries. This might lead to OTP being unable to
 snap stops to these roads, or by giving you poor routing results for walking and biking. You can
 adjust which road types that are accessible by foot, car & bicycle as well as speed limits,
-suitability for biking and walking. It's possible to define "safety" values for cycling and walking which are used in routing.
+suitability for biking and walking. It's possible to define "safety" values for cycling and walking
+which are used in routing.
 
-To add your own OSM tag mapping have a look
-at `org.opentripplanner.graph_builder.module.osm.tagmapping.NorwayTagMapper`
-and `org.opentripplanner.graph_builder.module.osm.tagmapping.DefaultMapper` as examples. 
-If you choose to mainly rely on the default rules, make sure you add your own rules first before applying the default ones.
-The mechanism is that for any two identical tags, OTP will use the first one.
+To add your own OSM tag mapping have a look at
+`org.opentripplanner.graph_builder.module.osm.tagmapping.NorwayTagMapper` and
+`org.opentripplanner.graph_builder.module.osm.tagmapping.DefaultMapper` as examples. If you choose
+to mainly rely on the default rules, make sure you add your own rules first before applying the
+default ones. The mechanism is that for any two identical tags, OTP will use the first one.
 
 ```JSON
 // build-config.json
@@ -266,7 +268,6 @@ For guidance on preparing the DEM file itself — choosing a resolution, project
 layout, NoData flag, and compression — see [Preparing DEM Data](Preparing-DEM.md). This section
 covers only the `build-config.json` options.
 
-
 ### Geoid Difference
 
 Some elevation data sets are relative to mean sea level. At a global scale sea level is represented
@@ -274,23 +275,23 @@ as a surface called the geoid, which is irregular in shape due to local gravitat
 the other hand, GPS elevations are reported relative to the WGS84 spheroid, a perfectly smooth
 mathematical surface approximating the geoid. In cases where the two elevation definitions are
 mixed, it may be necessary to adjust elevation values to avoid confusing users with things like
-negative elevation values in places clearly above sea level.
-See [issue #2301](https://github.com/opentripplanner/OpenTripPlanner/issues/2301)
-for detailed discussion of this.
+negative elevation values in places clearly above sea level. See
+[issue #2301](https://github.com/opentripplanner/OpenTripPlanner/issues/2301) for detailed
+discussion of this.
 
 OTP allows you to adjust the elevation values reported in API responses in two ways. The first way
 is to store ellipsoid (GPS) elevation values internally, but apply a single geoid difference value
-in the OTP client where appropriate to display elevations above sea level. 
+in the OTP client where appropriate to display elevations above sea level.
 
-Using a single value can be sufficient for smaller OTP deployments, but might result in
-incorrect values at the edges of larger OTP deployments. If your OTP instance uses this, it is
-recommended to set a default request value in the `router-config.json` file as follows:
+Using a single value can be sufficient for smaller OTP deployments, but might result in incorrect
+values at the edges of larger OTP deployments. If your OTP instance uses this, it is recommended to
+set a default request value in the `router-config.json` file as follows:
 
 ```JSON
 // router-config.json
 {
     "routingDefaults": {
-        "geoidElevation": true   
+        "geoidElevation": true
     }
 }
 ```
@@ -310,9 +311,9 @@ irregularities. To enable this, include the following in the `build-config.json`
 }
 ```
 
-If the geoid difference values are precomputed, be careful to not set the routing resource value
-of `geoidElevation` to true in order to avoid having the graph-wide geoid added again to all
-elevation values in the relevant street edges in responses.
+If the geoid difference values are precomputed, be careful to not set the routing resource value of
+`geoidElevation` to true in order to avoid having the graph-wide geoid added again to all elevation
+values in the relevant street edges in responses.
 
 ### Other raster elevation data
 
@@ -329,22 +330,21 @@ OTP should automatically handle DEM GeoTIFFs in most common projections. You may
 elevation-related error messages during the graph build process to make sure OTP has properly
 discovered the projection. If you are using a DEM in unprojected coordinates make sure that the axis
 order is (longitude, latitude) rather than (latitude, longitude). Unfortunately there is no reliable
-standard for WGS84 axis order, so OTP uses the same axis order as the above-mentioned SRTM data, 
+standard for WGS84 axis order, so OTP uses the same axis order as the above-mentioned SRTM data,
 which is also the default for the popular Proj4 library.
 
-DEM files(USGS DEM) is not supported by OTP, but can be converted to GeoTIFF with tools
-like [GDAL](http://www.gdal.org/). Use `gdal_merge.py -o merged.tiff *.dem` to merge a set of `dem`
-files into one `tif` file.
+DEM files(USGS DEM) is not supported by OTP, but can be converted to GeoTIFF with tools like
+[GDAL](http://www.gdal.org/). Use `gdal_merge.py -o merged.tiff *.dem` to merge a set of `dem` files
+into one `tif` file.
 
 See Interline [PlanetUtils](https://github.com/interline-io/planetutils) for a set of scripts to
-download, merge, and resample 
+download, merge, and resample
 [Mapzen/Amazon Terrain Tiles](https://registry.opendata.aws/terrain-tiles/).
-
 
 ### Elevation unit conversion
 
-By default, OTP expects the elevation data to use metres. However, by setting 
-`elevationUnitMultiplier` in `build-config.json`, it is possible to define a multiplier that 
+By default, OTP expects the elevation data to use metres. However, by setting
+`elevationUnitMultiplier` in `build-config.json`, it is possible to define a multiplier that
 converts the elevation values from some other unit to metres.
 
 ```JSON
@@ -371,9 +371,8 @@ that contain the elevation data you need. This will save time because all the da
 downloaded.
 
 However, the bulk of the time will still be spent calculating elevations for the street edges.
-Therefore, a further optimization can be done to calculate and save the elevation data during  a 
+Therefore, a further optimization can be done to calculate and save the elevation data during a
 graph build and then save it for future use.
-
 
 #### Reusing elevation data from previous builds
 
@@ -381,12 +380,12 @@ In order to write out the precalculated elevation data, add this to your `build-
 
 ```JSON
 // build-config.json
-{  
+{
   "writeCachedElevations": true
 }
 ```
-See [writeCachedElevations](#writeCachedElevations) for details.
 
+See [writeCachedElevations](#writeCachedElevations) for details.
 
 ## Parameter Details
 
@@ -547,16 +546,30 @@ data, and to `false` to read the stream from the source each time.
 
 A custom OSM namer to use.
 
-<h3 id="readCachedElevations">readCachedElevations</h3>
+<h3 id="platformEntriesLinking">platformEntriesLinking</h3>
 
-**Since version:** `2.0` ∙ **Type:** `boolean` ∙ **Cardinality:** `Optional` ∙ **Default value:** `true`   
+**Since version:** `2.0` ∙ **Type:** `boolean` ∙ **Cardinality:** `Optional` ∙ **Default value:** `false`   
 **Path:** / 
 
-Whether to read cached elevation data.
+Link stairways, elevators and other entries that fall inside a platform's outline into that platform's walking area.
 
-When set to true, the elevation module will attempt to read this file in
-order to reuse calculations of elevation data for various coordinate sequences instead of
-recalculating them all over again.
+Public transport platforms in OSM are usually mapped as an area, but the stairway,
+elevator or ramp that actually leads onto the platform is frequently mapped as a separate
+way whose nodes are not shared with the platform's outline - it merely happens to end
+somewhere geometrically inside of it. Without this option such entries stay disconnected from
+the platform and can end up unreachable, or force a long detour around the platform
+boundary to reach.
+
+When enabled, OTP looks for street vertices that have exactly one non-motorized
+connection to the rest of the street network - a "stub", such as the top of a staircase.
+For every platform, it then checks which of these stubs fall inside that platform's
+outline - not just on its boundary, but anywhere inside it - and links them into the
+platform's walking area, so people can be routed from the platform to the entrance and
+back even though OSM never connected them directly.
+
+Turn this on if platform entrances in your OSM data are commonly mapped this way; leave
+it off if entrances always share nodes with the platform outline, since the extra
+street-vertex scan adds a small amount of processing time during graph build.
 
 
 <h3 id="streetGraph">streetGraph</h3>
@@ -630,36 +643,6 @@ build(BUILD_DAY).
 To get an effectively unbounded value, use a very large period like `"-P100Y"`.
 
 
-<h3 id="writeCachedElevations">writeCachedElevations</h3>
-
-**Since version:** `2.0` ∙ **Type:** `boolean` ∙ **Cardinality:** `Optional` ∙ **Default value:** `false`   
-**Path:** / 
-
-Reusing elevation data from previous builds
-
-When set to true, the elevation module will create a file cache for calculated elevation data.
-Subsequent graph builds can reuse the data in this file.
-
-After building the graph, a file called `cached_elevations.obj` will be written to the cache
-directory. By default, this file is not written during graph builds. There is also a graph build
-parameter called `readCachedElevations` which is set to `true` by default.
-
-In graph builds, the elevation module will attempt to read the `cached_elevations.obj` file from
-the cache directory. The cache directory defaults to `/var/otp/cache`, but this can be overridden
-via the CLI argument `--cache <directory>`. For the same graph build for multiple Northeast US
-states, the time it took with using this pre-downloaded and precalculated data became roughly 9
-minutes.
-
-The cached data is a lookup table where the coordinate sequences of respective street edges are
-used as keys for calculated data. It is assumed that all of the other input data except for the
-OpenStreetMap data remains the same between graph builds. Therefore, if the underlying elevation
-data is changed, or different configuration values for `elevationUnitMultiplier` or
-`includeEllipsoidToGeoidDifference` are used, then this data becomes invalid and all elevation data
-should be recalculated. Over time, various edits to OpenStreetMap will cause this cached data to
-become stale and not include new OSM ways. Therefore, periodic update of this cached data is
-recommended.
-
-
 <h3 id="boardingLocationTags">boardingLocationTags</h3>
 
 **Since version:** `2.2` ∙ **Type:** `string[]` ∙ **Cardinality:** `Optional`   
@@ -668,6 +651,71 @@ recommended.
 What OSM tags should be looked on for the source of matching stops to platforms and stops.
 
 [Detailed documentation](BoardingLocations.md)
+
+<h3 id="cache">cache</h3>
+
+**Since version:** `2.10` ∙ **Type:** `object` ∙ **Cardinality:** `Optional`   
+**Path:** / 
+
+Configuration for the graph-build file cache.
+
+OTP can cache the results of expensive graph-build computations between builds. Both
+cached tasks can take a significant portion of total graph-build time; enabling the cache
+skips their computation on subsequent builds and can cut build time considerably when the
+same OSM and DEM files are reused.
+
+**When to enable:** any pipeline that rebuilds the graph repeatedly from the same OSM
+and elevation data (e.g. nightly GTFS-only updates).
+
+Cache files are named `<task>-cache-<version>.obj` (for example `elevation-cache-1.obj`).
+When OTP bumps the internal serialization version the old file is ignored automatically
+and a new one is written, so old versioned files can be deleted safely at any time.
+
+Caching is **disabled by default**. Set `enabled: true` to activate it.
+
+
+<h3 id="cache_enabled">enabled</h3>
+
+**Since version:** `2.10` ∙ **Type:** `boolean` ∙ **Cardinality:** `Optional` ∙ **Default value:** `false`   
+**Path:** /cache 
+
+Master switch for the graph-build cache.
+
+When `false` no cache files are read or written during graph builds.
+
+<h3 id="cache_path">path</h3>
+
+**Since version:** `2.10` ∙ **Type:** `uri` ∙ **Cardinality:** `Optional`   
+**Path:** /cache 
+
+Root directory for cache files.
+
+Path to the directory where cache files are stored. Defaults to the OTP base directory
+(the directory containing `build-config.json`) when not set.
+
+
+<h3 id="cache_tasks">tasks</h3>
+
+**Since version:** `2.10` ∙ **Type:** `enum set` ∙ **Cardinality:** `Optional`   
+**Path:** /cache   
+**Enum values:** `elevation` | `visibility`
+
+Which graph-build computations to cache between builds.
+
+ - `elevation` Caches the elevation profile sampled for every street edge. The cache key is the encoded edge
+   geometry; OSM changes are handled automatically (new or modified edges cause a cache miss,
+   removed edges are omitted from the next save).
+   
+   **Delete the elevation cache when the DEM source file is replaced**, because edge geometries
+   are unchanged but the sampled height values would be stale.
+ - `visibility` Caches pre-computed visibility graphs for walkable OSM areas (parks, plazas, etc.). The cache
+   key is a hash of the OSM entity IDs and all polygon coordinates, so any geometry change
+   causes a cache miss automatically. Only entries accessed during a build are written back, so
+   deleted areas are pruned from the saved file automatically.
+   
+   **The visibility cache never needs to be deleted manually.**
+
+When not set, all tasks are enabled. Omit a task from the list to disable its cache.
 
 <h3 id="dem">dem</h3>
 
@@ -734,6 +782,26 @@ Once the tiles are downloaded for a particular geographic area, OTP will keep th
 for the next graph build operation. You should add the `--cache <directory>` command line parameter
 to specify your NED tile cache location.
 
+
+<h3 id="elevatorRefTags">elevatorRefTags</h3>
+
+**Since version:** `2.10` ∙ **Type:** `object[]` ∙ **Cardinality:** `Optional`   
+**Path:** / 
+
+Groups of OSM tags whose values are combined into an elevator id.
+
+Each group is a list of one or more OSM tag keys. If every tag in a group is present
+on an elevator node/way, their values are joined with ':' (in the given order) into
+one id. A group with a single tag key produces a plain id. If any tag in a group is
+missing, that group produces no id. If more than one group is configured, the first
+one (in the given order) that produces an id is used as the elevator's id.
+
+<h3 id="elevatorRefTags_0_tagGroup">tagGroup</h3>
+
+**Since version:** `2.10` ∙ **Type:** `string[]` ∙ **Cardinality:** `Optional`   
+**Path:** /elevatorRefTags/[0] 
+
+The ordered OSM tag keys whose values are combined into one id.
 
 <h3 id="gd_discardMinTransferTimes">discardMinTransferTimes</h3>
 
@@ -956,7 +1024,7 @@ the local filesystem.
 
 **Since version:** `2.2` ∙ **Type:** `enum` ∙ **Cardinality:** `Optional` ∙ **Default value:** `"default"`   
 **Path:** /osm/[0]   
-**Enum values:** `default` | `norway` | `uk` | `finland` | `germany` | `hamburg` | `atlanta` | `houston` | `portland` | `constant-speed-finland`
+**Enum values:** `default` | `norway` | `uk` | `finland` | `germany` | `hamburg` | `atlanta` | `houston` | `portland` | `twin-cities` | `constant-speed-finland`
 
 The named set of mapping rules applied when parsing OSM tags. Overrides the value specified in `osmDefaults`.
 
@@ -964,7 +1032,7 @@ The named set of mapping rules applied when parsing OSM tags. Overrides the valu
 
 **Since version:** `2.2` ∙ **Type:** `enum` ∙ **Cardinality:** `Optional` ∙ **Default value:** `"default"`   
 **Path:** /osmDefaults   
-**Enum values:** `default` | `norway` | `uk` | `finland` | `germany` | `hamburg` | `atlanta` | `houston` | `portland` | `constant-speed-finland`
+**Enum values:** `default` | `norway` | `uk` | `finland` | `germany` | `hamburg` | `atlanta` | `houston` | `portland` | `twin-cities` | `constant-speed-finland`
 
 The named set of mapping rules applied when parsing OSM tags.
 
@@ -1003,19 +1071,17 @@ To configure mode-specific parameters, the modes should also be used in the `tra
 **Since version:** `2.9` ∙ **Type:** `duration` ∙ **Cardinality:** `Optional`   
 **Path:** /transferParametersForMode/BIKE 
 
-This is used for specifying a `maxTransferDuration` value to use with transfers between stops which are visited by trips that allow bikes.
+This is used for specifying a `maxTransferDuration` value to use with transfers between
+stops which are visited by trips that allow bikes.
 
-This parameter configures additional transfers to be calculated for the specified mode only between stops that have trips with bikes.
-The transfers are calculated for the mode in a range based on the given duration.
-By default, these transfers are not calculated unless specified for a mode with this field.
 
-When compared to walking, using a bike can cover larger distances within the same duration specified in the `maxTransferDuration` field.
-This can lead to large amounts of transfers calculated between stops that do not require bike transfers between them.
-This in turn can lead to a large increase in memory for the stored graph, depending on the data used in the graph.
+Configures a separate `maxTransferDuration` for the given mode, used only for transfers
+between stops visited by trips that allow bikes, instead of the given mode's
+`maxTransferDuration`.
 
-For bikes, using this parameter in conjunction with `disableDefaultTransfers` allows calculating transfers only between stops
-which have trips which allow carrying bikes. This avoids storing and calculating transfers which are never used so the transit search
-can be faster compared to the default transfers.
+In combination with the mode's `maxTransferDuration` you can include transfers for bikes
+between all stops in a smaller radius, and use a larger radius for transfers between
+stops where bikes are explicit allowed.
 
 
 <h3 id="tpfm_BIKE_carsAllowedStopMaxTransferDuration">carsAllowedStopMaxTransferDuration</h3>
@@ -1023,24 +1089,18 @@ can be faster compared to the default transfers.
 **Since version:** `2.7` ∙ **Type:** `duration` ∙ **Cardinality:** `Optional`   
 **Path:** /transferParametersForMode/BIKE 
 
-This is used for specifying a `maxTransferDuration` value to use with transfers between stops which are visited by trips that allow cars.
+This is used for specifying a `maxTransferDuration` value to use with transfers between
+stops which are visited by trips that allow cars.
 
-This parameter configures additional transfers to be calculated for the specified mode only between stops that have trips with cars.
-The transfers are calculated for the mode in a range based on the given duration.
-By default, these transfers are not calculated unless specified for a mode with this field.
 
-Calculating transfers only between stops that have trips with cars can be useful with car ferries, for example.
-Using transit with cars can only occur between certain stops.
-These kinds of stops require support for loading cars into ferries, for example.
-The default transfers are calculated based on a configurable range (configurable by using the `maxTransferDuration` field)
-which limits transfers from stops to only be calculated to other stops that are in range.
-When compared to walking, using a car can cover larger distances within the same duration specified in the `maxTransferDuration` field.
-This can lead to large amounts of transfers calculated between stops that do not require car transfers between them.
-This in turn can lead to a large increase in memory for the stored graph, depending on the data used in the graph.
+Configures a separate `maxTransferDuration` for the given mode, used only for transfers
+between stops visited by trips that allow cars (e.g. car ferries), instead of the given
+mode's `maxTransferDuration`.
 
-For cars, using this parameter in conjunction with `disableDefaultTransfers` allows calculating transfers only between relevant stops.
-For bikes, using this parameter can enable transfers between ferry stops that would normally not be in range.
-In Finland this is useful for bike routes that use ferries near the Turku archipelago, for example.
+This can also be configured for other modes. For example, for bikes, this can enable
+transfers between ferry stops that would otherwise be out of range, since car ferries
+usually also allow bikes. This is useful for bike routes using ferries near the Turku
+archipelago in Finland, for example.
 
 
 <h3 id="tpfm_BIKE_disableDefaultTransfers">disableDefaultTransfers</h3>
@@ -1050,12 +1110,29 @@ In Finland this is useful for bike routes that use ferries near the Turku archip
 
 This disables default transfer calculations.
 
-The default transfers are calculated based on a configurable range (configurable by using the `maxTransferDuration` field)
-which limits transfers from stops to only be calculated to other stops that are in range.
-This parameter disables these transfers.
-A motivation to disable default transfers could be related to using the `carsAllowedStopMaxTransferDuration` field which only
-calculates transfers between stops that have trips with cars, or `bikesAllowedStopMaxTransferDuration` field for bikes.
-For example, when using the `carsAllowedStopMaxTransferDuration` field with cars, the default transfers can be redundant.
+By default, transfers are calculated between all stop pairs within the given mode's
+`maxTransferDuration`. This parameter disables that default calculation for the mode.
+
+This is used together with `carsAllowedStopMaxTransferDuration` or
+`bikesAllowedStopMaxTransferDuration`, so that only the restricted, relevant transfers are
+calculated.
+
+
+<h3 id="tpfm_BIKE_maxTransferDuration">maxTransferDuration</h3>
+
+**Since version:** `2.7` ∙ **Type:** `duration` ∙ **Cardinality:** `Optional`   
+**Path:** /transferParametersForMode/BIKE 
+
+This overwrites the default `maxTransferDuration` for the given mode.
+
+A car or a bike can cover a much larger distance than walking within the same duration.
+Reusing this value would reduce the search radius, calculating fewer transfers and
+decreases the graph memory usage.
+
+If it isn't known which stops actually allow cars/bikes, combine a lower value here with
+`carsAllowedStopMaxTransferDuration` or `bikesAllowedStopMaxTransferDuration` as a
+compromise: this bounds memory usage for stops in general, while the allowed-stop field
+still supplies a longer range for the stops it is known to be needed for.
 
 
 <h3 id="tpfm_CAR_bikesAllowedStopMaxTransferDuration">bikesAllowedStopMaxTransferDuration</h3>
@@ -1063,19 +1140,17 @@ For example, when using the `carsAllowedStopMaxTransferDuration` field with cars
 **Since version:** `2.9` ∙ **Type:** `duration` ∙ **Cardinality:** `Optional`   
 **Path:** /transferParametersForMode/CAR 
 
-This is used for specifying a `maxTransferDuration` value to use with transfers between stops which are visited by trips that allow bikes.
+This is used for specifying a `maxTransferDuration` value to use with transfers between
+stops which are visited by trips that allow bikes.
 
-This parameter configures additional transfers to be calculated for the specified mode only between stops that have trips with bikes.
-The transfers are calculated for the mode in a range based on the given duration.
-By default, these transfers are not calculated unless specified for a mode with this field.
 
-When compared to walking, using a bike can cover larger distances within the same duration specified in the `maxTransferDuration` field.
-This can lead to large amounts of transfers calculated between stops that do not require bike transfers between them.
-This in turn can lead to a large increase in memory for the stored graph, depending on the data used in the graph.
+Configures a separate `maxTransferDuration` for the given mode, used only for transfers
+between stops visited by trips that allow bikes, instead of the given mode's
+`maxTransferDuration`.
 
-For bikes, using this parameter in conjunction with `disableDefaultTransfers` allows calculating transfers only between stops
-which have trips which allow carrying bikes. This avoids storing and calculating transfers which are never used so the transit search
-can be faster compared to the default transfers.
+In combination with the mode's `maxTransferDuration` you can include transfers for bikes
+between all stops in a smaller radius, and use a larger radius for transfers between
+stops where bikes are explicit allowed.
 
 
 <h3 id="tpfm_CAR_carsAllowedStopMaxTransferDuration">carsAllowedStopMaxTransferDuration</h3>
@@ -1083,24 +1158,18 @@ can be faster compared to the default transfers.
 **Since version:** `2.7` ∙ **Type:** `duration` ∙ **Cardinality:** `Optional`   
 **Path:** /transferParametersForMode/CAR 
 
-This is used for specifying a `maxTransferDuration` value to use with transfers between stops which are visited by trips that allow cars.
+This is used for specifying a `maxTransferDuration` value to use with transfers between
+stops which are visited by trips that allow cars.
 
-This parameter configures additional transfers to be calculated for the specified mode only between stops that have trips with cars.
-The transfers are calculated for the mode in a range based on the given duration.
-By default, these transfers are not calculated unless specified for a mode with this field.
 
-Calculating transfers only between stops that have trips with cars can be useful with car ferries, for example.
-Using transit with cars can only occur between certain stops.
-These kinds of stops require support for loading cars into ferries, for example.
-The default transfers are calculated based on a configurable range (configurable by using the `maxTransferDuration` field)
-which limits transfers from stops to only be calculated to other stops that are in range.
-When compared to walking, using a car can cover larger distances within the same duration specified in the `maxTransferDuration` field.
-This can lead to large amounts of transfers calculated between stops that do not require car transfers between them.
-This in turn can lead to a large increase in memory for the stored graph, depending on the data used in the graph.
+Configures a separate `maxTransferDuration` for the given mode, used only for transfers
+between stops visited by trips that allow cars (e.g. car ferries), instead of the given
+mode's `maxTransferDuration`.
 
-For cars, using this parameter in conjunction with `disableDefaultTransfers` allows calculating transfers only between relevant stops.
-For bikes, using this parameter can enable transfers between ferry stops that would normally not be in range.
-In Finland this is useful for bike routes that use ferries near the Turku archipelago, for example.
+This can also be configured for other modes. For example, for bikes, this can enable
+transfers between ferry stops that would otherwise be out of range, since car ferries
+usually also allow bikes. This is useful for bike routes using ferries near the Turku
+archipelago in Finland, for example.
 
 
 <h3 id="tpfm_CAR_disableDefaultTransfers">disableDefaultTransfers</h3>
@@ -1110,12 +1179,29 @@ In Finland this is useful for bike routes that use ferries near the Turku archip
 
 This disables default transfer calculations.
 
-The default transfers are calculated based on a configurable range (configurable by using the `maxTransferDuration` field)
-which limits transfers from stops to only be calculated to other stops that are in range.
-This parameter disables these transfers.
-A motivation to disable default transfers could be related to using the `carsAllowedStopMaxTransferDuration` field which only
-calculates transfers between stops that have trips with cars, or `bikesAllowedStopMaxTransferDuration` field for bikes.
-For example, when using the `carsAllowedStopMaxTransferDuration` field with cars, the default transfers can be redundant.
+By default, transfers are calculated between all stop pairs within the given mode's
+`maxTransferDuration`. This parameter disables that default calculation for the mode.
+
+This is used together with `carsAllowedStopMaxTransferDuration` or
+`bikesAllowedStopMaxTransferDuration`, so that only the restricted, relevant transfers are
+calculated.
+
+
+<h3 id="tpfm_CAR_maxTransferDuration">maxTransferDuration</h3>
+
+**Since version:** `2.7` ∙ **Type:** `duration` ∙ **Cardinality:** `Optional`   
+**Path:** /transferParametersForMode/CAR 
+
+This overwrites the default `maxTransferDuration` for the given mode.
+
+A car or a bike can cover a much larger distance than walking within the same duration.
+Reusing this value would reduce the search radius, calculating fewer transfers and
+decreases the graph memory usage.
+
+If it isn't known which stops actually allow cars/bikes, combine a lower value here with
+`carsAllowedStopMaxTransferDuration` or `bikesAllowedStopMaxTransferDuration` as a
+compromise: this bounds memory usage for stops in general, while the allowed-stop field
+still supplies a longer range for the stops it is known to be needed for.
 
 
 <h3 id="transitFeeds">transitFeeds</h3>
@@ -1254,9 +1340,30 @@ transit that starts/ends at the station will work as usual without any additiona
 the centroid.
 
 
+<h3 id="vehicleRentalGeofencing">vehicleRentalGeofencing</h3>
+
+**Since version:** `2.10` ∙ **Type:** `object` ∙ **Cardinality:** `Optional`   
+**Path:** / 
+
+Load GBFS geofencing zones into the graph during graph build.
+
+Discovers the networks a provider publishes from a GBFS v3 `manifest.json` and, for each
+network configured with `"applyGeofencingZones": "graph-build"` in the `gbfs` section of
+`otp-config.json`, loads its geofencing zones and applies them to the street graph during
+the graph build. This moves the cost of computing zone boundaries off the runtime path.
+
+A network is only loaded if its GBFS feed actually publishes a `geofencing_zones` feed;
+this is checked against the feed list in `gbfs.json` before the feed is fetched.
+
+Vehicles and stations remain realtime data, so a vehicle rental updater is still required.
+
+Note: a GBFS updater configured directly under `updaters` in `router-config.json` does not
+read the shared `gbfs` section. Enabling `geofencing.enabled` on such an updater for a
+network that is also built here applies the zones twice.
+
+
 
 <!-- PARAMETERS-DETAILS END -->
-
 
 ## Build Config Example
 
@@ -1284,6 +1391,14 @@ the centroid.
       "source" : "gs://my-bucket/otp-work-dir/norway.osm.pbf",
       "timeZone" : "Europe/Oslo",
       "osmTagMapping" : "norway"
+    }
+  ],
+  "elevatorRefTags" : [
+    {
+      "tagGroup" : [
+        "manufacturer",
+        "ref"
+      ]
     }
   ],
   "demDefaults" : {
@@ -1363,6 +1478,9 @@ the centroid.
       "carsAllowedStopMaxTransferDuration" : "3h",
       "bikesAllowedStopMaxTransferDuration" : "1h"
     }
+  },
+  "cache" : {
+    "enabled" : true
   }
 }
 ```

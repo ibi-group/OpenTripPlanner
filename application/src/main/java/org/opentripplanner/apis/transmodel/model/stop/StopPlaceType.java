@@ -38,6 +38,7 @@ import org.opentripplanner.apis.transmodel.model.plan.JourneyWhiteListed;
 import org.opentripplanner.apis.transmodel.support.GqlUtil;
 import org.opentripplanner.core.model.id.FeedScopedId;
 import org.opentripplanner.framework.graphql.GraphQLUtils;
+import org.opentripplanner.transit.api.request.CancellationPolicy;
 import org.opentripplanner.transit.api.request.TripTimeOnDateRequest;
 import org.opentripplanner.transit.model.basic.SubMode;
 import org.opentripplanner.transit.model.basic.TransitMode;
@@ -107,9 +108,9 @@ public class StopPlaceType {
               .build()
           )
           .dataFetcher(environment ->
-            (((MonoOrMultiModalStation) environment.getSource()).getName().toString(
-                GqlUtil.getLocale(environment)
-              ))
+            ((MonoOrMultiModalStation) environment.getSource())
+              .getName()
+              .toString(GqlUtil.getLocale(environment))
           )
           .build()
       )
@@ -117,18 +118,14 @@ public class StopPlaceType {
         GraphQLFieldDefinition.newFieldDefinition()
           .name("latitude")
           .type(Scalars.GraphQLFloat)
-          .dataFetcher(environment ->
-            (((MonoOrMultiModalStation) environment.getSource()).getLat())
-          )
+          .dataFetcher(environment -> ((MonoOrMultiModalStation) environment.getSource()).getLat())
           .build()
       )
       .field(
         GraphQLFieldDefinition.newFieldDefinition()
           .name("longitude")
           .type(Scalars.GraphQLFloat)
-          .dataFetcher(environment ->
-            (((MonoOrMultiModalStation) environment.getSource()).getLon())
-          )
+          .dataFetcher(environment -> ((MonoOrMultiModalStation) environment.getSource()).getLon())
           .build()
       )
       .field(
@@ -178,7 +175,8 @@ public class StopPlaceType {
           .description("The transport modes of quays under this stop place.")
           .type(new GraphQLList(EnumTypes.TRANSPORT_MODE))
           .dataFetcher(environment ->
-            ((MonoOrMultiModalStation) environment.getSource()).getChildStops()
+            ((MonoOrMultiModalStation) environment.getSource())
+              .getChildStops()
               .stream()
               .map(StopLocation::getVehicleType)
               .filter(Objects::nonNull)
@@ -192,7 +190,8 @@ public class StopPlaceType {
           .description("The transport submode serviced by this stop place.")
           .type(new GraphQLList(EnumTypes.TRANSPORT_SUBMODE))
           .dataFetcher(environment ->
-            ((MonoOrMultiModalStation) environment.getSource()).getChildStops()
+            ((MonoOrMultiModalStation) environment.getSource())
+              .getChildStops()
               .stream()
               .map(StopLocation::getNetexVehicleSubmode)
               .filter(it -> it != SubMode.UNKNOWN)
@@ -254,7 +253,7 @@ public class StopPlaceType {
           .description("Returns parent stop for this stop")
           .type(new GraphQLTypeReference(NAME))
           .dataFetcher(environment ->
-            (((MonoOrMultiModalStation) environment.getSource()).getParentStation())
+            ((MonoOrMultiModalStation) environment.getSource()).getParentStation()
           )
           .build()
       )
@@ -263,7 +262,8 @@ public class StopPlaceType {
           .name("tariffZones")
           .type(new GraphQLNonNull(new GraphQLList(tariffZoneType)))
           .dataFetcher(environment ->
-            ((MonoOrMultiModalStation) environment.getSource()).getChildStops()
+            ((MonoOrMultiModalStation) environment.getSource())
+              .getChildStops()
               .stream()
               .flatMap(s -> s.getFareZones().stream())
               .distinct()
@@ -386,7 +386,11 @@ public class StopPlaceType {
               .withTimeWindow(timeRange)
               .withArrivalDeparture(arrivalDeparture)
               .withNumberOfDepartures(numberOfDepartures)
-              .withIncludeCancelledTrips(includeCancelledTrips);
+              .withCancellationPolicy(
+                includeCancelledTrips
+                  ? CancellationPolicy.INCLUDE_CANCELLATIONS
+                  : CancellationPolicy.NO_CANCELLATIONS
+              );
 
             if (filtersInput != null) {
               var mapper = new TripTimeOnDateFilterMapper(idMapper);
@@ -418,9 +422,9 @@ public class StopPlaceType {
           )
           .type(new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(ptSituationElementType))))
           .dataFetcher(env ->
-            GqlUtil.getTransitService(env)
-              .getTransitAlertService()
-              .getStopAlerts(((MonoOrMultiModalStation) env.getSource()).getId())
+            GqlUtil.getTransitAlertService(env).getStopAlerts(
+              ((MonoOrMultiModalStation) env.getSource()).getId()
+            )
           )
           .build()
       )

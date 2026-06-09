@@ -19,7 +19,7 @@ import org.opentripplanner.service.vehiclerental.street.VehicleRentalPlaceVertex
 import org.opentripplanner.street.model.StreetTraversalPermission;
 import org.opentripplanner.street.model.vertex.IntersectionVertex;
 import org.opentripplanner.street.model.vertex.TransitStopVertex;
-import org.opentripplanner.transit.model._data.TimetableRepositoryForTest;
+import org.opentripplanner.transit.model._data.TransitRepositoryForTest;
 import org.opentripplanner.transit.model.basic.TransitMode;
 import org.opentripplanner.transit.model.network.Route;
 import org.opentripplanner.transit.model.network.StopPattern;
@@ -56,7 +56,7 @@ class StreetNearbyPlaceFinderTest extends GraphRoutingTest {
       new Builder() {
         @Override
         public void build() {
-          var a = TimetableRepositoryForTest.agency("Agency");
+          var a = TransitRepositoryForTest.agency("Agency");
 
           R1 = route("R1", TransitMode.BUS, a);
           R2 = route("R2", TransitMode.TRAM, a);
@@ -111,22 +111,22 @@ class StreetNearbyPlaceFinderTest extends GraphRoutingTest {
           street(C, D, 100, StreetTraversalPermission.ALL);
 
           tripPattern(
-            TP1 = TripPattern.of(FeedScopedIdForTestFactory.id("TP1"))
+            (TP1 = TripPattern.of(FeedScopedIdForTestFactory.id("TP1"))
               .withRoute(R1)
               .withStopPattern(new StopPattern(List.of(st(S1), st(S2))))
-              .build()
+              .build())
           );
           tripPattern(
-            TP2 = TripPattern.of(FeedScopedIdForTestFactory.id("TP2"))
+            (TP2 = TripPattern.of(FeedScopedIdForTestFactory.id("TP2"))
               .withRoute(R2)
               .withStopPattern(new StopPattern(List.of(st(S1), st(S3))))
-              .build()
+              .build())
           );
         }
       }
     );
 
-    transitService = new DefaultTransitService(otpModel.timetableRepository());
+    transitService = new DefaultTransitService(otpModel.transitRepository());
     var vertexLinker = VertexLinkerTestFactory.of(otpModel.graph());
     var linkingContextFactory = new LinkingContextFactory(
       otpModel.graph(),

@@ -1,0 +1,61 @@
+package org.opentripplanner.service.vehiclerental;
+
+import java.util.Set;
+import org.locationtech.jts.geom.Coordinate;
+import org.opentripplanner.service.vehiclerental.model.GeofencingZone;
+
+/**
+ * Consumer-side abstraction over the registered geofencing zone indices. Defined by the needs of
+ * the routing layer (and the debug map layer) so they can query zone membership without depending
+ * on the rental service implementation.
+ *
+ * <p>{@link org.opentripplanner.service.vehiclerental.internal.DefaultVehicleRentalRepository}
+ * holds the zone indices and answers these queries; {@link VehicleRentalService} re-exposes them
+ * to read-only consumers. Tests can use {@link #EMPTY}.
+ */
+public interface GeofencingZoneService {
+  /**
+   * Empty implementation for tests and graph-build phase wiring (before any updater has
+   * registered zones).
+   */
+  GeofencingZoneService EMPTY = new GeofencingZoneService() {
+    @Override
+    public Set<GeofencingZone> findZonesContaining(Coordinate coord) {
+      return Set.of();
+    }
+
+    @Override
+    public boolean hasIndexedZones() {
+      return false;
+    }
+
+    @Override
+    public Set<GeofencingZone> findZonesContaining(Coordinate coord, String network) {
+      return Set.of();
+    }
+
+    @Override
+    public Set<GeofencingZone> listZones() {
+      return Set.of();
+    }
+  };
+
+  /** All registered zones (across all networks) that contain the given coordinate. */
+  Set<GeofencingZone> findZonesContaining(Coordinate coord);
+
+  /**
+   * The zones of one network that contain the given coordinate. Equivalent to filtering
+   * {@link #findZonesContaining(Coordinate)} by feed id, since a network's index and its zones
+   * share that id, but it queries one index instead of every registered one.
+   */
+  Set<GeofencingZone> findZonesContaining(Coordinate coord, String network);
+
+  /**
+   * Whether any network has registered a zone index. Cheap short-circuit for callers that
+   * want to avoid per-vertex lookups when no zones exist.
+   */
+  boolean hasIndexedZones();
+
+  /** All zones across all registered networks. Used by the debug map layer. */
+  Set<GeofencingZone> listZones();
+}

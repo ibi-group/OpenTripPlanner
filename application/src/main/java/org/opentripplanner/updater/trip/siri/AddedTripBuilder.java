@@ -1,12 +1,9 @@
 package org.opentripplanner.updater.trip.siri;
 
-import static java.lang.Boolean.TRUE;
-import static org.opentripplanner.updater.alert.siri.mapping.SiriTransportModeMapper.mapTransitMainMode;
 import static org.opentripplanner.updater.spi.UpdateErrorType.CANNOT_RESOLVE_AGENCY;
 import static org.opentripplanner.updater.spi.UpdateErrorType.NO_START_DATE;
 import static org.opentripplanner.updater.spi.UpdateErrorType.TOO_FEW_STOPS;
 import static org.opentripplanner.updater.spi.UpdateErrorType.UNKNOWN_STOP;
-import static org.opentripplanner.updater.trip.siri.support.NaturalLanguageStringHelper.getFirstStringFromList;
 
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -16,7 +13,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.function.Function;
 import javax.annotation.Nullable;
-import org.opentripplanner.core.framework.deduplicator.DeduplicatorService;
+import org.opentripplanner.core.model.deduplicator.DeduplicatorService;
 import org.opentripplanner.core.model.i18n.NonLocalizedString;
 import org.opentripplanner.core.model.id.FeedScopedId;
 import org.opentripplanner.model.StopTime;
@@ -27,27 +24,26 @@ import org.opentripplanner.transit.model.network.StopPattern;
 import org.opentripplanner.transit.model.network.TripPattern;
 import org.opentripplanner.transit.model.organization.Agency;
 import org.opentripplanner.transit.model.organization.Operator;
-import org.opentripplanner.transit.model.timetable.RealTimeState;
+import org.opentripplanner.transit.model.timetable.OccupancyStatus;
 import org.opentripplanner.transit.model.timetable.RealTimeTripTimesBuilder;
 import org.opentripplanner.transit.model.timetable.Trip;
 import org.opentripplanner.transit.model.timetable.TripOnServiceDate;
 import org.opentripplanner.transit.model.timetable.TripTimesFactory;
-import org.opentripplanner.transit.service.TransitEditorService;
+import org.opentripplanner.transit.repository.TimetableRepository;
+import org.opentripplanner.transit.service.TransitService;
 import org.opentripplanner.updater.spi.DataValidationExceptionMapper;
 import org.opentripplanner.updater.spi.UpdateException;
+import org.opentripplanner.utils.time.ServiceDateUtils;
 import org.rutebanken.netex.model.BusSubmodeEnumeration;
 import org.rutebanken.netex.model.RailSubmodeEnumeration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import uk.org.siri.siri21.EstimatedVehicleJourney;
-import uk.org.siri.siri21.OccupancyEnumeration;
-import uk.org.siri.siri21.VehicleJourneyRef;
-import uk.org.siri.siri21.VehicleModesEnumeration;
 
 class AddedTripBuilder {
 
   private static final Logger LOG = LoggerFactory.getLogger(AddedTripBuilder.class);
-  private final TransitEditorService transitService;
+  private final TransitService transitService;
+  private final TimetableRepository buffer;
   private final EntityResolver entityResolver;
   private final ZoneId timeZone;
   private final Function<Trip, FeedScopedId> getTripPatternId;
@@ -62,7 +58,7 @@ class AddedTripBuilder {
   private final String transitSubMode;
   private final List<CallWrapper> calls;
   private final boolean isJourneyPredictionInaccurate;
-  private final OccupancyEnumeration occupancy;
+  private final OccupancyStatus occupancy;
   private final boolean cancellation;
   private final String shortName;
   private final String headsign;
@@ -70,66 +66,69 @@ class AddedTripBuilder {
   private final StopTimesMapper stopTimesMapper;
   private final DeduplicatorService deduplicator;
 
+  @Nullable
+  private final String vehicleRef;
+
   AddedTripBuilder(
-    EstimatedVehicleJourney estimatedVehicleJourney,
-    TransitEditorService transitService,
+    EstimatedVehicleJourneyWrapper journey,
+    TransitService transitService,
+    TimetableRepository buffer,
     DeduplicatorService deduplicator,
     EntityResolver entityResolver,
-    Function<Trip, FeedScopedId> getTripPatternId,
-    List<CallWrapper> calls
+    Function<Trip, FeedScopedId> getTripPatternId
   ) {
+    this.buffer = buffer;
     this.deduplicator = deduplicator;
     // Verifying values required in SIRI Profile
     // Added ServiceJourneyId
-    String estimatedVehicleJourneyCode = estimatedVehicleJourney.getEstimatedVehicleJourneyCode();
-    Objects.requireNonNull(estimatedVehicleJourneyCode, "EstimatedVehicleJourneyCode is required");
-    var codeAdapter = new EstimatedVehicleJourneyCodeAdapter(estimatedVehicleJourneyCode);
-    tripId = entityResolver.resolveId(codeAdapter.getServiceJourneyId());
-    tripOnServiceDateId = entityResolver.resolveId(codeAdapter.getDatedServiceJourneyId());
+    EstimatedVehicleJourneyCode code = journey
+      .code()
+      .orElseThrow(() -> new NullPointerException("EstimatedVehicleJourneyCode is required"));
+    tripId = entityResolver.resolveId(code.asServiceJourneyId());
+    tripOnServiceDateId = entityResolver.resolveId(code.asDatedServiceJourneyId());
 
     // OperatorRef of added trip
-    Objects.requireNonNull(estimatedVehicleJourney.getOperatorRef(), "OperatorRef is required");
-    String operatorRef = estimatedVehicleJourney.getOperatorRef().getValue();
+    String operatorRef = journey
+      .operatorRef()
+      .orElseThrow(() -> new NullPointerException("OperatorRef is required"));
     operator = entityResolver.resolveOperator(operatorRef);
 
     // DataSource of added trip
-    dataSource = estimatedVehicleJourney.getDataSource();
+    dataSource = journey.dataSource().orElse(null);
 
     // LineRef of added trip
-    Objects.requireNonNull(estimatedVehicleJourney.getLineRef(), "LineRef is required");
-    lineRef = estimatedVehicleJourney.getLineRef().getValue();
+    lineRef = journey.lineRef().orElseThrow(() -> new NullPointerException("LineRef is required"));
 
-    String externalLineRef = estimatedVehicleJourney.getExternalLineRef() != null
-      ? estimatedVehicleJourney.getExternalLineRef().getValue()
-      : lineRef;
+    String externalLineRef = journey.externalLineRef().orElse(lineRef);
     replacedRoute = entityResolver.resolveRoute(externalLineRef);
 
-    serviceDate = entityResolver.resolveServiceDate(estimatedVehicleJourney, calls);
+    serviceDate = entityResolver.resolveServiceDate(journey);
 
-    shortName = getFirstStringFromList(estimatedVehicleJourney.getPublishedLineNames());
+    shortName = journey.publishedLineName();
 
-    List<VehicleModesEnumeration> vehicleModes = estimatedVehicleJourney.getVehicleModes();
-    transitMode = mapTransitMainMode(vehicleModes);
+    transitMode = journey.transitMode();
     transitSubMode = resolveTransitSubMode(transitMode, replacedRoute);
 
-    isJourneyPredictionInaccurate = TRUE.equals(estimatedVehicleJourney.isPredictionInaccurate());
-    occupancy = estimatedVehicleJourney.getOccupancy();
-    cancellation = TRUE.equals(estimatedVehicleJourney.isCancellation());
-    headsign = getFirstStringFromList(estimatedVehicleJourney.getDestinationNames());
+    isJourneyPredictionInaccurate = journey.isPredictionInaccurate();
+    occupancy = journey.occupancy().orElse(null);
+    cancellation = journey.isCancellation();
+    headsign = journey.destinationName();
+    vehicleRef = journey.vehicleRef().orElse(null);
 
-    this.calls = calls;
+    this.calls = journey.calls();
 
     this.transitService = transitService;
     this.entityResolver = entityResolver;
     this.getTripPatternId = getTripPatternId;
     timeZone = transitService.getTimeZone();
 
-    replacedTrips = getReplacedVehicleJourneys(estimatedVehicleJourney);
-    stopTimesMapper = new StopTimesMapper(entityResolver, timeZone);
+    replacedTrips = getReplacedVehicleJourneys(journey);
+    stopTimesMapper = new StopTimesMapper(entityResolver);
   }
 
   AddedTripBuilder(
-    TransitEditorService transitService,
+    TransitService transitService,
+    TimetableRepository buffer,
     DeduplicatorService deduplicator,
     EntityResolver entityResolver,
     Function<Trip, FeedScopedId> getTripPatternId,
@@ -143,14 +142,16 @@ class AddedTripBuilder {
     String transitSubMode,
     List<CallWrapper> calls,
     boolean isJourneyPredictionInaccurate,
-    OccupancyEnumeration occupancy,
+    OccupancyStatus occupancy,
     boolean cancellation,
     String shortName,
     String headsign,
     List<TripOnServiceDate> replacedTrips,
-    String dataSource
+    String dataSource,
+    @Nullable String vehicleRef
   ) {
     this.transitService = transitService;
+    this.buffer = buffer;
     this.deduplicator = deduplicator;
     this.entityResolver = entityResolver;
     this.timeZone = transitService.getTimeZone();
@@ -171,7 +172,8 @@ class AddedTripBuilder {
     this.headsign = headsign;
     this.replacedTrips = replacedTrips;
     this.dataSource = dataSource;
-    stopTimesMapper = new StopTimesMapper(entityResolver, timeZone);
+    this.vehicleRef = vehicleRef;
+    stopTimesMapper = new StopTimesMapper(entityResolver);
   }
 
   TripUpdate build() throws UpdateException {
@@ -183,7 +185,7 @@ class AddedTripBuilder {
       throw UpdateException.of(tripId, NO_START_DATE);
     }
 
-    FeedScopedId calServiceId = transitService.getOrCreateServiceIdForDate(serviceDate);
+    FeedScopedId calServiceId = buffer.getOrCreateServiceIdForDate(serviceDate);
     if (calServiceId == null) {
       throw UpdateException.of(tripId, NO_START_DATE);
     }
@@ -197,23 +199,23 @@ class AddedTripBuilder {
       }
       route = createRoute(agency);
       isAddedRoute = true;
-      LOG.info("Adding route {} to timetableRepository.", route);
+      LOG.info("Adding route {} to transitRepository.", route);
     }
 
     Trip trip = createTrip(route, calServiceId);
 
-    ZonedDateTime departureDate = serviceDate.atStartOfDay(timeZone);
+    ZonedDateTime startOfService = ServiceDateUtils.asStartOfService(serviceDate, timeZone);
 
     // Create the "scheduled version" of the trip
     var aimedStopTimes = new ArrayList<StopTime>();
     for (int stopSequence = 0; stopSequence < calls.size(); stopSequence++) {
       StopTime stopTime = stopTimesMapper.createAimedStopTime(
         trip,
-        departureDate,
+        startOfService,
         stopSequence,
         calls.get(stopSequence),
         stopSequence == 0,
-        stopSequence == (calls.size() - 1)
+        stopSequence == calls.size() - 1
       );
 
       // Drop this update if the call refers to an unknown stop (not present in the site repository).
@@ -232,7 +234,7 @@ class AddedTripBuilder {
     // but in case of trip cancellation, OTP will fall back to scheduled trip times
     // therefore they must be valid
     var tripTimes = TripTimesFactory.tripTimes(trip, aimedStopTimes, deduplicator).withServiceCode(
-      transitService.getServiceCode(trip.getServiceId())
+      transitService.getTripCalendars().getServiceCode(trip.getServiceId())
     );
     tripTimes.validateNonIncreasingTimes();
 
@@ -250,21 +252,21 @@ class AddedTripBuilder {
     // Loop through calls again and apply updates
     for (int stopSequence = 0; stopSequence < calls.size(); stopSequence++) {
       TimetableHelper.applyUpdates(
-        departureDate,
+        startOfService,
         builder,
         stopSequence,
-        stopSequence == (calls.size() - 1),
+        stopSequence == calls.size() - 1,
         isJourneyPredictionInaccurate,
         calls.get(stopSequence),
         occupancy
       );
     }
 
+    builder.withVehicleId(FeedScopedId.ofNullable(tripId.getFeedId(), vehicleRef));
     if (cancellation || stopPattern.isAllStopsNonRoutable()) {
-      builder.cancelTrip();
-    } else {
-      builder.withRealTimeState(RealTimeState.ADDED);
+      builder.withCanceled();
     }
+    builder.withAdded();
 
     /* Validate */
     var tripOnServiceDate = TripOnServiceDate.of(tripOnServiceDateId)
@@ -291,9 +293,9 @@ class AddedTripBuilder {
   }
 
   /**
-   * Method to create a Route. Commonly used to create a route if a real-time message
-   * refers to a route that is not in the transit model.
-   * If no name is given for the route, an empty string will be set as the name.
+   * Method to create a Route. Commonly used to create a route if a real-time message refers to a
+   * route that is not in the transit model. If no name is given for the route, an empty string will
+   * be set as the name.
    *
    * @return a new Route
    */
@@ -310,12 +312,10 @@ class AddedTripBuilder {
   }
 
   /**
-   * Attempt to find the agency to which this new trip belongs.
-   * The algorithm retrieves any route operated by the same operator as the one operating this new
-   * trip and resolves its agency.
-   * If no route with the same operator can be found, the algorithm falls back to retrieving the
-   * agency operating the replaced route.
-   * If none can be found the method returns null.
+   * Attempt to find the agency to which this new trip belongs. The algorithm retrieves any route
+   * operated by the same operator as the one operating this new trip and resolves its agency. If no
+   * route with the same operator can be found, the algorithm falls back to retrieving the agency
+   * operating the replaced route. If none can be found the method returns null.
    */
   @Nullable
   private Agency resolveAgency() {
@@ -373,24 +373,18 @@ class AddedTripBuilder {
   }
 
   private List<TripOnServiceDate> getReplacedVehicleJourneys(
-    EstimatedVehicleJourney estimatedVehicleJourney
+    EstimatedVehicleJourneyWrapper journey
   ) {
     List<TripOnServiceDate> listOfReplacedVehicleJourneys = new ArrayList<>();
 
-    // VehicleJourneyRef is the reference to the serviceJourney being replaced.
-    VehicleJourneyRef vehicleJourneyRef = estimatedVehicleJourney.getVehicleJourneyRef();
-    if (vehicleJourneyRef != null) {
-      var replacedDatedServiceJourney = entityResolver.resolveTripOnServiceDate(
-        vehicleJourneyRef.getValue()
-      );
-      if (replacedDatedServiceJourney != null) {
-        listOfReplacedVehicleJourneys.add(replacedDatedServiceJourney);
-      }
-    }
+    journey
+      .replacedDatedVehicleJourneyRef()
+      .map(entityResolver::resolveTripOnServiceDate)
+      .ifPresent(listOfReplacedVehicleJourneys::add);
 
     // Add additional replaced service journeys if present.
-    estimatedVehicleJourney
-      .getAdditionalVehicleJourneyReves()
+    journey
+      .additionalReplacedDatedVehicleJourneyRefs()
       .stream()
       .map(entityResolver::resolveTripOnServiceDate)
       .filter(Objects::nonNull)

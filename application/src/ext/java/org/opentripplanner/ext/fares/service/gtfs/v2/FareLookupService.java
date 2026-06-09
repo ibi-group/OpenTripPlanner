@@ -25,20 +25,32 @@ import org.opentripplanner.utils.collection.SetUtils;
  */
 class FareLookupService implements Serializable {
 
+  /// The GTFS spec is underspecified about which fare products free transfers should apply to.
+  /// The interpretation of this implementation is that transfers apply to only those fare
+  /// products that share the same category and fare medium.
+  /// - [Github issue](https://github.com/google/transit/pull/423)
+  static final FreeTransferEligibility DEFAULT_FREE_TRANSFER_MATCH_PREDICATE =
+    TransferMatch::matchesEligibility;
   private final List<FareLegRule> legRules;
   private final List<FareTransferRule> transferRules;
   private final AreaMatcher areaMatcher;
   private final NetworkMatcher networkMatcher;
   private final TimeframeMatcher timeframeMatcher;
+  private final FreeTransferEligibility freeTransferEligibility;
 
+  /// @param freeTransferEligibility A bi-predicate that determines if a free transfer applies
+  /// to a given transfer match and fare product. This needs to be configurable because of custom
+  /// fare services.
   FareLookupService(
     List<FareLegRule> legRules,
     List<FareTransferRule> fareTransferRules,
     Multimap<FeedScopedId, FeedScopedId> stopAreas,
-    Multimap<FeedScopedId, LocalDate> serviceDates
+    Multimap<FeedScopedId, LocalDate> serviceDates,
+    FreeTransferEligibility freeTransferEligibility
   ) {
     this.legRules = List.copyOf(legRules);
     this.transferRules = List.copyOf(fareTransferRules);
+    this.freeTransferEligibility = freeTransferEligibility;
 
     var rulePriorityMatcher = new RulePriorityMatcher(legRules);
     this.areaMatcher = new AreaMatcher(rulePriorityMatcher, legRules, stopAreas);
@@ -65,7 +77,8 @@ class FareLookupService implements Serializable {
    * exist.
    */
   Set<FareLegRule> legRules(TransitLeg leg) {
-    var rules = this.legRules.stream()
+    var rules = this.legRules
+      .stream()
       .filter(r -> legMatchesRule(leg, r))
       .collect(Collectors.toUnmodifiableSet());
     var containsPriorities = rules.stream().anyMatch(r -> r.priority().isPresent());
@@ -86,7 +99,8 @@ class FareLookupService implements Serializable {
     if (legs.size() < 2) {
       return Set.of();
     }
-    return this.transferRules.stream()
+    return this.transferRules
+      .stream()
       .filter(transferPredicate)
       .filter(FareTransferRule::isFree)
       .filter(r -> TimeLimitEvaluator.withinTimeLimit(r, legs.getFirst(), legs.getLast()))
@@ -114,7 +128,8 @@ class FareLookupService implements Serializable {
     List<TransitLeg> tail,
     Predicate<FareTransferRule> transferPredicate
   ) {
-    Set<TransferMatch> transfers = this.transferRules.stream()
+    Set<TransferMatch> transfers = this.transferRules
+      .stream()
       .filter(transferPredicate)
       .flatMap(r -> {
         var fromRules = findFareLegRule(r.fromLegGroup());
@@ -153,6 +168,9 @@ class FareLookupService implements Serializable {
           .fromLegRule()
           .fareProducts()
           .stream()
+          // the GTFS spec is underspecified about whether transfers apply only to specific
+          // fare products or all of them: https://github.com/google/transit/pull/423
+          .filter(p -> freeTransferEligibility.test(t, p))
           .map(product ->
             LegOffer.of(
               FareOffer.of(head.startTime(), product, dependencies.get(product)),

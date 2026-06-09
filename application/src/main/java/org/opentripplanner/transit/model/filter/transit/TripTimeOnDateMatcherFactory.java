@@ -1,10 +1,10 @@
 package org.opentripplanner.transit.model.filter.transit;
 
-import java.util.List;
+import java.time.Instant;
 import org.opentripplanner.core.model.id.FeedScopedId;
+import org.opentripplanner.core.model.time.TimePeriod;
 import org.opentripplanner.model.TripTimeOnDate;
 import org.opentripplanner.model.modes.AllowTransitModeFilter;
-import org.opentripplanner.transit.api.model.FilterValues;
 import org.opentripplanner.transit.api.request.TripTimeOnDateRequest;
 import org.opentripplanner.transit.model.basic.NarrowedTransitMode;
 import org.opentripplanner.transit.model.basic.TransitMode;
@@ -12,7 +12,7 @@ import org.opentripplanner.transit.model.filter.expr.EqualityMatcher;
 import org.opentripplanner.transit.model.filter.expr.ExpressionBuilder;
 import org.opentripplanner.transit.model.filter.expr.GenericUnaryMatcher;
 import org.opentripplanner.transit.model.filter.expr.Matcher;
-import org.opentripplanner.transit.model.filter.expr.OrMatcher;
+import org.opentripplanner.transit.model.filter.selector.SelectorBasedMatcherFactory;
 
 /**
  * A factory for creating matchers for TripOnServiceDates.
@@ -32,52 +32,32 @@ public class TripTimeOnDateMatcherFactory {
     ExpressionBuilder<TripTimeOnDate> expr = ExpressionBuilder.of();
 
     if (!request.transitFilters().isEmpty()) {
-      expr.matches(ofSelectorBasedTransitFilters(request.transitFilters()));
+      expr.matches(
+        SelectorBasedMatcherFactory.of(
+          request.transitFilters(),
+          TripTimeOnDateMatcherFactory::buildSelectorMatcher
+        )
+      );
     }
 
     expr.atLeastOneMatch(request.includeAgencies(), TripTimeOnDateMatcherFactory::agencyId);
     expr.atLeastOneMatch(request.includeRoutes(), TripTimeOnDateMatcherFactory::routeId);
     expr.atLeastOneMatch(request.includeModes(), TripTimeOnDateMatcherFactory::mode);
+    expr.atLeastOneMatch(
+      request.includeCallTimePeriods(),
+      TripTimeOnDateMatcherFactory::callTimePeriod
+    );
     expr.matchesNone(request.excludeAgencies(), TripTimeOnDateMatcherFactory::agencyId);
     expr.matchesNone(request.excludeRoutes(), TripTimeOnDateMatcherFactory::routeId);
     expr.matchesNone(request.excludeModes(), TripTimeOnDateMatcherFactory::mode);
 
+    if (request.cancellationPolicy().onlyCancellations()) {
+      expr.matches(
+        new GenericUnaryMatcher<>("canceledEffectively", TripTimeOnDate::isCanceledEffectively)
+      );
+    }
+
     return expr.build();
-  }
-
-  /**
-   * Creates a matcher from a list of {@link TripTimeOnDateFilterRequest} objects.
-   * A TripTimeOnDate matches if it matches at least one of the filters (OR between filters).
-   */
-  static Matcher<TripTimeOnDate> ofSelectorBasedTransitFilters(
-    List<TripTimeOnDateFilterRequest> filters
-  ) {
-    List<Matcher<TripTimeOnDate>> filterMatchers = filters
-      .stream()
-      .map(TripTimeOnDateMatcherFactory::buildFilterMatcher)
-      .toList();
-
-    return OrMatcher.of(filterMatchers);
-  }
-
-  /**
-   * Builds a matcher for a single filter request implementing select/not semantics:
-   * <ul>
-   *   <li>Match at least one select criterion (or all if select is null), AND</li>
-   *   <li>Match none of the not criteria.</li>
-   * </ul>
-   */
-  private static Matcher<TripTimeOnDate> buildFilterMatcher(TripTimeOnDateFilterRequest filter) {
-    return ExpressionBuilder.<TripTimeOnDate>of()
-      .atLeastOneMatch(
-        FilterValues.ofNullIsEverything("select", filter.select()),
-        TripTimeOnDateMatcherFactory::buildSelectorMatcher
-      )
-      .matchesNone(
-        FilterValues.ofNullIsEverything("not", filter.not()),
-        TripTimeOnDateMatcherFactory::buildSelectorMatcher
-      )
-      .build();
   }
 
   /**
@@ -119,5 +99,34 @@ public class TripTimeOnDateMatcherFactory {
 
   private static Matcher<TripTimeOnDate> mode(TransitMode mode) {
     return new EqualityMatcher<>("mode", mode, t -> t.getTrip().getMode());
+  }
+
+  /**
+   * Matches calls where the vehicle is scheduled to visit the stop during the given period. The
+   * visit lasts from the scheduled arrival at the stop until the scheduled departure from it, and
+   * the period is half-open, meaning that its end is exclusive. Calls without scheduled times, for
+   * example flexible ones, never match.
+   */
+  private static Matcher<TripTimeOnDate> callTimePeriod(TimePeriod period) {
+    return new GenericUnaryMatcher<>("callTimePeriod", call -> {
+      if (call.getServiceDayMidnight() == TripTimeOnDate.UNDEFINED || !call.hasScheduledTimes()) {
+        return false;
+      }
+      return visitOverlaps(period, call.scheduledArrival(), call.scheduledDeparture());
+    });
+  }
+
+  /**
+   * Returns {@code true} if the visit at the stop, lasting from {@code arrival} to
+   * {@code departure} (both inclusive), overlaps the given period. A visit which lasts no time at
+   * all matches if the period contains the instant of the visit.
+   */
+  private static boolean visitOverlaps(TimePeriod period, Instant arrival, Instant departure) {
+    boolean afterStart = period
+      .start()
+      .map(start -> !departure.isBefore(start))
+      .orElse(true);
+    boolean beforeEnd = period.end().map(arrival::isBefore).orElse(true);
+    return afterStart && beforeEnd;
   }
 }

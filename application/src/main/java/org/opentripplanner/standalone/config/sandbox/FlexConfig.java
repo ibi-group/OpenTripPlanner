@@ -1,6 +1,7 @@
 package org.opentripplanner.standalone.config.sandbox;
 
 import static org.opentripplanner.standalone.config.framework.json.OtpVersion.V2_1;
+import static org.opentripplanner.standalone.config.framework.json.OtpVersion.V2_10;
 import static org.opentripplanner.standalone.config.framework.json.OtpVersion.V2_3;
 
 import java.time.Duration;
@@ -12,25 +13,29 @@ public class FlexConfig implements FlexParameters {
   private static final FlexParameters DEFAULT = FlexParameters.defaultValues();
 
   public static final String ACCESS_EGRESS_DESCRIPTION = """
-    If you have multiple overlapping flex zones the high default value can lead to performance problems.
-    A lower value means faster routing.
+  If you have multiple overlapping flex zones the high default value can lead to performance problems.
+  A lower value means faster routing.
 
-    Depending on your service this might be what you want to do anyway: many flex services are used
-    by passengers with mobility problems so offering a long walk might be problematic. In other words,
-    if you can walk 45 minutes to a flex stop/zone you're unlikely to be the target audience for those
-    services.
-    """;
+  Depending on your service this might be what you want to do anyway: many flex services are used
+  by passengers with mobility problems so offering a long walk might be problematic. In other words,
+  if you can walk 45 minutes to a flex stop/zone you're unlikely to be the target audience for those
+  services.
+  """;
 
   private final Duration maxTransferDuration;
   private final Duration maxFlexTripDuration;
   private final Duration maxAccessWalkDuration;
   private final Duration maxEgressWalkDuration;
+  private final int boardCost;
+  private final double reluctance;
 
   private FlexConfig() {
-    maxTransferDuration = Duration.ofMinutes(5);
-    maxFlexTripDuration = Duration.ofMinutes(45);
-    maxAccessWalkDuration = Duration.ofMinutes(45);
-    maxEgressWalkDuration = Duration.ofMinutes(45);
+    maxTransferDuration = DEFAULT.maxTransferDuration();
+    maxFlexTripDuration = DEFAULT.maxFlexTripDuration();
+    maxAccessWalkDuration = DEFAULT.maxAccessWalkDuration();
+    maxEgressWalkDuration = DEFAULT.maxEgressWalkDuration();
+    boardCost = DEFAULT.boardCost();
+    reluctance = DEFAULT.reluctance();
   }
 
   public FlexConfig(NodeAdapter root, String parameterName) {
@@ -87,6 +92,24 @@ public class FlexConfig implements FlexParameters {
       )
       .description(ACCESS_EGRESS_DESCRIPTION)
       .asDuration(DEFAULT.maxEgressWalkDuration());
+
+    boardCost = json
+      .of("boardCost")
+      .since(V2_10)
+      .summary("A board cost added to the generalized cost of a flex leg.")
+      .description(
+        """
+        This cost is applied once per any type of flex leg including access/egress and direct legs,
+        penalizing the act of boarding the flex vehicle.
+        """
+      )
+      .asInt(DEFAULT.boardCost());
+
+    reluctance = json
+      .of("reluctance")
+      .since(V2_10)
+      .summary("A factor multiplied with the travel time of a flex leg to calculate the weight.")
+      .asDouble(DEFAULT.reluctance());
   }
 
   public Duration maxFlexTripDuration() {
@@ -103,5 +126,13 @@ public class FlexConfig implements FlexParameters {
 
   public Duration maxEgressWalkDuration() {
     return maxEgressWalkDuration;
+  }
+
+  public int boardCost() {
+    return boardCost;
+  }
+
+  public double reluctance() {
+    return reluctance;
   }
 }

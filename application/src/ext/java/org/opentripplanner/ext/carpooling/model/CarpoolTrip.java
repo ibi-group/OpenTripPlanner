@@ -1,5 +1,6 @@
 package org.opentripplanner.ext.carpooling.model;
 
+import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.util.Collections;
 import java.util.List;
@@ -54,10 +55,18 @@ import org.opentripplanner.transit.model.organization.ContactInfo;
  */
 public class CarpoolTrip
   extends AbstractTransitEntity<CarpoolTrip, CarpoolTripBuilder>
-  implements LogInfo {
+  implements LogInfo
+{
 
   /** Default total capacity (including driver) when no capacity information is provided. */
   public static final int DEFAULT_TOTAL_CAPACITY = 5;
+
+  /**
+   * The longest span a carpool trip may have — from the first stop's departure to the
+   * destination's latest expected arrival. A trip longer than this is not shaped like a carpool
+   * journey and is not modelled as one.
+   */
+  public static final Duration MAX_TRIP_DURATION = Duration.ofHours(2).plusMinutes(30);
 
   private final ZonedDateTime startTime;
   private final ZonedDateTime endTime;
@@ -72,38 +81,31 @@ public class CarpoolTrip
 
   public CarpoolTrip(CarpoolTripBuilder builder) {
     super(builder.getId());
-    this.startTime = builder.startTime();
-    this.endTime = builder.endTime();
+    this.startTime = Objects.requireNonNull(builder.startTime());
+    this.endTime = Objects.requireNonNull(builder.endTime());
     this.provider = builder.provider();
     this.totalCapacity = builder.totalCapacity();
     this.stops = Collections.unmodifiableList(builder.stops());
+    if (stops.size() < 2) {
+      throw new IllegalArgumentException(
+        "Carpool trip " + getId() + " must contain at least an origin and a destination stop"
+      );
+    }
     this.publicContactInformation = builder.publicContactInformation();
   }
 
   /**
    * Returns the origin stop (first stop in the trip).
-   *
-   * @return the origin stop
-   * @throws IllegalStateException if the trip has no stops
    */
   public CarpoolStop getOrigin() {
-    if (stops.isEmpty()) {
-      throw new IllegalStateException("Trip has no stops");
-    }
-    return stops.get(0);
+    return stops.getFirst();
   }
 
   /**
    * Returns the destination stop (last stop in the trip).
-   *
-   * @return the destination stop
-   * @throws IllegalStateException if the trip has no stops
    */
   public CarpoolStop getDestination() {
-    if (stops.isEmpty()) {
-      throw new IllegalStateException("Trip has no stops");
-    }
-    return stops.get(stops.size() - 1);
+    return stops.getLast();
   }
 
   public ZonedDateTime startTime() {

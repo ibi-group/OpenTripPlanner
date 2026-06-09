@@ -58,7 +58,7 @@ public class ServiceJourneyType {
         GraphQLFieldDefinition.newFieldDefinition()
           .name("line")
           .type(new GraphQLNonNull(lineType))
-          .dataFetcher(environment -> (trip(environment)).getRoute())
+          .dataFetcher(environment -> trip(environment).getRoute())
           .build()
       )
       .field(
@@ -68,8 +68,8 @@ public class ServiceJourneyType {
           .type(new GraphQLNonNull(new GraphQLList(TransmodelScalars.DATE_SCALAR)))
           .dataFetcher(environment ->
             GqlUtil.getTransitService(environment)
-              .getCalendarService()
-              .getServiceDatesForServiceId(((trip(environment)).getServiceId()))
+              .getTripCalendars()
+              .listServiceDates(trip(environment).getServiceId())
               .stream()
               .sorted()
               .collect(Collectors.toList())
@@ -80,7 +80,7 @@ public class ServiceJourneyType {
         GraphQLFieldDefinition.newFieldDefinition()
           .name("transportMode")
           .type(EnumTypes.TRANSPORT_MODE)
-          .dataFetcher(environment -> ((trip(environment)).getMode()))
+          .dataFetcher(environment -> trip(environment).getMode())
           .build()
       )
       .field(
@@ -88,7 +88,7 @@ public class ServiceJourneyType {
           .name("transportSubmode")
           .type(EnumTypes.TRANSPORT_SUBMODE)
           .dataFetcher(environment ->
-            TransmodelTransportSubmode.fromValue(((trip(environment))).getNetexSubMode())
+            TransmodelTransportSubmode.fromValue(trip(environment).getNetexSubMode())
           )
           .build()
       )
@@ -99,7 +99,7 @@ public class ServiceJourneyType {
           .description(
             "Publicly announced code for service journey, differentiating it from other service journeys for the same line."
           )
-          .dataFetcher(environment -> ((trip(environment)).getShortName()))
+          .dataFetcher(environment -> trip(environment).getShortName())
           .build()
       )
       .field(
@@ -107,14 +107,14 @@ public class ServiceJourneyType {
           .name("privateCode")
           .type(Scalars.GraphQLString)
           .description("For internal use by operators.")
-          .dataFetcher(environment -> ((trip(environment)).getNetexInternalPlanningCode()))
+          .dataFetcher(environment -> trip(environment).getNetexInternalPlanningCode())
           .build()
       )
       .field(
         GraphQLFieldDefinition.newFieldDefinition()
           .name("operator")
           .type(operatorType)
-          .dataFetcher(environment -> ((trip(environment)).getOperator()))
+          .dataFetcher(environment -> trip(environment).getOperator())
           .build()
       )
       .field(
@@ -295,9 +295,7 @@ public class ServiceJourneyType {
           .description("Get all situations active for the service journey.")
           .type(new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(ptSituationElementType))))
           .dataFetcher(environment ->
-            GqlUtil.getTransitService(environment)
-              .getTransitAlertService()
-              .getTripAlerts(trip(environment).getId())
+            GqlUtil.getTransitAlertService(environment).getTripAlerts(trip(environment).getId())
           )
           .build()
       )

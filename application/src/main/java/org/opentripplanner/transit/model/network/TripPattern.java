@@ -14,6 +14,7 @@ import org.opentripplanner.core.model.accessibility.Accessibility;
 import org.opentripplanner.core.model.i18n.I18NString;
 import org.opentripplanner.core.model.id.FeedScopedId;
 import org.opentripplanner.model.PickDrop;
+import org.opentripplanner.street.geometry.CompactLineStringSequence;
 import org.opentripplanner.transit.model.basic.SubMode;
 import org.opentripplanner.transit.model.basic.TransitMode;
 import org.opentripplanner.transit.model.framework.AbstractTransitEntity;
@@ -59,7 +60,8 @@ import org.opentripplanner.transit.model.timetable.TripTimes;
  */
 public final class TripPattern
   extends AbstractTransitEntity<TripPattern, TripPatternBuilder>
-  implements Cloneable, LogInfo {
+  implements Cloneable, LogInfo
+{
 
   private final Route route;
 
@@ -74,8 +76,8 @@ public final class TripPattern
    * TripPatterns hold a reference to a Timetable (i.e. TripTimes for all Trips in the pattern) for
    * only scheduled trips from the GTFS or NeTEx data. If any trips were later updated in real time,
    * there will be another Timetable holding those updates and reading through to the scheduled one.
-   * That other realtime Timetable is retrieved from a TimetableSnapshot (see end of Javadoc on
-   * TimetableSnapshot for more details).
+   * That other realtime Timetable is retrieved from a TimetableRepositorySnapshot (see end of Javadoc on
+   * DefaultTimetableRepository for more details).
    * TODO RT_AB: The above system should be changed to integrate realtime and scheduled data more
    *   closely. The Timetable may become obsolete or change significantly when they are integrated.
    */
@@ -97,7 +99,7 @@ public final class TripPattern
    * cumulative distance along the pattern. Not used in routing, only for API listing and
    * per-leg distance computation via {@link #distanceBetween(int, int)}.
    */
-  private final TripPatternGeometry patternGeometry;
+  private final CompactLineStringSequence patternGeometry;
 
   @Nullable
   private final TripPattern originalTripPattern;
@@ -188,7 +190,7 @@ public final class TripPattern
   }
 
   public LineString getHopGeometry(int stopPosInPattern) {
-    return patternGeometry.hopGeometry(stopPosInPattern);
+    return patternGeometry.get(stopPosInPattern);
   }
 
   /**
@@ -204,7 +206,7 @@ public final class TripPattern
    * obtained by concatenating the underlying hop geometries.
    */
   public LineString geometryBetween(int boardingStopPosition, int alightingStopPosition) {
-    return patternGeometry.geometryBetween(boardingStopPosition, alightingStopPosition);
+    return patternGeometry.concatenate(boardingStopPosition, alightingStopPosition);
   }
 
   public StopPattern getStopPattern() {
@@ -232,7 +234,7 @@ public final class TripPattern
    * geometry is never null; it is empty for degenerate patterns with no hops (one stop or fewer).
    */
   public LineString getGeometry() {
-    return patternGeometry.concatenatedGeometry();
+    return patternGeometry.concatenate(0, patternGeometry.size());
   }
 
   public int numberOfStops() {
@@ -348,7 +350,7 @@ public final class TripPattern
 
   /** Returns whether a given stop is wheelchair-accessible. */
   public boolean wheelchairAccessible(int stopPos) {
-    return (stopPattern.getStop(stopPos).getWheelchairAccessibility() == Accessibility.POSSIBLE);
+    return stopPattern.getStop(stopPos).getWheelchairAccessibility() == Accessibility.POSSIBLE;
   }
 
   public PickDrop getAlightType(int stopPos) {
@@ -545,7 +547,7 @@ public final class TripPattern
   /**
    * Helper method for getting the trip headsign from the {@link TripTimes}.
    */
-  private I18NString getTripHeadSignFromTripTimes(TripTimes tripTimes) {
+  private I18NString getTripHeadSignFromTripTimes(TripTimes<?> tripTimes) {
     return tripTimes != null ? tripTimes.getTripHeadsign() : null;
   }
 

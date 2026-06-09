@@ -4,11 +4,13 @@ import com.google.transit.realtime.GtfsRealtime.TripUpdate;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
+import org.opentripplanner.updater.TransitRealTimeUpdateContext;
 import org.opentripplanner.updater.spi.PollingGraphUpdater;
 import org.opentripplanner.updater.spi.UpdateResult;
-import org.opentripplanner.updater.trip.gtfs.BackwardsDelayPropagationType;
-import org.opentripplanner.updater.trip.gtfs.ForwardsDelayPropagationType;
+import org.opentripplanner.updater.spi.WriteDomain;
 import org.opentripplanner.updater.trip.gtfs.GtfsRealTimeTripUpdateAdapter;
+import org.opentripplanner.updater.trip.gtfs.interpolation.BackwardsDelayPropagationType;
+import org.opentripplanner.updater.trip.gtfs.interpolation.ForwardsDelayPropagationType;
 import org.opentripplanner.updater.trip.gtfs.updater.TripUpdateGraphWriterRunnable;
 import org.opentripplanner.updater.trip.metrics.BatchTripUpdateMetrics;
 import org.opentripplanner.utils.tostring.ToStringBuilder;
@@ -18,7 +20,7 @@ import org.slf4j.LoggerFactory;
 /**
  * Update OTP stop timetables from some a GTFS-RT source.
  */
-public class PollingTripUpdater extends PollingGraphUpdater {
+public class PollingTripUpdater extends PollingGraphUpdater<TransitRealTimeUpdateContext> {
 
   private static final Logger LOG = LoggerFactory.getLogger(PollingTripUpdater.class);
 
@@ -62,6 +64,11 @@ public class PollingTripUpdater extends PollingGraphUpdater {
     this.recordMetrics = BatchTripUpdateMetrics.batch(parameters);
 
     LOG.info("Creating stop time updater running every {} : {}", pollingPeriod(), updateSource);
+  }
+
+  @Override
+  public WriteDomain<TransitRealTimeUpdateContext> writeDomain() {
+    return WriteDomain.TRANSIT;
   }
 
   /**

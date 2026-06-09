@@ -21,23 +21,8 @@ public final class TemporaryPartialStreetEdge extends StreetEdge implements Temp
    */
   TemporaryPartialStreetEdge(TemporaryPartialStreetEdgeBuilder builder) {
     super(builder);
-    builder
-      .fromVertex()
-      .addRentalRestriction(builder.parentEdge().getFromVertex().rentalRestrictions());
-    builder
-      .toVertex()
-      .addRentalRestriction(builder.parentEdge().getToVertex().rentalRestrictions());
     this.parentEdge = builder.parentEdge();
     this.geometry = super.getGeometry();
-  }
-
-  /**
-   * This implementation makes it so that TurnRestrictions on the parent edge are applied to this
-   * edge as well.
-   */
-  @Override
-  public boolean isEquivalentTo(Edge e) {
-    return (e == this || e == parentEdge);
   }
 
   /**

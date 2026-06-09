@@ -4,24 +4,30 @@ import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.util.Optional;
 import java.util.UUID;
+import javax.annotation.Nullable;
 import org.opentripplanner.framework.io.OtpHttpClientException;
 import org.opentripplanner.framework.retry.OtpRetry;
 import org.opentripplanner.framework.retry.OtpRetryBuilder;
 import org.opentripplanner.routing.impl.TransitAlertServiceImpl;
 import org.opentripplanner.routing.services.TransitAlertService;
-import org.opentripplanner.transit.service.TimetableRepository;
+import org.opentripplanner.updater.TransitRealTimeUpdateContext;
 import org.opentripplanner.updater.alert.TransitAlertProvider;
 import org.opentripplanner.updater.spi.PollingGraphUpdater;
 import org.opentripplanner.updater.spi.PollingGraphUpdaterParameters;
+import org.opentripplanner.updater.spi.WriteDomain;
 import org.opentripplanner.updater.support.siri.SiriLoader;
 import org.opentripplanner.updater.trip.UrlUpdaterParameters;
+import org.opentripplanner.updater.trip.siri.SiriFuzzyTripMatcherCache;
 import org.opentripplanner.utils.tostring.ToStringBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import uk.org.siri.siri21.ServiceDelivery;
 import uk.org.siri.siri21.Siri;
 
-public class SiriSXUpdater extends PollingGraphUpdater implements TransitAlertProvider {
+public class SiriSXUpdater
+  extends PollingGraphUpdater<TransitRealTimeUpdateContext>
+  implements TransitAlertProvider
+{
 
   private static final Logger LOG = LoggerFactory.getLogger(SiriSXUpdater.class);
   private static final int RETRY_MAX_ATTEMPTS = 3;
@@ -46,7 +52,7 @@ public class SiriSXUpdater extends PollingGraphUpdater implements TransitAlertPr
 
   public SiriSXUpdater(
     Parameters config,
-    TimetableRepository timetableRepository,
+    @Nullable SiriFuzzyTripMatcherCache siriFuzzyTripMatcherCache,
     SiriLoader siriLoader
   ) {
     super(config);
@@ -60,11 +66,12 @@ public class SiriSXUpdater extends PollingGraphUpdater implements TransitAlertPr
     //Keeping original requestorRef use as base for updated requestorRef to be used in retries
     this.originalRequestorRef = requestorRef;
     this.blockReadinessUntilInitialized = config.blockReadinessUntilInitialized();
-    this.transitAlertService = new TransitAlertServiceImpl(timetableRepository);
+    this.transitAlertService = new TransitAlertServiceImpl();
     this.updateHandler = new SiriAlertsUpdateHandler(
       config.feedId(),
       transitAlertService,
-      config.earlyStart()
+      config.earlyStart(),
+      siriFuzzyTripMatcherCache
     );
     siriHttpLoader = siriLoader;
 
@@ -82,6 +89,11 @@ public class SiriSXUpdater extends PollingGraphUpdater implements TransitAlertPr
 
   public TransitAlertService getTransitAlertService() {
     return transitAlertService;
+  }
+
+  @Override
+  public WriteDomain<TransitRealTimeUpdateContext> writeDomain() {
+    return WriteDomain.TRANSIT;
   }
 
   @Override
@@ -121,11 +133,11 @@ public class SiriSXUpdater extends PollingGraphUpdater implements TransitAlertPr
           //   Such runnables should be illustrated in documentation as e.g. a little box labeled
           //   "change trip ABC123 by making stop 53 late by 2 minutes."
           //   Also clarify how this runnable works without even using the supplied
-          //   (graph, timetableRepository) parameters. There are multiple TransitAlertServices and they
+          //   (graph, transitRepository) parameters. There are multiple TransitAlertServices and they
           //   are not versioned along with the Graph, they are attached to updaters.
           //
           // This is submitting a runnable to an executor, but that runnable only writes back to
-          // objects referenced by updateHandler itself, rather than the graph or timetableRepository
+          // objects referenced by updateHandler itself, rather than the graph or transitRepository
           // supplied for writing, and apparently with no versioning. This seems like a
           // misinterpretation of the realtime design.
           // If this is an intentional choice to live-patch a single server-wide instance of an
@@ -179,14 +191,14 @@ public class SiriSXUpdater extends PollingGraphUpdater implements TransitAlertPr
       LOG.info(
         "Retryable exception while reading SIRI feed from {} after {} ms",
         url,
-        (System.currentTimeMillis() - t1)
+        System.currentTimeMillis() - t1
       );
       throw e;
     } catch (Exception e) {
       LOG.error(
         "Non-retryable exception while reading SIRI feed from {} after {} ms",
         url,
-        (System.currentTimeMillis() - t1)
+        System.currentTimeMillis() - t1
       );
     }
     return Optional.empty();

@@ -14,14 +14,13 @@ import org.locationtech.jts.geom.LineString;
 import org.locationtech.jts.geom.MultiLineString;
 import org.locationtech.jts.geom.Point;
 import org.opentripplanner.core.model.i18n.I18NString;
-import org.opentripplanner.graph_builder.module.osm.OsmDatabase;
-import org.opentripplanner.graph_builder.module.osm.StreetEdgePair;
-import org.opentripplanner.graph_builder.services.osm.EdgeNamer;
+import org.opentripplanner.graph_builder.module.osm.EdgeNamer;
+import org.opentripplanner.graph_builder.module.osm.model.StreetEdgePair;
+import org.opentripplanner.graph_builder.module.osm.storage.OsmDatabase;
 import org.opentripplanner.osm.model.OsmEntity;
 import org.opentripplanner.osm.model.OsmLevel;
 import org.opentripplanner.osm.model.OsmWay;
 import org.opentripplanner.street.geometry.GeometryUtils;
-import org.opentripplanner.street.geometry.SphericalDistanceLibrary;
 import org.opentripplanner.street.model.edge.StreetEdge;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -97,7 +96,7 @@ class SidewalkNamer implements EdgeNamer {
    */
   public boolean assignNameToEdge(EdgeOnLevel sidewalkOnLevel, Geometry buffer) {
     var sidewalk = sidewalkOnLevel.edge();
-    var sidewalkLength = SphericalDistanceLibrary.length(sidewalk.getGeometry());
+    var sidewalkLength = GeometryUtils.sumDistances(sidewalk.getGeometry());
 
     var candidates = streetIndex.query(buffer);
 
@@ -185,12 +184,12 @@ class SidewalkNamer implements EdgeNamer {
 
     private double length(Geometry intersection) {
       return switch (intersection) {
-        case LineString ls -> SphericalDistanceLibrary.length(ls);
+        case LineString ls -> GeometryUtils.sumDistances(ls);
         case MultiLineString mls -> GeometryUtils.getLineStrings(mls)
           .stream()
           .mapToDouble(this::intersectionLength)
           .sum();
-        case Point ignored -> 0;
+        case Point _ -> 0;
         case Geometry g -> throw new IllegalStateException(
           "Didn't expect geometry %s".formatted(g.getClass())
         );

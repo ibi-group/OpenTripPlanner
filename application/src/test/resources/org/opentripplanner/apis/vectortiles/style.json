@@ -52,6 +52,37 @@
       }
     },
     {
+      "id" : "flex-transfers",
+      "type" : "line",
+      "source" : "vectorSource",
+      "source-layer" : "transfers",
+      "minzoom" : 6,
+      "maxzoom" : 23,
+      "paint" : {
+        "line-color" : "#277eb5",
+        "line-width" : [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          13,
+          0.2,
+          23,
+          8.0
+        ]
+      },
+      "layout" : {
+        "line-cap" : "round",
+        "visibility" : "none"
+      },
+      "metadata" : {
+        "group" : "Transfers"
+      }
+    },
+    {
       "id" : "rental-vehicle",
       "type" : "circle",
       "source" : "vectorSource",
@@ -90,8 +121,16 @@
       },
       "filter" : [
         "in",
-        "class",
-        "VehicleRentalVehicle"
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "VehicleRentalVehicle"
+          ]
+        ]
       ],
       "layout" : {
         "visibility" : "none"
@@ -139,8 +178,16 @@
       },
       "filter" : [
         "in",
-        "class",
-        "VehicleRentalStation"
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "VehicleRentalStation"
+          ]
+        ]
       ],
       "layout" : {
         "visibility" : "none"
@@ -286,7 +333,10 @@
       },
       "filter" : [
         "==",
-        "wheelchairAccessible",
+        [
+          "get",
+          "wheelchairAccessible"
+        ],
         true
       ],
       "layout" : {
@@ -335,7 +385,10 @@
       },
       "filter" : [
         "==",
-        "wheelchairAccessible",
+        [
+          "get",
+          "wheelchairAccessible"
+        ],
         false
       ],
       "layout" : {
@@ -637,15 +690,23 @@
       },
       "filter" : [
         "in",
-        "class",
-        "StreetEdge",
-        "EscalatorEdge",
-        "PathwayEdge",
-        "ElevatorHopEdge",
-        "ElevatorBoardEdge",
-        "ElevatorAlightEdge",
-        "TemporaryPartialStreetEdge",
-        "TemporaryFreeEdge"
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "StreetEdge",
+            "EscalatorEdge",
+            "PathwayEdge",
+            "ElevatorHopEdge",
+            "ElevatorBoardEdge",
+            "ElevatorAlightEdge",
+            "TemporaryPartialStreetEdge",
+            "TemporaryFreeEdge"
+          ]
+        ]
       ],
       "layout" : {
         "symbol-placement" : "line-center",
@@ -695,23 +756,8 @@
             "min",
             255,
             [
-              "*",
-              80.0,
-              [
-                "log2",
-                [
-                  "get",
-                  "bicycleSafetyFactor"
-                ]
-              ]
-            ]
-          ],
-          [
-            "max",
-            0,
-            [
-              "-",
-              255,
+              "max",
+              0,
               [
                 "*",
                 80.0,
@@ -720,6 +766,29 @@
                   [
                     "get",
                     "bicycleSafetyFactor"
+                  ]
+                ]
+              ]
+            ]
+          ],
+          [
+            "min",
+            255,
+            [
+              "max",
+              0,
+              [
+                "-",
+                255,
+                [
+                  "*",
+                  80.0,
+                  [
+                    "log2",
+                    [
+                      "get",
+                      "bicycleSafetyFactor"
+                    ]
                   ]
                 ]
               ]
@@ -756,8 +825,16 @@
       },
       "filter" : [
         "in",
-        "class",
-        "StreetEdge"
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "StreetEdge"
+          ]
+        ]
       ],
       "layout" : {
         "line-cap" : "round",
@@ -782,15 +859,23 @@
       },
       "filter" : [
         "in",
-        "class",
-        "StreetEdge",
-        "EscalatorEdge",
-        "PathwayEdge",
-        "ElevatorHopEdge",
-        "ElevatorBoardEdge",
-        "ElevatorAlightEdge",
-        "TemporaryPartialStreetEdge",
-        "TemporaryFreeEdge"
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "StreetEdge",
+            "EscalatorEdge",
+            "PathwayEdge",
+            "ElevatorHopEdge",
+            "ElevatorBoardEdge",
+            "ElevatorAlightEdge",
+            "TemporaryPartialStreetEdge",
+            "TemporaryFreeEdge"
+          ]
+        ]
       ],
       "layout" : {
         "symbol-placement" : "line-center",
@@ -840,23 +925,8 @@
             "min",
             255,
             [
-              "*",
-              80.0,
-              [
-                "log2",
-                [
-                  "get",
-                  "walkSafetyFactor"
-                ]
-              ]
-            ]
-          ],
-          [
-            "max",
-            0,
-            [
-              "-",
-              255,
+              "max",
+              0,
               [
                 "*",
                 80.0,
@@ -865,6 +935,29 @@
                   [
                     "get",
                     "walkSafetyFactor"
+                  ]
+                ]
+              ]
+            ]
+          ],
+          [
+            "min",
+            255,
+            [
+              "max",
+              0,
+              [
+                "-",
+                255,
+                [
+                  "*",
+                  80.0,
+                  [
+                    "log2",
+                    [
+                      "get",
+                      "walkSafetyFactor"
+                    ]
                   ]
                 ]
               ]
@@ -901,8 +994,16 @@
       },
       "filter" : [
         "in",
-        "class",
-        "StreetEdge"
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "StreetEdge"
+          ]
+        ]
       ],
       "layout" : {
         "line-cap" : "round",
@@ -927,15 +1028,23 @@
       },
       "filter" : [
         "in",
-        "class",
-        "StreetEdge",
-        "EscalatorEdge",
-        "PathwayEdge",
-        "ElevatorHopEdge",
-        "ElevatorBoardEdge",
-        "ElevatorAlightEdge",
-        "TemporaryPartialStreetEdge",
-        "TemporaryFreeEdge"
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "StreetEdge",
+            "EscalatorEdge",
+            "PathwayEdge",
+            "ElevatorHopEdge",
+            "ElevatorBoardEdge",
+            "ElevatorAlightEdge",
+            "TemporaryPartialStreetEdge",
+            "TemporaryFreeEdge"
+          ]
+        ]
       ],
       "layout" : {
         "symbol-placement" : "line-center",
@@ -1262,15 +1371,23 @@
       },
       "filter" : [
         "in",
-        "class",
-        "StreetEdge",
-        "EscalatorEdge",
-        "PathwayEdge",
-        "ElevatorHopEdge",
-        "ElevatorBoardEdge",
-        "ElevatorAlightEdge",
-        "TemporaryPartialStreetEdge",
-        "TemporaryFreeEdge"
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "StreetEdge",
+            "EscalatorEdge",
+            "PathwayEdge",
+            "ElevatorHopEdge",
+            "ElevatorBoardEdge",
+            "ElevatorAlightEdge",
+            "TemporaryPartialStreetEdge",
+            "TemporaryFreeEdge"
+          ]
+        ]
       ],
       "layout" : {
         "symbol-placement" : "line-center",
@@ -1345,8 +1462,16 @@
       },
       "filter" : [
         "in",
-        "class",
-        "AreaEdge"
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "AreaEdge"
+          ]
+        ]
       ],
       "layout" : {
         "line-cap" : "round",
@@ -1394,15 +1519,23 @@
       },
       "filter" : [
         "in",
-        "class",
-        "StreetEdge",
-        "EscalatorEdge",
-        "PathwayEdge",
-        "ElevatorHopEdge",
-        "ElevatorBoardEdge",
-        "ElevatorAlightEdge",
-        "TemporaryPartialStreetEdge",
-        "TemporaryFreeEdge"
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "StreetEdge",
+            "EscalatorEdge",
+            "PathwayEdge",
+            "ElevatorHopEdge",
+            "ElevatorBoardEdge",
+            "ElevatorAlightEdge",
+            "TemporaryPartialStreetEdge",
+            "TemporaryFreeEdge"
+          ]
+        ]
       ],
       "layout" : {
         "line-cap" : "round",
@@ -1427,15 +1560,23 @@
       },
       "filter" : [
         "in",
-        "class",
-        "StreetEdge",
-        "EscalatorEdge",
-        "PathwayEdge",
-        "ElevatorHopEdge",
-        "ElevatorBoardEdge",
-        "ElevatorAlightEdge",
-        "TemporaryPartialStreetEdge",
-        "TemporaryFreeEdge"
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "StreetEdge",
+            "EscalatorEdge",
+            "PathwayEdge",
+            "ElevatorHopEdge",
+            "ElevatorBoardEdge",
+            "ElevatorAlightEdge",
+            "TemporaryPartialStreetEdge",
+            "TemporaryFreeEdge"
+          ]
+        ]
       ],
       "layout" : {
         "symbol-placement" : "line-center",
@@ -1505,13 +1646,21 @@
       },
       "filter" : [
         "in",
-        "class",
-        "StreetTransitStopLink",
-        "StreetTransitEntranceLink",
-        "BoardingLocationToStopLink",
-        "StreetVehicleRentalLink",
-        "StreetVehicleParkingLink",
-        "StreetStationCentroidLink"
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "StreetTransitStopLink",
+            "StreetTransitEntranceLink",
+            "BoardingLocationToStopLink",
+            "StreetVehicleRentalLink",
+            "StreetVehicleParkingLink",
+            "StreetStationCentroidLink"
+          ]
+        ]
       ],
       "layout" : {
         "line-cap" : "round",
@@ -1535,26 +1684,34 @@
             "min",
             255,
             [
-              "*",
-              728.57,
-              [
-                "get",
-                "maximumSlope"
-              ]
-            ]
-          ],
-          [
-            "max",
-            0,
-            [
-              "-",
-              255,
+              "max",
+              0,
               [
                 "*",
                 728.57,
                 [
                   "get",
                   "maximumSlope"
+                ]
+              ]
+            ]
+          ],
+          [
+            "min",
+            255,
+            [
+              "max",
+              0,
+              [
+                "-",
+                255,
+                [
+                  "*",
+                  728.57,
+                  [
+                    "get",
+                    "maximumSlope"
+                  ]
                 ]
               ]
             ]
@@ -1590,8 +1747,16 @@
       },
       "filter" : [
         "in",
-        "class",
-        "StreetEdge"
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "StreetEdge"
+          ]
+        ]
       ],
       "layout" : {
         "line-cap" : "round",
@@ -1680,8 +1845,16 @@
       },
       "filter" : [
         "in",
-        "class",
-        "ElevatorHopEdge"
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "ElevatorHopEdge"
+          ]
+        ]
       ],
       "layout" : {
         "line-cap" : "round",
@@ -1729,8 +1902,16 @@
       },
       "filter" : [
         "in",
-        "class",
-        "ElevatorBoardEdge"
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "ElevatorBoardEdge"
+          ]
+        ]
       ],
       "layout" : {
         "line-cap" : "round",
@@ -1778,8 +1959,16 @@
       },
       "filter" : [
         "in",
-        "class",
-        "ElevatorAlightEdge"
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "ElevatorAlightEdge"
+          ]
+        ]
       ],
       "layout" : {
         "line-cap" : "round",
@@ -1828,8 +2017,16 @@
       },
       "filter" : [
         "in",
-        "class",
-        "ElevatorHopVertex"
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "ElevatorHopVertex"
+          ]
+        ]
       ],
       "layout" : {
         "visibility" : "none"
@@ -1877,8 +2074,16 @@
       },
       "filter" : [
         "in",
-        "class",
-        "OsmElevatorVertex"
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "OsmElevatorVertex"
+          ]
+        ]
       ],
       "layout" : {
         "visibility" : "none"
@@ -1925,8 +2130,16 @@
       },
       "filter" : [
         "in",
-        "class",
-        "EscalatorEdge"
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "EscalatorEdge"
+          ]
+        ]
       ],
       "layout" : {
         "line-cap" : "round",
@@ -1974,7 +2187,10 @@
       },
       "filter" : [
         "==",
-        "isStairs",
+        [
+          "get",
+          "isStairs"
+        ],
         true
       ],
       "layout" : {
@@ -2068,8 +2284,16 @@
       },
       "filter" : [
         "in",
-        "class",
-        "VehicleParkingEntranceVertex"
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "VehicleParkingEntranceVertex"
+          ]
+        ]
       ],
       "layout" : {
         "visibility" : "none"
@@ -2117,8 +2341,16 @@
       },
       "filter" : [
         "in",
-        "class",
-        "BarrierVertex"
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "BarrierVertex"
+          ]
+        ]
       ],
       "layout" : {
         "visibility" : "none"
@@ -2166,8 +2398,16 @@
       },
       "filter" : [
         "in",
-        "class",
-        "BarrierPassThroughVertex"
+        [
+          "get",
+          "class"
+        ],
+        [
+          "literal",
+          [
+            "BarrierPassThroughVertex"
+          ]
+        ]
       ],
       "layout" : {
         "visibility" : "none"
@@ -2256,6 +2496,12 @@
       }
     }
   ],
-  "version" : 8,
-  "glyphs" : "https://cdn.jsdelivr.net/gh/klokantech/klokantech-gl-fonts@master/{fontstack}/{range}.pbf"
+  "metadata" : {
+    "rentalNetworks" : [
+      "tier",
+      "voi"
+    ]
+  },
+  "glyphs" : "https://cdn.jsdelivr.net/gh/klokantech/klokantech-gl-fonts@master/{fontstack}/{range}.pbf",
+  "version" : 8
 }
