@@ -18,7 +18,6 @@ import org.opentripplanner.street.geometry.SplitLineString;
 import org.opentripplanner.street.linking.LinkingDirection;
 import org.opentripplanner.street.model.RentalRestrictionExtension;
 import org.opentripplanner.street.model.StreetTraversalPermission;
-import org.opentripplanner.street.model.elevation.ElevationUtils;
 import org.opentripplanner.street.model.vertex.BarrierPassThroughVertex;
 import org.opentripplanner.street.model.vertex.BarrierVertex;
 import org.opentripplanner.street.model.vertex.IntersectionVertex;
@@ -766,11 +765,9 @@ public class StreetEdge
     seb.withWalkSafetyFactor(walkSafetyFactor);
     seb.withCarSpeed(carSpeed);
 
-    var partialElevationProfileFromParent = ElevationUtils.getPartialElevationProfile(
-      getElevationProfile(),
-      fromDistance,
-      toDistance
-    );
+    var partialElevationProfileFromParent = elevationExtension != null
+      ? elevationExtension.partial(fromDistance, toDistance)
+      : null;
 
     StreetElevationExtensionBuilder.of(seb)
       .withDistanceInMeters(defaultMillimeterLength(seb.geometry()) / 1000.)

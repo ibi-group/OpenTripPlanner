@@ -62,7 +62,7 @@ public class CarpoolStreetRouter implements CarpoolRouter {
         new StreetRequest(StreetMode.CAR),
         from,
         to,
-        streetLimitationParametersService.maxCarSpeed()
+        streetLimitationParametersService
       );
     } catch (Exception e) {
       LOG.warn("Routing failed from {} to {}: {}", from, to, e.getMessage());
@@ -91,12 +91,12 @@ public class CarpoolStreetRouter implements CarpoolRouter {
     StreetRequest streetRequest,
     Vertex fromVertex,
     Vertex toVertex,
-    float maxCarSpeed
+    StreetLimitationParametersService streetLimitationParametersService
   ) {
     var preferences = request.preferences().street();
     var request = StreetSearchRequest.of().withMode(StreetMode.CAR).build();
     var streetSearch = StreetSearchBuilder.of()
-      .withHeuristic(new EuclideanRemainingWeightHeuristic(maxCarSpeed))
+      .withHeuristic(new EuclideanRemainingWeightHeuristic(streetLimitationParametersService))
       .withSkipEdgeStrategy(
         new DurationSkipEdgeStrategy(preferences.maxDirectDuration().valueOf(streetRequest.mode()))
       )

@@ -29,7 +29,6 @@ public class CommandLineParameters {
 
   private static final String TIP = " Use --help to see available options.";
   private static final int DEFAULT_PORT = 8080;
-  private static final String DEFAULT_CACHE_PATH = "/var/otp/cache";
   private static final String DEFAULT_BIND_ADDRESS = "0.0.0.0";
 
   /* Options for the command itself, rather than build or server sub-tasks. */
@@ -81,13 +80,6 @@ public class CommandLineParameters {
       "given in the build config file."
   )
   public boolean save = false;
-
-  @Parameter(
-    names = { "--cache" },
-    validateWith = ReadWriteDirectory.class,
-    description = "The directory under which to cache OSM and NED tiles."
-  )
-  public File cacheDirectory = new File(DEFAULT_CACHE_PATH);
 
   /* Options for the server sub-task. */
 

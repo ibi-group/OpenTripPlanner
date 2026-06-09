@@ -56,7 +56,7 @@ public class VehicleParkingsLayerTest {
       .on(LocalDate.of(2022, Month.APRIL, 1))
       .add();
 
-    vehicleParking = VehicleParking.builder()
+    vehicleParking = VehicleParking.of()
       .id(ID)
       .name(
         TranslatedString.getI18NString(Map.of("", "default name", "de", "deutscher Name"), false)
@@ -71,9 +71,9 @@ public class VehicleParkingsLayerTest {
       .tags(List.of("tag1", "tag2"))
       .openingHoursCalendar(calBuilder.build())
       .state(VehicleParkingState.OPERATIONAL)
-      .capacity(VehicleParkingSpaces.builder().bicycleSpaces(5).carSpaces(6).build())
+      .capacity(VehicleParkingSpaces.of().bicycleSpaces(5).carSpaces(6).build())
       .availability(
-        VehicleParkingSpaces.builder().wheelchairAccessibleCarSpaces(1).bicycleSpaces(1).build()
+        VehicleParkingSpaces.of().wheelchairAccessibleCarSpaces(1).bicycleSpaces(1).build()
       )
       .build();
   }

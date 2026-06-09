@@ -198,7 +198,7 @@ class GraphQLIntegrationTest {
   static void setup() {
     PARKING_REPOSITORY.updateVehicleParking(
       List.of(
-        VehicleParking.builder()
+        VehicleParking.of()
           .id(id("parking-1"))
           .coordinate(WgsCoordinate.GREENWICH)
           .name(NonLocalizedString.ofNullable("parking"))
@@ -279,7 +279,7 @@ class GraphQLIntegrationTest {
     timetableSnapshot.update(
       RealTimeTripUpdate.of(
         pattern,
-        tripTimes2.createRealTimeFromScheduledTimes().cancelTrip().build(),
+        tripTimes2.createRealTimeFromScheduledTimes().withCanceled().build(),
         secondDate
       ).build()
     );

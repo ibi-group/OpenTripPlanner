@@ -470,7 +470,7 @@ public final class State implements AStarState<State, Edge, Vertex> {
   public boolean containsModeCar() {
     var state = this;
     while (state != null) {
-      if (state.currentMode().isInCar()) {
+      if (state.currentMode().isDrivingIsh()) {
         return true;
       } else {
         state = state.getBackState();

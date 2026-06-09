@@ -53,7 +53,7 @@ public class VehicleParkingGroupsLayerTest {
       )
       .withCoordinate(new WgsCoordinate(1.9, 1.1))
       .build();
-    vehicleParking = VehicleParking.builder()
+    vehicleParking = VehicleParking.of()
       .id(ID)
       .name(
         TranslatedString.getI18NString(
@@ -75,9 +75,9 @@ public class VehicleParkingGroupsLayerTest {
       .note(new NonLocalizedString("note"))
       .tags(List.of("tag1", "tag2"))
       .state(VehicleParkingState.OPERATIONAL)
-      .capacity(VehicleParkingSpaces.builder().bicycleSpaces(5).carSpaces(6).build())
+      .capacity(VehicleParkingSpaces.of().bicycleSpaces(5).carSpaces(6).build())
       .availability(
-        VehicleParkingSpaces.builder().wheelchairAccessibleCarSpaces(1).bicycleSpaces(1).build()
+        VehicleParkingSpaces.of().wheelchairAccessibleCarSpaces(1).bicycleSpaces(1).build()
       )
       .vehicleParkingGroup(vehicleParkingGroup)
       .build();

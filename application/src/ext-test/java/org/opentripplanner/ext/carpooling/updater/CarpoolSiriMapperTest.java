@@ -5,6 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.opentripplanner.ext.carpooling.CarpoolEstimatedVehicleJourneyData.arrivalIsAfterDepartureTime;
+import static org.opentripplanner.ext.carpooling.CarpoolEstimatedVehicleJourneyData.journeyWithAllButOneCallCancelled;
+import static org.opentripplanner.ext.carpooling.CarpoolEstimatedVehicleJourneyData.journeyWithCancelledIntermediateCall;
 import static org.opentripplanner.ext.carpooling.CarpoolEstimatedVehicleJourneyData.journeyWithDifferentCapacitiesPerCall;
 import static org.opentripplanner.ext.carpooling.CarpoolEstimatedVehicleJourneyData.journeyWithLatestExpectedArrivalTime;
 import static org.opentripplanner.ext.carpooling.CarpoolEstimatedVehicleJourneyData.journeyWithLatestExpectedArrivalTimeAimedOnly;
@@ -23,6 +25,7 @@ import static org.opentripplanner.ext.carpooling.model.CarpoolStop.DEFAULT_ONBOA
 import static org.opentripplanner.ext.carpooling.model.CarpoolTrip.DEFAULT_TOTAL_CAPACITY;
 
 import java.time.Duration;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import uk.org.siri.siri21.EstimatedCall;
 
@@ -228,6 +231,26 @@ public class CarpoolSiriMapperTest {
     var mapped = mapper.mapSiriToCarpoolTrip(journeyWithLatestExpectedArrivalTime(10, 5));
     var lastStop = mapped.stops().getLast();
     assertEquals(Duration.ZERO, lastStop.getDeviationBudget());
+  }
+
+  // -- cancellation tests --
+
+  @Test
+  void mapSiriToCarpoolTrip_intermediateCallCancelled_dropsThatCall() {
+    var mapped = mapper.mapSiriToCarpoolTrip(journeyWithCancelledIntermediateCall());
+
+    assertNotNull(mapped);
+    var stopIds = mapped
+      .stops()
+      .stream()
+      .map(s -> s.getId().getId())
+      .toList();
+    assertEquals(List.of("unittest_trip_origin", "unittest_trip_destination"), stopIds);
+  }
+
+  @Test
+  void mapSiriToCarpoolTrip_fewerThanTwoActiveCalls_returnsNull() {
+    assertNull(mapper.mapSiriToCarpoolTrip(journeyWithAllButOneCallCancelled()));
   }
 
   @Test

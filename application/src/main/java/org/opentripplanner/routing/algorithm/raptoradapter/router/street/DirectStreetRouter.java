@@ -14,6 +14,7 @@ import org.opentripplanner.routing.linking.LinkingContext;
 import org.opentripplanner.standalone.api.OtpServerRequestContext;
 import org.opentripplanner.street.geometry.SphericalDistanceLibrary;
 import org.opentripplanner.street.model.StreetMode;
+import org.opentripplanner.street.service.StreetLimitationParametersService;
 import org.opentripplanner.transit.service.TransitServiceResolver;
 
 /**
@@ -34,6 +35,8 @@ public class DirectStreetRouter {
     }
     OTPRequestTimeoutException.checkForTimeout();
     try {
+      StreetLimitationParametersService streetLimitationParametersService =
+        serverContext.streetLimitationParametersService();
       var maxCarSpeed = serverContext.streetLimitationParametersService().maxCarSpeed();
       if (!straightLineDistanceIsWithinLimit(request, maxCarSpeed, linkingContext)) {
         return Collections.emptyList();
@@ -42,7 +45,7 @@ public class DirectStreetRouter {
       // we could also get a persistent router-scoped GraphPathFinder but there's no setup cost here
       GraphPathFinder gpFinder = new GraphPathFinder(
         serverContext.listExtensionRequestContexts(request),
-        maxCarSpeed
+        streetLimitationParametersService
       );
       var paths = gpFinder.find(request, linkingContext);
 

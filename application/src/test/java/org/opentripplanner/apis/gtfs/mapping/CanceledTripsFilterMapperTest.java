@@ -2,6 +2,7 @@ package org.opentripplanner.apis.gtfs.mapping;
 
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -33,6 +34,34 @@ class CanceledTripsFilterMapperTest {
     var request = CanceledTripsFilterMapper.mapToTripOnServiceDateRequest(environment);
     assertTrue(request.includeModes().includeEverything());
     assertTrue(request.excludeModes().includeEverything());
+  }
+
+  @Test
+  void testNullExclude() {
+    // When no exclude is given, exclude will be null, which should not impact the filtering
+    var mode = TransitMode.BUS;
+    Map<String, Object> args = Map.of(
+      "filters",
+      List.of(Map.of("include", List.of(Map.of("modes", List.of(TransitModeMapper.map(mode))))))
+    );
+    var environment = getEnvironment(args);
+    var request = CanceledTripsFilterMapper.mapToTripOnServiceDateRequest(environment);
+    assertThat(request.filters()).hasSize(1);
+    assertNull(request.filters().getFirst().not());
+  }
+
+  @Test
+  void testNullInclude() {
+    // When no include is given, include will be null which should not impact the filtering
+    var mode = TransitMode.BUS;
+    Map<String, Object> args = Map.of(
+      "filters",
+      List.of(Map.of("exclude", List.of(Map.of("modes", List.of(TransitModeMapper.map(mode))))))
+    );
+    var environment = getEnvironment(args);
+    var request = CanceledTripsFilterMapper.mapToTripOnServiceDateRequest(environment);
+    assertThat(request.filters()).hasSize(1);
+    assertNull(request.filters().getFirst().select());
   }
 
   @Test

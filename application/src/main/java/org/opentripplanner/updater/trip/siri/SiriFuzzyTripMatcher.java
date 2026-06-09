@@ -295,7 +295,6 @@ public class SiriFuzzyTripMatcher {
     if (possibleTrips.isEmpty()) {
       throw UpdateException.of(UpdateErrorType.NO_FUZZY_TRIP_MATCH);
     } else if (possibleTrips.size() > 1) {
-      LOG.warn("Multiple trip and pattern combinations found, skipping all, {}", possibleTrips);
       throw UpdateException.of(UpdateErrorType.MULTIPLE_FUZZY_TRIP_MATCHES);
     } else {
       return possibleTrips.iterator().next();

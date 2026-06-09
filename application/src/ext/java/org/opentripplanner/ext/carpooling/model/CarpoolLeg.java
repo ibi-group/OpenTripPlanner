@@ -15,13 +15,13 @@ import org.opentripplanner.model.fare.FareOffer;
 import org.opentripplanner.model.plan.Emission;
 import org.opentripplanner.model.plan.Leg;
 import org.opentripplanner.model.plan.Place;
-import org.opentripplanner.model.plan.leg.ElevationProfile;
 import org.opentripplanner.model.plan.leg.LegCallTime;
 import org.opentripplanner.model.plan.leg.ScheduledTransitLeg;
 import org.opentripplanner.model.plan.leg.StopArrival;
 import org.opentripplanner.model.plan.legreference.LegReference;
 import org.opentripplanner.model.plan.walkstep.WalkStep;
 import org.opentripplanner.routing.alertpatch.TransitAlert;
+import org.opentripplanner.street.model.elevation.ElevationProfile;
 import org.opentripplanner.street.model.note.StreetNote;
 import org.opentripplanner.transfer.constrained.model.ConstrainedTransfer;
 import org.opentripplanner.transit.model.basic.TransitMode;
@@ -29,7 +29,6 @@ import org.opentripplanner.transit.model.network.Route;
 import org.opentripplanner.transit.model.organization.Agency;
 import org.opentripplanner.transit.model.organization.Operator;
 import org.opentripplanner.transit.model.site.FareZone;
-import org.opentripplanner.transit.model.timetable.RealTimeState;
 import org.opentripplanner.transit.model.timetable.TripOnServiceDate;
 import org.opentripplanner.transit.model.timetable.booking.BookingInfo;
 import org.opentripplanner.utils.tostring.ToStringBuilder;
@@ -204,12 +203,6 @@ public class CarpoolLeg implements Leg {
   @Override
   public boolean isRealTimeUpdated() {
     return Leg.super.isRealTimeUpdated();
-  }
-
-  @Nullable
-  @Override
-  public RealTimeState realTimeState() {
-    return Leg.super.realTimeState();
   }
 
   @Override

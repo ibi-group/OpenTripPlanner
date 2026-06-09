@@ -16,12 +16,12 @@ import org.opentripplanner.street.model.vertex.Vertex;
 import org.opentripplanner.street.search.TraverseMode;
 import org.opentripplanner.street.search.request.StreetSearchRequest;
 
-public class StateEditorTest {
+class StateEditorTest {
 
   static Vertex vertex = StreetModelFactory.intersectionVertex(1, 1);
 
   @Test
-  public final void testIncrementTimeInMilliseconds() {
+  void testIncrementTimeInMilliseconds() {
     StateEditor stateEditor = new StateEditor(vertex, StreetSearchRequest.of().build());
 
     stateEditor.setTimeSeconds(0);
@@ -31,7 +31,7 @@ public class StateEditorTest {
   }
 
   @Test
-  public final void testWeightIncrement() {
+  void testWeightIncrement() {
     StateEditor stateEditor = new StateEditor(vertex, StreetSearchRequest.of().build());
 
     stateEditor.setTimeSeconds(0);
@@ -41,7 +41,7 @@ public class StateEditorTest {
   }
 
   @Test
-  public final void testNanWeightIncrement() {
+  void testNanWeightIncrement() {
     StateEditor stateEditor = new StateEditor(vertex, StreetSearchRequest.of().build());
 
     stateEditor.setTimeSeconds(0);
@@ -49,13 +49,21 @@ public class StateEditorTest {
   }
 
   @Test
-  public final void testInfinityWeightIncrement() {
+  void testInfinityWeightIncrement() {
     StateEditor stateEditor = new StateEditor(vertex, StreetSearchRequest.of().build());
 
     stateEditor.setTimeSeconds(0);
     assertThrows(IllegalArgumentException.class, () ->
       stateEditor.incrementWeight(Double.NEGATIVE_INFINITY)
     );
+  }
+
+  @Test
+  void negativeMillis() {
+    var stateEditor = new StateEditor(vertex, StreetSearchRequest.of().build());
+
+    stateEditor.setTimeSeconds(0);
+    assertThrows(IllegalArgumentException.class, () -> stateEditor.incrementTimeInMilliseconds(-1));
   }
 
   @Nested
