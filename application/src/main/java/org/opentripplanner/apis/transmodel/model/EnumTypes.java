@@ -1,6 +1,7 @@
 package org.opentripplanner.apis.transmodel.model;
 
 import graphql.schema.GraphQLEnumType;
+import graphql.schema.GraphQLEnumValueDefinition;
 import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.List;
@@ -25,7 +26,6 @@ import org.opentripplanner.transit.model.network.BikeAccess;
 import org.opentripplanner.transit.model.site.StopTransferPriority;
 import org.opentripplanner.transit.model.timetable.Direction;
 import org.opentripplanner.transit.model.timetable.OccupancyStatus;
-import org.opentripplanner.transit.model.timetable.RealTimeState;
 import org.opentripplanner.transit.model.timetable.TripAlteration;
 import org.opentripplanner.transit.model.timetable.booking.BookingMethod;
 import org.opentripplanner.transit.service.ArrivalDeparture;
@@ -78,7 +78,7 @@ public class EnumTypes {
     .value("quick", VehicleRoutingOptimizeType.SHORTEST_DURATION)
     .value("safe", VehicleRoutingOptimizeType.SAFE_STREETS)
     .value("flat", VehicleRoutingOptimizeType.FLAT_STREETS)
-    .value("greenways", VehicleRoutingOptimizeType.SAFEST_STREETS)
+    .value("greenways", VehicleRoutingOptimizeType.SAFE_STREETS)
     .value("triangle", VehicleRoutingOptimizeType.TRIANGLE)
     .build();
 
@@ -247,27 +247,27 @@ public class EnumTypes {
     .name("RealtimeState")
     .value(
       "scheduled",
-      RealTimeState.SCHEDULED,
+      TransmodelRealTimeState.SCHEDULED,
       "The service journey information comes from the regular time table, i.e. no real-time update has been applied."
     )
     .value(
       "updated",
-      RealTimeState.UPDATED,
+      TransmodelRealTimeState.UPDATED,
       "The service journey information has been updated, but the journey pattern stayed the same as the journey pattern of the scheduled service journey."
     )
     .value(
       "canceled",
-      RealTimeState.CANCELED,
+      TransmodelRealTimeState.CANCELED,
       "The service journey has been canceled by a real-time update."
     )
     .value(
       "Added",
-      RealTimeState.ADDED,
+      TransmodelRealTimeState.ADDED,
       "The service journey has been added using a real-time update, i.e. the service journey was not present in the regular time table."
     )
     .value(
       "modified",
-      RealTimeState.MODIFIED,
+      TransmodelRealTimeState.MODIFIED,
       "The service journey information has been updated and resulted in a different journey pattern compared to the journey pattern of the scheduled service journey."
     )
     .build();
@@ -339,6 +339,11 @@ public class EnumTypes {
       "The origin and destination are so close to each other, that walking is always better, but no direct mode was specified for the search"
     )
     .value(
+      "serviceJourneyLocationMissingAimedDepartureTime",
+      RoutingErrorCode.TRIP_LOCATION_MISSING_SCHEDULED_DEPARTURE_TIME,
+      "The service journey location is ambiguous because the stop is visited more than once by the service journey. An aimedDepartureTime is necessary to disambiguate."
+    )
+    .value(
       "noDirectModeConnection",
       RoutingErrorCode.NO_DIRECT_MODE_CONNECTION,
       "No usable itineraries were found for the requested direct mode and no transit was included in the search"
@@ -362,10 +367,23 @@ public class EnumTypes {
     .value("noImpact", "noImpact", "Situation has no impact on trips.")
     .value("verySlight", "verySlight", "Situation has a very slight impact on trips.")
     .value("slight", "slight", "Situation has a slight impact on trips.")
-    .value("normal", "normal", "Situation has an impact on trips (default).")
+    .value(
+      "normal",
+      "normal",
+      "Situation has an impact on trips (default). Used for SIRI severities `normal` and `undefined`."
+    )
     .value("severe", "severe", "Situation has a severe impact on trips.")
     .value("verySevere", "verySevere", "Situation has a very severe impact on trips.")
-    .value("undefined", "undefined", "Severity is undefined.")
+    .value(
+      GraphQLEnumValueDefinition.newEnumValueDefinition()
+        .name("undefined")
+        .value("undefined")
+        .description("Severity is undefined.")
+        .deprecationReason(
+          "This value is never returned, and filtering on it matches no situations. SIRI severity `undefined` is mapped to `normal`."
+        )
+        .build()
+    )
     .build();
 
   /**
@@ -473,12 +491,14 @@ public class EnumTypes {
     .value("funicular", TransitMode.FUNICULAR)
     .value("lift", TransitMode.GONDOLA)
     .value("rail", TransitMode.RAIL)
+    .value("snowAndIce", TransitMode.SNOW_AND_ICE)
     .value("metro", TransitMode.SUBWAY)
     .value("taxi", TransitMode.TAXI)
     .value("tram", TransitMode.TRAM)
     .value("trolleybus", TransitMode.TROLLEYBUS)
     .value("monorail", TransitMode.MONORAIL)
     .value("coach", TransitMode.COACH)
+    .value("carpool", TransitMode.CARPOOL)
     .value("unknown", "unknown")
     .build();
 
@@ -488,14 +508,15 @@ public class EnumTypes {
     TransmodelTransportSubmode::getValue
   );
 
-  public static final GraphQLEnumType VERTEX_TYPE = GraphQLEnumType.newEnum()
-    .name("VertexType")
-    .value("normal", VertexType.NORMAL)
-    .value("transit", VertexType.TRANSIT)
-    .value("bikePark", VertexType.VEHICLEPARKING)
-    .value("bikeShare", VertexType.VEHICLERENTAL)
-    //TODO QL: .value("parkAndRide", VertexType.PARKANDRIDE)
-    .build();
+  public static final GraphQLEnumType VERTEX_TYPE =
+    GraphQLEnumType.newEnum()
+      .name("VertexType")
+      .value("normal", VertexType.NORMAL)
+      .value("transit", VertexType.TRANSIT)
+      .value("bikePark", VertexType.VEHICLEPARKING)
+      .value("bikeShare", VertexType.VEHICLERENTAL)
+      //TODO QL: .value("parkAndRide", VertexType.PARKANDRIDE)
+      .build();
 
   public static final GraphQLEnumType VIA_LOCATION_TYPE = GraphQLEnumType.newEnum()
     .name("ViaLocationType")

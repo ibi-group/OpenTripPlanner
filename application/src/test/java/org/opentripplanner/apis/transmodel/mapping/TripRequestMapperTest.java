@@ -27,8 +27,8 @@ import org.opentripplanner._support.time.ZoneIds;
 import org.opentripplanner.api.model.transit.DefaultFeedIdMapper;
 import org.opentripplanner.apis.support.InvalidInputException;
 import org.opentripplanner.apis.support.graphql.DataFetchingSupport;
-import org.opentripplanner.apis.transmodel.TransmodelRequestContext;
-import org.opentripplanner.ext.fares.service.gtfs.v1.DefaultFareService;
+import org.opentripplanner.apis.transmodel.TransmodelAPITestContextBuilder;
+import org.opentripplanner.apis.transmodel.TransmodelGraphQLRequestContext;
 import org.opentripplanner.model.calendar.CalendarServiceData;
 import org.opentripplanner.model.plan.Itinerary;
 import org.opentripplanner.model.plan.Leg;
@@ -39,34 +39,39 @@ import org.opentripplanner.routing.api.request.RouteRequest;
 import org.opentripplanner.routing.api.request.preference.StreetPreferences;
 import org.opentripplanner.routing.api.request.preference.TimeSlopeSafetyTriangle;
 import org.opentripplanner.routing.api.request.via.ViaLocation;
-import org.opentripplanner.standalone.api.TestServerContext;
 import org.opentripplanner.street.graph.Graph;
 import org.opentripplanner.street.model.StreetMode;
 import org.opentripplanner.street.model.VehicleRoutingOptimizeType;
 import org.opentripplanner.transfer.regular.TransferRepository;
 import org.opentripplanner.transfer.regular.TransferServiceTestFactory;
-import org.opentripplanner.transit.model._data.TimetableRepositoryForTest;
+import org.opentripplanner.transit.model.TransitTestEnvironment;
+import org.opentripplanner.transit.model._data.TransitRepositoryForTest;
 import org.opentripplanner.transit.model.network.Route;
 import org.opentripplanner.transit.model.network.TripPattern;
 import org.opentripplanner.transit.model.site.RegularStop;
 import org.opentripplanner.transit.model.site.StopLocation;
-import org.opentripplanner.transit.service.TimetableRepository;
+import org.opentripplanner.transit.service.TransitRepository;
 
 public class TripRequestMapperTest implements PlanTestConstants {
 
-  private static final TimetableRepositoryForTest TEST_MODEL = TimetableRepositoryForTest.of();
+  private static final TransitTestEnvironment TRANSIT_ENV = TransitTestEnvironment.of(
+    LocalDate.of(2024, 5, 7),
+    ZoneIds.STOCKHOLM
+  ).build();
+
+  private static final TransitRepositoryForTest TEST_MODEL = TransitRepositoryForTest.of();
   private static final Duration MAX_FLEXIBLE = Duration.ofMinutes(20);
   private static final Function<StopLocation, String> STOP_TO_ID = s -> s.getId().toString();
 
-  private static final Route ROUTE1 = TimetableRepositoryForTest.route("route1").build();
-  private static final Route ROUTE2 = TimetableRepositoryForTest.route("route2").build();
+  private static final Route ROUTE1 = TransitRepositoryForTest.route("route1").build();
+  private static final Route ROUTE2 = TransitRepositoryForTest.route("route2").build();
 
   private static final RegularStop STOP1 = TEST_MODEL.stop("ST:stop1", 1, 1).build();
   private static final RegularStop STOP2 = TEST_MODEL.stop("ST:stop2", 2, 1).build();
   private static final RegularStop STOP3 = TEST_MODEL.stop("ST:stop3", 3, 1).build();
 
   private static final Graph GRAPH = new Graph();
-  private static final TimetableRepository TIMETABLE_REPOSITORY;
+  private static final TransitRepository TRANSIT_REPOSITORY;
   private static final TransferRepository TRANSFER_REPOSITORY;
   private static final Map.Entry<String, Object> ARGUMENT_FROM = entry(
     "from",
@@ -78,7 +83,7 @@ public class TripRequestMapperTest implements PlanTestConstants {
   );
 
   private static final TripRequestMapper MAPPER = new TripRequestMapper(new DefaultFeedIdMapper());
-  private TransmodelRequestContext context;
+  private TransmodelGraphQLRequestContext context;
 
   static {
     var itinerary = newItinerary(Place.forStop(STOP1), time("11:00"))
@@ -86,30 +91,30 @@ public class TripRequestMapperTest implements PlanTestConstants {
       .bus(ROUTE2, 2, time("11:20"), time("11:40"), Place.forStop(STOP3))
       .build();
     var patterns = itineraryPatterns(itinerary);
-    var siteRepository = TEST_MODEL.siteRepositoryBuilder()
-      .withRegularStop(STOP1)
-      .withRegularStop(STOP2)
-      .withRegularStop(STOP3)
-      .build();
+
+    //TEST_MODEL.siteRepositoryBuilder()
+    //  .withRegularStop(STOP1)
+    //  .withRegularStop(STOP2)
+    //  .withRegularStop(STOP3)
+    //  .build();
 
     TRANSFER_REPOSITORY = TransferServiceTestFactory.defaultTransferRepository();
-    TIMETABLE_REPOSITORY = new TimetableRepository(siteRepository);
-    TIMETABLE_REPOSITORY.initTimeZone(ZoneIds.STOCKHOLM);
+    TRANSIT_REPOSITORY = TRANSIT_ENV.transitRepository();
     var calendarServiceData = new CalendarServiceData();
     LocalDate serviceDate = itinerary.startTime().toLocalDate();
     patterns.forEach(pattern -> {
-      TIMETABLE_REPOSITORY.addTripPattern(pattern.getId(), pattern);
+      TRANSIT_REPOSITORY.addTripPattern(pattern.getId(), pattern);
       final int serviceCode = pattern
         .getScheduledTimetable()
         .getTripTimes()
         .getFirst()
         .getServiceCode();
-      TIMETABLE_REPOSITORY.getServiceCodes().put(pattern.getId(), serviceCode);
+      TRANSIT_REPOSITORY.putServiceCode(pattern.getId(), serviceCode);
       calendarServiceData.putServiceDatesForServiceId(pattern.getId(), List.of(serviceDate));
     });
 
-    TIMETABLE_REPOSITORY.updateCalendarServiceData(calendarServiceData);
-    TIMETABLE_REPOSITORY.index();
+    TRANSIT_REPOSITORY.updateCalendarServiceData(calendarServiceData);
+    TRANSIT_REPOSITORY.index();
   }
 
   @BeforeEach
@@ -128,21 +133,11 @@ public class TripRequestMapperTest implements PlanTestConstants {
       )
       .buildDefault();
 
-    var otpServerRequestContext = TestServerContext.createServerContext(
-      GRAPH,
-      TIMETABLE_REPOSITORY,
-      TRANSFER_REPOSITORY,
-      new DefaultFareService(),
-      null,
-      defaultRequest
-    );
-
-    context = new TransmodelRequestContext(
-      otpServerRequestContext,
-      otpServerRequestContext.routingService(),
-      otpServerRequestContext.transitService(),
-      otpServerRequestContext.empiricalDelayService()
-    );
+    context = TransmodelAPITestContextBuilder.of(TRANSIT_ENV)
+      .withGraph(GRAPH)
+      .withTransferRepository(TRANSFER_REPOSITORY)
+      .withDefaultRequest(defaultRequest)
+      .build();
   }
 
   private static final List<Map<String, Object>> DURATIONS = List.of(
@@ -215,7 +210,7 @@ public class TripRequestMapperTest implements PlanTestConstants {
       MAPPER.createRequest(executionContext(arguments))
     );
     assertEquals(
-      "Invalid duration for mode WALK. The value 45m1s is not greater than the default 45m.",
+      "Invalid duration for mode WALK. The value 45m1s is greater than the default 45m.",
       ex.getMessage()
     );
   }
@@ -230,7 +225,7 @@ public class TripRequestMapperTest implements PlanTestConstants {
       MAPPER.createRequest(executionContext(arguments))
     );
     assertEquals(
-      "Invalid duration for mode FLEXIBLE. The value 20m1s is not greater than the default 20m.",
+      "Invalid duration for mode FLEXIBLE. The value 20m1s is greater than the default 20m.",
       ex.getMessage()
     );
   }
@@ -248,7 +243,7 @@ public class TripRequestMapperTest implements PlanTestConstants {
       MAPPER.createRequest(executionContext(arguments))
     );
     assertEquals(
-      "Invalid duration for mode WALK. The value 4h1s is not greater than the default 4h.",
+      "Invalid duration for mode WALK. The value 4h1s is greater than the default 4h.",
       ex.getMessage()
     );
   }
@@ -263,7 +258,7 @@ public class TripRequestMapperTest implements PlanTestConstants {
       MAPPER.createRequest(executionContext(arguments))
     );
     assertEquals(
-      "Invalid duration for mode FLEXIBLE. The value 20m1s is not greater than the default 20m.",
+      "Invalid duration for mode FLEXIBLE. The value 20m1s is greater than the default 20m.",
       ex.getMessage()
     );
   }
@@ -406,6 +401,31 @@ public class TripRequestMapperTest implements PlanTestConstants {
     Map<String, Object> arguments = arguments(name, 101);
     var req = MAPPER.createRequest(executionContext(arguments));
     assertEquals(Duration.ofSeconds(101), req.preferences().transfer().slack());
+  }
+
+  @Test
+  void testOnBoardLocation() {
+    var fromWithOnBoardLocation = Map.of(
+      "serviceJourneyLocation",
+      Map.of(
+        "datedServiceJourneyReference",
+        Map.of(
+          "serviceJourneyOnServiceDate",
+          Map.of("serviceJourneyId", "F:T1", "serviceDate", LocalDate.of(2024, 11, 1))
+        ),
+        "pointInJourneyPatternReference",
+        Map.of("stopLocationId", "F:stop1")
+      )
+    );
+
+    var arguments = new HashMap<String, Object>();
+    arguments.put("from", fromWithOnBoardLocation);
+    arguments.put("to", Map.of("place", "F:Quay:2"));
+
+    var request = MAPPER.createRequest(executionContext(arguments));
+    var from = request.from();
+    assertNotNull(from);
+    assertNotNull(from.tripLocation());
   }
 
   @Test

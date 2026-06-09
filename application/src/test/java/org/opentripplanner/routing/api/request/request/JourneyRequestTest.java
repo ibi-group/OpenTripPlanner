@@ -5,8 +5,8 @@ import static org.opentripplanner._support.asserts.AssertString.assertEqualsIgno
 
 import java.util.List;
 import org.junit.jupiter.api.Test;
-import org.opentripplanner._support.asserts.AssertEqualsAndHashCode;
 import org.opentripplanner.core.model.id.FeedScopedId;
+import org.opentripplanner.core.testfixtures.lang.AssertEqualsAndHashCode;
 import org.opentripplanner.routing.api.request.RequestModes;
 import org.opentripplanner.routing.api.request.request.filter.SelectRequest;
 import org.opentripplanner.street.model.StreetMode;
@@ -15,7 +15,11 @@ class JourneyRequestTest {
 
   private static final TransitRequest TRANSIT = TransitRequest.of()
     .withFilter(b ->
-      b.addSelect(SelectRequest.of().withRoutes(List.of(new FeedScopedId("F", "R:1"))).build())
+      b.addSelect(
+        SelectRequest.of()
+          .withRoutes(List.of(new FeedScopedId("F", "R:1")))
+          .build()
+      )
     )
     .build();
   private static final StreetRequest ACCESS = new StreetRequest(StreetMode.BIKE_TO_PARK);

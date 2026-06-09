@@ -4,7 +4,7 @@ import static com.google.common.truth.Truth.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.opentripplanner.core.model.id.FeedScopedIdForTestFactory.id;
 import static org.opentripplanner.model.plan.TestItineraryBuilder.newItinerary;
-import static org.opentripplanner.transit.model._data.TimetableRepositoryForTest.groupOfRoutes;
+import static org.opentripplanner.transit.model._data.TransitRepositoryForTest.groupOfRoutes;
 
 import java.util.List;
 import java.util.Set;
@@ -15,7 +15,7 @@ import org.opentripplanner.ext.fares.model.FareTransferRule;
 import org.opentripplanner.model.fare.FareOffer;
 import org.opentripplanner.model.fare.FareProduct;
 import org.opentripplanner.model.plan.PlanTestConstants;
-import org.opentripplanner.transit.model._data.TimetableRepositoryForTest;
+import org.opentripplanner.transit.model._data.TransitRepositoryForTest;
 import org.opentripplanner.transit.model.basic.Money;
 import org.opentripplanner.transit.model.network.GroupOfRoutes;
 import org.opentripplanner.transit.model.network.Route;
@@ -23,7 +23,7 @@ import org.opentripplanner.transit.model.network.Route;
 class FreeTransferInNetworkTest implements PlanTestConstants {
 
   private static final GroupOfRoutes NETWORK = groupOfRoutes("n1").build();
-  private static final Route ROUTE = TimetableRepositoryForTest.route("r1")
+  private static final Route ROUTE = TransitRepositoryForTest.route("r1")
     .withGroupOfRoutes(List.of(NETWORK))
     .build();
   private static final FeedScopedId LEG_GROUP = id("leg-group1");
@@ -73,10 +73,8 @@ class FreeTransferInNetworkTest implements PlanTestConstants {
   void severalLegs() {
     var i1 = newItinerary(A, 0).bus(ROUTE, 1, 0, 50, B).bus(ROUTE, 1, 0, 50, C).build();
     var result = service.calculateFares(i1);
-    i1
-      .listTransitLegs()
-      .forEach(l -> {
-        assertThat(result.offersForLeg(l)).containsExactly(FareOffer.of(l.startTime(), REGULAR));
-      });
+    i1.listTransitLegs().forEach(l -> {
+      assertThat(result.offersForLeg(l)).containsExactly(FareOffer.of(l.startTime(), REGULAR));
+    });
   }
 }

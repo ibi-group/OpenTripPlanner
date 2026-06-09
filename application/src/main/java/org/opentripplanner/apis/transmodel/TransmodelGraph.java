@@ -23,7 +23,6 @@ import org.opentripplanner.ext.actuator.MicrometerGraphQLInstrumentation;
 import org.opentripplanner.framework.application.OTPFeature;
 import org.opentripplanner.framework.application.OTPRequestTimeoutException;
 import org.opentripplanner.framework.concurrent.OtpRequestThreadFactory;
-import org.opentripplanner.standalone.api.OtpServerRequestContext;
 import org.opentripplanner.transit.model.framework.EntityNotFoundException;
 import org.opentripplanner.utils.lang.ObjectUtils;
 import org.slf4j.Logger;
@@ -39,15 +38,13 @@ class TransmodelGraph {
   final ExecutorService threadPool;
 
   TransmodelGraph(GraphQLSchema schema) {
-    this.threadPool = Executors.newCachedThreadPool(
-      OtpRequestThreadFactory.of("transmodel-api-%d")
-    );
+    this.threadPool = Executors.newCachedThreadPool(OtpRequestThreadFactory.of("transmodel-api-"));
     this.indexSchema = schema;
   }
 
   Response executeGraphQL(
     String query,
-    OtpServerRequestContext serverContext,
+    TransmodelGraphQLRequestContext transmodelRequestContext,
     Map<String, Object> variables,
     String operationName,
     int maxNumberOfResultFields,
@@ -56,10 +53,8 @@ class TransmodelGraph {
     try (var executionStrategy = new AbortOnUnprocessableRequestExecutionStrategy()) {
       variables = ObjectUtils.ifNotNull(variables, new HashMap<>());
       var instrumentation = createInstrumentation(maxNumberOfResultFields, tracingTags);
-      var transmodelRequestContext = createRequestContext(serverContext);
       var executionInput = createExecutionInput(
         query,
-        serverContext,
         variables,
         operationName,
         transmodelRequestContext
@@ -97,29 +92,16 @@ class TransmodelGraph {
     return instrumentation;
   }
 
-  private static TransmodelRequestContext createRequestContext(
-    OtpServerRequestContext serverContext
-  ) {
-    return new TransmodelRequestContext(
-      serverContext,
-      serverContext.routingService(),
-      serverContext.transitService(),
-      serverContext.empiricalDelayService()
-    );
-  }
-
   private static ExecutionInput createExecutionInput(
     String query,
-    OtpServerRequestContext serverContext,
     Map<String, Object> variables,
     String operationName,
-    TransmodelRequestContext transmodelRequestContext
+    TransmodelGraphQLRequestContext transmodelRequestContext
   ) {
     return ExecutionInput.newExecutionInput()
       .query(query)
       .operationName(operationName)
       .context(transmodelRequestContext)
-      .root(serverContext)
       .variables(variables)
       .build();
   }

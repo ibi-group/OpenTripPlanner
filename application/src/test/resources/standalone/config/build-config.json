@@ -8,7 +8,6 @@
     "gtfs": "(?i)gtfs",
     "netex": "(?i)netex"
   },
-
   "osmDefaults": {
     "timeZone": "Europe/Rome",
     "osmTagMapping": "default"
@@ -20,6 +19,7 @@
       "osmTagMapping": "norway"
     }
   ],
+  "elevatorRefTags": [{ "tagGroup": ["manufacturer", "ref"] }],
   "demDefaults": {
     "elevationUnitMultiplier": 1.0
   },
@@ -91,5 +91,8 @@
       "carsAllowedStopMaxTransferDuration": "3h",
       "bikesAllowedStopMaxTransferDuration": "1h"
     }
+  },
+  "cache": {
+    "enabled": true
   }
 }

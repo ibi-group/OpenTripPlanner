@@ -3,7 +3,6 @@ package org.opentripplanner.osm.wayproperty;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
-import org.opentripplanner.graph_builder.module.osm.StreetTraversalPermissionPair;
 import org.opentripplanner.osm.model.OsmWay;
 import org.opentripplanner.street.model.StreetTraversalPermission;
 
@@ -151,11 +150,16 @@ class OverridePermissionsTest {
   }
 
   private StreetTraversalPermissionPair getWayProperties(OsmWay way) {
-    WayPropertiesPair wayData = WAY_PROPERTY_SET.getDataForWay(way);
+    BidirectionalWayProperties wayData = WAY_PROPERTY_SET.getDataForWay(way);
 
     return new StreetTraversalPermissionPair(
       wayData.forward().getPermission(),
       wayData.backward().getPermission()
     );
   }
+
+  private record StreetTraversalPermissionPair(
+    StreetTraversalPermission main,
+    StreetTraversalPermission back
+  ) {}
 }

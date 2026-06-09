@@ -10,10 +10,10 @@ import java.util.Optional;
 import java.util.stream.IntStream;
 import javax.annotation.Nullable;
 import org.opentripplanner.core.model.i18n.I18NString;
+import org.opentripplanner.transit.model.network.ReplacedByRelation;
 import org.opentripplanner.transit.model.network.TripPattern;
 import org.opentripplanner.transit.model.site.StopLocation;
 import org.opentripplanner.transit.model.timetable.OccupancyStatus;
-import org.opentripplanner.transit.model.timetable.RealTimeState;
 import org.opentripplanner.transit.model.timetable.StopTimeKey;
 import org.opentripplanner.transit.model.timetable.Timetable;
 import org.opentripplanner.transit.model.timetable.Trip;
@@ -34,7 +34,7 @@ public class TripTimeOnDate {
 
   public static final int UNDEFINED = -1;
 
-  private final TripTimes tripTimes;
+  private final TripTimes<?> tripTimes;
   private final int stopPosition;
   // This is only needed because TripTimes has no reference to TripPattern
   private final TripPattern tripPattern;
@@ -44,7 +44,7 @@ public class TripTimeOnDate {
 
   private final long midnight;
 
-  public TripTimeOnDate(TripTimes tripTimes, int stopPosition, TripPattern tripPattern) {
+  public TripTimeOnDate(TripTimes<?> tripTimes, int stopPosition, TripPattern tripPattern) {
     this.tripTimes = tripTimes;
     this.stopPosition = stopPosition;
     this.tripPattern = tripPattern;
@@ -53,7 +53,7 @@ public class TripTimeOnDate {
   }
 
   public TripTimeOnDate(
-    TripTimes tripTimes,
+    TripTimes<?> tripTimes,
     int stopPosition,
     TripPattern tripPattern,
     @Nullable LocalDate serviceDate,
@@ -74,7 +74,7 @@ public class TripTimeOnDate {
    */
   @Nullable
   public static List<TripTimeOnDate> fromTripTimes(Timetable table, Trip trip) {
-    TripTimes times = table.getTripTimes(trip);
+    var times = table.getTripTimes(trip);
     if (times == null) {
       return null;
     }
@@ -100,7 +100,7 @@ public class TripTimeOnDate {
     LocalDate serviceDate,
     Instant midnight
   ) {
-    TripTimes times = table.getTripTimes(trip);
+    var times = table.getTripTimes(trip);
     if (times == null) {
       Timetable scheduledTimetable = table.getPattern().getScheduledTimetable();
       return fromTripTimes(scheduledTimetable, trip);
@@ -129,7 +129,7 @@ public class TripTimeOnDate {
   ) {
     // The timetable given should always contain the trip.
     // if the trip doesn't run on the date, the scheduled timetable should be given.
-    TripTimes times = Objects.requireNonNull(table.getTripTimes(trip));
+    var times = Objects.requireNonNull(table.getTripTimes(trip));
     List<TripTimeOnDate> out = new ArrayList<>();
     for (int i = 0; i < times.getNumStops(); ++i) {
       out.add(new TripTimeOnDate(times, i, table.getPattern(), serviceDate, midnight));
@@ -146,7 +146,7 @@ public class TripTimeOnDate {
     LocalDate serviceDate,
     Instant midnight
   ) {
-    TripTimes times = table.getTripTimes(trip);
+    var times = table.getTripTimes(trip);
     return new TripTimeOnDate(times, 0, table.getPattern(), serviceDate, midnight);
   }
 
@@ -159,7 +159,7 @@ public class TripTimeOnDate {
     LocalDate serviceDate,
     Instant midnight
   ) {
-    TripTimes times = table.getTripTimes(trip);
+    var times = table.getTripTimes(trip);
     return new TripTimeOnDate(
       times,
       times.getNumStops() - 1,
@@ -187,11 +187,36 @@ public class TripTimeOnDate {
     return tripPattern.getStop(stopPosition);
   }
 
+  /**
+   * The scheduled stop for this call, equal to {@link #getStop()} unless the stop was changed by a
+   * real time update. Falls back to the real time stop when the patterns differ in size.
+   */
+  public StopLocation getScheduledStop(TripPattern scheduledTripPattern) {
+    if (tripPattern.numberOfStops() == scheduledTripPattern.numberOfStops()) {
+      return scheduledTripPattern.getStop(stopPosition);
+    }
+    // The number of stops is different. There must be extra stops in the tripPattern compared to
+    // the scheduledTripPattern.
+    if (isExtraCall()) {
+      // For extra calls we don't have a scheduled stop. Return the same stop as for realtime.
+      return getStop();
+    }
+    // The number of stops is different. There must be extra stops in tripPattern compared to scheduledTripPattern
+    var extraCallsBefore = (int) IntStream.range(0, stopPosition)
+      .filter(tripTimes::isExtraCall)
+      .count();
+    var scheduledPos = stopPosition - extraCallsBefore;
+    if (scheduledPos >= scheduledTripPattern.numberOfStops()) {
+      throw new IllegalStateException("Number of stops is inconsistent in scheduled trip pattern");
+    }
+    return scheduledTripPattern.getStop(scheduledPos);
+  }
+
   public int getStopPosition() {
     return stopPosition;
   }
 
-  public TripTimes getTripTimes() {
+  public TripTimes<?> getTripTimes() {
     return tripTimes;
   }
 
@@ -274,12 +299,12 @@ public class TripTimeOnDate {
   }
 
   public boolean isRealtime() {
-    return !tripTimes.isScheduled() && !isNoDataStop();
+    return tripTimes.hasAnyUpdates() && !isNoDataStop();
   }
 
   public boolean isCancelledStop() {
     return (
-      tripTimes.isCancelledStop(stopPosition) ||
+      tripTimes.isCanceledStop(stopPosition) ||
       tripPattern.isBoardAndAlightAt(stopPosition, PickDrop.CANCELLED)
     );
   }
@@ -313,12 +338,6 @@ public class TripTimeOnDate {
   /// True if there is realtime information indicating that the trip has departed from the stop.
   public boolean hasDeparted() {
     return tripTimes.hasDeparted(stopPosition);
-  }
-
-  public RealTimeState getRealTimeState() {
-    return tripTimes.isNoDataStop(stopPosition)
-      ? RealTimeState.SCHEDULED
-      : tripTimes.getRealTimeState();
   }
 
   public OccupancyStatus getOccupancyStatus() {
@@ -358,7 +377,7 @@ public class TripTimeOnDate {
       return tripPattern.getBoardType(stopPosition);
     }
 
-    return tripTimes.isCanceled() || tripTimes.isCancelledStop(stopPosition)
+    return tripTimes.isCanceled() || tripTimes.isCanceledStop(stopPosition)
       ? PickDrop.CANCELLED
       : tripPattern.getBoardType(stopPosition);
   }
@@ -375,7 +394,7 @@ public class TripTimeOnDate {
       return tripPattern.getAlightType(stopPosition);
     }
 
-    return tripTimes.isCanceled() || tripTimes.isCancelledStop(stopPosition)
+    return tripTimes.isCanceled() || tripTimes.isCanceledStop(stopPosition)
       ? PickDrop.CANCELLED
       : tripPattern.getAlightType(stopPosition);
   }
@@ -390,6 +409,14 @@ public class TripTimeOnDate {
 
   public BookingInfo getDropOffBookingInfo() {
     return tripTimes.getDropOffBookingInfo(stopPosition);
+  }
+
+  public List<ReplacedByRelation> getArrivalReplacedBys() {
+    return tripTimes.getArrivalReplacedByRelations(stopPosition);
+  }
+
+  public List<ReplacedByRelation> getDepartureReplacedBys() {
+    return tripTimes.getDepartureReplacedByRelations(stopPosition);
   }
 
   @Override

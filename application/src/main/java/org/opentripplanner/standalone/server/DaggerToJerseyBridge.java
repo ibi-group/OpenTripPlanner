@@ -1,0 +1,110 @@
+package org.opentripplanner.standalone.server;
+
+import jakarta.inject.Provider;
+import java.util.function.Function;
+import java.util.function.Supplier;
+import org.glassfish.jersey.internal.inject.AbstractBinder;
+import org.glassfish.jersey.process.internal.RequestScoped;
+import org.opentripplanner.apis.gtfs.GtfsApiParameters;
+import org.opentripplanner.apis.gtfs.GtfsGraphQLRequestContext;
+import org.opentripplanner.apis.transmodel.TransmodelAPIParameters;
+import org.opentripplanner.apis.transmodel.TransmodelGraphQLRequestContext;
+import org.opentripplanner.apis.transmodel.TransmodelGraphQLSchema;
+import org.opentripplanner.ext.geocoder.LuceneIndex;
+import org.opentripplanner.ext.ojp.parameters.OjpApiParameters;
+import org.opentripplanner.ext.ojp.parameters.TriasApiParameters;
+import org.opentripplanner.routing.api.RoutingService;
+import org.opentripplanner.routing.api.request.RouteRequest;
+import org.opentripplanner.routing.linking.LinkingContextFactory;
+import org.opentripplanner.routing.services.TransitAlertService;
+import org.opentripplanner.service.streetdetails.StreetDetailsService;
+import org.opentripplanner.service.vehicleparking.VehicleParkingService;
+import org.opentripplanner.service.vehiclerental.VehicleRentalService;
+import org.opentripplanner.service.worldenvelope.WorldEnvelopeService;
+import org.opentripplanner.standalone.config.DebugUiConfig;
+import org.opentripplanner.standalone.config.routerconfig.VectorTileConfig;
+import org.opentripplanner.standalone.configure.RequestScopedFactory;
+import org.opentripplanner.street.graph.Graph;
+import org.opentripplanner.transfer.regular.RegularTransferService;
+import org.opentripplanner.transit.service.TransitService;
+
+/**
+ * Bridges the Dagger-managed {@link RequestScopedFactory} into HK2/Jersey: the component itself,
+ * plus individual request-scoped services (e.g. {@link TransitService}) that resources can inject
+ * directly with {@code @Context}.
+ * <p>
+ * All bindings are scoped {@code .in(RequestScoped.class)} — Jersey's own per-actual-HTTP-request
+ * HK2 scope — so they all resolve from the SAME pinned transaction for a given request. See issue
+ * #7441.
+ * <p>
+ * More on custom injection in Jersey 2:
+ * http://jersey.576304.n2.nabble.com/Custom-providers-in-Jersey-2-tp7580699p7580715.html
+ */
+final class DaggerToJerseyBridge extends AbstractBinder {
+
+  private final Supplier<RequestScopedFactory> factorySupplier;
+
+  DaggerToJerseyBridge(Supplier<RequestScopedFactory> factorySupplier) {
+    this.factorySupplier = factorySupplier;
+  }
+
+  @Override
+  protected void configure() {
+    // factorySupplier.get() calls the Dagger builder directly, creating a brand-new
+    // RequestScopedFactory (and transaction pin) on every call, so it must only be invoked once
+    // per request, right here, as the source behind the request-scoped binding below.
+    bindFactory(factorySupplier).to(RequestScopedFactory.class).in(RequestScoped.class);
+
+    // factory.get() is different: it's an HK2 service lookup against the binding above, not a
+    // call to the Dagger builder. HK2's RequestScoped context caches that binding's result for
+    // the lifetime of the request, so every accessor lambda below — no matter how many times it's
+    // invoked — resolves the SAME RequestScopedFactory instance the request already has, exactly
+    // as @Context/@Inject would.
+    var factory = createManagedInstanceProvider(RequestScopedFactory.class);
+
+    // Binding for all request-scoped services used by resources
+    bridge(factory, RequestScopedFactory::transitService, TransitService.class);
+    bridge(factory, RequestScopedFactory::transitAlertService, TransitAlertService.class);
+    bridge(factory, RequestScopedFactory::graph, Graph.class);
+    bridge(factory, RequestScopedFactory::defaultRouteRequest, RouteRequest.class);
+    bridge(factory, RequestScopedFactory::vehicleParkingService, VehicleParkingService.class);
+    bridge(factory, RequestScopedFactory::luceneIndex, LuceneIndex.class);
+    bridge(factory, RequestScopedFactory::debugUiConfig, DebugUiConfig.class);
+    bridge(factory, RequestScopedFactory::worldEnvelopeService, WorldEnvelopeService.class);
+    bridge(factory, RequestScopedFactory::vehicleRentalService, VehicleRentalService.class);
+    bridge(factory, RequestScopedFactory::streetDetailsService, StreetDetailsService.class);
+    bridge(factory, RequestScopedFactory::transferService, RegularTransferService.class);
+    bridge(factory, RequestScopedFactory::vectorTileConfig, VectorTileConfig.class);
+    bridge(factory, RequestScopedFactory::gtfsApiParameters, GtfsApiParameters.class);
+    bridge(factory, RequestScopedFactory::transmodelAPIParameters, TransmodelAPIParameters.class);
+    bridge(
+      factory,
+      f -> new TransmodelGraphQLSchema(f.transmodelGraphQLSchema()),
+      TransmodelGraphQLSchema.class
+    );
+    bridge(factory, RequestScopedFactory::linkingContextFactory, LinkingContextFactory.class);
+    bridge(factory, RequestScopedFactory::ojpApiParameters, OjpApiParameters.class);
+    bridge(factory, RequestScopedFactory::triasApiParameters, TriasApiParameters.class);
+    bridge(factory, RequestScopedFactory::routingService, RoutingService.class);
+    bridge(
+      factory,
+      RequestScopedFactory::transmodelRequestContext,
+      TransmodelGraphQLRequestContext.class
+    );
+    bridge(factory, RequestScopedFactory::gtfsRequestContext, GtfsGraphQLRequestContext.class);
+  }
+
+  /**
+   * Create a binding for a request-scoped service using the given accessor function and the
+   * factory.
+   */
+  private <T> void bridge(
+    Provider<RequestScopedFactory> factory,
+    Function<RequestScopedFactory, T> accessor,
+    Class<T> type
+  ) {
+    bindFactory(() -> accessor.apply(factory.get()))
+      .to(type)
+      .in(RequestScoped.class);
+  }
+}

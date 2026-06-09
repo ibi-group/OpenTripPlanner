@@ -1,5 +1,6 @@
 package org.opentripplanner.updater.alert.siri;
 
+import static com.google.common.truth.Truth.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -22,6 +23,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.opentripplanner.GtfsTest;
 import org.opentripplanner.core.model.id.FeedScopedId;
+import org.opentripplanner.core.model.time.TimePeriod;
 import org.opentripplanner.routing.alertpatch.AlertSeverity;
 import org.opentripplanner.routing.alertpatch.AlertUrl;
 import org.opentripplanner.routing.alertpatch.EntityKey;
@@ -30,11 +32,11 @@ import org.opentripplanner.routing.alertpatch.StopCondition;
 import org.opentripplanner.routing.alertpatch.StopConditionsHelper;
 import org.opentripplanner.routing.alertpatch.TransitAlert;
 import org.opentripplanner.routing.impl.TransitAlertServiceImpl;
+import org.opentripplanner.transit.model.timetable.Direction;
 import org.opentripplanner.transit.service.DefaultTransitService;
 import org.opentripplanner.transit.service.TransitService;
-import org.opentripplanner.updater.DefaultRealTimeUpdateContext;
-import org.opentripplanner.updater.GraphUpdaterManager;
-import org.opentripplanner.updater.RealTimeUpdateContext;
+import org.opentripplanner.updater.DefaultTransitRealTimeUpdateContext;
+import org.opentripplanner.updater.TransitRealTimeUpdateContext;
 import uk.org.ifopt.siri21.StopPlaceRef;
 import uk.org.siri.siri21.AffectedLineStructure;
 import uk.org.siri.siri21.AffectedRouteStructure;
@@ -45,6 +47,8 @@ import uk.org.siri.siri21.AffectsScopeStructure;
 import uk.org.siri.siri21.DataFrameRefStructure;
 import uk.org.siri.siri21.DatedVehicleJourneyRef;
 import uk.org.siri.siri21.DefaultedTextStructure;
+import uk.org.siri.siri21.DirectionRefStructure;
+import uk.org.siri.siri21.DirectionStructure;
 import uk.org.siri.siri21.FramedVehicleJourneyRefStructure;
 import uk.org.siri.siri21.HalfOpenTimestampOutputRangeStructure;
 import uk.org.siri.siri21.InfoLinkStructure;
@@ -70,7 +74,7 @@ public class SiriAlertsUpdateHandlerTest extends GtfsTest {
 
   TransitService transitService;
 
-  private RealTimeUpdateContext realTimeUpdateContext;
+  private TransitRealTimeUpdateContext realTimeUpdateContext;
 
   @Override
   public String getFeedName() {
@@ -82,21 +86,19 @@ public class SiriAlertsUpdateHandlerTest extends GtfsTest {
   public void setUp() throws Exception {
     super.setUp();
 
-    realTimeUpdateContext = new DefaultRealTimeUpdateContext(graph, timetableRepository);
+    realTimeUpdateContext = new DefaultTransitRealTimeUpdateContext(transitRepository);
     if (transitService == null) {
-      transitService = new DefaultTransitService(timetableRepository);
-      timetableRepository.setUpdaterManager(
-        new GraphUpdaterManager(realTimeUpdateContext, List.of())
-      );
+      transitService = new DefaultTransitService(transitRepository);
     } else {
       transitAlertService.getAllAlerts().clear();
     }
     if (alertsUpdateHandler == null) {
-      transitAlertService = new TransitAlertServiceImpl(timetableRepository);
+      transitAlertService = new TransitAlertServiceImpl();
       alertsUpdateHandler = new SiriAlertsUpdateHandler(
         FEED_ID,
         transitAlertService,
-        Duration.ZERO
+        Duration.ZERO,
+        null
       );
     }
   }
@@ -188,9 +190,9 @@ public class SiriAlertsUpdateHandlerTest extends GtfsTest {
     );
 
     assertFalse(
-      ((EntitySelector.Stop) entitySelector).stopConditions().contains(
-        StopCondition.EXCEPTIONAL_STOP
-      )
+      ((EntitySelector.Stop) entitySelector)
+        .stopConditions()
+        .contains(StopCondition.EXCEPTIONAL_STOP)
     );
     assertFalse(
       StopConditionsHelper.matchesStopCondition(
@@ -464,7 +466,7 @@ public class SiriAlertsUpdateHandlerTest extends GtfsTest {
 
     assertTrue(transitAlertService.getAllAlerts().isEmpty());
 
-    var modelZoneId = timetableRepository.getTimeZone();
+    var modelZoneId = transitRepository.getTimeZone();
     var situationNumber = "TST:SituationNumber:1234";
     var startTime = LocalDateTime.parse("2014-01-01T00:00:00").atZone(modelZoneId);
     var endTime = LocalDateTime.parse("2014-01-01T23:59:59").atZone(modelZoneId);
@@ -503,7 +505,7 @@ public class SiriAlertsUpdateHandlerTest extends GtfsTest {
 
     assertTrue(transitAlertService.getAllAlerts().isEmpty());
 
-    ZoneId zoneId = timetableRepository.getTimeZone();
+    ZoneId zoneId = transitRepository.getTimeZone();
     final String situationNumber = "TST:SituationNumber:1234";
     final ZonedDateTime startTime = LocalDateTime.parse("2014-01-01T00:00:00").atZone(zoneId);
     final ZonedDateTime endTime = LocalDateTime.parse("2014-01-01T23:59:59").atZone(zoneId);
@@ -781,7 +783,115 @@ public class SiriAlertsUpdateHandlerTest extends GtfsTest {
   }
 
   @Test
-  public void testSiriSxWithOpenEndedValidity() {
+  public void testSiriSxUpdateForLineAndStopAndDirection() {
+    var routeId = "route0";
+    var stopId0 = "stop0";
+    var stopId1 = "stop1";
+    var situationNumber1 = "TST:SituationNumber:1";
+    var situationNumber2 = "TST:SituationNumber:2";
+
+    var outbound = createServiceDelivery(
+      createPtSituationElement(
+        situationNumber1,
+        ZonedDateTime.parse("2014-01-01T00:00:00+01:00"),
+        ZonedDateTime.parse("2014-01-01T23:59:59+01:00"),
+        createAffectsLineAndDirection(routeId, List.of("OUTBOUND"), stopId0, stopId1)
+      )
+    );
+    var inbound = createServiceDelivery(
+      createPtSituationElement(
+        situationNumber2,
+        ZonedDateTime.parse("2014-01-01T00:00:00+01:00"),
+        ZonedDateTime.parse("2014-01-01T23:59:59+01:00"),
+        createAffectsLineAndDirection(routeId, List.of("INBOUND"), stopId0, stopId1)
+      )
+    );
+
+    alertsUpdateHandler.update(outbound, realTimeUpdateContext);
+    alertsUpdateHandler.update(inbound, realTimeUpdateContext);
+
+    // Line and stop-alerts should result in several TransitAlerts. One for each routeId/stop combination
+    var feedRouteId = new FeedScopedId(FEED_ID, routeId);
+    var feedStop_0_id = new FeedScopedId(FEED_ID, stopId0);
+    var feedStop_1_id = new FeedScopedId(FEED_ID, stopId1);
+
+    var alerts = transitAlertService.getStopAndRouteAlerts(
+      feedStop_0_id,
+      feedRouteId,
+      Set.of(),
+      Direction.OUTBOUND
+    );
+    assertEquals(1, alerts.size());
+
+    var alert = alerts.iterator().next();
+    assertEquals(situationNumber1, alert.getId().getId());
+    assertThat(alert.entities()).containsExactly(
+      new EntitySelector.StopAndRoute(
+        feedStop_0_id,
+        feedRouteId,
+        Set.of(StopCondition.START_POINT, StopCondition.DESTINATION),
+        List.of(Direction.OUTBOUND)
+      ),
+      new EntitySelector.StopAndRoute(
+        feedStop_1_id,
+        feedRouteId,
+        Set.of(StopCondition.START_POINT, StopCondition.DESTINATION),
+        List.of(Direction.OUTBOUND)
+      )
+    );
+  }
+
+  /// For backwards compatability reasons we ignore directions that we don't recognize
+  @Test
+  public void testSiriSxUpdateForLineAndStopAndUnknownDirection() {
+    var routeId = "route0";
+    var stopId0 = "stop0";
+    var stopId1 = "stop1";
+    var situationNumber1 = "TST:SituationNumber:1";
+
+    var unknown = createServiceDelivery(
+      createPtSituationElement(
+        situationNumber1,
+        ZonedDateTime.parse("2014-01-01T00:00:00+01:00"),
+        ZonedDateTime.parse("2014-01-01T23:59:59+01:00"),
+        createAffectsLineAndDirection(routeId, List.of("SomeUnknownString"), stopId0, stopId1)
+      )
+    );
+
+    alertsUpdateHandler.update(unknown, realTimeUpdateContext);
+
+    var feedRouteId = new FeedScopedId(FEED_ID, routeId);
+    var feedStop_0_id = new FeedScopedId(FEED_ID, stopId0);
+    var feedStop_1_id = new FeedScopedId(FEED_ID, stopId1);
+
+    var alerts = transitAlertService.getStopAndRouteAlerts(
+      feedStop_0_id,
+      feedRouteId,
+      Set.of(),
+      Direction.OUTBOUND
+    );
+    assertEquals(1, alerts.size());
+
+    var alert = alerts.iterator().next();
+    assertEquals(situationNumber1, alert.getId().getId());
+    assertThat(alert.entities()).containsExactly(
+      new EntitySelector.StopAndRoute(
+        feedStop_0_id,
+        feedRouteId,
+        Set.of(StopCondition.START_POINT, StopCondition.DESTINATION),
+        null
+      ),
+      new EntitySelector.StopAndRoute(
+        feedStop_1_id,
+        feedRouteId,
+        Set.of(StopCondition.START_POINT, StopCondition.DESTINATION),
+        null
+      )
+    );
+  }
+
+  @Test
+  public void testSiriSxWithUnboundedEndValidity() {
     assertTrue(transitAlertService.getAllAlerts().isEmpty());
 
     final String situationNumber = "TST:SituationNumber:1234";
@@ -800,7 +910,7 @@ public class SiriAlertsUpdateHandlerTest extends GtfsTest {
     period_1.setEndTime(ZonedDateTime.parse("2020-02-01T11:00:00+01:00"));
     ptSituation.getValidityPeriods().add(period_1);
 
-    // Add period with start-, but NO endtime - i.e. open-ended
+    // Add period with start-, but NO endtime - i.e. an unbounded end
     HalfOpenTimestampOutputRangeStructure period_2 = new HalfOpenTimestampOutputRangeStructure();
     period_2.setStartTime(ZonedDateTime.parse("2020-02-02T10:00:00+01:00"));
     period_2.setEndTime(null);
@@ -880,7 +990,7 @@ public class SiriAlertsUpdateHandlerTest extends GtfsTest {
     PtSituationElement element = new PtSituationElement();
     element.setCreationTime(ZonedDateTime.now());
     element.setProgress(WorkflowStatusEnumeration.OPEN);
-    if ((startTime != null) || (endTime != null)) {
+    if (startTime != null || endTime != null) {
       HalfOpenTimestampOutputRangeStructure period = new HalfOpenTimestampOutputRangeStructure();
 
       if (startTime != null) {
@@ -979,45 +1089,55 @@ public class SiriAlertsUpdateHandlerTest extends GtfsTest {
   ) {
     // TimePeriod ends BEFORE first validityPeriod starts
     assertFalse(
-      transitAlert.displayDuring(
-        startTimePeriod_1.toEpochSecond() - 200,
-        startTimePeriod_1.toEpochSecond() - 100
+      transitAlert.isActiveDuring(
+        TimePeriod.of(
+          startTimePeriod_1.toInstant().minusSeconds(200),
+          startTimePeriod_1.toInstant().minusSeconds(100)
+        )
       ),
       "TimePeriod ends BEFORE first validityPeriod starts: " + label
     );
 
     // TimePeriod ends AFTER first validityPeriod starts, BEFORE it ends
     assertTrue(
-      transitAlert.displayDuring(
-        startTimePeriod_1.toEpochSecond() - 1000,
-        endTimePeriod_1.toEpochSecond() - 100
+      transitAlert.isActiveDuring(
+        TimePeriod.of(
+          startTimePeriod_1.toInstant().minusSeconds(1000),
+          endTimePeriod_1.toInstant().minusSeconds(100)
+        )
       ),
       "TimePeriod ends AFTER first validityPeriod starts, BEFORE it ends: " + label
     );
 
     // TimePeriod starts AFTER first validityPeriod starts, BEFORE it ends
     assertTrue(
-      transitAlert.displayDuring(
-        startTimePeriod_1.toEpochSecond() + 100,
-        endTimePeriod_1.toEpochSecond() - 100
+      transitAlert.isActiveDuring(
+        TimePeriod.of(
+          startTimePeriod_1.toInstant().plusSeconds(100),
+          endTimePeriod_1.toInstant().minusSeconds(100)
+        )
       ),
       "TimePeriod starts AFTER first validityPeriod starts, BEFORE it ends: " + label
     );
 
     // TimePeriod starts AFTER first validityPeriod starts, ends AFTER it ends
     assertTrue(
-      transitAlert.displayDuring(
-        startTimePeriod_1.toEpochSecond() + 100,
-        endTimePeriod_1.toEpochSecond() + 100
+      transitAlert.isActiveDuring(
+        TimePeriod.of(
+          startTimePeriod_1.toInstant().plusSeconds(100),
+          endTimePeriod_1.toInstant().plusSeconds(100)
+        )
       ),
       "TimePeriod starts AFTER first validityPeriod starts, ends AFTER it ends: " + label
     );
 
     // TimePeriod starts AFTER first validityPeriod ends
     assertFalse(
-      transitAlert.displayDuring(
-        endTimePeriod_1.toEpochSecond() + 100,
-        endTimePeriod_1.toEpochSecond() + 200
+      transitAlert.isActiveDuring(
+        TimePeriod.of(
+          endTimePeriod_1.toInstant().plusSeconds(100),
+          endTimePeriod_1.toInstant().plusSeconds(200)
+        )
       ),
       "TimePeriod starts AFTER first validityPeriod ends: " + label
     );
@@ -1139,7 +1259,7 @@ public class SiriAlertsUpdateHandlerTest extends GtfsTest {
     for (EntitySelector entity : transitAlert.entities()) {
       if (!foundMatch) {
         if (entity.key() instanceof EntityKey.StopAndRoute stopAndRoute) {
-          foundMatch = stopAndRoute.equals((new EntityKey.StopAndRoute(stopId, routeOrTripId)));
+          foundMatch = stopAndRoute.equals(new EntityKey.StopAndRoute(stopId, routeOrTripId));
         } else if (entity instanceof EntitySelector.StopAndTrip stopAndTrip) {
           foundMatch =
             stopAndTrip.key().equals(new EntityKey.StopAndTrip(stopId, routeOrTripId)) &&
@@ -1151,6 +1271,14 @@ public class SiriAlertsUpdateHandlerTest extends GtfsTest {
   }
 
   private AffectsScopeStructure createAffectsLine(String line, String... stopIds) {
+    return createAffectsLineAndDirection(line, List.of(), stopIds);
+  }
+
+  private AffectsScopeStructure createAffectsLineAndDirection(
+    String line,
+    List<String> directions,
+    String... stopIds
+  ) {
     AffectsScopeStructure affects = new AffectsScopeStructure();
 
     AffectsScopeStructure.Networks networks = new AffectsScopeStructure.Networks();
@@ -1171,6 +1299,14 @@ public class SiriAlertsUpdateHandlerTest extends GtfsTest {
       affectedRoute.setStopPoints(stopPoints);
       routes.getAffectedRoutes().add(affectedRoute);
       affectedLine.setRoutes(routes);
+    }
+
+    for (String direction : directions) {
+      var directionRef = new DirectionRefStructure();
+      directionRef.setValue(direction);
+      var directionStructure = new DirectionStructure();
+      directionStructure.setDirectionRef(directionRef);
+      affectedLine.getDirections().add(directionStructure);
     }
 
     networks.getAffectedNetworks().add(affectedNetwork);

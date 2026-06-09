@@ -12,7 +12,7 @@ import java.util.List;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.locationtech.jts.geom.LineString;
-import org.opentripplanner.transit.model._data.TimetableRepositoryForTest;
+import org.opentripplanner.transit.model._data.TransitRepositoryForTest;
 import org.opentripplanner.transit.model.basic.TransitMode;
 import org.opentripplanner.transit.model.site.RegularStop;
 
@@ -20,15 +20,15 @@ class TripPatternTest {
 
   private static final String ID = "1";
   private static final String NAME = "short name";
-  private static final TimetableRepositoryForTest TEST_MODEL = TimetableRepositoryForTest.of();
+  private static final TransitRepositoryForTest TEST_MODEL = TransitRepositoryForTest.of();
 
-  private static final Route ROUTE = TimetableRepositoryForTest.route("routeId").build();
+  private static final Route ROUTE = TransitRepositoryForTest.route("routeId").build();
   public static final RegularStop STOP_A = TEST_MODEL.stop("A").build();
   public static final RegularStop STOP_X = TEST_MODEL.stop("X").build();
   public static final RegularStop STOP_B = TEST_MODEL.stop("B").build();
   public static final RegularStop STOP_Y = TEST_MODEL.stop("Y").build();
   public static final RegularStop STOP_C = TEST_MODEL.stop("C").build();
-  private static final StopPattern STOP_PATTERN = TimetableRepositoryForTest.stopPattern(
+  private static final StopPattern STOP_PATTERN = TransitRepositoryForTest.stopPattern(
     STOP_A,
     STOP_B,
     STOP_C
@@ -76,7 +76,7 @@ class TripPatternTest {
     var pattern = TripPattern.of(id("replacement"))
       .withName("replacement")
       .withRoute(ROUTE)
-      .withStopPattern(TimetableRepositoryForTest.stopPattern(STOP_A, STOP_B, STOP_X, STOP_Y))
+      .withStopPattern(TransitRepositoryForTest.stopPattern(STOP_A, STOP_B, STOP_X, STOP_Y))
       .withOriginalTripPattern(SUBJECT)
       .build();
 
@@ -98,13 +98,13 @@ class TripPatternTest {
     assertFalse(SUBJECT.sameAs(SUBJECT.copy().withName("X").build()));
     assertFalse(
       SUBJECT.sameAs(
-        SUBJECT.copy().withRoute(TimetableRepositoryForTest.route("anotherId").build()).build()
+        SUBJECT.copy().withRoute(TransitRepositoryForTest.route("anotherId").build()).build()
       )
     );
     assertFalse(SUBJECT.sameAs(SUBJECT.copy().withMode(TransitMode.RAIL).build()));
-    // Clearing hopGeometries is required because TripPatternGeometry now validates that the hop
-    // count matches the stop pattern; changing the stop pattern without clearing the inherited
-    // geometries would otherwise be a caller bug.
+    // Clearing hopGeometries is required because TripPatternBuilder.buildHopGeometries now
+    // validates that the hop count matches the stop pattern; changing the stop pattern without
+    // clearing the inherited geometries would otherwise be a caller bug.
     assertFalse(
       SUBJECT.sameAs(
         SUBJECT.copy().withStopPattern(TEST_MODEL.stopPattern(11)).withHopGeometries(null).build()

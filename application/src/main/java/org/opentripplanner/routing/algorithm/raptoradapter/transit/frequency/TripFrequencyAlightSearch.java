@@ -6,14 +6,13 @@ import org.opentripplanner.raptor.spi.RaptorTripScheduleSearch;
 import org.opentripplanner.routing.algorithm.raptoradapter.transit.cost.DefaultTripSchedule;
 import org.opentripplanner.routing.algorithm.raptoradapter.transit.request.TripPatternForDates;
 import org.opentripplanner.transit.model.timetable.FrequencyEntry;
-import org.opentripplanner.transit.model.timetable.TripTimes;
 
 /**
  * Searches for a concrete trip time for a frequency based pattern. The {@link FrequencyEntry}s are
  * scanned to find the earliest possible departure time.
  */
-public final class TripFrequencyAlightSearch<T extends DefaultTripSchedule>
-  implements RaptorTripScheduleSearch<T> {
+public final class TripFrequencyAlightSearch<T extends DefaultTripSchedule> implements
+  RaptorTripScheduleSearch<T> {
 
   private final TripPatternForDates patternForDates;
 
@@ -41,7 +40,7 @@ public final class TripFrequencyAlightSearch<T extends DefaultTripSchedule>
         );
         if (arrivalTime != -1) {
           int headway = frequency.routingSlack();
-          TripTimes tripTimes = frequency.materialize(
+          var tripTimes = frequency.materialize(
             stopPositionInPattern,
             arrivalTime + headway,
             false

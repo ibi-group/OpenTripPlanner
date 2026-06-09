@@ -18,7 +18,6 @@ import org.opentripplanner.apis.transmodel.model.DefaultRouteRequestType;
 import org.opentripplanner.apis.transmodel.model.EnumTypes;
 import org.opentripplanner.apis.transmodel.model.ModeInputType;
 import org.opentripplanner.apis.transmodel.model.TransportModeSlack;
-import org.opentripplanner.apis.transmodel.model.framework.LocationInputType;
 import org.opentripplanner.apis.transmodel.model.framework.PassThroughPointInputType;
 import org.opentripplanner.apis.transmodel.model.framework.PenaltyForStreetModeType;
 import org.opentripplanner.apis.transmodel.model.framework.TransmodelDirectives;
@@ -33,9 +32,9 @@ public class TripQuery {
   public static final String MAX_DIRECT_DURATION_FOR_MODE = "maxDirectDurationForMode";
   public static final String TRIP_VIA_PARAMETER = "via";
   public static final String DOC_VIA = """
-    The list of via locations the journey is required to visit. All locations are
-    visited in the order they are listed.
-    """;
+  The list of via locations the journey is required to visit. All locations are
+  visited in the order they are listed.
+  """;
 
   private final TransmodelGraphQLPlanner graphQLPlanner;
 
@@ -49,7 +48,8 @@ public class TripQuery {
     GraphQLOutputType tripType,
     GraphQLInputObjectType durationPerStreetModeType,
     GraphQLInputObjectType penaltyForStreetMode,
-    GraphQLScalarType dateTimeScalar
+    GraphQLScalarType dateTimeScalar,
+    GraphQLInputObjectType locationInputType
   ) {
     RoutingPreferences preferences = routing.request.preferences();
 
@@ -127,9 +127,9 @@ public class TripQuery {
 
             Maximum value: %d minutes (%dh)
             """.formatted(
-                transitTuningParameters.maxSearchWindow().toMinutes(),
-                transitTuningParameters.maxSearchWindow().toHours()
-              )
+              transitTuningParameters.maxSearchWindow().toMinutes(),
+              transitTuningParameters.maxSearchWindow().toHours()
+            )
           )
           .type(Scalars.GraphQLInt)
           .build()
@@ -184,14 +184,14 @@ public class TripQuery {
         GraphQLArgument.newArgument()
           .name("from")
           .description("The start location")
-          .type(new GraphQLNonNull(LocationInputType.INPUT_TYPE))
+          .type(new GraphQLNonNull(locationInputType))
           .build()
       )
       .argument(
         GraphQLArgument.newArgument()
           .name("to")
           .description("The destination location")
-          .type(new GraphQLNonNull(LocationInputType.INPUT_TYPE))
+          .type(new GraphQLNonNull(locationInputType))
           .build()
       )
       .argument(
@@ -330,8 +330,6 @@ public class TripQuery {
 
             - The `ratio` must be greater or equal to 1.0 and less then 1.2.
             - The `constant` must be greater or equal to '0s' and less then '1h'.
-
-            THIS IS STILL AN EXPERIMENTAL FEATURE - IT MAY CHANGE WITHOUT ANY NOTICE!
             """.stripIndent()
           )
           .type(RelaxCostType.INPUT_TYPE)

@@ -12,12 +12,12 @@ import org.opentripplanner.core.model.basic.Cost;
 import org.opentripplanner.model.plan.Itinerary;
 import org.opentripplanner.model.plan.Place;
 import org.opentripplanner.routing.algorithm.filterchain.filters.system.SingleCriteriaComparator;
-import org.opentripplanner.transit.model._data.TimetableRepositoryForTest;
+import org.opentripplanner.transit.model._data.TransitRepositoryForTest;
 import org.opentripplanner.transit.model.network.grouppriority.DefaultTransitGroupPriorityCalculator;
 
 class McMaxLimitFilterTest {
 
-  private static final TimetableRepositoryForTest TEST_MODEL = TimetableRepositoryForTest.of();
+  private static final TransitRepositoryForTest TEST_MODEL = TransitRepositoryForTest.of();
   private static final DefaultTransitGroupPriorityCalculator GROUP_PRIORITY_CALCULATOR =
     new DefaultTransitGroupPriorityCalculator();
 
@@ -72,9 +72,7 @@ class McMaxLimitFilterTest {
 
   static List<List<TestRow>> filterTestCases() {
     return List.of(
-      List.of(
-        /* Should not fail for an empty list of itineraries*/
-      ),
+      List.of(/* Should not fail for an empty list of itineraries*/),
       List.of(
         // Test minNumItinerariesLimit = 2
         row(EXP_KEEP, COST_LOW, TX_1, GROUP_A, "Best in everything"),

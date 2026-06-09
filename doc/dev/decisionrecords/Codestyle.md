@@ -3,26 +3,35 @@
 ## Java
 
 The OpenTripPlanner Java code style is revised in OTP v2.2. We use the
-[Prettier Java](https://github.com/jhipster/prettier-java) as is. Maven is set up to
-run `prettier-maven-plugin`. A check is run in the CI build, which fails the build preventing
-merging a PR if the code style is incorrect.
+[Prettier Java](https://github.com/jhipster/prettier-java) as is. Maven is set up to run Prettier
+through the [Spotless](https://github.com/diffplug/spotless) Maven plugin. A check is run in the CI
+build, which fails the build preventing merging a PR if the code style is incorrect.
 
-Additionally since OTP v2.9, we are using Checkstyle to check for code style issues with a
-Maven plugin. There is also a checkstyle plugin for IntelliJ IDEA which can be used to spot and
-fix issues. We also have an OpenRewrite Maven plugin available that can be used to automatically
-fix some of the issues that are pointed out by Checkstyle. Comparison of different tools we
-considered can be found in [#6913](https://github.com/opentripplanner/OpenTripPlanner/issues/6913).
+Note! Spotless runs Prettier with Node, so `node` and `npm` must be available on the `PATH`. The
+Prettier and Prettier Java versions, as well as the formatting options, are configured in the root
+`pom.xml` (`prettier.version`, `prettier.java.version` and the Spotless plugin configuration).
+
+In addition to running Prettier, Spotless removes unused imports from Java files before formatting
+them. Imports that are only referenced from Javadoc (for example `{@link Foo}`) are kept.
+
+Additionally since OTP v2.9, we are using Checkstyle to check for code style issues with a Maven
+plugin. There is also a checkstyle plugin for IntelliJ IDEA which can be used to spot and fix
+issues. We also have an OpenRewrite Maven plugin available that can be used to automatically fix
+some of the issues that are pointed out by Checkstyle. Comparison of different tools we considered
+can be found in [#6913](https://github.com/opentripplanner/OpenTripPlanner/issues/6913).
 
 ### How to Use Checkstyle
 
 Checkstyle can be configured to be in use in IntelliJ with
 [a plugin](https://plugins.jetbrains.com/plugin/1065-checkstyle-idea). Additionally, we have
-configured it to run by default as part of our Maven build. We also have OpenRewrite configured
-in maven to fix some issues automatically, but it is not run by default as it takes a bit longer
-to run.
+configured it to run by default as part of our Maven build. We also have OpenRewrite configured in
+maven to fix some issues automatically, but it is not run by default as it takes a bit longer to
+run.
 
-Checkstyle will check for code style issues in the Maven "validate" phase, which runs before the
-test, package, and install phases. So checkstyle will happen for example when you run:
+Checkstyle will check for code style issues in the Maven "process-sources" phase, which runs after
+the "validate" phase used by Spotless (so that Spotless can auto-fix issues like unused imports
+first) and before the test, package, and install phases. So checkstyle will happen for example when
+you run:
 
 ```shell
 % mvn test
@@ -46,15 +55,15 @@ OpenRewrite can be used to fix some of the checkstyle issues automatically. The 
 runs OpenRewrite and Prettier, but not checkstyle:
 
 ```shell
-% mvn rewrite:run prettier:write -P rewrite
+% mvn rewrite:run spotless:apply -P rewrite
 ```
 
 ### How to Run Prettier
 
-There are two ways to format the code before checking it in. You may run a normal build with
-Maven; it takes a bit of time, but it reformats the entire codebase. Only code you have changed
-should be formatted, since the existing code is already formatted. The second way is to set up
-Prettier and run it manually or hook it into your IDE, so it runs every time a file is changed.
+There are two ways to format the code before checking it in. You may run a normal build with Maven;
+it takes a bit of time, but it reformats the entire codebase. Only code you have changed should be
+formatted, since the existing code is already formatted. The second way is to set up Prettier and
+run it manually or hook it into your IDE, so it runs every time a file is changed.
 
 Prettier will automatically format all code in the Maven "validate" phase, which runs before the
 test, package, and install phases. So formatting will happen for example when you run:
@@ -66,7 +75,7 @@ test, package, and install phases. So formatting will happen for example when yo
 You can manually run _only_ the formatting process with:
 
 ```shell
-% mvn prettier:write
+% mvn spotless:apply
 ```
 
 To skip the Prettier formating, use the profile `prettierSkip`:
@@ -95,19 +104,19 @@ Code Style_. Then select **Project** in the \_Scheme drop down.
 
 #### Run Prettier Maven Plugin as an External Tool in IntelliJ
 
-You can run the Prettier Maven plugin as an external tool in IntelliJ. Set it up as an
-`External tool` and assign a keyboard shortcut to the tool execution.
+You can run Spotless as an external tool in IntelliJ. Set it up as an `External tool` and assign a
+keyboard shortcut to the tool execution.
 
 ![External Tool Dialog](../images/ExternalToolDialog.png)
 
 ```text
 Name:              Prettier Format Current File
 Program:           mvn
-Arguments:         prettier:write -Dprettier.inputGlobs=$FilePathRelativeToProjectRoot$
+Arguments:         spotless:apply -DspotlessFiles=$FilePathRelativeToProjectRoot$
 Working Directory: $ProjectFileDir$
 ```
 
-> **Tip!**  Add an unused key shortcut to execute the external tool. Then you can use the old 
+> **Tip!** Add an unused key shortcut to execute the external tool. Then you can use the old
 > shortcut to format other file types.
 
 #### Install File Watchers Plugin in IntelliJ
@@ -133,7 +142,7 @@ Name:              Format files with Prettier
 File Type:         Java
 Scope:             Project Files
 Program:           mvn
-Arguments:         prettier:write -Dprettier.inputGlobs=$FilePathRelativeToProjectRoot$
+Arguments:         spotless:apply -DspotlessFiles=$FilePathRelativeToProjectRoot$
 Working Directory: $ProjectFileDir$
 ```
 
@@ -155,55 +164,62 @@ The provided formatter will group class members in this order:
 2. Overridden methods are kept together.
 3. Dependent methods are sorted in breadth-first order.
 4. Members are sorted like this:
-    1. `static final` fields (constants)
-    2. `static` fields (avoid)
-    3. Instance fields
-    4. Static initializers
-    5. Class initializers
-    6. Constructors
-    7. `static` factory methods
-    8. `public` methods
-    9. Getter and setters
-    10. `private`/package methods
-    11. `private` enums (avoid `public`)
-    12. Interfaces
-    13. `private static` classes (avoid `public`)
-    14. Instance classes (avoid)
+   1. `static final` fields (constants)
+   2. `static` fields (avoid)
+   3. Instance fields
+   4. Static initializers
+   5. Class initializers
+   6. Constructors
+   7. `static` factory methods
+   8. `public` methods
+   9. Getter and setters
+   10. `private`/package methods
+   11. `private` enums (avoid `public`)
+   12. Interfaces
+   13. `private static` classes (avoid `public`)
+   14. Instance classes (avoid)
 
 ### Javadoc Guidelines
 
 As a matter of [policy](http://github.com/opentripplanner/OpenTripPlanner/issues/93), all new
 methods, classes, and fields should include comments explaining what they are for and any other
 pertinent information. For Java code, the comments should follow industry standards. It is best to
-provide comments that explain not only *what* you did but also *why you did it* while providing some
+provide comments that explain not only _what_ you did but also _why you did it_ while providing some
 context. Please avoid including trivial Javadoc or the empty Javadoc stubs added by IDEs, such as
 `@param` annotations with no description.
 
 - On methods:
-    - Side effects on instance state (is it a pure function)
-    - Contract of the method
-        - Input domain for which the logic is designed
-        - Range of outputs produced from valid inputs
-        - Is behavior undefined or will the method fail when conditions are not met?
-        - Are null values allowed as inputs?
-        - Will null values occur as outputs (and what do they mean)?
-    - Invariants that hold if the preconditions are met
-    - Concurrency
-        - Is the method thread-safe?
-        - Usage constraints for multi-threaded use
+  - Side effects on instance state (is it a pure function)
+  - Contract of the method
+    - Input domain for which the logic is designed
+    - Range of outputs produced from valid inputs
+    - Is behavior undefined or will the method fail when conditions are not met?
+    - Are null values allowed as inputs?
+    - Will null values occur as outputs (and what do they mean)?
+  - Invariants that hold if the preconditions are met
+  - Concurrency — document when it matters (see class-level guidance below)
 - On classes:
-    - Initialization and teardown process
-    - Can an instance be reused for multiple operations, or should it be discarded?
-    - Is it immutable, or should anything be treated as immutable?
-    - Is it a utility class of static methods that should not be instantiated?
+  - Initialization and teardown process
+  - Can an instance be reused for multiple operations, or should it be discarded?
+  - Is it immutable, or should anything be treated as immutable?
+  - Is it a utility class of static methods that should not be instantiated?
+  - Concurrency — only document thread safety when it is relevant to callers:
+    - Document that a class **is thread-safe** if it can safely be shared across threads (e.g.
+      immutable, or uses proper internal synchronization).
+    - Document that a class **is not thread-safe** if it could reasonably be used in a concurrent
+      context but requires external synchronization.
+    - Do **not** add `@NotThreadSafe` or a "not thread-safe" note to classes that live exclusively
+      in a single-threaded context (e.g. Raptor worker state), where concurrent use is neither
+      expected nor possible. Documenting the absence of something that was never a concern adds
+      noise and can mislead readers.
 
 ### Annotations
 
 - On methods:
-    - Method should be marked as `@Nullable` if they can return null values.
-    - Method parameters should be marked as `@Nullable` if they can take null values.
+  - Method should be marked as `@Nullable` if they can return null values.
+  - Method parameters should be marked as `@Nullable` if they can take null values.
 - On fields:
-    - Fields should be marked as `@Nullable` if they are nullable.
+  - Fields should be marked as `@Nullable` if they are nullable.
 
 Use of `@Nonnull` annotation is not allowed. It should be assumed methods/parameters/fields are
 non-null if they are not marked as `@Nullable`. However, there are places where the `@Nullable`

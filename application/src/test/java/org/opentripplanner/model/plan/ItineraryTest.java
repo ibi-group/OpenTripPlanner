@@ -20,7 +20,7 @@ import org.opentripplanner.framework.model.TimeAndCost;
 import org.opentripplanner.model.SystemNotice;
 import org.opentripplanner.model.plan.leg.ScheduledTransitLeg;
 import org.opentripplanner.street.search.TraverseMode;
-import org.opentripplanner.transit.model._data.TimetableRepositoryForTest;
+import org.opentripplanner.transit.model._data.TransitRepositoryForTest;
 import org.opentripplanner.transit.model.basic.TransitMode;
 import org.opentripplanner.transit.model.timetable.ScheduledTripTimes;
 
@@ -118,7 +118,7 @@ public class ItineraryTest implements PlanTestConstants {
     assertEquals(ofMinutes(28), itinerary.totalDuration());
     assertEquals(ofMinutes(20), itinerary.totalTransitDuration());
     assertEquals(ofMinutes(1), itinerary.totalStreetDuration());
-    assertEquals(ofMinutes((2 + 5)), itinerary.totalWaitingDuration());
+    assertEquals(ofMinutes(2 + 5), itinerary.totalWaitingDuration());
     // Cost: walk + wait + board + transit = 2 * 60 + .8 * 420 + 2 * 120 + 1200
     assertEquals(1896, itinerary.generalizedCost());
 
@@ -210,12 +210,12 @@ public class ItineraryTest implements PlanTestConstants {
   @Test
   void normalization() {
     var zoneId = ZoneId.of("Europe/Oslo");
-    var model = TimetableRepositoryForTest.of();
+    var model = TransitRepositoryForTest.of();
     var stopA = model.stop("A", 60.0, 10.0).build();
     var stopB = model.stop("B", 60.0, 10.01).build();
-    var stopPattern = TimetableRepositoryForTest.stopPattern(stopA, stopB);
-    var trip = TimetableRepositoryForTest.trip("trip1").build();
-    var tripPattern = TimetableRepositoryForTest.tripPattern("p", trip.getRoute())
+    var stopPattern = TransitRepositoryForTest.stopPattern(stopA, stopB);
+    var trip = TransitRepositoryForTest.trip("trip1").build();
+    var tripPattern = TransitRepositoryForTest.tripPattern("p", trip.getRoute())
       .withStopPattern(stopPattern)
       .build();
 

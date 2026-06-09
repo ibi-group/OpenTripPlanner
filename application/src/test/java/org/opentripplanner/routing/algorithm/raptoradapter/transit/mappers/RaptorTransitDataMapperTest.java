@@ -6,7 +6,7 @@ import java.util.Arrays;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.opentripplanner.routing.algorithm.raptoradapter.transit.TransitTuningParametersTestFactory;
-import org.opentripplanner.transit.model._data.TimetableRepositoryForTest;
+import org.opentripplanner.transit.model._data.TransitRepositoryForTest;
 import org.opentripplanner.transit.model.site.RegularStop;
 import org.opentripplanner.transit.model.site.Station;
 import org.opentripplanner.transit.model.site.StopLocation;
@@ -15,7 +15,7 @@ import org.opentripplanner.transit.service.SiteRepositoryMock;
 
 class RaptorTransitDataMapperTest {
 
-  private final TimetableRepositoryForTest testModel = TimetableRepositoryForTest.of();
+  private final TransitRepositoryForTest testModel = TransitRepositoryForTest.of();
 
   private final Station STATION_A = testModel
     .station("A")
@@ -35,10 +35,22 @@ class RaptorTransitDataMapperTest {
     .build();
 
   private final RegularStop STOP_0 = testModel.stop("ID-" + 1).build();
-  private final RegularStop STOP_1 = testModel.stop("ID-" + 2).withParentStation(STATION_A).build();
-  private final RegularStop STOP_2 = testModel.stop("ID-" + 3).withParentStation(STATION_B).build();
-  private final RegularStop STOP_3 = testModel.stop("ID-" + 4).withParentStation(STATION_C).build();
-  private final RegularStop STOP_4 = testModel.stop("ID-" + 5).withParentStation(STATION_D).build();
+  private final RegularStop STOP_1 = testModel
+    .stop("ID-" + 2)
+    .withParentStation(STATION_A)
+    .build();
+  private final RegularStop STOP_2 = testModel
+    .stop("ID-" + 3)
+    .withParentStation(STATION_B)
+    .build();
+  private final RegularStop STOP_3 = testModel
+    .stop("ID-" + 4)
+    .withParentStation(STATION_C)
+    .build();
+  private final RegularStop STOP_4 = testModel
+    .stop("ID-" + 5)
+    .withParentStation(STATION_D)
+    .build();
   private final List<StopLocation> STOPS = Arrays.asList(STOP_0, STOP_1, STOP_2, STOP_3, STOP_4);
 
   @Test

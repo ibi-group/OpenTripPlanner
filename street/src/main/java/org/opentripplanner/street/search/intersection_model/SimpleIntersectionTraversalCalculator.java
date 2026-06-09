@@ -8,7 +8,8 @@ import org.opentripplanner.street.search.TraverseMode;
 
 public class SimpleIntersectionTraversalCalculator
   extends AbstractIntersectionTraversalCalculator
-  implements Serializable {
+  implements Serializable
+{
 
   private final DrivingDirection drivingDirection;
 
@@ -32,7 +33,7 @@ public class SimpleIntersectionTraversalCalculator
       return 0;
     }
 
-    if (mode.isInCar()) {
+    if (mode.isDrivingIsh()) {
       return computeDrivingTraversalDuration(v, from, to);
     } else if (mode.isCyclingIsh()) {
       return computeCyclingTraversalDuration(v, from, to, toSpeed);

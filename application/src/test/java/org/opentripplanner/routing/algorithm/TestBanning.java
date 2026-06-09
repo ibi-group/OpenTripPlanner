@@ -10,7 +10,7 @@ import org.junit.jupiter.api.Test;
 import org.opentripplanner.core.model.id.FeedScopedId;
 import org.opentripplanner.routing.api.request.request.filter.SelectRequest;
 import org.opentripplanner.routing.api.request.request.filter.TransitFilterRequest;
-import org.opentripplanner.transit.model._data.TimetableRepositoryForTest;
+import org.opentripplanner.transit.model._data.TransitRepositoryForTest;
 import org.opentripplanner.transit.model.network.Route;
 import org.opentripplanner.transit.model.network.StopPattern;
 import org.opentripplanner.transit.model.network.TripPattern;
@@ -27,8 +27,16 @@ public class TestBanning {
     Collection<TripPattern> patterns = getTestPatterns();
 
     var filterRequest = TransitFilterRequest.of()
-      .addNot(SelectRequest.of().withRoutes(List.of(id("RUT:Route:1"))).build())
-      .addNot(SelectRequest.of().withAgencies(List.of(id("RUT:Agency:2"))).build())
+      .addNot(
+        SelectRequest.of()
+          .withRoutes(List.of(id("RUT:Route:1")))
+          .build()
+      )
+      .addNot(
+        SelectRequest.of()
+          .withAgencies(List.of(id("RUT:Agency:2")))
+          .build()
+      )
       .build();
 
     Collection<FeedScopedId> bannedPatterns = bannedPatterns(List.of(filterRequest), patterns);
@@ -43,8 +51,16 @@ public class TestBanning {
     Collection<TripPattern> patterns = getTestPatterns();
 
     var filterRequest = TransitFilterRequest.of()
-      .addSelect(SelectRequest.of().withRoutes(List.of(id("RUT:Route:1"))).build())
-      .addSelect(SelectRequest.of().withAgencies(List.of(id("RUT:Agency:2"))).build())
+      .addSelect(
+        SelectRequest.of()
+          .withRoutes(List.of(id("RUT:Route:1")))
+          .build()
+      )
+      .addSelect(
+        SelectRequest.of()
+          .withAgencies(List.of(id("RUT:Agency:2")))
+          .build()
+      )
       .build();
 
     Collection<FeedScopedId> bannedPatterns = bannedPatterns(List.of(filterRequest), patterns);
@@ -54,28 +70,22 @@ public class TestBanning {
   }
 
   private List<TripPattern> getTestPatterns() {
-    Agency agency1 = TimetableRepositoryForTest.agency("A")
-      .copy()
-      .withId(id("RUT:Agency:1"))
-      .build();
-    Agency agency2 = TimetableRepositoryForTest.agency("B")
-      .copy()
-      .withId(id("RUT:Agency:2"))
-      .build();
+    Agency agency1 = TransitRepositoryForTest.agency("A").copy().withId(id("RUT:Agency:1")).build();
+    Agency agency2 = TransitRepositoryForTest.agency("B").copy().withId(id("RUT:Agency:2")).build();
 
-    Route route1 = TimetableRepositoryForTest.route("RUT:Route:1").withAgency(agency1).build();
-    Route route2 = TimetableRepositoryForTest.route("RUT:Route:2").withAgency(agency1).build();
-    Route route3 = TimetableRepositoryForTest.route("RUT:Route:3").withAgency(agency2).build();
+    Route route1 = TransitRepositoryForTest.route("RUT:Route:1").withAgency(agency1).build();
+    Route route2 = TransitRepositoryForTest.route("RUT:Route:2").withAgency(agency1).build();
+    Route route3 = TransitRepositoryForTest.route("RUT:Route:3").withAgency(agency2).build();
 
-    final StopPattern stopPattern = TimetableRepositoryForTest.of().stopPattern(2);
+    final StopPattern stopPattern = TransitRepositoryForTest.of().stopPattern(2);
     return List.of(
-      TimetableRepositoryForTest.tripPattern("RUT:JourneyPattern:1", route1)
+      TransitRepositoryForTest.tripPattern("RUT:JourneyPattern:1", route1)
         .withStopPattern(stopPattern)
         .build(),
-      TimetableRepositoryForTest.tripPattern("RUT:JourneyPattern:2", route2)
+      TransitRepositoryForTest.tripPattern("RUT:JourneyPattern:2", route2)
         .withStopPattern(stopPattern)
         .build(),
-      TimetableRepositoryForTest.tripPattern("RUT:JourneyPattern:3", route3)
+      TransitRepositoryForTest.tripPattern("RUT:JourneyPattern:3", route3)
         .withStopPattern(stopPattern)
         .build()
     );

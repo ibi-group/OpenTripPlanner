@@ -2,8 +2,10 @@ package org.opentripplanner.transfer.regular.index;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.IntStream;
+import org.opentripplanner.raptor.spi.RaptorTransfer;
 import org.opentripplanner.street.search.request.StreetSearchRequest;
 import org.opentripplanner.transfer.regular.model.DefaultRaptorTransfer;
 import org.opentripplanner.transfer.regular.model.PathTransfer;
@@ -46,11 +48,27 @@ class PreCachedRaptorTransferIndex implements RaptorTransferIndex {
       }
     }
 
+    // Sort transfers by duration (Early Pruning optimization: enables breaking the transfer
+    // loop early when arrival time exceeds the best known time, since all subsequent transfers
+    // are guaranteed to be at least as long). See: Rohovyi et al., "Early Pruning for Public
+    // Transport Routing", 2026.
+    Comparator<DefaultRaptorTransfer> byDuration = Comparator.comparingInt(
+      RaptorTransfer::durationInSeconds
+    );
+    forwardTransfers.forEach(list -> list.sort(byDuration));
+    reversedTransfers.forEach(list -> list.sort(byDuration));
+
     // Create immutable copies of the lists for each stop to make them immutable and faster to iterate
     //noinspection unchecked
-    this.forwardTransfers = forwardTransfers.stream().map(List::copyOf).toArray(List[]::new);
+    this.forwardTransfers = forwardTransfers
+      .stream()
+      .map(List::copyOf)
+      .toArray(List[]::new);
     //noinspection unchecked
-    this.reversedTransfers = reversedTransfers.stream().map(List::copyOf).toArray(List[]::new);
+    this.reversedTransfers = reversedTransfers
+      .stream()
+      .map(List::copyOf)
+      .toArray(List[]::new);
   }
 
   public Collection<DefaultRaptorTransfer> getForwardTransfers(int stopIndex) {

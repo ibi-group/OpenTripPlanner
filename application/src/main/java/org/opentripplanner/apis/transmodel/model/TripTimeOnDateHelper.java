@@ -10,7 +10,6 @@ import org.opentripplanner.model.TripTimeOnDate;
 import org.opentripplanner.model.plan.Leg;
 import org.opentripplanner.model.plan.leg.ScheduledTransitLeg;
 import org.opentripplanner.transit.model.network.TripPattern;
-import org.opentripplanner.transit.model.timetable.TripTimes;
 
 public class TripTimeOnDateHelper {
 
@@ -81,7 +80,7 @@ public class TripTimeOnDateHelper {
       return List.of();
     }
     ScheduledTransitLeg transitLeg = leg.asScheduledTransitLeg();
-    TripTimes tripTimes = transitLeg.tripTimes();
+    var tripTimes = transitLeg.tripTimes();
     TripPattern tripPattern = transitLeg.tripPattern();
     Instant serviceDateMidnight = transitLeg.serviceDateMidnight();
     LocalDate serviceDate = transitLeg.serviceDate();
@@ -94,13 +93,19 @@ public class TripTimeOnDateHelper {
 
   /**
    * Find trip time shorts for all intermediate stops for a leg.
+   * <p>
+   * Intermediate stops without scheduled times are skipped. This is the case for the flexible
+   * area stops of a flex service journey with fixed endpoints: the trip is routed as a regular
+   * scheduled leg, but the flexible-area stop in between carries no scheduled arrival/departure
+   * time (only a time window), so it cannot be rendered as an {@code EstimatedCall} and is not a
+   * boardable stop. See issue #7034.
    */
   public static List<TripTimeOnDate> getIntermediateTripTimeOnDatesForLeg(Leg leg) {
     if (!leg.isScheduledTransitLeg()) {
       return List.of();
     }
     ScheduledTransitLeg transitLeg = leg.asScheduledTransitLeg();
-    TripTimes tripTimes = transitLeg.tripTimes();
+    var tripTimes = transitLeg.tripTimes();
     TripPattern tripPattern = transitLeg.tripPattern();
     Instant serviceDateMidnight = transitLeg.serviceDateMidnight();
     LocalDate serviceDate = transitLeg.serviceDate();
@@ -108,6 +113,7 @@ public class TripTimeOnDateHelper {
       .mapToObj(i ->
         new TripTimeOnDate(tripTimes, i, tripPattern, serviceDate, serviceDateMidnight)
       )
+      .filter(TripTimeOnDate::hasScheduledTimes)
       .collect(Collectors.toList());
   }
 }

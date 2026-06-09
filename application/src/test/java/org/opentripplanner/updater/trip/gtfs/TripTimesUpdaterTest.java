@@ -3,6 +3,7 @@ package org.opentripplanner.updater.trip.gtfs;
 import static com.google.transit.realtime.GtfsRealtime.TripDescriptor.ScheduleRelationship.SCHEDULED;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertIterableEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -35,12 +36,13 @@ import org.opentripplanner.core.model.id.FeedScopedId;
 import org.opentripplanner.model.PickDrop;
 import org.opentripplanner.transit.model.framework.Deduplicator;
 import org.opentripplanner.transit.model.network.TripPattern;
-import org.opentripplanner.transit.model.timetable.RealTimeState;
+import org.opentripplanner.transit.model.timetable.RealTimeTripTimes;
 import org.opentripplanner.transit.model.timetable.Timetable;
 import org.opentripplanner.transit.model.timetable.TripTimes;
-import org.opentripplanner.transit.service.TimetableRepository;
+import org.opentripplanner.transit.service.TransitRepository;
 import org.opentripplanner.updater.spi.UpdateErrorType;
-import org.opentripplanner.updater.trip.TripUpdateBuilder;
+import org.opentripplanner.updater.trip.gtfs.interpolation.BackwardsDelayPropagationType;
+import org.opentripplanner.updater.trip.gtfs.interpolation.ForwardsDelayPropagationType;
 import org.opentripplanner.updater.trip.gtfs.model.TripUpdate;
 import org.opentripplanner.utils.time.TimeUtils;
 
@@ -64,12 +66,12 @@ public class TripTimesUpdaterTest {
   @BeforeAll
   public static void setUp() throws Exception {
     TestOtpModel model = ConstantsForTests.buildGtfsGraph(ConstantsForTests.SIMPLE_GTFS);
-    TimetableRepository timetableRepository = model.timetableRepository();
+    TransitRepository transitRepository = model.transitRepository();
 
-    feedId = timetableRepository.getFeedIds().stream().findFirst().get();
+    feedId = transitRepository.getFeedIds().stream().findFirst().get();
     patternIndex = new HashMap<>();
 
-    for (TripPattern pattern : timetableRepository.getAllTripPatterns()) {
+    for (TripPattern pattern : transitRepository.getAllTripPatterns()) {
       pattern.scheduledTripsAsStream().forEach(trip -> patternIndex.put(trip.getId(), pattern));
     }
 
@@ -381,11 +383,11 @@ public class TripTimesUpdaterTest {
 
     var updatedTripTimes = p.tripTimes();
     assertNotNull(updatedTripTimes);
-    assertEquals(RealTimeState.UPDATED, updatedTripTimes.getRealTimeState());
+    assertTrue(updatedTripTimes.hasAnyUpdates());
     assertTrue(updatedTripTimes.isNoDataStop(0));
     assertFalse(updatedTripTimes.isNoDataStop(1));
-    assertTrue(updatedTripTimes.isCancelledStop(1));
-    assertFalse(updatedTripTimes.isCancelledStop(2));
+    assertTrue(updatedTripTimes.isCanceledStop(1));
+    assertFalse(updatedTripTimes.isCanceledStop(2));
     assertTrue(updatedTripTimes.isNoDataStop(2));
     var updatedPickup = p.updatedPickup();
     var updatedDropoff = p.updatedDropoff();
@@ -476,10 +478,10 @@ public class TripTimesUpdaterTest {
 
     var updatedTripTimes = p.tripTimes();
     assertNotNull(updatedTripTimes);
-    assertEquals(RealTimeState.UPDATED, updatedTripTimes.getRealTimeState());
-    assertFalse(updatedTripTimes.isCancelledStop(0));
-    assertTrue(updatedTripTimes.isCancelledStop(1));
-    assertFalse(updatedTripTimes.isCancelledStop(2));
+    assertTrue(updatedTripTimes.hasAnyUpdates());
+    assertFalse(updatedTripTimes.isCanceledStop(0));
+    assertTrue(updatedTripTimes.isCanceledStop(1));
+    assertFalse(updatedTripTimes.isCanceledStop(2));
     assertEquals(I18NString.of("new stop headsign"), updatedTripTimes.getHeadsign(0));
     assertEquals(I18NString.of("new trip headsign"), updatedTripTimes.getHeadsign(1));
     assertEquals(I18NString.of("new trip headsign"), updatedTripTimes.getHeadsign(2));
@@ -769,9 +771,9 @@ public class TripTimesUpdaterTest {
     assertEquals(0, updatedTripTimes.getDepartureDelay(0));
     assertEquals(-800, updatedTripTimes.getArrivalDelay(2));
     assertEquals(-800, updatedTripTimes.getDepartureDelay(2));
-    assertFalse(updatedTripTimes.isCancelledStop(0));
-    assertTrue(updatedTripTimes.isCancelledStop(1));
-    assertFalse(updatedTripTimes.isCancelledStop(2));
+    assertFalse(updatedTripTimes.isCanceledStop(0));
+    assertTrue(updatedTripTimes.isCanceledStop(1));
+    assertFalse(updatedTripTimes.isCanceledStop(2));
     assertTrue(updatedTripTimes.getDepartureTime(0) <= updatedTripTimes.getArrivalTime(1));
     assertTrue(updatedTripTimes.getDepartureTime(1) <= updatedTripTimes.getArrivalTime(2));
   }
@@ -810,9 +812,9 @@ public class TripTimesUpdaterTest {
     assertEquals(1000, updatedTripTimes.getDepartureDelay(0));
     assertEquals(0, updatedTripTimes.getArrivalDelay(2));
     assertEquals(0, updatedTripTimes.getDepartureDelay(2));
-    assertFalse(updatedTripTimes.isCancelledStop(0));
-    assertTrue(updatedTripTimes.isCancelledStop(1));
-    assertFalse(updatedTripTimes.isCancelledStop(2));
+    assertFalse(updatedTripTimes.isCanceledStop(0));
+    assertTrue(updatedTripTimes.isCanceledStop(1));
+    assertFalse(updatedTripTimes.isCanceledStop(2));
     assertTrue(updatedTripTimes.getDepartureTime(0) <= updatedTripTimes.getArrivalTime(1));
     assertTrue(updatedTripTimes.getDepartureTime(1) <= updatedTripTimes.getArrivalTime(2));
   }
@@ -880,9 +882,9 @@ public class TripTimesUpdaterTest {
     assertEquals(-700, updatedTripTimes.getDepartureDelay(1));
     assertEquals(0, updatedTripTimes.getArrivalDelay(2));
     assertEquals(0, updatedTripTimes.getDepartureDelay(2));
-    assertTrue(updatedTripTimes.isCancelledStop(0));
-    assertFalse(updatedTripTimes.isCancelledStop(1));
-    assertFalse(updatedTripTimes.isCancelledStop(2));
+    assertTrue(updatedTripTimes.isCanceledStop(0));
+    assertFalse(updatedTripTimes.isCanceledStop(1));
+    assertFalse(updatedTripTimes.isCanceledStop(2));
     assertTrue(updatedTripTimes.getDepartureTime(0) <= updatedTripTimes.getArrivalTime(1));
     assertTrue(updatedTripTimes.getDepartureTime(1) <= updatedTripTimes.getArrivalTime(2));
   }
@@ -920,9 +922,9 @@ public class TripTimesUpdaterTest {
     assertEquals(0, updatedTripTimes.getDepartureDelay(0));
     assertEquals(700, updatedTripTimes.getArrivalDelay(1));
     assertEquals(700, updatedTripTimes.getDepartureDelay(1));
-    assertFalse(updatedTripTimes.isCancelledStop(0));
-    assertFalse(updatedTripTimes.isCancelledStop(1));
-    assertTrue(updatedTripTimes.isCancelledStop(2));
+    assertFalse(updatedTripTimes.isCanceledStop(0));
+    assertFalse(updatedTripTimes.isCanceledStop(1));
+    assertTrue(updatedTripTimes.isCanceledStop(2));
     assertTrue(updatedTripTimes.getDepartureTime(0) <= updatedTripTimes.getArrivalTime(1));
     assertTrue(updatedTripTimes.getDepartureTime(1) <= updatedTripTimes.getArrivalTime(2));
   }
@@ -968,14 +970,14 @@ public class TripTimesUpdaterTest {
     assertEquals(600, updatedTripTimes.getDepartureDelay(0));
     assertEquals(-1200, updatedTripTimes.getArrivalDelay(7));
     assertEquals(-1200, updatedTripTimes.getDepartureDelay(7));
-    assertFalse(updatedTripTimes.isCancelledStop(0));
-    assertTrue(updatedTripTimes.isCancelledStop(1));
-    assertTrue(updatedTripTimes.isCancelledStop(2));
-    assertTrue(updatedTripTimes.isCancelledStop(3));
-    assertTrue(updatedTripTimes.isCancelledStop(4));
-    assertTrue(updatedTripTimes.isCancelledStop(5));
-    assertTrue(updatedTripTimes.isCancelledStop(6));
-    assertFalse(updatedTripTimes.isCancelledStop(7));
+    assertFalse(updatedTripTimes.isCanceledStop(0));
+    assertTrue(updatedTripTimes.isCanceledStop(1));
+    assertTrue(updatedTripTimes.isCanceledStop(2));
+    assertTrue(updatedTripTimes.isCanceledStop(3));
+    assertTrue(updatedTripTimes.isCanceledStop(4));
+    assertTrue(updatedTripTimes.isCanceledStop(5));
+    assertTrue(updatedTripTimes.isCanceledStop(6));
+    assertFalse(updatedTripTimes.isCanceledStop(7));
     assertTrue(updatedTripTimes.getDepartureTime(0) <= updatedTripTimes.getArrivalTime(1));
     assertTrue(updatedTripTimes.getDepartureTime(1) <= updatedTripTimes.getArrivalTime(2));
     assertTrue(updatedTripTimes.getDepartureTime(2) <= updatedTripTimes.getArrivalTime(3));
@@ -1031,14 +1033,14 @@ public class TripTimesUpdaterTest {
     assertEquals(500, updatedTripTimes.getDepartureDelay(4));
     assertEquals(-1200, updatedTripTimes.getArrivalDelay(7));
     assertEquals(-1200, updatedTripTimes.getDepartureDelay(7));
-    assertFalse(updatedTripTimes.isCancelledStop(0));
-    assertTrue(updatedTripTimes.isCancelledStop(1));
-    assertTrue(updatedTripTimes.isCancelledStop(2));
-    assertFalse(updatedTripTimes.isCancelledStop(3));
-    assertFalse(updatedTripTimes.isCancelledStop(4));
-    assertTrue(updatedTripTimes.isCancelledStop(5));
-    assertTrue(updatedTripTimes.isCancelledStop(6));
-    assertFalse(updatedTripTimes.isCancelledStop(7));
+    assertFalse(updatedTripTimes.isCanceledStop(0));
+    assertTrue(updatedTripTimes.isCanceledStop(1));
+    assertTrue(updatedTripTimes.isCanceledStop(2));
+    assertFalse(updatedTripTimes.isCanceledStop(3));
+    assertFalse(updatedTripTimes.isCanceledStop(4));
+    assertTrue(updatedTripTimes.isCanceledStop(5));
+    assertTrue(updatedTripTimes.isCanceledStop(6));
+    assertFalse(updatedTripTimes.isCanceledStop(7));
     assertTrue(updatedTripTimes.getDepartureTime(0) <= updatedTripTimes.getArrivalTime(1));
     assertTrue(updatedTripTimes.getDepartureTime(1) <= updatedTripTimes.getArrivalTime(2));
     assertTrue(updatedTripTimes.getDepartureTime(2) <= updatedTripTimes.getArrivalTime(3));
@@ -1090,6 +1092,42 @@ public class TripTimesUpdaterTest {
       setEmptyEvent.accept(stopTime, emptyEvent);
       return stopTime.build();
     }
+  }
+
+  @Test
+  public void vehicleIdIsPopulatedFromGtfsRt() {
+    var rawTripUpdate = new TripUpdateBuilder(TRIP_ID, SERVICE_DATE, SCHEDULED, TIME_ZONE)
+      .addDelayedStopTime(1, 0)
+      .withVehicleId("BUS-42")
+      .build();
+
+    var p = TRIP_TIMES_UPDATER.createUpdatedTripTimesFromGtfsRt(
+      timetable,
+      new TripUpdate(feedId, rawTripUpdate, NOW),
+      ForwardsDelayPropagationType.DEFAULT,
+      BackwardsDelayPropagationType.REQUIRED_NO_DATA
+    );
+
+    assertInstanceOf(RealTimeTripTimes.class, p.tripTimes());
+    assertTrue(p.tripTimes().getVehicleId().isPresent());
+    assertEquals(new FeedScopedId(feedId, "BUS-42"), p.tripTimes().getVehicleId().get());
+  }
+
+  @Test
+  public void vehicleIdIsNullWhenAbsentInGtfsRt() {
+    var rawTripUpdate = new TripUpdateBuilder(TRIP_ID, SERVICE_DATE, SCHEDULED, TIME_ZONE)
+      .addDelayedStopTime(1, 0)
+      .build();
+
+    var p = TRIP_TIMES_UPDATER.createUpdatedTripTimesFromGtfsRt(
+      timetable,
+      new TripUpdate(feedId, rawTripUpdate, NOW),
+      ForwardsDelayPropagationType.DEFAULT,
+      BackwardsDelayPropagationType.REQUIRED_NO_DATA
+    );
+
+    assertInstanceOf(RealTimeTripTimes.class, p.tripTimes());
+    assertTrue(p.tripTimes().getVehicleId().isEmpty());
   }
 
   private static TripDescriptor.Builder tripDescriptorBuilder() {

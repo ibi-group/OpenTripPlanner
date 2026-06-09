@@ -8,17 +8,21 @@ import javax.annotation.Nullable;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.LineString;
 import org.opentripplanner.core.model.id.FeedScopedId;
+import org.opentripplanner.street.geometry.CompactLineStringSequence;
 import org.opentripplanner.street.geometry.GeometryUtils;
+import org.opentripplanner.street.geometry.SphericalDistanceLibrary;
 import org.opentripplanner.transit.model.basic.SubMode;
 import org.opentripplanner.transit.model.basic.TransitMode;
 import org.opentripplanner.transit.model.framework.AbstractEntityBuilder;
+import org.opentripplanner.transit.model.site.StopLocation;
 import org.opentripplanner.transit.model.timetable.Direction;
 import org.opentripplanner.transit.model.timetable.Timetable;
 import org.opentripplanner.transit.model.timetable.TimetableBuilder;
 
 @SuppressWarnings("UnusedReturnValue")
 public final class TripPatternBuilder
-  extends AbstractEntityBuilder<TripPattern, TripPatternBuilder> {
+  extends AbstractEntityBuilder<TripPattern, TripPatternBuilder>
+{
 
   private String name;
   private boolean realTimeTripPattern;
@@ -214,7 +218,7 @@ public final class TripPatternBuilder
     return stopPatternModifiedInRealTime;
   }
 
-  TripPatternGeometry buildGeometry() {
+  CompactLineStringSequence buildGeometry() {
     List<LineString> geometries;
     if (this.hopGeometries != null) {
       geometries = this.hopGeometries;
@@ -223,7 +227,67 @@ public final class TripPatternBuilder
     } else {
       geometries = null;
     }
-    return TripPatternGeometry.of(stopPattern, geometries);
+    return buildHopGeometries(stopPattern, geometries);
+  }
+
+  /**
+   * Build the compacted per-hop geometry sequence for a pattern, along with its cumulative
+   * arc-length table. When {@code hopGeometries} is non-null each hop's distance is the planar
+   * sum of its {@link LineString} coordinates ({@link GeometryUtils#sumDistances}); when it is
+   * {@code null} each hop is synthesized as a straight line between consecutive stops and the
+   * distance is measured with {@link SphericalDistanceLibrary} (haversine).
+   * <p>
+   * Distances are accumulated in {@code double} and rounded to the nearest meter only when
+   * writing each entry of the cumulative table, which bounds the rounding error of any
+   * {@code distanceBetween(board, alight)} query to at most 1 meter independent of leg length.
+   * <p>
+   * Package-private so test fixtures (e.g. {@code TripPatternGeometryTest}) can exercise this
+   * factory directly without going through the full builder.
+   */
+  static CompactLineStringSequence buildHopGeometries(
+    StopPattern stopPattern,
+    @Nullable List<LineString> hopGeometries
+  ) {
+    int numberOfStops = stopPattern.getSize();
+    int expectedHops = Math.max(numberOfStops - 1, 0);
+    if (hopGeometries != null && hopGeometries.size() != expectedHops) {
+      throw new IllegalArgumentException(
+        "hopGeometries size (%d) does not match the number of hops in the stop pattern (%d)".formatted(
+          hopGeometries.size(),
+          expectedHops
+        )
+      );
+    }
+    // Cumulative table has one entry per vertex position (0 .. expectedHops). For a degenerate
+    // pattern with 0 or 1 stops this is just {0}.
+    int cumulativeLength = expectedHops + 1;
+    double[] cumulativeDouble = new double[cumulativeLength];
+    List<LineString> hops = new ArrayList<>(expectedHops);
+
+    if (hopGeometries != null) {
+      for (int i = 0; i < hopGeometries.size(); i++) {
+        LineString hop = hopGeometries.get(i);
+        cumulativeDouble[i + 1] =
+          cumulativeDouble[i] + GeometryUtils.sumDistances(hop.getCoordinateSequence());
+        hops.add(hop);
+      }
+    } else {
+      for (int i = 0; i < numberOfStops - 1; i++) {
+        StopLocation from = stopPattern.getStop(i);
+        StopLocation to = stopPattern.getStop(i + 1);
+        LineString hop = GeometryUtils.makeLineString(from.getCoordinate(), to.getCoordinate());
+        cumulativeDouble[i + 1] =
+          cumulativeDouble[i] +
+          SphericalDistanceLibrary.distance(from.getLat(), from.getLon(), to.getLat(), to.getLon());
+        hops.add(hop);
+      }
+    }
+
+    int[] cumulativeMeters = new int[cumulativeLength];
+    for (int i = 0; i < cumulativeLength; i++) {
+      cumulativeMeters[i] = (int) Math.round(cumulativeDouble[i]);
+    }
+    return CompactLineStringSequence.of(hops, cumulativeMeters);
   }
 
   /**
@@ -240,9 +304,8 @@ public final class TripPatternBuilder
     List<LineString> hopGeometries = new ArrayList<>();
 
     for (int i = 0; i < stopPattern.getSize() - 1; i++) {
-      LineString hopGeometry = i < originalTripPattern.numberOfStops() - 1
-        ? originalTripPattern.getHopGeometry(i)
-        : null;
+      LineString hopGeometry =
+        i < originalTripPattern.numberOfStops() - 1 ? originalTripPattern.getHopGeometry(i) : null;
 
       if (hopGeometry != null && stopPattern.sameStops(originalTripPattern.getStopPattern(), i)) {
         // Copy hop geometry from previous pattern
@@ -252,7 +315,10 @@ public final class TripPatternBuilder
       ) {
         // Use old geometry but patch first and last point with new stops
         var newStart = stopPattern.getStop(i).getCoordinate().asJtsCoordinate();
-        var newEnd = stopPattern.getStop(i + 1).getCoordinate().asJtsCoordinate();
+        var newEnd = stopPattern
+          .getStop(i + 1)
+          .getCoordinate()
+          .asJtsCoordinate();
 
         Coordinate[] coordinates = originalTripPattern.getHopGeometry(i).getCoordinates().clone();
         coordinates[0].setCoordinate(newStart);
@@ -262,12 +328,13 @@ public final class TripPatternBuilder
       } else {
         // Create new straight-line geometry for hop
         hopGeometries.add(
-          GeometryUtils.getGeometryFactory().createLineString(
-            new Coordinate[] {
-              stopPattern.getStop(i).getCoordinate().asJtsCoordinate(),
-              stopPattern.getStop(i + 1).getCoordinate().asJtsCoordinate(),
-            }
-          )
+          GeometryUtils.getGeometryFactory().createLineString(new Coordinate[] {
+            stopPattern.getStop(i).getCoordinate().asJtsCoordinate(),
+            stopPattern
+              .getStop(i + 1)
+              .getCoordinate()
+              .asJtsCoordinate(),
+          })
         );
       }
     }

@@ -5,13 +5,14 @@ import static org.opentripplanner.apis.gtfs.GraphQLUtils.stopTimeToInt;
 import graphql.schema.DataFetcher;
 import graphql.schema.DataFetchingEnvironment;
 import java.time.ZonedDateTime;
-import org.opentripplanner.apis.gtfs.GraphQLRequestContext;
+import org.opentripplanner.apis.gtfs.GtfsGraphQLRequestContext;
 import org.opentripplanner.apis.gtfs.generated.GraphQLDataFetchers;
 import org.opentripplanner.apis.gtfs.model.CallRealTime;
 import org.opentripplanner.apis.gtfs.model.CallSchedule;
 import org.opentripplanner.apis.gtfs.model.CallScheduledTime.ArrivalDepartureTime;
 import org.opentripplanner.apis.gtfs.model.CallScheduledTime.TimeWindow;
 import org.opentripplanner.model.TripTimeOnDate;
+import org.opentripplanner.transit.model.basic.Notice;
 import org.opentripplanner.transit.model.timetable.EstimatedTime;
 import org.opentripplanner.transit.service.TransitService;
 import org.opentripplanner.utils.time.ServiceDateUtils;
@@ -26,13 +27,15 @@ public class StopCallImpl implements GraphQLDataFetchers.GraphQLStopCall {
         return null;
       }
       var scheduledArrival = getZonedDateTime(environment, tripTime.getScheduledArrival());
-      var estimatedArrival = scheduledArrival == null
-        ? null
-        : EstimatedTime.of(scheduledArrival, tripTime.getArrivalDelay());
+      var estimatedArrival =
+        scheduledArrival == null
+          ? null
+          : EstimatedTime.of(scheduledArrival, tripTime.getArrivalDelay());
       var scheduledDeparture = getZonedDateTime(environment, tripTime.getScheduledDeparture());
-      var estimatedDeparture = scheduledDeparture == null
-        ? null
-        : EstimatedTime.of(scheduledDeparture, tripTime.getDepartureDelay());
+      var estimatedDeparture =
+        scheduledDeparture == null
+          ? null
+          : EstimatedTime.of(scheduledDeparture, tripTime.getDepartureDelay());
       return new CallRealTime(estimatedArrival, estimatedDeparture);
     };
   }
@@ -66,12 +69,21 @@ public class StopCallImpl implements GraphQLDataFetchers.GraphQLStopCall {
   }
 
   @Override
+  public DataFetcher<Iterable<Notice>> notices() {
+    return env -> {
+      var call = getSource(env);
+      var transitService = getTransitService(env);
+      return transitService.findNotices(call.getStopTimeKey());
+    };
+  }
+
+  @Override
   public DataFetcher<Object> stopLocation() {
     return environment -> getSource(environment).getStop();
   }
 
   private TransitService getTransitService(DataFetchingEnvironment environment) {
-    return environment.<GraphQLRequestContext>getContext().transitService();
+    return environment.<GtfsGraphQLRequestContext>getContext().transitService();
   }
 
   private ZonedDateTime getZonedDateTime(DataFetchingEnvironment environment, int time) {

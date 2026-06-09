@@ -1,0 +1,42 @@
+package org.opentripplanner.raptor.spi;
+
+import org.opentripplanner.utils.time.TimeUtils;
+
+record EmptyBoardOrAlightEvent<T extends RaptorTripSchedule>(
+  int earliestBoardTime
+) implements RaptorBoardOrAlightEvent<T> {
+  @Override
+  public int tripScheduleIndex() {
+    return RaptorConstants.NOT_FOUND;
+  }
+
+  @Override
+  public T trip() {
+    return null;
+  }
+
+  @Override
+  public int stopPositionInPattern() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public int time() {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public RaptorTransferConstraint transferConstraint() {
+    return RaptorTransferConstraint.REGULAR_TRANSFER;
+  }
+
+  @Override
+  public boolean empty() {
+    return true;
+  }
+
+  @Override
+  public String toString() {
+    return "EmptyBoardOrAlightEvent(" + TimeUtils.timeToStrLong(earliestBoardTime) + ")";
+  }
+}

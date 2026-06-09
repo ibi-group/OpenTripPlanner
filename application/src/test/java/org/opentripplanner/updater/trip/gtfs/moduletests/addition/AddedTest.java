@@ -9,6 +9,10 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.opentripplanner.core.model.id.FeedScopedIdForTestFactory.id;
+import static org.opentripplanner.updater.spi.UpdateErrorType.INVALID_STOP_REFERENCE;
+import static org.opentripplanner.updater.spi.UpdateErrorType.TOO_FEW_STOPS;
+import static org.opentripplanner.updater.spi.UpdateErrorType.UNKNOWN_STOP;
+import static org.opentripplanner.updater.spi.UpdateResultAssertions.assertFailure;
 import static org.opentripplanner.updater.spi.UpdateResultAssertions.assertSuccess;
 import static org.opentripplanner.updater.trip.UpdateIncrementality.DIFFERENTIAL;
 
@@ -18,18 +22,16 @@ import java.util.Objects;
 import org.junit.jupiter.api.Test;
 import org.opentripplanner.core.model.i18n.I18NString;
 import org.opentripplanner.model.PickDrop;
-import org.opentripplanner.transit.model._data.TransitTestEnvironment;
-import org.opentripplanner.transit.model._data.TransitTestEnvironmentBuilder;
-import org.opentripplanner.transit.model._data.TripInput;
+import org.opentripplanner.transit.model.TransitTestEnvironment;
+import org.opentripplanner.transit.model.TransitTestEnvironmentBuilder;
+import org.opentripplanner.transit.model.TripInput;
 import org.opentripplanner.transit.model.basic.TransitMode;
 import org.opentripplanner.transit.model.network.TripPattern;
 import org.opentripplanner.transit.model.site.RegularStop;
-import org.opentripplanner.transit.model.timetable.RealTimeState;
 import org.opentripplanner.transit.service.TransitService;
-import org.opentripplanner.updater.spi.UpdateSuccess;
-import org.opentripplanner.updater.trip.GtfsRtTestHelper;
 import org.opentripplanner.updater.trip.RealtimeTestConstants;
-import org.opentripplanner.updater.trip.TripUpdateBuilder;
+import org.opentripplanner.updater.trip.gtfs.GtfsRtTestHelper;
+import org.opentripplanner.updater.trip.gtfs.TripUpdateBuilder;
 import org.opentripplanner.utils.time.TimeUtils;
 
 class AddedTest implements RealtimeTestConstants {
@@ -80,7 +82,6 @@ class AddedTest implements RealtimeTestConstants {
 
     var result = gtfsRt.applyTripUpdate(tripUpdate);
     assertSuccess(result);
-    assertTrue(result.warnings().isEmpty());
 
     var pattern = assertAddedTrip(ADDED_TRIP_ID, env);
 
@@ -90,8 +91,8 @@ class AddedTest implements RealtimeTestConstants {
     assertEquals(TransitMode.RAIL, route.getMode());
 
     TransitService transitService = env.transitService();
-    var fromTimetableRepository = transitService.getRoute(route.getId());
-    assertEquals(fromTimetableRepository, route);
+    var fromTransitRepository = transitService.getRoute(route.getId());
+    assertEquals(fromTransitRepository, route);
     var patternsForRoute = transitService.findPatterns(route);
     assertEquals(1, patternsForRoute.size());
     assertEquals(pattern, patternsForRoute.stream().findFirst().orElseThrow());
@@ -114,17 +115,32 @@ class AddedTest implements RealtimeTestConstants {
       .addStopTime(STOP_C_ID, "00:55", DropOffPickupType.NONE)
       .build();
 
-    var result = gtfsRt.applyTripUpdate(tripUpdate);
-    assertSuccess(result);
+    assertFailure(UNKNOWN_STOP, gtfsRt.applyTripUpdate(tripUpdate));
+    assertTripNotAdded();
+  }
 
-    assertEquals(
-      List.of(UpdateSuccess.WarningType.UNKNOWN_STOPS_REMOVED_FROM_ADDED_TRIP),
-      result.warnings()
-    );
+  @Test
+  void addedWithStopTimeWithoutStopId() {
+    var tripUpdate = gtfsRt
+      .tripUpdate(ADDED_TRIP_ID, ADDED)
+      .addStopTime(STOP_A_ID, "00:30")
+      .addStopTime(2, "00:40")
+      .addStopTime(STOP_C_ID, "00:55")
+      .build();
 
-    var pattern = assertAddedTrip(ADDED_TRIP_ID, env);
+    assertFailure(INVALID_STOP_REFERENCE, gtfsRt.applyTripUpdate(tripUpdate));
+    assertTripNotAdded();
+  }
 
-    assertEquals(2, pattern.getStops().size());
+  @Test
+  void addedWithSingleStop() {
+    var tripUpdate = gtfsRt
+      .tripUpdate(ADDED_TRIP_ID, ADDED)
+      .addStopTime(STOP_A_ID, "00:30")
+      .build();
+
+    assertFailure(TOO_FEW_STOPS, gtfsRt.applyTripUpdate(tripUpdate));
+    assertTripNotAdded();
   }
 
   @Test
@@ -177,10 +193,10 @@ class AddedTest implements RealtimeTestConstants {
     var trip = env.transitService().getTrip(id(ADDED_TRIP_ID));
     assertEquals(I18NString.of("A loop"), Objects.requireNonNull(trip).getHeadsign());
     assertEquals(I18NString.of("A loop"), tripTimes.getHeadsign(0));
-    assertFalse(tripTimes.isCancelledStop(0));
-    assertTrue(tripTimes.isCancelledStop(1));
-    assertTrue(tripTimes.isCancelledStop(2));
-    assertFalse(tripTimes.isCancelledStop(3));
+    assertFalse(tripTimes.isCanceledStop(0));
+    assertTrue(tripTimes.isCanceledStop(1));
+    assertTrue(tripTimes.isCanceledStop(2));
+    assertFalse(tripTimes.isCanceledStop(3));
     assertEquals(I18NString.of("A (non-stop)"), tripTimes.getHeadsign(3));
   }
 
@@ -293,15 +309,16 @@ class AddedTest implements RealtimeTestConstants {
   }
 
   private TripPattern assertAddedTrip(String tripId, TransitTestEnvironment env) {
-    return assertAddedTrip(tripId, env, RealTimeState.ADDED, STOP_A);
+    return assertAddedTrip(tripId, env, STOP_A);
   }
 
-  static TripPattern assertAddedTrip(
-    String tripId,
-    TransitTestEnvironment env,
-    RealTimeState realTimeState,
-    RegularStop stop
-  ) {
+  private void assertTripNotAdded() {
+    var transitService = env.transitService();
+    assertNull(transitService.getTrip(id(ADDED_TRIP_ID)), "No trip should have been added");
+    assertNull(transitService.getTripOnServiceDate(id(ADDED_TRIP_ID)));
+  }
+
+  static TripPattern assertAddedTrip(String tripId, TransitTestEnvironment env, RegularStop stop) {
     var tripFetcher = env.tripData(tripId);
 
     TransitService transitService = env.transitService();
@@ -318,7 +335,7 @@ class AddedTest implements RealtimeTestConstants {
       "Added trip should be found in time table for service date"
     );
 
-    assertEquals(realTimeState, tripFetcher.realTimeState());
+    assertTrue(tripFetcher.tripTimes().isAdded());
 
     // Assert that the tripPattern exists at the given stop
     assertTrue(

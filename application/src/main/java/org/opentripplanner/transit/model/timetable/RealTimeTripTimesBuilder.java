@@ -3,12 +3,15 @@ package org.opentripplanner.transit.model.timetable;
 import static org.opentripplanner.transit.model.timetable.TimetableValidationError.ErrorCode.MISSING_ARRIVAL_TIME;
 import static org.opentripplanner.transit.model.timetable.TimetableValidationError.ErrorCode.MISSING_DEPARTURE_TIME;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
+import java.util.List;
 import java.util.stream.IntStream;
 import javax.annotation.Nullable;
 import org.opentripplanner.core.model.accessibility.Accessibility;
 import org.opentripplanner.core.model.i18n.I18NString;
+import org.opentripplanner.core.model.id.FeedScopedId;
 import org.opentripplanner.transit.model.framework.DataValidationException;
 
 public class RealTimeTripTimesBuilder {
@@ -17,10 +20,8 @@ public class RealTimeTripTimesBuilder {
   private final Integer[] arrivalTimes;
   private final Integer[] departureTimes;
 
-  @Nullable
-  private RealTimeState realTimeState;
-
   private final StopRealTimeState[] stopRealTimeStates;
+  private final List<PartialReplacedBy> partialReplacedBys;
 
   private final BitSet extraCalls;
   private final BitSet hasArrived;
@@ -35,7 +36,10 @@ public class RealTimeTripTimesBuilder {
   @Nullable
   private Accessibility wheelchairAccessibility;
 
-  private boolean updated;
+  @Nullable
+  private FeedScopedId vehicleId;
+
+  private final RealTimeTripState.Builder stateBuilder = RealTimeTripState.of();
 
   /**
    * This constructor takes a ScheduledTripTimes (not base TripTimes) to enforce creating a new
@@ -58,6 +62,7 @@ public class RealTimeTripTimesBuilder {
     Arrays.fill(occupancyStatus, OccupancyStatus.NO_DATA_AVAILABLE);
     hasArrived = new BitSet(numStops);
     hasDeparted = new BitSet(numStops);
+    partialReplacedBys = new ArrayList<>();
   }
 
   /**
@@ -125,13 +130,13 @@ public class RealTimeTripTimesBuilder {
   }
 
   public RealTimeTripTimesBuilder withArrivalTime(int stop, int time) {
-    updated = true;
+    stateBuilder.withTimesModified();
     arrivalTimes[stop] = time;
     return this;
   }
 
   public RealTimeTripTimesBuilder withArrivalDelay(int stop, int delay) {
-    updated = true;
+    stateBuilder.withTimesModified();
     arrivalTimes[stop] = getScheduledArrivalTime(stop) + delay;
     return this;
   }
@@ -168,35 +173,64 @@ public class RealTimeTripTimesBuilder {
   }
 
   public RealTimeTripTimesBuilder withDepartureTime(int stop, int time) {
-    updated = true;
+    stateBuilder.withTimesModified();
     departureTimes[stop] = time;
     return this;
   }
 
   public RealTimeTripTimesBuilder withDepartureDelay(int stop, int delay) {
-    updated = true;
+    stateBuilder.withTimesModified();
     departureTimes[stop] = getScheduledDepartureTime(stop) + delay;
     return this;
   }
 
-  public RealTimeState realTimeState() {
-    if (realTimeState == null) {
-      return updated ? RealTimeState.UPDATED : RealTimeState.SCHEDULED;
-    }
-    return realTimeState;
-  }
-
-  public RealTimeTripTimesBuilder withRealTimeState(RealTimeState realTimeState) {
-    this.realTimeState = realTimeState;
+  public RealTimeTripTimesBuilder withRealTimeUpdated() {
+    stateBuilder.withTimesModified();
     return this;
   }
 
-  public RealTimeTripTimesBuilder cancelTrip() {
-    return withRealTimeState(RealTimeState.CANCELED);
+  public RealTimeTripTimesBuilder withModifiedTripPattern() {
+    stateBuilder.withTripPatternModified();
+    return this;
   }
 
-  public RealTimeTripTimesBuilder deleteTrip() {
-    return withRealTimeState(RealTimeState.DELETED);
+  boolean isTripPatternModified() {
+    return stateBuilder.isTripPatternModified();
+  }
+
+  public RealTimeTripTimesBuilder withAdded() {
+    stateBuilder.withAdded();
+    return this;
+  }
+
+  boolean isAdded() {
+    return stateBuilder.isAdded();
+  }
+
+  public RealTimeTripTimesBuilder withCanceled() {
+    stateBuilder.withCanceled();
+    return this;
+  }
+
+  boolean isCanceled() {
+    return stateBuilder.isCanceled();
+  }
+
+  public RealTimeTripTimesBuilder withDeleted() {
+    stateBuilder.withDeleted();
+    return this;
+  }
+
+  boolean isDeleted() {
+    return stateBuilder.isDeleted();
+  }
+
+  boolean isUpdated() {
+    return stateBuilder.isTimesModified();
+  }
+
+  RealTimeTripState state() {
+    return stateBuilder.build();
   }
 
   public StopRealTimeState getStopRealTimeState(int stop) {
@@ -271,8 +305,8 @@ public class RealTimeTripTimesBuilder {
   }
 
   public @Nullable I18NString[] stopHeadsigns() {
-    var result = scheduledTripTimes.copyHeadsigns(() ->
-      new I18NString[scheduledTripTimes.getNumStops()]
+    var result = scheduledTripTimes.copyHeadsigns(
+      () -> new I18NString[scheduledTripTimes.getNumStops()]
     );
     for (var i = 0; i < result.length; i++) {
       if (stopHeadsigns[i] != null) {
@@ -310,12 +344,35 @@ public class RealTimeTripTimesBuilder {
     return this;
   }
 
+  @Nullable
+  FeedScopedId vehicleId() {
+    return vehicleId;
+  }
+
+  public RealTimeTripTimesBuilder withVehicleId(@Nullable FeedScopedId vehicleId) {
+    this.vehicleId = vehicleId;
+    return this;
+  }
+
   public RealTimeTripTimesBuilder withServiceCode(int serviceCode) {
     this.scheduledTripTimes = scheduledTripTimes
       .copyOfNoDuplication()
       .withServiceCode(serviceCode)
       .build();
     return this;
+  }
+
+  public RealTimeTripTimesBuilder withPartialReplacedBy(
+    int fromStop,
+    int toStop,
+    TripOnServiceDate replacedBy
+  ) {
+    partialReplacedBys.add(new PartialReplacedBy(fromStop, toStop, replacedBy));
+    return this;
+  }
+
+  public List<PartialReplacedBy> partialReplacedBys() {
+    return List.copyOf(partialReplacedBys);
   }
 
   /**

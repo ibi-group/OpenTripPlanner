@@ -5,11 +5,13 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.opentripplanner.core.model.id.FeedScopedIdForTestFactory.id;
+import static org.opentripplanner.transit.model._data.TransitRepositoryForTest.AGENCY;
 import static org.opentripplanner.transit.model.basic.TransitMode.BUS;
 import static org.opentripplanner.transit.model.basic.TransitMode.FERRY;
 import static org.opentripplanner.transit.model.basic.TransitMode.RAIL;
 import static org.opentripplanner.transit.model.basic.TransitMode.TRAM;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Collection;
@@ -17,15 +19,23 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.locationtech.jts.geom.Envelope;
 import org.opentripplanner.core.model.i18n.I18NString;
 import org.opentripplanner.core.model.id.FeedScopedId;
+import org.opentripplanner.core.model.time.TimePeriod;
 import org.opentripplanner.model.TripTimeOnDate;
 import org.opentripplanner.model.calendar.CalendarServiceData;
+import org.opentripplanner.routing.algorithm.raptoradapter.transit.RaptorTransitDataTestFactory;
 import org.opentripplanner.street.geometry.WgsCoordinate;
 import org.opentripplanner.transit.api.model.FilterValues;
 import org.opentripplanner.transit.api.request.TripOnServiceDateRequest;
-import org.opentripplanner.transit.model._data.TimetableRepositoryForTest;
+import org.opentripplanner.transit.model._data.TransitRepositoryForTest;
+import org.opentripplanner.transit.model.basic.MainAndSubMode;
+import org.opentripplanner.transit.model.basic.TransitMode;
+import org.opentripplanner.transit.model.filter.selector.FilterRequest;
+import org.opentripplanner.transit.model.filter.transit.TripOnServiceDateSelectRequest;
 import org.opentripplanner.transit.model.framework.Deduplicator;
 import org.opentripplanner.transit.model.network.StopPattern;
 import org.opentripplanner.transit.model.network.TripPattern;
@@ -37,15 +47,16 @@ import org.opentripplanner.transit.model.site.StopLocation;
 import org.opentripplanner.transit.model.timetable.RealTimeTripTimes;
 import org.opentripplanner.transit.model.timetable.RealTimeTripUpdate;
 import org.opentripplanner.transit.model.timetable.ScheduledTripTimes;
-import org.opentripplanner.transit.model.timetable.TimetableSnapshot;
 import org.opentripplanner.transit.model.timetable.Trip;
+import org.opentripplanner.transit.model.timetable.TripOnServiceDate;
 import org.opentripplanner.transit.model.timetable.TripTimes;
 import org.opentripplanner.transit.model.timetable.TripTimesFactory;
+import org.opentripplanner.transit.repository.DefaultTimetableRepository;
 import org.opentripplanner.utils.time.ServiceDateUtils;
 
 class DefaultTransitServiceTest {
 
-  private static final TimetableRepositoryForTest TEST_MODEL = TimetableRepositoryForTest.of();
+  private static final TransitRepositoryForTest TEST_MODEL = TransitRepositoryForTest.of();
 
   private static TransitService service;
   private static final Station STATION = TEST_MODEL.station("C").build();
@@ -75,7 +86,7 @@ class DefaultTransitServiceTest {
   private static final TripPattern FERRY_PATTERN = TEST_MODEL.pattern(FERRY).build();
   private static final TripPattern BUS_PATTERN = TEST_MODEL.pattern(BUS).build();
 
-  private static final StopPattern REAL_TIME_STOP_PATTERN = TimetableRepositoryForTest.stopPattern(
+  private static final StopPattern REAL_TIME_STOP_PATTERN = TransitRepositoryForTest.stopPattern(
     STOP_A,
     STOP_B
   );
@@ -85,11 +96,11 @@ class DefaultTransitServiceTest {
     .build();
 
   static FeedScopedId CALENDAR_ID = id("CAL_1");
-  static Trip TRIP = TimetableRepositoryForTest.trip("123")
+  static Trip TRIP = TransitRepositoryForTest.trip("123")
     .withHeadsign(I18NString.of("Trip Headsign"))
     .withServiceId(CALENDAR_ID)
     .build();
-  private static final Trip ADDED_TRIP = TimetableRepositoryForTest.trip("REAL_TIME_ADDED_TRIP")
+  private static final Trip ADDED_TRIP = TransitRepositoryForTest.trip("REAL_TIME_ADDED_TRIP")
     .withServiceId(CALENDAR_ID)
     .build();
   private static final ScheduledTripTimes SCHEDULED_TRIP_TIMES = ScheduledTripTimes.of()
@@ -113,7 +124,7 @@ class DefaultTransitServiceTest {
     .build();
 
   static FeedScopedId CALENDAR_ID_TWO = id("CAL_2");
-  static Trip TRIP_TODAY = TimetableRepositoryForTest.trip("12345")
+  static Trip TRIP_TODAY = TransitRepositoryForTest.trip("12345")
     .withHeadsign(I18NString.of("Trip Headsign"))
     .withServiceId(CALENDAR_ID_TWO)
     .build();
@@ -153,13 +164,13 @@ class DefaultTransitServiceTest {
       .build();
 
     var deduplicator = new Deduplicator();
-    var timetableRepository = new TimetableRepository(siteRepository);
+    var transitRepository = new TransitRepository(siteRepository);
     var canceledStopTimes = TEST_MODEL.stopTimesEvery5Minutes(3, TRIP, "11:30");
     var canceledTripTimes = TripTimesFactory.tripTimes(TRIP, canceledStopTimes, deduplicator)
       .createRealTimeFromScheduledTimes()
-      .cancelTrip()
+      .withCanceled()
       .build();
-    timetableRepository.addTripPattern(RAIL_PATTERN.getId(), RAIL_PATTERN);
+    transitRepository.addTripPattern(RAIL_PATTERN.getId(), RAIL_PATTERN);
 
     // Crate a calendar (needed for testing cancelled trips)
     CalendarServiceData calendarServiceData = new CalendarServiceData();
@@ -176,22 +187,24 @@ class DefaultTransitServiceTest {
       List.of(firstDate, secondDate)
     );
 
-    var serviceCodes = timetableRepository.getServiceCodes();
-    serviceCodes.put(SERVICE_ID, SERVICE_CODE);
-    serviceCodes.put(CALENDAR_ID, SERVICE_CODE);
-    serviceCodes.put(CALENDAR_ID_TWO, 1);
+    transitRepository.putServiceCode(SERVICE_ID, SERVICE_CODE);
+    transitRepository.putServiceCode(CALENDAR_ID, SERVICE_CODE);
+    transitRepository.putServiceCode(CALENDAR_ID_TWO, 1);
 
-    timetableRepository.addTripPattern(RAIL_PATTERN.getId(), RAIL_PATTERN);
-    timetableRepository.addTripPattern(BUS_PATTERN.getId(), BUS_PATTERN);
-    timetableRepository.addTripPattern(BUS_PATTERN_TODAY.getId(), BUS_PATTERN_TODAY);
+    transitRepository.addTripPattern(RAIL_PATTERN.getId(), RAIL_PATTERN);
+    transitRepository.addTripPattern(BUS_PATTERN.getId(), BUS_PATTERN);
+    transitRepository.addTripPattern(BUS_PATTERN_TODAY.getId(), BUS_PATTERN_TODAY);
 
-    timetableRepository.updateCalendarServiceData(calendarServiceData);
+    transitRepository.updateCalendarServiceData(calendarServiceData);
 
-    timetableRepository.index();
+    transitRepository.index();
 
-    TimetableSnapshot timetableSnapshot = new TimetableSnapshot();
+    DefaultTimetableRepository timetableSnapshot = new DefaultTimetableRepository(
+      RaptorTransitDataTestFactory.empty(),
+      transitRepository.getTripCalendar()
+    );
     TripTimes tripTimes = ScheduledTripTimes.of()
-      .withTrip(TimetableRepositoryForTest.trip("123").build())
+      .withTrip(TransitRepositoryForTest.trip("123").build())
       .withDepartureTimes(new int[] { 0, 1 })
       .withServiceCode(SERVICE_CODE)
       .build();
@@ -215,7 +228,7 @@ class DefaultTransitServiceTest {
 
     var snapshot = timetableSnapshot.commit();
 
-    service = new DefaultTransitService(timetableRepository, snapshot) {
+    service = new DefaultTransitService(transitRepository, snapshot) {
       @Override
       public Collection<TripPattern> findPatterns(StopLocation stop) {
         if (stop.equals(STOP_B)) {
@@ -257,35 +270,135 @@ class DefaultTransitServiceTest {
     assertEquals(Set.of(FERRY_PATTERN, RAIL_PATTERN, REAL_TIME_PATTERN), patternsForStop);
   }
 
-  @Test
-  void listCanceledTrips() {
-    var canceledTrips = service.listCanceledTrips();
-    assertEquals("[TripOnServiceDate{F:123}, TripOnServiceDate{F:123}]", canceledTrips.toString());
-  }
+  @Nested
+  class ListCanceledTrips {
 
-  @Test
-  void findAllCanceledTrips() {
-    // No filters, should return all canceled trips
-    var canceledTrips = service.findCanceledTrips(TripOnServiceDateRequest.of().build());
-    assertEquals("[TripOnServiceDate{F:123}, TripOnServiceDate{F:123}]", canceledTrips.toString());
-  }
+    @Test
+    void listCanceledTrips() {
+      var canceledTrips = service.listCanceledTrips();
+      assertEquals(
+        "[TripOnServiceDate{F:123}, TripOnServiceDate{F:123}]",
+        canceledTrips.toString()
+      );
+    }
 
-  @Test
-  void findCanceledBusTrips() {
-    var busFilter = FilterValues.ofEmptyIsEverything("modesToInclude", List.of(BUS));
-    var busRequest = TripOnServiceDateRequest.of().withIncludeModes(busFilter).build();
-    var busTrips = service.findCanceledTrips(busRequest);
-    assertEquals("[TripOnServiceDate{F:123}, TripOnServiceDate{F:123}]", busTrips.toString());
-  }
+    @Test
+    void findAllCanceledTrips() {
+      // No filters, should return all canceled trips
+      var canceledTrips = service.findCanceledTrips(TripOnServiceDateRequest.of().build());
+      assertEquals(
+        "[TripOnServiceDate{F:123}, TripOnServiceDate{F:123}]",
+        canceledTrips.toString()
+      );
+    }
 
-  @Test
-  void findCanceledNonBusTrips() {
-    var busExcludeFilter = FilterValues.ofEmptyIsEverything("modesToExclude", List.of(BUS));
-    var busExcludeRequest = TripOnServiceDateRequest.of()
-      .withExcludeModes(busExcludeFilter)
-      .build();
-    var excludedBusTrips = service.findCanceledTrips(busExcludeRequest);
-    assertThat(excludedBusTrips).isEmpty();
+    @Test
+    void filtersByAgencyNot() {
+      // NOT AGENCY should exclude all canceled trips since they all belong to this same agency
+      var filter = FilterRequest.<TripOnServiceDateSelectRequest>of()
+        .addNot(TripOnServiceDateSelectRequest.of().withAgencies(List.of(AGENCY.getId())).build())
+        .build();
+      var request = TripOnServiceDateRequest.of().withFilters(List.of(filter)).build();
+      var result = service.findCanceledTrips(request);
+      assertTrue(result.isEmpty());
+    }
+
+    @Test
+    void findCanceledBusTrips() {
+      var filter = FilterRequest.<TripOnServiceDateSelectRequest>of()
+        .addSelect(
+          TripOnServiceDateSelectRequest.of()
+            .withTransportModes(List.of(new MainAndSubMode(TransitMode.BUS)))
+            .build()
+        )
+        .build();
+      var busRequest = TripOnServiceDateRequest.of().withFilters(List.of(filter)).build();
+      var busTrips = service.findCanceledTrips(busRequest);
+      assertEquals("[TripOnServiceDate{F:123}, TripOnServiceDate{F:123}]", busTrips.toString());
+    }
+
+    @Test
+    void findCanceledNonBusTrips() {
+      var filter = FilterRequest.<TripOnServiceDateSelectRequest>of()
+        .addNot(
+          TripOnServiceDateSelectRequest.of()
+            .withTransportModes(List.of(new MainAndSubMode(TransitMode.BUS)))
+            .build()
+        )
+        .build();
+      var busExcludeRequest = TripOnServiceDateRequest.of().withFilters(List.of(filter)).build();
+      var excludedBusTrips = service.findCanceledTrips(busExcludeRequest);
+      assertThat(excludedBusTrips).isEmpty();
+    }
+
+    /**
+     * The canceled trip on 2024-08-09 is scheduled to run from 11:30 to 11:40 (Europe/Paris).
+     */
+    @Nested
+    class RunningTimeFilter {
+
+      private static final LocalDate SERVICE_DAY = LocalDate.of(2024, 8, 9);
+      private static final Instant DEPARTURE = Instant.parse("2024-08-09T09:30:00Z");
+      private static final Instant ARRIVAL = Instant.parse("2024-08-09T09:40:00Z");
+
+      @Test
+      void findTripsRunningInPeriod() {
+        var trips = findByRunningTimePeriod(
+          TimePeriod.of(DEPARTURE.minusSeconds(600), ARRIVAL.plusSeconds(600))
+        );
+        assertThat(trips).hasSize(1);
+        assertEquals(SERVICE_DAY, trips.getFirst().getServiceDate());
+      }
+
+      @Test
+      void findTripsArrivingJustAfterStartOfPeriod() {
+        var trips = findByRunningTimePeriod(
+          TimePeriod.of(ARRIVAL.minusSeconds(60), ARRIVAL.plusSeconds(3600))
+        );
+        assertThat(trips).hasSize(1);
+        assertEquals(SERVICE_DAY, trips.getFirst().getServiceDate());
+      }
+
+      @Test
+      void endOfPeriodIsExclusive() {
+        var trips = findByRunningTimePeriod(TimePeriod.of(DEPARTURE.minusSeconds(3600), DEPARTURE));
+        assertThat(trips).isEmpty();
+      }
+
+      @Test
+      void findNoTripsOutsidePeriod() {
+        assertThat(
+          findByRunningTimePeriod(TimePeriod.of(ARRIVAL.plusSeconds(1), ARRIVAL.plusSeconds(3600)))
+        ).isEmpty();
+      }
+
+      @Test
+      void serviceDateAndRunningTimeAreCombined() {
+        var request = TripOnServiceDateRequest.of()
+          .withIncludeRunningTimePeriods(
+            FilterValues.ofRequired(
+              "runningTimePeriods",
+              List.of(TimePeriod.of(DEPARTURE.minusSeconds(600), ARRIVAL.plusSeconds(600)))
+            )
+          )
+          .withIncludeServiceDates(
+            FilterValues.ofRequired("serviceDates", List.of(LocalDate.of(2024, 8, 8)))
+          )
+          .build();
+
+        // The trip running within the period is not running on the requested service date
+        assertThat(service.findCanceledTrips(request)).isEmpty();
+      }
+
+      private List<TripOnServiceDate> findByRunningTimePeriod(TimePeriod period) {
+        var request = TripOnServiceDateRequest.of()
+          .withIncludeRunningTimePeriods(
+            FilterValues.ofRequired("runningTimePeriods", List.of(period))
+          )
+          .build();
+        return service.findCanceledTrips(request);
+      }
+    }
   }
 
   @Test
@@ -387,5 +500,42 @@ class DefaultTransitServiceTest {
   void groupOfStationsChildIds() {
     var res = service.findStopOrChildIds(GO_STATIONS.getId());
     assertThat(res).containsExactly(STOP_A.getId(), STOP_B.getId());
+  }
+
+  private static Instant startOfService(LocalDate serviceDate) {
+    return ServiceDateUtils.asStartOfService(serviceDate, service.getTimeZone()).toInstant();
+  }
+
+  @Test
+  void findTripTimesOnDateForPatternAtStop() {
+    var tripTimes = service.findTripTimesOnDate(
+      STOP_A,
+      REAL_TIME_PATTERN,
+      startOfService(SERVICE_DATE),
+      Duration.ofMinutes(3),
+      10,
+      ArrivalDeparture.DEPARTURES,
+      false
+    );
+
+    assertThat(tripTimes.stream().map(TripTimeOnDate::getTrip).toList()).containsExactly(
+      TRIP,
+      ADDED_TRIP
+    );
+    assertThat(tripTimes.stream().map(TripTimeOnDate::getStop).toList()).containsExactly(
+      STOP_A,
+      STOP_A
+    );
+    assertThat(
+      tripTimes.stream().map(TripTimeOnDate::getRealtimeDeparture).toList()
+    ).containsExactly(DELAY, 10);
+  }
+
+  @Test
+  void findRegularStopsByBoundingBox() {
+    var stops = service.findRegularStopsByBoundingBox(new Envelope(9.9, 10.1, 59.9, 60.1));
+
+    assertThat(stops).containsAtLeast(STOP_A, STOP_B, STOP_C, STOP_ONE);
+    assertThat(service.findRegularStopsByBoundingBox(new Envelope(170, 180, 80, 90))).isEmpty();
   }
 }

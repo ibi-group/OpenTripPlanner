@@ -24,13 +24,15 @@ public final class GtfsFaresV2Service implements Serializable {
     List<FareLegRule> legRules,
     List<FareTransferRule> fareTransferRules,
     Multimap<FeedScopedId, FeedScopedId> stopAreas,
-    Multimap<FeedScopedId, LocalDate> serviceDatesForServiceId
+    Multimap<FeedScopedId, LocalDate> serviceDatesForServiceId,
+    FreeTransferEligibility freeTransferMatchPredicate
   ) {
     this.lookup = new FareLookupService(
       legRules,
       fareTransferRules,
       stopAreas,
-      serviceDatesForServiceId
+      serviceDatesForServiceId,
+      freeTransferMatchPredicate
     );
   }
 
@@ -56,28 +58,26 @@ public final class GtfsFaresV2Service implements Serializable {
     if (transitLegs.size() > 1) {
       var splits = ListUtils.partitionIntoSplits(transitLegs);
       splits.forEach(split ->
-        split
-          .subTails()
-          .forEach(tail -> {
-            var unlimitedTransferOffers = lookup.findTransferOffersForSubLegs(
-              split.head(),
-              tail,
-              FareTransferRule::unlimitedTransfers
-            );
-            tail.forEach(leg -> offerContainer.addToLeg(leg, unlimitedTransferOffers));
-            var hasFreeTransfer = lookup.hasFreeTransfers(tail);
-            if (hasFreeTransfer) {
-              offerContainer.transferProducts(tail.getFirst(), tail);
-            }
+        split.subTails().forEach(tail -> {
+          var unlimitedTransferOffers = lookup.findTransferOffersForSubLegs(
+            split.head(),
+            tail,
+            FareTransferRule::unlimitedTransfers
+          );
+          tail.forEach(leg -> offerContainer.addToLeg(leg, unlimitedTransferOffers));
+          var hasFreeTransfer = lookup.hasFreeTransfers(tail);
+          if (hasFreeTransfer) {
+            offerContainer.transferProducts(tail.getFirst(), tail);
+          }
 
-            var transfers = tail.size();
-            var limitedTransferOffers = lookup.findTransferOffersForSubLegs(
-              split.head(),
-              tail,
-              t -> t.limitedTransfers() && t.allowsNumberOfTransfers(transfers)
-            );
-            offerContainer.addTransferLimitedOffer(split.head(), tail, limitedTransferOffers);
-          })
+          var transfers = tail.size();
+          var limitedTransferOffers = lookup.findTransferOffersForSubLegs(
+            split.head(),
+            tail,
+            t -> t.limitedTransfers() && t.allowsNumberOfTransfers(transfers)
+          );
+          offerContainer.addTransferLimitedOffer(split.head(), tail, limitedTransferOffers);
+        })
       );
     }
 

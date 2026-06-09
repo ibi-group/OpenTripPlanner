@@ -3,8 +3,11 @@ package org.opentripplanner.transit.api.request;
 import java.time.LocalDate;
 import java.util.List;
 import org.opentripplanner.core.model.id.FeedScopedId;
+import org.opentripplanner.core.model.time.LocalDateRange;
+import org.opentripplanner.core.model.time.TimePeriod;
 import org.opentripplanner.transit.api.model.FilterValues;
-import org.opentripplanner.transit.model.basic.TransitMode;
+import org.opentripplanner.transit.model.filter.selector.FilterRequest;
+import org.opentripplanner.transit.model.filter.transit.TripOnServiceDateSelectRequest;
 import org.opentripplanner.transit.model.timetable.TripAlteration;
 
 public class TripOnServiceDateRequestBuilder {
@@ -15,6 +18,10 @@ public class TripOnServiceDateRequestBuilder {
   );
   private FilterValues<FeedScopedId> includeRoutes = FilterValues.ofEmptyIsEverything(
     "includeRoutes",
+    List.of()
+  );
+  private FilterValues<FeedScopedId> includePatterns = FilterValues.ofEmptyIsEverything(
+    "includePatterns",
     List.of()
   );
   private FilterValues<FeedScopedId> includeServiceJourneys = FilterValues.ofEmptyIsEverything(
@@ -37,14 +44,15 @@ public class TripOnServiceDateRequestBuilder {
     "includeServiceDates",
     List.of()
   );
-  private FilterValues<TransitMode> includeModes = FilterValues.ofEmptyIsEverything(
-    "modes",
+  private FilterValues<LocalDateRange> includeServiceDateRanges = FilterValues.ofEmptyIsEverything(
+    "includeServiceDateRanges",
     List.of()
   );
-  private FilterValues<TransitMode> excludeModes = FilterValues.ofEmptyIsEverything(
-    "excludeModes",
+  private FilterValues<TimePeriod> includeRunningTimePeriods = FilterValues.ofEmptyIsEverything(
+    "includeRunningTimePeriods",
     List.of()
   );
+  private List<FilterRequest<TripOnServiceDateSelectRequest>> filters = List.of();
 
   public TripOnServiceDateRequestBuilder withIncludeAgencies(FilterValues<FeedScopedId> agencies) {
     this.includeAgencies = agencies;
@@ -53,6 +61,11 @@ public class TripOnServiceDateRequestBuilder {
 
   public TripOnServiceDateRequestBuilder withIncludeRoutes(FilterValues<FeedScopedId> routes) {
     this.includeRoutes = routes;
+    return this;
+  }
+
+  public TripOnServiceDateRequestBuilder withIncludePatterns(FilterValues<FeedScopedId> patterns) {
+    this.includePatterns = patterns;
     return this;
   }
 
@@ -91,27 +104,40 @@ public class TripOnServiceDateRequestBuilder {
     return this;
   }
 
-  public TripOnServiceDateRequestBuilder withIncludeModes(FilterValues<TransitMode> modes) {
-    this.includeModes = modes;
+  public TripOnServiceDateRequestBuilder withIncludeServiceDateRanges(
+    FilterValues<LocalDateRange> serviceDateRanges
+  ) {
+    this.includeServiceDateRanges = serviceDateRanges;
     return this;
   }
 
-  public TripOnServiceDateRequestBuilder withExcludeModes(FilterValues<TransitMode> modes) {
-    this.excludeModes = modes;
+  public TripOnServiceDateRequestBuilder withIncludeRunningTimePeriods(
+    FilterValues<TimePeriod> runningTimePeriods
+  ) {
+    this.includeRunningTimePeriods = runningTimePeriods;
+    return this;
+  }
+
+  public TripOnServiceDateRequestBuilder withFilters(
+    List<FilterRequest<TripOnServiceDateSelectRequest>> filters
+  ) {
+    this.filters = filters;
     return this;
   }
 
   public TripOnServiceDateRequest build() {
     return new TripOnServiceDateRequest(
       includeServiceDates,
+      includeServiceDateRanges,
+      includeRunningTimePeriods,
       includeAgencies,
       includeRoutes,
+      includePatterns,
       includeServiceJourneys,
       includeReplacementFor,
       includeNetexInternalPlanningCodes,
       includeAlterations,
-      includeModes,
-      excludeModes
+      filters
     );
   }
 }

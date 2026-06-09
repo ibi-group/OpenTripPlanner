@@ -27,11 +27,12 @@ import org.opentripplanner.transit.model.timetable.TripTimes;
  * save some resources. This kind of optimization is probably easier to do after a a clean up of the
  * internal OTP transit model.
  */
-abstract class FrequencyBoardOrAlightEvent<T extends DefaultTripSchedule>
-  implements RaptorBoardOrAlightEvent<T>, TripSchedule {
+abstract class FrequencyBoardOrAlightEvent<T extends DefaultTripSchedule> implements
+  RaptorBoardOrAlightEvent<T>,
+  TripSchedule {
 
   protected final TripPatternForDates raptorTripPattern;
-  protected final TripTimes tripTimes;
+  protected final TripTimes<?> tripTimes;
   protected final int stopPositionInPattern;
   protected final int earliestDepartureTime;
   protected final int departureTime;
@@ -42,7 +43,7 @@ abstract class FrequencyBoardOrAlightEvent<T extends DefaultTripSchedule>
 
   public FrequencyBoardOrAlightEvent(
     TripPatternForDates raptorTripPattern,
-    TripTimes tripTimes,
+    TripTimes<?> tripTimes,
     int stopPositionInPattern,
     int earliestDepartureTime,
     int departureTime,
@@ -129,7 +130,7 @@ abstract class FrequencyBoardOrAlightEvent<T extends DefaultTripSchedule>
   /* TripSchedule implementation */
 
   @Override
-  public TripTimes getOriginalTripTimes() {
+  public TripTimes<?> getOriginalTripTimes() {
     return tripTimes;
   }
 

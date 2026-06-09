@@ -9,8 +9,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import org.opentripplanner.core.model.id.FeedScopedId;
 import org.opentripplanner.framework.retry.OtpRetry;
 import org.opentripplanner.framework.retry.OtpRetryBuilder;
@@ -21,20 +19,21 @@ import org.opentripplanner.service.vehiclerental.model.VehicleRentalPlace;
 import org.opentripplanner.service.vehiclerental.street.StreetVehicleRentalLink;
 import org.opentripplanner.service.vehiclerental.street.VehicleRentalEdge;
 import org.opentripplanner.service.vehiclerental.street.VehicleRentalPlaceVertex;
+import org.opentripplanner.service.vehiclerental.street.geofencing.GeofencingZoneApplier;
+import org.opentripplanner.street.Scope;
 import org.opentripplanner.street.linking.DisposableEdgeCollection;
 import org.opentripplanner.street.linking.LinkingDirection;
 import org.opentripplanner.street.linking.VertexLinker;
-import org.opentripplanner.street.model.RentalFormFactor;
-import org.opentripplanner.street.model.RentalRestrictionExtension;
-import org.opentripplanner.street.model.edge.StreetEdge;
+import org.opentripplanner.street.model.vertex.Vertex;
 import org.opentripplanner.street.search.TraverseMode;
 import org.opentripplanner.street.search.TraverseModeSet;
-import org.opentripplanner.streetadapter.VertexFactory;
 import org.opentripplanner.updater.GraphWriterRunnable;
-import org.opentripplanner.updater.RealTimeUpdateContext;
+import org.opentripplanner.updater.StreetRealTimeUpdateContext;
 import org.opentripplanner.updater.spi.PollingGraphUpdater;
 import org.opentripplanner.updater.spi.UpdaterConstructionException;
+import org.opentripplanner.updater.spi.WriteDomain;
 import org.opentripplanner.updater.vehicle_rental.datasources.VehicleRentalDataSource;
+import org.opentripplanner.updater.vehicle_rental.datasources.params.GbfsVehicleRentalDataSourceParameters;
 import org.opentripplanner.utils.lang.ObjectUtils;
 import org.opentripplanner.utils.logging.Throttle;
 import org.opentripplanner.utils.time.DurationUtils;
@@ -46,7 +45,7 @@ import org.slf4j.LoggerFactory;
  * Dynamic vehicle-rental station updater which updates the Graph with vehicle rental stations from
  * one VehicleRentalDataSource.
  */
-public class VehicleRentalUpdater extends PollingGraphUpdater {
+public class VehicleRentalUpdater extends PollingGraphUpdater<StreetRealTimeUpdateContext> {
 
   private static final Logger LOG = LoggerFactory.getLogger(VehicleRentalUpdater.class);
   private static final Duration RETRY_INTERVAL = Duration.ofSeconds(5);
@@ -56,8 +55,9 @@ public class VehicleRentalUpdater extends PollingGraphUpdater {
 
   private final VehicleRentalDataSource source;
   private final String nameForLogging;
+  private final boolean requireDropOffInsideBusinessArea;
 
-  private Map<StreetEdge, RentalRestrictionExtension> latestModifiedEdges = Map.of();
+  private Set<Vertex> latestBoundaryVertices = Set.of();
   private Set<GeofencingZone> latestAppliedGeofencingZones = Set.of();
   private final Map<FeedScopedId, VehicleRentalPlaceVertex> verticesByStation = new HashMap<>();
   private final Map<FeedScopedId, DisposableEdgeCollection> tempEdgesByStation = new HashMap<>();
@@ -81,6 +81,10 @@ public class VehicleRentalUpdater extends PollingGraphUpdater {
       parameters.sourceParameters().url()
     );
     this.unlinkedPlaceThrottle = Throttle.ofOneSecond();
+    this.requireDropOffInsideBusinessArea =
+      parameters.sourceParameters() instanceof GbfsVehicleRentalDataSourceParameters gbfs
+        ? gbfs.requireDropOffInsideBusinessArea()
+        : true;
 
     // Creation of network linker library will not modify the graph
     this.linker = vertexLinker;
@@ -121,6 +125,11 @@ public class VehicleRentalUpdater extends PollingGraphUpdater {
   }
 
   @Override
+  public WriteDomain<StreetRealTimeUpdateContext> writeDomain() {
+    return WriteDomain.STREET;
+  }
+
+  @Override
   public String toString() {
     return ToStringBuilder.of(VehicleRentalUpdater.class).addObj("source", source).toString();
   }
@@ -148,7 +157,9 @@ public class VehicleRentalUpdater extends PollingGraphUpdater {
     updateGraph(graphWriterRunnable);
   }
 
-  private class VehicleRentalGraphWriterRunnable implements GraphWriterRunnable {
+  private class VehicleRentalGraphWriterRunnable
+    implements GraphWriterRunnable<StreetRealTimeUpdateContext>
+  {
 
     private final List<VehicleRentalPlace> stations;
     private final Set<GeofencingZone> geofencingZones;
@@ -162,10 +173,12 @@ public class VehicleRentalUpdater extends PollingGraphUpdater {
     }
 
     @Override
-    public void run(RealTimeUpdateContext context) {
+    public void run(StreetRealTimeUpdateContext context) {
       // Apply stations to graph
       Set<FeedScopedId> stationSet = new HashSet<>();
-      var vertexFactory = new VertexFactory(context.graph());
+      // Vertices created by this update. Only these need their zones resolved, unless the zones
+      // themselves changed, in which case every vertex of this network is resolved again below.
+      List<VehicleRentalPlaceVertex> newVertices = new ArrayList<>();
 
       /* add any new stations and update vehicle counts for existing stations */
       for (VehicleRentalPlace station : stations) {
@@ -174,47 +187,32 @@ public class VehicleRentalUpdater extends PollingGraphUpdater {
         VehicleRentalPlaceVertex vehicleRentalVertex = verticesByStation.get(station.id());
 
         if (vehicleRentalVertex == null) {
-          vehicleRentalVertex = vertexFactory.vehicleRentalPlace(station);
+          vehicleRentalVertex = new VehicleRentalPlaceVertex(station);
+          context.graph().addVertex(vehicleRentalVertex);
           DisposableEdgeCollection tempEdges = linker.linkVertexForRealTime(
             vehicleRentalVertex,
             new TraverseModeSet(TraverseMode.WALK),
             LinkingDirection.BIDIRECTIONAL,
-            (vertex, streetVertex) ->
-              List.of(
-                StreetVehicleRentalLink.createStreetVehicleRentalLink(
-                  (VehicleRentalPlaceVertex) vertex,
-                  streetVertex
-                ),
-                StreetVehicleRentalLink.createStreetVehicleRentalLink(
-                  streetVertex,
-                  (VehicleRentalPlaceVertex) vertex
-                )
-              )
+            StreetVehicleRentalLink::createBidirectionalLinks
           );
           if (vehicleRentalVertex.getOutgoing().isEmpty()) {
             // Copy reference to pass into lambda
             var vrv = vehicleRentalVertex;
             unlinkedPlaceThrottle.throttle(() ->
-              // the toString includes the text "Bike rental station"
-              LOG.warn(
-                "VehicleRentalPlace is unlinked for {}: {}  {}",
-                nameForLogging,
-                vrv,
-                unlinkedPlaceThrottle.setupInfo()
-              )
+              LOG
+                // the toString includes the text "Bike rental station"
+                .warn(
+                  "VehicleRentalPlace is unlinked for {}: {}  {}",
+                  nameForLogging,
+                  vrv,
+                  unlinkedPlaceThrottle.setupInfo()
+                )
             );
           }
-          Set<RentalFormFactor> formFactors = Stream.concat(
-            station.availablePickupFormFactors(false).stream(),
-            station.availableDropoffFormFactors(false).stream()
-          ).collect(Collectors.toSet());
-          for (RentalFormFactor formFactor : formFactors) {
-            tempEdges.addEdge(
-              VehicleRentalEdge.createVehicleRentalEdge(vehicleRentalVertex, formFactor)
-            );
-          }
+          VehicleRentalEdge.createRentalEdgesForStation(vehicleRentalVertex, station, tempEdges);
           verticesByStation.put(station.id(), vehicleRentalVertex);
           tempEdgesByStation.put(station.id(), tempEdges);
+          newVertices.add(vehicleRentalVertex);
         } else {
           vehicleRentalVertex.setStation(station);
         }
@@ -237,27 +235,75 @@ public class VehicleRentalUpdater extends PollingGraphUpdater {
         tempEdgesByStation.remove(station);
       }
 
-      // this check relies on the generated equals for the record which also recursively checks that
-      // the JTS geometries are equal
-      if (!geofencingZones.isEmpty() && !geofencingZones.equals(latestAppliedGeofencingZones)) {
+      boolean zonesChanged =
+        !geofencingZones.isEmpty() && !geofencingZonesUnchanged(geofencingZones);
+      if (zonesChanged) {
         LOG.info("Computing geofencing zones for {}", nameForLogging);
         var start = System.currentTimeMillis();
 
-        latestModifiedEdges.forEach(StreetEdge::removeRentalExtension);
+        latestBoundaryVertices.forEach(vertex ->
+          vertex.removeGeofencingBoundariesForZones(latestAppliedGeofencingZones)
+        );
 
-        var updater = new GeofencingVertexUpdater(context.graph()::findEdges);
-        latestModifiedEdges = updater.applyGeofencingZones(geofencingZones);
+        var graph = context.graph();
+        // Use REQUEST scope to query both permanent and realtime edges.
+        // Realtime edges are created by station linking (above) and must be
+        // included so split vertices on those edges get boundary extensions.
+        var applier = new GeofencingZoneApplier(
+          ls -> graph.findEdgesAlongLineStrings(ls, Scope.REQUEST),
+          env -> graph.findEdges(env, Scope.REQUEST),
+          requireDropOffInsideBusinessArea
+        );
+        latestBoundaryVertices = applier.applyGeofencingZones(geofencingZones);
         latestAppliedGeofencingZones = geofencingZones;
+        // A network has one source of zones, so registering under it replaces any earlier index.
+        // One updater serves one GBFS feed, so every zone here carries the same resolved system id.
+        var network = geofencingZones.iterator().next().id().getFeedId();
+        service.setGeofencingZones(network, geofencingZones);
 
         var end = System.currentTimeMillis();
         var millis = Duration.ofMillis(end - start);
         LOG.info(
-          "Geofencing zones computation took {}. Added extension to {} edges. For {}",
+          "Geofencing zones computation took {}. {} boundary vertices. For {}",
           DurationUtils.durationToStr(millis),
-          latestModifiedEdges.size(),
+          latestBoundaryVertices.size(),
           nameForLogging
         );
       }
+
+      // Seed from the repository rather than from the zones computed above: a network in the
+      // graph build phase has an index there, rebuilt from the graph, but computes none here.
+      //
+      // Only vertices created by this update need resolving - a vertex keeps the zones it was
+      // given, and the vehicles that persist between updates keep their vertex. When the zones
+      // themselves changed, every vertex of this network is resolved again instead.
+      GeofencingZoneApplier.preResolveVertexZones(
+        zonesChanged ? verticesByStation.values() : newVertices,
+        service,
+        requireDropOffInsideBusinessArea
+      );
     }
+  }
+
+  /**
+   * Deep comparison of geofencing zones including geometry and restriction fields.
+   * {@link GeofencingZone#equals} only checks id+priority (for hot-path performance), so we use
+   * {@link GeofencingZone#isEquivalentTo} to detect geometry or restriction changes.
+   */
+  private boolean geofencingZonesUnchanged(Set<GeofencingZone> incoming) {
+    if (incoming.size() != latestAppliedGeofencingZones.size()) {
+      return false;
+    }
+    for (var zone : incoming) {
+      var match = latestAppliedGeofencingZones
+        .stream()
+        .filter(z -> z.equals(zone))
+        .findFirst()
+        .orElse(null);
+      if (match == null || !zone.isEquivalentTo(match)) {
+        return false;
+      }
+    }
+    return true;
   }
 }

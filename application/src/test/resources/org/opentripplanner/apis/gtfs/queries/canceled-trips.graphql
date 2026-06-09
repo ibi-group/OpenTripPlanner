@@ -1,5 +1,18 @@
 {
-  canceledTrips(first: 2, filters: [{ include: [{ modes: [BUS] }] }]) {
+  canceledTrips(
+    first: 2
+    filters: [
+      {
+        include: [
+          {
+            modes: [BUS]
+            serviceDateRanges: [{ start: "2024-08-09", end: "2024-08-10" }]
+            runningTimeRanges: [{ start: "2024-01-01T00:00:00Z" }]
+          }
+        ]
+      }
+    ]
+  ) {
     pageInfo {
       hasNextPage
       hasPreviousPage
@@ -74,6 +87,13 @@
               gtfsId
             }
           }
+        }
+        realTimeTripState {
+          added
+          canceled
+          timesModified
+          tripPatternModified
+          updated
         }
         trip {
           gtfsId

@@ -1,0 +1,113 @@
+package org.opentripplanner.routing.alertpatch;
+
+import java.time.Instant;
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+import org.opentripplanner.core.model.time.TimePeriod;
+import org.opentripplanner.utils.tostring.ToStringBuilder;
+
+/**
+ * The validity of an alert, expressed as a non-empty set of {@link TimePeriod}s. The alert is valid
+ * if any of the periods are valid. An alert always has at least one period: if the source data does
+ * not contain any validity information, the alert is {@link #ofAlwaysActive() always active}.
+ */
+public final class AlertCalendar {
+
+  private static final AlertCalendar ALWAYS_ACTIVE = new AlertCalendar(
+    List.of(TimePeriod.ofUnbounded())
+  );
+
+  private final List<TimePeriod> timePeriods;
+
+  private AlertCalendar(Collection<TimePeriod> timePeriods) {
+    this.timePeriods = List.copyOf(timePeriods);
+  }
+
+  public static AlertCalendar of(Collection<TimePeriod> timePeriods) {
+    if (timePeriods.isEmpty()) {
+      throw new IllegalArgumentException(
+        "An alert calendar must have at least one time period. Use ofAlwaysActive() if the alert " +
+          "has no validity information."
+      );
+    }
+    return new AlertCalendar(timePeriods);
+  }
+
+  public static AlertCalendar of(TimePeriod... timePeriods) {
+    return of(List.of(timePeriods));
+  }
+
+  /**
+   * A calendar with a single, unbounded time period, which is always valid.
+   */
+  public static AlertCalendar ofAlwaysActive() {
+    return ALWAYS_ACTIVE;
+  }
+
+  public Collection<TimePeriod> timePeriods() {
+    return timePeriods;
+  }
+
+  /**
+   * Returns {@code true} if any of the time periods overlaps the given {@code period}.
+   */
+  public boolean isActiveDuring(TimePeriod period) {
+    return timePeriods.stream().anyMatch(timePeriod -> timePeriod.overlaps(period));
+  }
+
+  /**
+   * Returns {@code true} if any of the time periods contains the given {@code instant}.
+   */
+  public boolean isActiveAt(Instant instant) {
+    return timePeriods.stream().anyMatch(timePeriod -> timePeriod.contains(instant));
+  }
+
+  /**
+   * The earliest start of all time periods, or empty if any period has an unbounded start.
+   */
+  public Optional<Instant> effectiveStart() {
+    if (timePeriods.stream().anyMatch(TimePeriod::hasUnboundedStart)) {
+      return Optional.empty();
+    }
+    return timePeriods
+      .stream()
+      .map(TimePeriod::start)
+      .flatMap(Optional::stream)
+      .min(Comparator.naturalOrder());
+  }
+
+  /**
+   * The latest end of all time periods, or empty if any period has an unbounded end.
+   */
+  public Optional<Instant> effectiveEnd() {
+    if (timePeriods.stream().anyMatch(TimePeriod::hasUnboundedEnd)) {
+      return Optional.empty();
+    }
+    return timePeriods
+      .stream()
+      .map(TimePeriod::end)
+      .flatMap(Optional::stream)
+      .max(Comparator.naturalOrder());
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    return o instanceof AlertCalendar other && timePeriods.equals(other.timePeriods);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(timePeriods);
+  }
+
+  @Override
+  public String toString() {
+    return ToStringBuilder.of(AlertCalendar.class).addCol("timePeriods", timePeriods).toString();
+  }
+}

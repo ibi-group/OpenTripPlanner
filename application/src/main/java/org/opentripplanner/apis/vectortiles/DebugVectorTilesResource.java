@@ -6,6 +6,7 @@ import static org.opentripplanner.apis.vectortiles.model.LayerType.GeofencingZon
 import static org.opentripplanner.apis.vectortiles.model.LayerType.GroupStop;
 import static org.opentripplanner.apis.vectortiles.model.LayerType.RegularStop;
 import static org.opentripplanner.apis.vectortiles.model.LayerType.Rental;
+import static org.opentripplanner.apis.vectortiles.model.LayerType.Transfers;
 import static org.opentripplanner.apis.vectortiles.model.LayerType.Vertex;
 import static org.opentripplanner.framework.io.HttpUtils.APPLICATION_X_PROTOBUF;
 import static org.opentripplanner.inspector.vector.LayerParameters.MAX_ZOOM;
@@ -41,9 +42,16 @@ import org.opentripplanner.inspector.vector.geofencing.GeofencingZonesLayerBuild
 import org.opentripplanner.inspector.vector.rental.RentalLayerBuilder;
 import org.opentripplanner.inspector.vector.stop.GroupStopLayerBuilder;
 import org.opentripplanner.inspector.vector.stop.StopLayerBuilder;
+import org.opentripplanner.inspector.vector.transfers.TransfersLayerBuilder;
 import org.opentripplanner.inspector.vector.vertex.VertexLayerBuilder;
 import org.opentripplanner.model.FeedInfo;
-import org.opentripplanner.standalone.api.OtpServerRequestContext;
+import org.opentripplanner.service.streetdetails.StreetDetailsService;
+import org.opentripplanner.service.vehiclerental.VehicleRentalService;
+import org.opentripplanner.service.worldenvelope.WorldEnvelopeService;
+import org.opentripplanner.standalone.config.DebugUiConfig;
+import org.opentripplanner.street.graph.Graph;
+import org.opentripplanner.transfer.regular.RegularTransferService;
+import org.opentripplanner.transit.service.TransitService;
 
 /**
  * Slippy map vector tile API for rendering various graph information for inspection/debugging
@@ -62,6 +70,7 @@ public class DebugVectorTilesResource {
   private static final LayerParams EDGES = new LayerParams("edges", Edge);
   private static final LayerParams VERTICES = new LayerParams("vertices", Vertex);
   private static final LayerParams RENTAL = new LayerParams("rental", Rental);
+  private static final LayerParams TRANSFERS = new LayerParams("transfers", Transfers);
   private static final List<LayerParameters<LayerType>> DEBUG_LAYERS = List.of(
     REGULAR_STOPS,
     AREA_STOPS,
@@ -69,14 +78,35 @@ public class DebugVectorTilesResource {
     GEOFENCING_ZONES,
     EDGES,
     VERTICES,
-    RENTAL
+    RENTAL,
+    TRANSFERS
   );
   public static final String PATH = "/otp/debug/vectortiles/";
 
-  private final OtpServerRequestContext serverContext;
+  private final TransitService transitService;
+  private final Graph graph;
+  private final DebugUiConfig debugUiConfig;
+  private final WorldEnvelopeService worldEnvelopeService;
+  private final VehicleRentalService vehicleRentalService;
+  private final StreetDetailsService streetDetailsService;
+  private final RegularTransferService transferService;
 
-  public DebugVectorTilesResource(@Context OtpServerRequestContext serverContext) {
-    this.serverContext = serverContext;
+  public DebugVectorTilesResource(
+    @Context TransitService transitService,
+    @Context Graph graph,
+    @Context DebugUiConfig debugUiConfig,
+    @Context WorldEnvelopeService worldEnvelopeService,
+    @Context VehicleRentalService vehicleRentalService,
+    @Context StreetDetailsService streetDetailsService,
+    @Context RegularTransferService transferService
+  ) {
+    this.transitService = transitService;
+    this.graph = graph;
+    this.debugUiConfig = debugUiConfig;
+    this.worldEnvelopeService = worldEnvelopeService;
+    this.vehicleRentalService = vehicleRentalService;
+    this.streetDetailsService = streetDetailsService;
+    this.transferService = transferService;
   }
 
   @GET
@@ -97,7 +127,13 @@ public class DebugVectorTilesResource {
       Arrays.asList(requestedLayers.split(",")),
       DEBUG_LAYERS,
       DebugVectorTilesResource::createLayerBuilder,
-      serverContext
+      new LayerBuilderContext(
+        transitService,
+        vehicleRentalService,
+        graph,
+        streetDetailsService,
+        transferService
+      )
     );
   }
 
@@ -109,7 +145,7 @@ public class DebugVectorTilesResource {
     @Context HttpHeaders headers,
     @PathParam("layers") String requestedLayers
   ) {
-    var envelope = serverContext.worldEnvelopeService().envelope().orElseThrow();
+    var envelope = worldEnvelopeService.envelope().orElseThrow();
     List<FeedInfo> feedInfos = feedInfos();
     List<String> layers = Arrays.asList(requestedLayers.split(","));
 
@@ -135,6 +171,7 @@ public class DebugVectorTilesResource {
       tileJsonUrl(base, List.of(GEOFENCING_ZONES))
     );
     var rentalSource = new VectorSource("rental", tileJsonUrl(base, List.of(RENTAL)));
+    var transferSource = new VectorSource("transfers", tileJsonUrl(base, List.of(TRANSFERS)));
 
     return DebugStyleSpec.build(
       REGULAR_STOPS.toVectorSourceLayer(stopsSource),
@@ -144,7 +181,9 @@ public class DebugVectorTilesResource {
       VERTICES.toVectorSourceLayer(streetSource),
       GEOFENCING_ZONES.toVectorSourceLayer(geofencingSource),
       RENTAL.toVectorSourceLayer(rentalSource),
-      serverContext.debugUiConfig().additionalBackgroundLayers()
+      TRANSFERS.toVectorSourceLayer(transferSource),
+      debugUiConfig.additionalBackgroundLayers(),
+      vehicleRentalService.listNetworks()
     );
   }
 
@@ -157,11 +196,10 @@ public class DebugVectorTilesResource {
   }
 
   private List<FeedInfo> feedInfos() {
-    return serverContext
-      .transitService()
+    return transitService
       .listFeedIds()
       .stream()
-      .map(serverContext.transitService()::getFeedInfo)
+      .map(transitService::getFeedInfo)
       .filter(Predicate.not(Objects::isNull))
       .toList();
   }
@@ -169,7 +207,7 @@ public class DebugVectorTilesResource {
   private static LayerBuilder<?> createLayerBuilder(
     LayerParameters<LayerType> layerParameters,
     Locale locale,
-    OtpServerRequestContext context
+    LayerBuilderContext context
   ) {
     return switch (layerParameters.type()) {
       case RegularStop -> new StopLayerBuilder<>(layerParameters, locale, e ->
@@ -182,9 +220,14 @@ public class DebugVectorTilesResource {
         layerParameters,
         locale,
         // There are not many GroupStops, so we can just list them all.
-        context.transitService().listGroupStops()
+        context
+          .transitService()
+          .listGroupStops()
       );
-      case GeofencingZones -> new GeofencingZonesLayerBuilder(context.graph(), layerParameters);
+      case GeofencingZones -> new GeofencingZonesLayerBuilder(
+        context.vehicleRentalService(),
+        layerParameters
+      );
       case Edge -> new EdgeLayerBuilder(
         context.graph(),
         layerParameters,
@@ -192,6 +235,21 @@ public class DebugVectorTilesResource {
       );
       case Vertex -> new VertexLayerBuilder(context.graph(), layerParameters);
       case Rental -> new RentalLayerBuilder(context.vehicleRentalService(), layerParameters);
+      case Transfers -> new TransfersLayerBuilder(
+        context.transitService(),
+        context.transferService(),
+        layerParameters
+      );
     };
   }
+
+  /** The subset of services {@link #createLayerBuilder} needs, passed through {@link
+   * VectorTileResponseFactory#create} as its generic context parameter. */
+  private record LayerBuilderContext(
+    TransitService transitService,
+    VehicleRentalService vehicleRentalService,
+    Graph graph,
+    StreetDetailsService streetDetailsService,
+    RegularTransferService transferService
+  ) {}
 }

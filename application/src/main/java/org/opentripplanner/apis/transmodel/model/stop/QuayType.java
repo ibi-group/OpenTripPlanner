@@ -30,6 +30,7 @@ import org.opentripplanner.apis.transmodel.model.scalars.GeoJSONCoordinatesScala
 import org.opentripplanner.apis.transmodel.support.GqlUtil;
 import org.opentripplanner.core.model.accessibility.Accessibility;
 import org.opentripplanner.framework.graphql.GraphQLUtils;
+import org.opentripplanner.transit.api.request.CancellationPolicy;
 import org.opentripplanner.transit.api.request.TripTimeOnDateRequest;
 import org.opentripplanner.transit.model.basic.TransitMode;
 import org.opentripplanner.transit.model.network.TripPattern;
@@ -89,7 +90,7 @@ public class QuayType {
               .build()
           )
           .dataFetcher(env ->
-            (((StopLocation) env.getSource()).getName().toString(GqlUtil.getLocale(env)))
+            ((StopLocation) env.getSource()).getName().toString(GqlUtil.getLocale(env))
           )
           .build()
       )
@@ -97,14 +98,14 @@ public class QuayType {
         GraphQLFieldDefinition.newFieldDefinition()
           .name("latitude")
           .type(Scalars.GraphQLFloat)
-          .dataFetcher(env -> (((StopLocation) env.getSource()).getLat()))
+          .dataFetcher(env -> ((StopLocation) env.getSource()).getLat())
           .build()
       )
       .field(
         GraphQLFieldDefinition.newFieldDefinition()
           .name("longitude")
           .type(Scalars.GraphQLFloat)
-          .dataFetcher(env -> (((StopLocation) env.getSource()).getLon()))
+          .dataFetcher(env -> ((StopLocation) env.getSource()).getLon())
           .build()
       )
       .field(
@@ -141,7 +142,7 @@ public class QuayType {
           .description("Whether this quay is suitable for wheelchair boarding.")
           .dataFetcher(env ->
             Objects.requireNonNullElse(
-              (((StopLocation) env.getSource()).getWheelchairAccessibility()),
+              ((StopLocation) env.getSource()).getWheelchairAccessibility(),
               Accessibility.NO_INFORMATION
             )
           )
@@ -163,7 +164,7 @@ public class QuayType {
           .description(
             "Public code used to identify this quay within the stop place. For instance a platform code."
           )
-          .dataFetcher(env -> (((StopLocation) env.getSource()).getPlatformCode()))
+          .dataFetcher(env -> ((StopLocation) env.getSource()).getPlatformCode())
           .build()
       )
       .field(
@@ -304,9 +305,8 @@ public class QuayType {
             StopLocation stop = environment.getSource();
 
             Long startTimeInput = environment.getArgument("startTime");
-            Instant startTime = startTimeInput != null
-              ? Instant.ofEpochMilli(startTimeInput)
-              : Instant.now();
+            Instant startTime =
+              startTimeInput != null ? Instant.ofEpochMilli(startTimeInput) : Instant.now();
 
             List<Map<String, ?>> filtersInput = environment.getArgument("filters");
             JourneyWhiteListed whiteListed = new JourneyWhiteListed(environment, idMapper);
@@ -323,7 +323,11 @@ public class QuayType {
               .withTimeWindow(timeRange)
               .withArrivalDeparture(arrivalDeparture)
               .withNumberOfDepartures(numberOfDepartures)
-              .withIncludeCancelledTrips(includeCancelledTrips);
+              .withCancellationPolicy(
+                includeCancelledTrips
+                  ? CancellationPolicy.INCLUDE_CANCELLATIONS
+                  : CancellationPolicy.NO_CANCELLATIONS
+              );
 
             if (filtersInput != null) {
               var mapper = new TripTimeOnDateFilterMapper(idMapper);
@@ -352,11 +356,11 @@ public class QuayType {
           .name("situations")
           .description("Get all situations active for the quay.")
           .type(new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(ptSituationElementType))))
-          .dataFetcher(env ->
-            GqlUtil.getTransitService(env)
-              .getTransitAlertService()
-              .getStopAlerts(((StopLocation) env.getSource()).getId())
-          )
+          .dataFetcher(env -> {
+            var alertService = GqlUtil.getTransitAlertService(env);
+            var quay = (StopLocation) env.getSource();
+            return alertService.getStopLocationsAlerts(quay.getIdAndParentStationId());
+          })
           .build()
       )
       .field(

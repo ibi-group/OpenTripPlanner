@@ -1,0 +1,145 @@
+package org.opentripplanner.raptor._data.api;
+
+import javax.annotation.Nullable;
+import org.opentripplanner.raptor._data.RaptorTestConstants;
+import org.opentripplanner.raptor._data.transit.TestAccessEgress;
+import org.opentripplanner.raptor._data.transit.TestTransfer;
+import org.opentripplanner.raptor._data.transit.TestTripPattern;
+import org.opentripplanner.raptor._data.transit.TestTripSchedule;
+import org.opentripplanner.raptor.api.path.RaptorPath;
+import org.opentripplanner.raptor.path.PathBuilder;
+import org.opentripplanner.raptor.spi.BoardAndAlightTime;
+import org.opentripplanner.raptor.spi.RaptorConstants;
+import org.opentripplanner.raptor.spi.RaptorCostCalculator;
+import org.opentripplanner.raptor.spi.RaptorSlackProvider;
+import org.opentripplanner.raptor.spi.RaptorStopNameResolver;
+import org.opentripplanner.raptor.spi.TestSlackProvider;
+
+/**
+ * Utility to help build paths for testing. The path builder is "reusable", every time the {@code
+ * access(...)} methods are called the builder reset itself.
+ * <p>
+ * If the {@code costCalculator} is null, paths will not include cost.
+ */
+public class TestPathBuilder implements RaptorTestConstants {
+
+  private static final int BOARD_ALIGHT_OFFSET = 30;
+
+  @Nullable
+  private final RaptorCostCalculator<TestTripSchedule> costCalculator;
+
+  private final RaptorSlackProvider slackProvider;
+  private PathBuilder<TestTripSchedule> builder;
+  private int startTime;
+  private int c2 = RaptorConstants.NOT_SET;
+
+  public TestPathBuilder(
+    RaptorSlackProvider slackProvider,
+    @Nullable RaptorCostCalculator<TestTripSchedule> costCalculator
+  ) {
+    this.slackProvider = slackProvider;
+    this.costCalculator = costCalculator;
+  }
+
+  /**
+   * Uses the slacks in {@link RaptorTestConstants}.
+   */
+  public TestPathBuilder(@Nullable RaptorCostCalculator<TestTripSchedule> costCalculator) {
+    this(new TestSlackProvider(TRANSFER_SLACK, BOARD_SLACK, ALIGHT_SLACK), costCalculator);
+  }
+
+  /** Assign c2 value for path. TODO: Add c2 value for each leg. */
+  public TestPathBuilder c2(int c2) {
+    this.c2 = c2;
+    return this;
+  }
+
+  /**
+   * Create access starting at the fixed given {@code starting}. Opening hours is used to enforce
+   * the access start time and prevent time-shifting it.
+   */
+  public TestPathBuilder access(int startTime, int toStop, int duration) {
+    return access(startTime, TestAccessEgress.walk(toStop, duration));
+  }
+
+  /**
+   * Create access with the given {@code startTime}, but allow the access to be time-shifted
+   * according to the opening hours of the given {@code transfer}.
+   */
+  private TestPathBuilder access(int startTime, TestAccessEgress transfer) {
+    reset(startTime);
+    builder.access(transfer);
+    return this;
+  }
+
+  public TestPathBuilder walk(int duration, int toStop, int cost) {
+    return walk(TestTransfer.transfer(toStop, duration, cost));
+  }
+
+  public TestPathBuilder walk(TestTransfer transfer) {
+    builder.transfer(transfer, transfer.stop());
+    return this;
+  }
+
+  public TestPathBuilder bus(TestTripSchedule trip, int alightStop) {
+    int boardStop = currentStop();
+    // We use the last leg arrival-time as the earliest-board-time; this may cause problems for
+    // testing circular routes. Create a new factory method if this happens.
+    int boardStopPosition = trip.findDepartureStopPosition(currentArrivalTime(), boardStop);
+    int alightStopPosition = trip
+      .pattern()
+      .findAlightStopPositionAfter(boardStopPosition, alightStop);
+    var baTime = new BoardAndAlightTime(trip, boardStopPosition, alightStopPosition);
+    builder.transit(trip, baTime);
+    return this;
+  }
+
+  public TestPathBuilder bus(String patternName, int fromTime, int duration, int toStop) {
+    int toTime = fromTime + duration;
+    int fromStop = currentStop();
+
+    TestTripSchedule trip = TestTripSchedule.schedule(
+      TestTripPattern.pattern(patternName, fromStop, toStop)
+    )
+      .arrDepOffset(BOARD_ALIGHT_OFFSET)
+      .departures(fromTime, toTime + BOARD_ALIGHT_OFFSET)
+      .build();
+
+    return bus(trip, toStop);
+  }
+
+  public RaptorPath<TestTripSchedule> egress(int duration) {
+    return egress(
+      duration == 0
+        ? TestAccessEgress.free(currentStop())
+        : TestAccessEgress.walk(currentStop(), duration)
+    );
+  }
+
+  public RaptorPath<TestTripSchedule> egress(TestAccessEgress egress) {
+    builder.egress(egress);
+    builder.c2(c2);
+    return builder.build();
+  }
+
+  /* private methods */
+
+  int currentStop() {
+    return builder.tail().toStop();
+  }
+
+  int currentArrivalTime() {
+    return builder.tail().toTime();
+  }
+
+  private void reset(int startTime) {
+    this.startTime = startTime;
+    this.builder = PathBuilder.tailPathBuilder(
+      slackProvider,
+      startTime,
+      costCalculator,
+      RaptorStopNameResolver.nullSafe(null),
+      null
+    );
+  }
+}

@@ -80,14 +80,12 @@ public class LiipiParkToVehicleParkingMapper {
       );
       Map<String, String> translations = new HashMap<>();
       JsonNode nameNode = jsonNode.path("name");
-      nameNode
-        .fieldNames()
-        .forEachRemaining(lang -> {
-          String name = nameNode.path(lang).asText();
-          if (!name.isEmpty()) {
-            translations.put(lang, nameNode.path(lang).asText());
-          }
-        });
+      nameNode.fieldNames().forEachRemaining(lang -> {
+        String name = nameNode.path(lang).asText();
+        if (!name.isEmpty()) {
+          translations.put(lang, nameNode.path(lang).asText());
+        }
+      });
       I18NString name = translations.isEmpty()
         ? new NonLocalizedString(vehicleParkId.getId())
         : TranslatedString.getI18NString(translations, false);
@@ -109,7 +107,7 @@ public class LiipiParkToVehicleParkingMapper {
       var openingHoursCalendar = parseOpeningHours(openingHoursByDayType);
       VehicleParkingGroup vehicleParkingGroup = hubForPark.get(vehicleParkId);
 
-      return VehicleParking.builder()
+      return VehicleParking.of()
         .id(vehicleParkId)
         .name(name)
         .state(state)
@@ -158,7 +156,7 @@ public class LiipiParkToVehicleParkingMapper {
     Integer wheelchairAccessibleCarSpaces,
     Integer bicycleSpaces
   ) {
-    return VehicleParkingSpaces.builder()
+    return VehicleParkingSpaces.of()
       .bicycleSpaces(bicycleSpaces)
       .carSpaces(carSpaces)
       .wheelchairAccessibleCarSpaces(wheelchairAccessibleCarSpaces)

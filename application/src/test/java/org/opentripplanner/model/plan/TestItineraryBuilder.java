@@ -5,7 +5,7 @@ import static org.opentripplanner.core.model.id.FeedScopedIdForTestFactory.id;
 import static org.opentripplanner.street.search.TraverseMode.BICYCLE;
 import static org.opentripplanner.street.search.TraverseMode.CAR;
 import static org.opentripplanner.street.search.TraverseMode.WALK;
-import static org.opentripplanner.transit.model._data.TimetableRepositoryForTest.route;
+import static org.opentripplanner.transit.model._data.TransitRepositoryForTest.route;
 
 import java.time.Duration;
 import java.time.LocalDate;
@@ -17,6 +17,7 @@ import javax.annotation.Nullable;
 import org.opentripplanner.core.model.basic.Cost;
 import org.opentripplanner.core.model.i18n.I18NString;
 import org.opentripplanner.core.model.id.FeedScopedId;
+import org.opentripplanner.ext.flex.FlexParameters;
 import org.opentripplanner.ext.flex.FlexibleTransitLeg;
 import org.opentripplanner.ext.flex.edgetype.FlexTripEdge;
 import org.opentripplanner.ext.flex.flexpathcalculator.DirectFlexPathCalculator;
@@ -34,7 +35,7 @@ import org.opentripplanner.street.model.StreetModelForTest;
 import org.opentripplanner.street.search.TraverseMode;
 import org.opentripplanner.transfer.constrained.model.ConstrainedTransfer;
 import org.opentripplanner.transfer.constrained.model.TransferConstraint;
-import org.opentripplanner.transit.model._data.TimetableRepositoryForTest;
+import org.opentripplanner.transit.model._data.TransitRepositoryForTest;
 import org.opentripplanner.transit.model.basic.Money;
 import org.opentripplanner.transit.model.basic.TransitMode;
 import org.opentripplanner.transit.model.framework.Deduplicator;
@@ -43,7 +44,6 @@ import org.opentripplanner.transit.model.network.Route;
 import org.opentripplanner.transit.model.network.StopPattern;
 import org.opentripplanner.transit.model.network.TripPattern;
 import org.opentripplanner.transit.model.timetable.Trip;
-import org.opentripplanner.transit.model.timetable.TripTimes;
 import org.opentripplanner.transit.model.timetable.TripTimesFactory;
 import org.opentripplanner.utils.lang.IntUtils;
 import org.opentripplanner.utils.time.TimeUtils;
@@ -151,7 +151,7 @@ public class TestItineraryBuilder implements PlanTestConstants {
   public TestItineraryBuilder rentedBicycle(int startTime, int endTime, Place to) {
     int legCost = cost(BICYCLE_RELUCTANCE_FACTOR, endTime - startTime);
     streetLeg(BICYCLE, startTime, endTime, to, legCost, List.of());
-    var leg = ((StreetLeg) this.legs.get(0));
+    var leg = (StreetLeg) this.legs.get(0);
     var updatedLeg = leg.copyOf().withRentedVehicle(true).build();
     this.legs.add(0, updatedLeg);
     return this;
@@ -251,7 +251,8 @@ public class TestItineraryBuilder implements PlanTestConstants {
       fromStopPos,
       toStopPos,
       serviceDate,
-      flexPath
+      flexPath,
+      FlexParameters.defaultValues()
     );
 
     FlexibleTransitLeg leg = FlexibleTransitLeg.of()
@@ -460,7 +461,7 @@ public class TestItineraryBuilder implements PlanTestConstants {
 
   /** Create a dummy trip */
   private static Trip trip(String id, Route route) {
-    return TimetableRepositoryForTest.trip(id)
+    return TransitRepositoryForTest.trip(id)
       .withRoute(route)
       .withHeadsign(I18NString.of("Trip headsign %s".formatted(id)))
       .build();
@@ -548,7 +549,7 @@ public class TestItineraryBuilder implements PlanTestConstants {
     stopTimes.add(toStopTime);
 
     StopPattern stopPattern = new StopPattern(stopTimes);
-    final TripTimes tripTimes = TripTimesFactory.tripTimes(trip, stopTimes, new Deduplicator());
+    final var tripTimes = TripTimesFactory.tripTimes(trip, stopTimes, new Deduplicator());
     TripPattern tripPattern = TripPattern.of(route.getId())
       .withRoute(route)
       .withStopPattern(stopPattern)

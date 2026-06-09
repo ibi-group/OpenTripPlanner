@@ -1,6 +1,5 @@
 package org.opentripplanner.apis.transmodel.model.timetable;
 
-import graphql.AssertException;
 import graphql.Scalars;
 import graphql.schema.DataFetchingEnvironment;
 import graphql.schema.GraphQLArgument;
@@ -14,6 +13,7 @@ import graphql.schema.GraphQLTypeReference;
 import java.util.List;
 import java.util.Optional;
 import org.opentripplanner.api.model.transit.FeedScopedIdMapper;
+import org.opentripplanner.apis.support.InvalidInputException;
 import org.opentripplanner.apis.transmodel.model.EnumTypes;
 import org.opentripplanner.apis.transmodel.model.framework.TransmodelDirectives;
 import org.opentripplanner.apis.transmodel.model.framework.TransmodelScalars;
@@ -43,7 +43,8 @@ public class DatedServiceJourneyType {
     GraphQLType estimatedCallType,
     GraphQLType quayType,
     GraphQLOutputType replacedByType,
-    GraphQLOutputType replacementForType
+    GraphQLOutputType replacementForType,
+    GraphQLOutputType realTimeJourneyStateType
   ) {
     return GraphQLObjectType.newObject()
       .name(NAME)
@@ -67,7 +68,7 @@ public class DatedServiceJourneyType {
           .name("serviceJourney")
           .description("The service journey this Dated Service Journey is based on")
           .type(new GraphQLNonNull(serviceJourneyType))
-          .dataFetcher(environment -> (tripOnServiceDate(environment).getTrip()))
+          .dataFetcher(environment -> tripOnServiceDate(environment).getTrip())
       )
       .field(
         GraphQLFieldDefinition.newFieldDefinition()
@@ -158,11 +159,13 @@ public class DatedServiceJourneyType {
             List<StopLocation> stops = tripPattern.getStops();
 
             if (first != null && last != null) {
-              throw new AssertException("Both first and last can't be defined simultaneously.");
+              throw new InvalidInputException(
+                "Both first and last can't be defined simultaneously."
+              );
             }
 
             if ((first != null && first < 0) || (last != null && last < 0)) {
-              throw new AssertException("first and last must be positive integers.");
+              throw new InvalidInputException("first and last must be positive integers.");
             }
 
             if (first != null && first < stops.size()) {
@@ -188,6 +191,34 @@ public class DatedServiceJourneyType {
             return GqlUtil.getTransitService(environment)
               .findTripTimesOnDate(tripOnServiceDate.getTrip(), tripOnServiceDate.getServiceDate())
               .orElse(List.of());
+          })
+          .build()
+      )
+      .field(
+        GraphQLFieldDefinition.newFieldDefinition()
+          .name("realTimeJourneyState")
+          .description("The real-time state of this dated service journey.")
+          .type(realTimeJourneyStateType)
+          .dataFetcher(environment -> {
+            TripOnServiceDate tripOnServiceDate = tripOnServiceDate(environment);
+            TransitService transitService = GqlUtil.getTransitService(environment);
+            return transitService
+              .findTripTimes(tripOnServiceDate.getTrip(), tripOnServiceDate.getServiceDate())
+              .map(tripTimes -> {
+                if (tripTimes.isDeleted()) {
+                  throw new RuntimeException(
+                    "Trip has been deleted. this should not be exposed to the API and is probably a bug"
+                  );
+                }
+                return new TransmodelRealTimeTripStateModel(
+                  tripTimes.isAdded(),
+                  tripTimes.isCanceled(),
+                  tripTimes.isTimesModified(),
+                  tripTimes.isTripPatternModified(),
+                  tripTimes.hasAnyUpdates()
+                );
+              })
+              .orElse(null);
           })
           .build()
       )

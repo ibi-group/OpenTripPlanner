@@ -20,7 +20,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import org.opentripplanner.apis.support.TracingUtils;
-import org.opentripplanner.standalone.api.OtpServerRequestContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,11 +29,11 @@ public class TransmodelAPI {
 
   // Note, the blank line at the end is intended
   private static final String SCHEMA_DOC_HEADER = """
-    # THIS IS NOT INTENDED FOR PRODUCTION USE. We recommend using the GraphQL introspection instead.
-    # This is intended for the OTP Debug UI and can also be used by humans to get the schema with the
-    # OTP configured default-values injected.
+  # THIS IS NOT INTENDED FOR PRODUCTION USE. We recommend using the GraphQL introspection instead.
+  # This is intended for the OTP Debug UI and can also be used by humans to get the schema with the
+  # OTP configured default-values injected.
 
-    """;
+  """;
 
   private static final Logger LOG = LoggerFactory.getLogger(TransmodelAPI.class);
 
@@ -42,17 +41,18 @@ public class TransmodelAPI {
   private final Collection<String> tracingHeaderTags;
   private final int maxNumberOfResultFields;
 
-  private final OtpServerRequestContext serverContext;
   private final TransmodelGraph index;
   private final ObjectMapper deserializer = new ObjectMapper();
 
-  public TransmodelAPI(@Context OtpServerRequestContext serverContext) {
-    this.serverContext = serverContext;
-    this.schema = serverContext.transmodelSchema();
+  public TransmodelAPI(
+    @Context TransmodelGraphQLSchema transmodelGraphQLSchema,
+    @Context TransmodelAPIParameters transmodelAPIParameters
+  ) {
+    this.schema = transmodelGraphQLSchema.schema();
     this.index = new TransmodelGraph(schema);
 
-    tracingHeaderTags = serverContext.transmodelAPIParameters().tracingHeaderTags();
-    maxNumberOfResultFields = serverContext.transmodelAPIParameters().maxNumberOfResultFields();
+    tracingHeaderTags = transmodelAPIParameters.tracingHeaderTags();
+    maxNumberOfResultFields = transmodelAPIParameters.maxNumberOfResultFields();
   }
 
   /**
@@ -62,10 +62,11 @@ public class TransmodelAPI {
   public static class TransmodelAPIOldPath extends TransmodelAPI {
 
     public TransmodelAPIOldPath(
-      @Context OtpServerRequestContext serverContext,
+      @Context TransmodelGraphQLSchema transmodelGraphQLSchema,
+      @Context TransmodelAPIParameters transmodelAPIParameters,
       @PathParam("ignoreRouterId") String ignore
     ) {
-      super(serverContext);
+      super(transmodelGraphQLSchema, transmodelAPIParameters);
     }
   }
 
@@ -73,7 +74,8 @@ public class TransmodelAPI {
   @Consumes(MediaType.APPLICATION_JSON)
   public Response getGraphQL(
     HashMap<String, Object> queryParameters,
-    @Context HttpHeaders headers
+    @Context HttpHeaders headers,
+    @Context TransmodelGraphQLRequestContext requestContext
   ) {
     if (queryParameters == null || !queryParameters.containsKey("query")) {
       LOG.debug("No query found in body");
@@ -102,7 +104,7 @@ public class TransmodelAPI {
     String operationName = (String) queryParameters.getOrDefault("operationName", null);
     return index.executeGraphQL(
       query,
-      serverContext,
+      requestContext,
       variables,
       operationName,
       maxNumberOfResultFields,
@@ -112,10 +114,14 @@ public class TransmodelAPI {
 
   @POST
   @Consumes("application/graphql")
-  public Response getGraphQL(String query, @Context HttpHeaders headers) {
+  public Response getGraphQL(
+    String query,
+    @Context HttpHeaders headers,
+    @Context TransmodelGraphQLRequestContext requestContext
+  ) {
     return index.executeGraphQL(
       query,
-      serverContext,
+      requestContext,
       null,
       null,
       maxNumberOfResultFields,

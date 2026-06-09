@@ -1,12 +1,12 @@
 package org.opentripplanner.updater.vehicle_parking;
 
+import static com.google.common.truth.Truth.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.when;
 
-import com.google.common.util.concurrent.Futures;
 import java.time.Duration;
 import java.util.List;
-import java.util.concurrent.Future;
+import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -23,18 +23,21 @@ import org.opentripplanner.street.model.StreetModelForTest;
 import org.opentripplanner.street.model.edge.StreetVehicleParkingLink;
 import org.opentripplanner.street.model.edge.VehicleParkingEdge;
 import org.opentripplanner.street.model.vertex.VehicleParkingEntranceVertex;
-import org.opentripplanner.transit.service.TimetableRepository;
-import org.opentripplanner.updater.DefaultRealTimeUpdateContext;
+import org.opentripplanner.transit.service.TransitRepository;
+import org.opentripplanner.updater.DefaultStreetRealTimeUpdateContext;
 import org.opentripplanner.updater.GraphUpdaterManager;
-import org.opentripplanner.updater.GraphWriterRunnable;
+import org.opentripplanner.updater.StreetRealTimeUpdateContext;
 import org.opentripplanner.updater.spi.DataSource;
-import org.opentripplanner.updater.spi.GraphUpdater;
+import org.opentripplanner.updater.spi.WriteDomain;
+import org.opentripplanner.updater.spi.WriteToGraphCallback;
+import org.opentripplanner.updater.spi.WriteToGraphCallbacks;
+import org.opentripplanner.utils.lang.RunnableUtils;
 
 class VehicleParkingUpdaterTest {
 
   private DataSource<VehicleParking> dataSource;
   private Graph graph;
-  private DefaultRealTimeUpdateContext realTimeUpdateContext;
+  private StreetRealTimeUpdateContext realTimeUpdateContext;
 
   private VehicleParkingUpdater vehicleParkingUpdater;
   private VehicleParkingRepository parkingRepository;
@@ -45,14 +48,14 @@ class VehicleParkingUpdaterTest {
     VehicleParkingTestGraphData graphData = new VehicleParkingTestGraphData();
     graphData.initGraph();
     graph = graphData.getGraph();
-    TimetableRepository timetableRepository = graphData.getTimetableRepository();
+    TransitRepository transitRepository = graphData.getTransitRepository();
     parkingRepository = new DefaultVehicleParkingRepository();
-    realTimeUpdateContext = new DefaultRealTimeUpdateContext(graph, timetableRepository);
+    realTimeUpdateContext = new DefaultStreetRealTimeUpdateContext(graph);
 
     dataSource = (DataSource<VehicleParking>) Mockito.mock(DataSource.class);
     when(dataSource.update()).thenReturn(true);
 
-    timetableRepository.index();
+    transitRepository.index();
     graph.index();
 
     var parameters = new VehicleParkingUpdaterParameters() {
@@ -98,7 +101,7 @@ class VehicleParkingUpdaterTest {
 
   @Test
   void updateVehicleParkingTest() {
-    var vehiclePlaces = VehicleParkingSpaces.builder().bicycleSpaces(1).build();
+    var vehiclePlaces = VehicleParkingSpaces.of().bicycleSpaces(1).build();
 
     var vehicleParkings = List.of(
       VehicleParkingTestUtil.createParkingWithEntrances("1", 0.0001, 0, vehiclePlaces)
@@ -117,7 +120,7 @@ class VehicleParkingUpdaterTest {
     assertEquals(vehiclePlaces, vehicleParkingInGraph.getAvailability());
     assertEquals(vehiclePlaces, vehicleParkingInGraph.getCapacity());
 
-    vehiclePlaces = VehicleParkingSpaces.builder().bicycleSpaces(2).build();
+    vehiclePlaces = VehicleParkingSpaces.of().bicycleSpaces(2).build();
     vehicleParkings = List.of(
       VehicleParkingTestUtil.createParkingWithEntrances("1", 0.0001, 0, vehiclePlaces)
     );
@@ -171,7 +174,7 @@ class VehicleParkingUpdaterTest {
 
   @Test
   void updateNotOperatingVehicleParkingTest() {
-    var vehiclePlaces = VehicleParkingSpaces.builder().bicycleSpaces(1).build();
+    var vehiclePlaces = VehicleParkingSpaces.of().bicycleSpaces(1).build();
 
     var vehicleParking = StreetModelForTest.vehicleParking()
       .availability(vehiclePlaces)
@@ -188,7 +191,7 @@ class VehicleParkingUpdaterTest {
     );
     assertVehicleParkingNotLinked();
 
-    vehiclePlaces = VehicleParkingSpaces.builder().bicycleSpaces(2).build();
+    vehiclePlaces = VehicleParkingSpaces.of().bicycleSpaces(2).build();
 
     vehicleParking = StreetModelForTest.vehicleParking()
       .availability(vehiclePlaces)
@@ -265,27 +268,22 @@ class VehicleParkingUpdaterTest {
   }
 
   private void runUpdaterOnce() {
-    class GraphUpdaterMock extends GraphUpdaterManager {
-
-      public GraphUpdaterMock(List<GraphUpdater> updaters) {
-        super(realTimeUpdateContext, updaters);
-      }
-
-      @Override
-      public Future<?> execute(GraphWriterRunnable runnable) {
-        runnable.run(realTimeUpdateContext);
-        return Futures.immediateVoidFuture();
-      }
-    }
-
-    var graphUpdaterManager = new GraphUpdaterMock(List.of(vehicleParkingUpdater));
+    WriteToGraphCallback<StreetRealTimeUpdateContext> callback = runnable -> {
+      runnable.run(realTimeUpdateContext);
+      return CompletableFuture.completedFuture(null);
+    };
+    var graphUpdaterManager = new GraphUpdaterManager(
+      new WriteToGraphCallbacks().with(WriteDomain.STREET, callback),
+      RunnableUtils.NOOP,
+      List.of(vehicleParkingUpdater)
+    );
     graphUpdaterManager.startUpdaters();
     graphUpdaterManager.stop(false);
   }
 
   private void assertVehicleParkingNotLinked() {
     assertEquals(0, graph.getVerticesOfType(VehicleParkingEntranceVertex.class).size());
-    assertEquals(0, graph.getEdgesOfType(StreetVehicleParkingLink.class).size());
-    assertEquals(0, graph.getEdgesOfType(VehicleParkingEdge.class).size());
+    assertThat(graph.findEdges(StreetVehicleParkingLink.class)).isEmpty();
+    assertThat(graph.findEdges(VehicleParkingEdge.class)).isEmpty();
   }
 }

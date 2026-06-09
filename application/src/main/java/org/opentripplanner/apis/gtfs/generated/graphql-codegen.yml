@@ -41,6 +41,8 @@ config:
     RouteType: org.opentripplanner.apis.gtfs.model.RouteTypeModel#RouteTypeModel
     Alert: org.opentripplanner.routing.alertpatch.TransitAlert#TransitAlert
     AlertCauseType: org.opentripplanner.apis.gtfs.generated.GraphQLTypes.GraphQLAlertCauseType#GraphQLAlertCauseType
+    AlertConnection: org.opentripplanner.framework.graphql.CountedConnection#CountedConnection<TransitAlert>
+    AlertEdge: graphql.relay.Edge#Edge<TransitAlert>
     AlertEffectType: org.opentripplanner.apis.gtfs.generated.GraphQLTypes.GraphQLAlertEffectType#GraphQLAlertEffectType
     AlertSeverityLevelType: org.opentripplanner.apis.gtfs.generated.GraphQLTypes.GraphQLAlertSeverityLevelType#GraphQLAlertSeverityLevelType
     BikePark: org.opentripplanner.service.vehicleparking.model.VehicleParking#VehicleParking
@@ -61,12 +63,13 @@ config:
     Cluster: Object
     Coordinates: org.locationtech.jts.geom.Coordinate#Coordinate
     StopCall: org.opentripplanner.model.TripTimeOnDate#TripTimeOnDate
+    StopCallOnTripOnServiceDate: org.opentripplanner.apis.gtfs.model.StopCallOnTripOnServiceDate#StopCallOnTripOnServiceDate
     TripOnServiceDate: org.opentripplanner.transit.model.timetable.TripOnServiceDate#TripOnServiceDate
     TripOnServiceDateConnection: org.opentripplanner.framework.graphql.CountedConnection#CountedConnection<TripOnServiceDate>
     TripOnServiceDateEdge: graphql.relay.Edge#Edge<TripOnServiceDate>
     debugOutput: org.opentripplanner.api.resource.DebugOutput#DebugOutput
     DepartureRow: org.opentripplanner.place.api.PatternAtStop#PatternAtStop
-    elevationProfileComponent: org.opentripplanner.model.plan.leg.ElevationProfile.Step
+    elevationProfileComponent: org.opentripplanner.street.model.elevation.ElevationProfile.Step
     Emissions: org.opentripplanner.model.plan.Emission#Emission
     Feed: String
     FeedPublisher: org.opentripplanner.apis.gtfs.model.FeedPublisher#FeedPublisher
@@ -142,3 +145,9 @@ config:
     CallScheduledTime: org.opentripplanner.apis.gtfs.model.CallScheduledTime#CallScheduledTime
     RentalVehicleFuel: org.opentripplanner.service.vehiclerental.model.RentalVehicleFuel#RentalVehicleFuel
     ViaLocationType: org.opentripplanner.model.plan.leg.ViaLocationType#ViaLocationType
+    CanceledTripsSummary: org.opentripplanner.apis.gtfs.model.CanceledTripsSummary#CanceledTripsSummary
+    CanceledTripsSummaryPattern: org.opentripplanner.apis.gtfs.model.CanceledTripsSummaryPattern#CanceledTripsSummaryPattern
+    CanceledTripsSummaryRoute: org.opentripplanner.apis.gtfs.model.CanceledTripsSummaryRoute#CanceledTripsSummaryRoute
+    Notice: org.opentripplanner.transit.model.basic.Notice
+    OffsetDateTimeRange: org.opentripplanner.apis.gtfs.model.OffsetDateTimeRange#OffsetDateTimeRange
+    RealTimeTripState: org.opentripplanner.apis.gtfs.model.RealTimeTripStateModel#RealTimeTripStateModel

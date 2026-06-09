@@ -5,7 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.opentripplanner.ext.carpooling.CarpoolBookingUrlTestData.expectedAugmentedUrl;
+import static org.opentripplanner.ext.carpooling.CarpoolBookingUrlTestData.bookingUrlTemplate;
+import static org.opentripplanner.ext.carpooling.CarpoolBookingUrlTestData.expectedExpandedUrl;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -18,9 +19,7 @@ import java.util.stream.Collectors;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.opentripplanner.ext.carpooling.CarpoolTripTestData;
-import org.opentripplanner.ext.carpooling.CarpoolingRepository;
 import org.opentripplanner.ext.carpooling.internal.CarpoolItineraryMapper;
-import org.opentripplanner.ext.carpooling.internal.DefaultCarpoolingRepository;
 import org.opentripplanner.ext.carpooling.model.CarpoolLeg;
 import org.opentripplanner.ext.carpooling.model.CarpoolTripBuilder;
 import org.opentripplanner.ext.carpooling.routing.CarpoolAccessEgress;
@@ -31,20 +30,13 @@ import org.opentripplanner.routing.algorithm.GraphRoutingTest;
 import org.opentripplanner.routing.algorithm.raptoradapter.router.street.AccessEgressType;
 import org.opentripplanner.routing.api.request.RouteRequest;
 import org.opentripplanner.routing.api.request.request.StreetRequest;
-import org.opentripplanner.routing.linking.VertexLinkerTestFactory;
-import org.opentripplanner.routing.linking.internal.VertexCreationService;
 import org.opentripplanner.street.geometry.WgsCoordinate;
-import org.opentripplanner.street.graph.Graph;
-import org.opentripplanner.street.linking.VertexLinker;
 import org.opentripplanner.street.model.StreetMode;
 import org.opentripplanner.street.model.StreetTraversalPermission;
 import org.opentripplanner.street.model.vertex.IntersectionVertex;
 import org.opentripplanner.street.model.vertex.TransitStopVertex;
 import org.opentripplanner.street.search.TraverseMode;
-import org.opentripplanner.street.service.StreetLimitationParametersService;
 import org.opentripplanner.transit.model.organization.ContactInfo;
-import org.opentripplanner.transit.service.DefaultTransitService;
-import org.opentripplanner.transit.service.TransitService;
 import org.opentripplanner.transit.service.TransitServiceResolver;
 
 /**
@@ -89,7 +81,7 @@ class DefaultCarpoolingServiceAccessEgressTest extends GraphRoutingTest {
   );
 
   private DefaultCarpoolingService service;
-  private CarpoolingRepository repository;
+  private CarpoolingServiceTestContext context;
   private TransitServiceResolver transitServiceResolver;
 
   private TransitStopVertex stopT1;
@@ -200,33 +192,9 @@ class DefaultCarpoolingServiceAccessEgressTest extends GraphRoutingTest {
       }
     );
 
-    Graph graph = model.graph();
-    var timetableRepository = model.timetableRepository();
-    VertexLinker vertexLinker = VertexLinkerTestFactory.of(graph);
-    var vertexCreationService = new VertexCreationService(vertexLinker);
-    TransitService transitService = new DefaultTransitService(timetableRepository);
-    transitServiceResolver = new TransitServiceResolver(transitService);
-    repository = new DefaultCarpoolingRepository();
-
-    StreetLimitationParametersService streetLimitationParams =
-      new StreetLimitationParametersService() {
-        @Override
-        public float maxCarSpeed() {
-          return 40.0f;
-        }
-
-        @Override
-        public int maxAreaNodes() {
-          return 500;
-        }
-      };
-
-    service = new DefaultCarpoolingService(
-      repository,
-      streetLimitationParams,
-      transitService,
-      vertexCreationService
-    );
+    context = CarpoolingServiceTestContext.of(model);
+    service = context.service();
+    transitServiceResolver = context.transitServiceResolver();
   }
 
   private IntersectionVertex vertexA;
@@ -310,7 +278,7 @@ class DefaultCarpoolingServiceAccessEgressTest extends GraphRoutingTest {
   void returnsEmptyWhenTripsFailTimeFilter() {
     var pastTime = SEARCH_TIME.minusDays(30);
     var trip = CarpoolTripTestData.createSimpleTripWithTime(coordA, coordD, pastTime);
-    repository.upsertCarpoolTrip(trip);
+    context.upsertTrip(trip);
 
     var request = buildCarpoolRequest(coordP2, coordP3, SEARCH_TIME);
 
@@ -329,7 +297,7 @@ class DefaultCarpoolingServiceAccessEgressTest extends GraphRoutingTest {
   void findsAccessResultsForCompatibleTrip() {
     var departureTime = SEARCH_TIME.plusMinutes(30);
     var trip = CarpoolTripTestData.createSimpleTripWithTime(coordA, coordD, departureTime);
-    repository.upsertCarpoolTrip(trip);
+    context.upsertTrip(trip);
 
     // Access test: passenger at P2 going to P3
     var request = buildCarpoolRequest(coordP2, coordP3, SEARCH_TIME);
@@ -368,7 +336,7 @@ class DefaultCarpoolingServiceAccessEgressTest extends GraphRoutingTest {
   void findsEgressResultsForCompatibleTrip() {
     var departureTime = SEARCH_TIME.plusMinutes(30);
     var trip = CarpoolTripTestData.createSimpleTripWithTime(coordA, coordD, departureTime);
-    repository.upsertCarpoolTrip(trip);
+    context.upsertTrip(trip);
 
     // Egress test: passenger at P1 going to P2
     var request = buildCarpoolRequest(coordP1, coordP2, SEARCH_TIME);
@@ -404,7 +372,7 @@ class DefaultCarpoolingServiceAccessEgressTest extends GraphRoutingTest {
   void accessResultsHaveMatchingArrivalDepartureAndDuration() {
     var departureTime = SEARCH_TIME.plusMinutes(30);
     var trip = CarpoolTripTestData.createSimpleTripWithTime(coordA, coordD, departureTime);
-    repository.upsertCarpoolTrip(trip);
+    context.upsertTrip(trip);
 
     var request = buildCarpoolRequest(coordP2, coordP3, SEARCH_TIME);
     var transitSearchTimeZero = SEARCH_TIME;
@@ -458,8 +426,8 @@ class DefaultCarpoolingServiceAccessEgressTest extends GraphRoutingTest {
     var trip1 = CarpoolTripTestData.createSimpleTripWithTime(coordA, coordD, departureTime1);
     var trip2 = CarpoolTripTestData.createSimpleTripWithTime(coordA, coordD, departureTime2);
 
-    repository.upsertCarpoolTrip(trip1);
-    repository.upsertCarpoolTrip(trip2);
+    context.upsertTrip(trip1);
+    context.upsertTrip(trip2);
 
     var request = buildCarpoolRequest(coordP2, coordP3, SEARCH_TIME);
 
@@ -513,7 +481,7 @@ class DefaultCarpoolingServiceAccessEgressTest extends GraphRoutingTest {
       )
     );
 
-    repository.upsertCarpoolTrip(tripWithTime);
+    context.upsertTrip(tripWithTime);
 
     var request = buildCarpoolRequest(coordP2, coordP3, SEARCH_TIME);
 
@@ -543,7 +511,7 @@ class DefaultCarpoolingServiceAccessEgressTest extends GraphRoutingTest {
   void earliestDepartureTimeRespectsRequestedDepartureTime() {
     var departureTime = SEARCH_TIME.plusMinutes(30);
     var trip = CarpoolTripTestData.createSimpleTripWithTime(coordA, coordD, departureTime);
-    repository.upsertCarpoolTrip(trip);
+    context.upsertTrip(trip);
 
     var request = buildCarpoolRequest(coordP2, coordP3, SEARCH_TIME);
 
@@ -594,7 +562,7 @@ class DefaultCarpoolingServiceAccessEgressTest extends GraphRoutingTest {
   void accessFindsTransitStopReachableOnlyViaWalkOnlySideBranchFromDrivableNetwork() {
     var departureTime = SEARCH_TIME.plusMinutes(30);
     var trip = CarpoolTripTestData.createSimpleTripWithTime(coordA, coordD, departureTime);
-    repository.upsertCarpoolTrip(trip);
+    context.upsertTrip(trip);
 
     var request = buildCarpoolRequest(coordP2, coordP3, SEARCH_TIME);
 
@@ -646,7 +614,7 @@ class DefaultCarpoolingServiceAccessEgressTest extends GraphRoutingTest {
   void accessResultForStopOnDrivableNetworkHasNullWalkSegments() {
     var departureTime = SEARCH_TIME.plusMinutes(30);
     var trip = CarpoolTripTestData.createSimpleTripWithTime(coordA, coordD, departureTime);
-    repository.upsertCarpoolTrip(trip);
+    context.upsertTrip(trip);
 
     var request = buildCarpoolRequest(coordP2, coordP3, SEARCH_TIME);
 
@@ -682,7 +650,7 @@ class DefaultCarpoolingServiceAccessEgressTest extends GraphRoutingTest {
   void accessDepartureAndArrivalTimesMatchIndependentRouting() {
     var departureTime = SEARCH_TIME.plusMinutes(30);
     var trip = CarpoolTripTestData.createSimpleTripWithTime(coordA, coordD, departureTime);
-    repository.upsertCarpoolTrip(trip);
+    context.upsertTrip(trip);
 
     // Independently compute driving times:
     // - A to P2 (for passenger departure time)
@@ -803,15 +771,15 @@ class DefaultCarpoolingServiceAccessEgressTest extends GraphRoutingTest {
    * walking endpoint ({@code T5}), and equally not the driver's trip origin ({@code A}).
    */
   @Test
-  void accessItinerary_appendsCarpoolBoardingAndAlightingCoords_notWalkLegCoords() {
+  void accessItinerary_expandsCarpoolBoardingAndAlightingCoords_notWalkLegCoords() {
     var departureTime = SEARCH_TIME.plusMinutes(30);
     var baseTrip = CarpoolTripTestData.createSimpleTripWithTime(coordA, coordD, departureTime);
     var trip = new CarpoolTripBuilder(baseTrip)
       .withPublicContactInformation(
-        ContactInfo.of().withBookingUrl("https://book.example.com").build()
+        ContactInfo.of().withBookingUrl(bookingUrlTemplate("https://book.example.com")).build()
       )
       .build();
-    repository.upsertCarpoolTrip(trip);
+    context.upsertTrip(trip);
 
     var request = buildCarpoolRequest(coordP2, coordP3, SEARCH_TIME);
     var results = service.routeAccessEgress(
@@ -854,7 +822,7 @@ class DefaultCarpoolingServiceAccessEgressTest extends GraphRoutingTest {
     assertNotNull(bookingInfo);
 
     assertEquals(
-      expectedAugmentedUrl(
+      expectedExpandedUrl(
         "https://book.example.com",
         carpoolLeg.from().coordinate,
         carpoolLeg.to().coordinate

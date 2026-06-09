@@ -5,19 +5,29 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.time.Duration;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.opentripplanner.TestOtpModel;
+import org.opentripplanner.ext.carpooling.util.StreetVertexUtils;
+import org.opentripplanner.framework.application.OTPRequestTimeoutException;
 import org.opentripplanner.routing.algorithm.GraphRoutingTest;
+import org.opentripplanner.routing.linking.VertexLinkerTestFactory;
+import org.opentripplanner.routing.linking.internal.VertexCreationService;
 import org.opentripplanner.street.geometry.WgsCoordinate;
+import org.opentripplanner.street.linking.TemporaryVerticesContainer;
 import org.opentripplanner.street.model.vertex.IntersectionVertex;
+import org.opentripplanner.street.model.vertex.Vertex;
 
 class CarpoolTreeStreetRouterTest extends GraphRoutingTest {
 
   private static final WgsCoordinate ORIGIN = new WgsCoordinate(59.9139, 10.7522);
   private static final Duration SEARCH_LIMIT = Duration.ofMinutes(30);
 
+  private TestOtpModel model;
   private IntersectionVertex vertexA;
   private IntersectionVertex vertexB;
   private IntersectionVertex vertexC;
@@ -28,7 +38,7 @@ class CarpoolTreeStreetRouterTest extends GraphRoutingTest {
 
   @BeforeEach
   void setUp() {
-    modelOf(
+    model = modelOf(
       new Builder() {
         @Override
         public void build() {
@@ -53,6 +63,15 @@ class CarpoolTreeStreetRouterTest extends GraphRoutingTest {
     );
 
     router = new CarpoolTreeStreetRouter();
+  }
+
+  /**
+   * Clears the interrupt flag so that a cancellation raised by one test cannot surface as a
+   * spurious {@link OTPRequestTimeoutException} in an unrelated test sharing the same thread.
+   */
+  @AfterEach
+  void clearInterruptFlag() {
+    Thread.interrupted();
   }
 
   @Test
@@ -178,6 +197,30 @@ class CarpoolTreeStreetRouterTest extends GraphRoutingTest {
     assertNull(path, "Should return null for unreachable vertex in the same graph");
   }
 
+  /**
+   * The tree is built inside {@code route}, so a cancelled request surfaces there. A cancellation
+   * carries no verdict on whether the leg is routable: it must be raised as an exception rather
+   * than reported as a missing path, and it must leave nothing behind that would answer a later
+   * query for the same pair. A missing path is memoized — the pair is put in the path cache as
+   * {@code null} and every later query for it is answered from the cache without rebuilding the
+   * tree — so a cancelled call that entered that cache would make the pair permanently unroutable.
+   * The tree registration must survive for the same reason: consuming it leaves no tree to route
+   * the pair with.
+   */
+  @Test
+  void propagateCancellationInsteadOfReturningNull() {
+    router.addVertex(vertexA, CarpoolTreeStreetRouter.Direction.FROM, SEARCH_LIMIT);
+
+    Thread.currentThread().interrupt();
+    assertThrows(OTPRequestTimeoutException.class, () -> router.route(vertexA, vertexC));
+    Thread.interrupted();
+
+    assertNotNull(
+      router.route(vertexA, vertexC),
+      "A cancelled call must leave behind neither a cached null nor a consumed registration"
+    );
+  }
+
   @Test
   void shortSearchLimitFindsNearbyButNotFarVertices() {
     // 500m at ~13 m/s (car speed) is ~38 seconds
@@ -202,6 +245,59 @@ class CarpoolTreeStreetRouterTest extends GraphRoutingTest {
     assertFalse(path.states.isEmpty(), "Path states should not be empty");
     assertNotNull(path.edges, "Path should have edges");
     assertFalse(path.edges.isEmpty(), "Path edges should not be empty");
+  }
+
+  @Test
+  void coLocatedVerticesKeepTheLargestLimit() {
+    // Two driver-waypoint vertices at the same coordinate are distinct objects but compare equal
+    // (TemporaryStreetLocation equality is coordinate-based), so they share one registration.
+    // Registering the small limit last must not shrink the tree below the large one: D (1500 m,
+    // ~2 min by car) is reachable only under the 5-minute limit, not the 20-second one.
+    var shortLimit = Duration.ofSeconds(20);
+    var longLimit = Duration.ofMinutes(5);
+
+    var first = driverWaypointAt(ORIGIN);
+    var second = driverWaypointAt(ORIGIN);
+
+    router.addVertex(first, CarpoolTreeStreetRouter.Direction.FROM, longLimit);
+    router.addVertex(second, CarpoolTreeStreetRouter.Direction.FROM, shortLimit);
+
+    assertEquals(1, router.forwardTreeCount(), "Co-located vertices should share one tree");
+    assertNotNull(
+      router.route(first, vertexD),
+      "The shared tree must keep the larger limit and still reach the far vertex"
+    );
+  }
+
+  @Test
+  void coLocatedVerticesKeepTheLargestLimitRegardlessOfOrder() {
+    var shortLimit = Duration.ofSeconds(20);
+    var longLimit = Duration.ofMinutes(5);
+
+    var first = driverWaypointAt(ORIGIN);
+    var second = driverWaypointAt(ORIGIN);
+
+    // Small limit first, large limit second — the large limit must still win.
+    router.addVertex(first, CarpoolTreeStreetRouter.Direction.FROM, shortLimit);
+    router.addVertex(second, CarpoolTreeStreetRouter.Direction.FROM, longLimit);
+
+    assertNotNull(
+      router.route(first, vertexD),
+      "Registration order must not change the kept limit"
+    );
+  }
+
+  private Vertex driverWaypointAt(WgsCoordinate coord) {
+    var vertexCreationService = new VertexCreationService(
+      VertexLinkerTestFactory.of(model.graph())
+    );
+    var streetVertexUtils = new StreetVertexUtils(
+      vertexCreationService,
+      new TemporaryVerticesContainer()
+    );
+    var vertex = streetVertexUtils.createDriverWaypointVertex(coord);
+    assertNotNull(vertex, "Driver waypoint vertex should link to the graph");
+    return vertex;
   }
 
   @Test

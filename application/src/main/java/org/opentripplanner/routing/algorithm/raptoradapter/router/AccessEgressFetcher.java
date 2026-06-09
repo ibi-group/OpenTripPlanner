@@ -9,20 +9,34 @@ import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import javax.annotation.Nullable;
 import org.opentripplanner.ext.carpooling.CarpoolingService;
+import org.opentripplanner.ext.dataoverlay.configuration.DataOverlayParameterBindings;
+import org.opentripplanner.ext.dataoverlay.routing.DataOverlayContext;
+import org.opentripplanner.ext.flex.FlexParameters;
 import org.opentripplanner.ext.ridehailing.RideHailingAccessShifter;
+import org.opentripplanner.ext.ridehailing.RideHailingService;
 import org.opentripplanner.framework.application.OTPFeature;
+import org.opentripplanner.routing.algorithm.raptoradapter.router.startonboardaccess.RoutingStartOnBoardAccess;
+import org.opentripplanner.routing.algorithm.raptoradapter.router.startonboardaccess.TripAndServiceDateResolver;
+import org.opentripplanner.routing.algorithm.raptoradapter.router.startonboardaccess.TripLocationResolver;
+import org.opentripplanner.routing.algorithm.raptoradapter.router.startonboardaccess.TripScheduleIndexResolver;
 import org.opentripplanner.routing.algorithm.raptoradapter.router.street.AccessEgressRouter;
 import org.opentripplanner.routing.algorithm.raptoradapter.router.street.AccessEgressType;
 import org.opentripplanner.routing.algorithm.raptoradapter.router.street.FlexAccessEgressRouter;
 import org.opentripplanner.routing.algorithm.raptoradapter.transit.RoutingAccessEgress;
 import org.opentripplanner.routing.algorithm.raptoradapter.transit.mappers.AccessEgressMapper;
+import org.opentripplanner.routing.algorithm.raptoradapter.transit.request.RaptorRoutingRequestTransitData;
 import org.opentripplanner.routing.api.request.RouteRequest;
 import org.opentripplanner.routing.api.request.request.StreetRequest;
 import org.opentripplanner.routing.linking.LinkingContext;
-import org.opentripplanner.standalone.api.OtpServerRequestContext;
+import org.opentripplanner.service.streetdetails.StreetDetailsService;
+import org.opentripplanner.street.graph.Graph;
 import org.opentripplanner.street.model.StreetMode;
+import org.opentripplanner.transfer.regular.RegularTransferService;
+import org.opentripplanner.transit.service.TransitService;
 import org.opentripplanner.transit.service.TransitServiceResolver;
+import org.opentripplanner.utils.time.ServiceDateUtils;
 
 /**
  * This class exposes methods for fetching access and egress legs for a request.
@@ -32,13 +46,24 @@ import org.opentripplanner.transit.service.TransitServiceResolver;
 class AccessEgressFetcher {
 
   private final RouteRequest request;
-  private final OtpServerRequestContext serverContext;
+  private final TransitService transitService;
+  private final Graph graph;
+  private final RegularTransferService transferService;
+  private final StreetDetailsService streetDetailsService;
+  private final FlexParameters flexParameters;
+  private final List<RideHailingService> rideHailingServices;
+
+  @Nullable
+  private final DataOverlayParameterBindings dataOverlayParameterBindings;
+
   private final ZonedDateTime transitSearchTimeZero;
   private final AdditionalSearchDays additionalSearchDays;
   private final LinkingContext linkingContext;
   private final TransitServiceResolver transitServiceResolver;
   private final AccessEgressMapper accessEgressMapper;
   private final CarpoolingService carpoolingService;
+  private final TripScheduleIndexResolver tripScheduleIndexResolver;
+  private final TripLocationResolver tripLocationResolver;
 
   /**
    * Creates an {@code AccessEgressFetcher} for a single route request.
@@ -50,28 +75,80 @@ class AccessEgressFetcher {
    */
   public AccessEgressFetcher(
     RouteRequest request,
-    OtpServerRequestContext serverContext,
+    TransitService transitService,
+    Graph graph,
+    RegularTransferService transferService,
+    StreetDetailsService streetDetailsService,
+    FlexParameters flexParameters,
+    List<RideHailingService> rideHailingServices,
+    @Nullable DataOverlayParameterBindings dataOverlayParameterBindings,
     ZonedDateTime transitSearchTimeZero,
     AdditionalSearchDays additionalSearchDays,
     LinkingContext linkingContext,
-    CarpoolingService carpoolingService
+    CarpoolingService carpoolingService,
+    RaptorRoutingRequestTransitData requestTransitDataProvider
   ) {
     this.request = request;
-    this.serverContext = serverContext;
+    this.transitService = transitService;
+    this.graph = graph;
+    this.transferService = transferService;
+    this.streetDetailsService = streetDetailsService;
+    this.flexParameters = flexParameters;
+    this.rideHailingServices = rideHailingServices;
+    this.dataOverlayParameterBindings = dataOverlayParameterBindings;
     this.transitSearchTimeZero = transitSearchTimeZero;
     this.additionalSearchDays = additionalSearchDays;
     this.linkingContext = linkingContext;
     this.carpoolingService = carpoolingService;
-    this.transitServiceResolver = new TransitServiceResolver(serverContext.transitService());
+    this.transitServiceResolver = new TransitServiceResolver(transitService);
     this.accessEgressMapper = new AccessEgressMapper(transitServiceResolver);
+    this.tripScheduleIndexResolver = new TripScheduleIndexResolver(requestTransitDataProvider);
+    this.tripLocationResolver = new TripLocationResolver(transitService);
   }
 
   Collection<? extends RoutingAccessEgress> fetchAccess() {
+    if (request.isStartOnBoardAccessRequest()) {
+      return List.of(fetchStartOnBoardAccess());
+    }
     return fetchAccessEgresses(ACCESS);
   }
 
   Collection<? extends RoutingAccessEgress> fetchEgress() {
     return fetchAccessEgresses(EGRESS);
+  }
+
+  RoutingStartOnBoardAccess fetchStartOnBoardAccess() {
+    var from = request.from();
+    var onBoardTripLocation = from != null ? from.tripLocation() : null;
+    if (onBoardTripLocation == null) {
+      throw new IllegalArgumentException(
+        "Cannot fetch start-on-board-access for a request without an on-board trip location"
+      );
+    }
+
+    var tripAndServiceDate = new TripAndServiceDateResolver(transitService).resolve(
+      onBoardTripLocation.tripOnDateReference()
+    );
+    var aimedDeparture = onBoardTripLocation.aimedDepartureTime();
+    Integer aimedDepartureSeconds =
+      aimedDeparture == null
+        ? null
+        : ServiceDateUtils.secondsSinceStartOfTime(
+            ServiceDateUtils.asStartOfService(
+              tripAndServiceDate.serviceDate(),
+              transitService.getTimeZone()
+            ),
+            aimedDeparture
+          );
+    var tripLocation = tripLocationResolver.resolve(
+      tripAndServiceDate,
+      onBoardTripLocation.stopLocationId(),
+      aimedDepartureSeconds
+    );
+
+    var tripScheduleIndex = tripScheduleIndexResolver.resolve(tripAndServiceDate, tripLocation);
+
+    return new RoutingStartOnBoardAccess(tripScheduleIndex, tripLocation);
   }
 
   private Collection<? extends RoutingAccessEgress> fetchAccessEgresses(AccessEgressType type) {
@@ -98,10 +175,14 @@ class AccessEgressFetcher {
     Duration durationLimit = accessEgressPreferences.maxDuration().valueOf(mode);
     int stopCountLimit = accessEgressPreferences.maxStopCountLimit().limitForMode(mode);
 
+    var dataOverlayContext = DataOverlayContext.listExtensionRequestContexts(
+      accessRequest.preferences().system().dataOverlay(),
+      dataOverlayParameterBindings
+    );
     var nearbyStops = AccessEgressRouter.findAccessEgresses(
       accessRequest,
       mode,
-      serverContext.listExtensionRequestContexts(accessRequest),
+      dataOverlayContext,
       type,
       durationLimit,
       stopCountLimit,
@@ -116,10 +197,13 @@ class AccessEgressFetcher {
     if (OTPFeature.FlexRouting.isOn() && mode == StreetMode.FLEXIBLE) {
       var flexAccessList = FlexAccessEgressRouter.routeAccessEgress(
         accessRequest,
-        serverContext,
+        transitService,
+        graph,
+        transferService,
+        streetDetailsService,
         additionalSearchDays,
-        serverContext.flexParameters(),
-        serverContext.listExtensionRequestContexts(accessRequest),
+        flexParameters,
+        dataOverlayContext,
         type,
         linkingContext
       );
@@ -161,7 +245,7 @@ class AccessEgressFetcher {
     return RideHailingAccessShifter.shiftAccesses(
       type.isAccess(),
       accessEgressList,
-      serverContext.rideHailingServices(),
+      rideHailingServices,
       request,
       Instant.now()
     );

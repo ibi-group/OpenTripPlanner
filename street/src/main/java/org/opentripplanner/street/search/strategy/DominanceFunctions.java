@@ -59,11 +59,6 @@ public abstract class DominanceFunctions implements Serializable, DominanceFunct
       return false;
     }
 
-    // we cannot compare the states where one is inside a "no-drop off" zone and one isn't
-    if (a.isInsideNoRentalDropOffArea() != b.isInsideNoRentalDropOffArea()) {
-      return false;
-    }
-
     /*
      * The OTP algorithm tries hard to never visit the same node twice. This is generally a good idea because it avoids
      * useless loops in the traversal leading to way faster processing time.
@@ -98,9 +93,9 @@ public abstract class DominanceFunctions implements Serializable, DominanceFunct
      */
     if (
       a.backEdge != b.getBackEdge() &&
-      (a.backEdge instanceof StreetEdge) &&
+      a.backEdge instanceof StreetEdge &&
       a.getBackMode() != null &&
-      a.getBackMode().isInCar() &&
+      a.getBackMode().isDrivingIsh() &&
       a.getRequest().isCloseToStartOrEnd(a.getVertex())
     ) {
       return false;
@@ -168,8 +163,8 @@ public abstract class DominanceFunctions implements Serializable, DominanceFunct
 
       final double EPSILON = 1e-4;
       return (
-        a.getElapsedTimeSeconds() <= (b.getElapsedTimeSeconds() + EPSILON) &&
-        a.getWeight() <= (b.getWeight() + EPSILON)
+        a.getElapsedTimeSeconds() <= b.getElapsedTimeSeconds() + EPSILON &&
+        a.getWeight() <= b.getWeight() + EPSILON
       );
     }
   }

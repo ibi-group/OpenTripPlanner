@@ -6,6 +6,7 @@ import java.util.Map;
 import org.opentripplanner.astar.model.GraphPath;
 import org.opentripplanner.astar.model.ShortestPathTree;
 import org.opentripplanner.astar.strategy.DurationSkipEdgeStrategy;
+import org.opentripplanner.framework.application.OTPRequestTimeoutException;
 import org.opentripplanner.street.model.StreetMode;
 import org.opentripplanner.street.model.edge.Edge;
 import org.opentripplanner.street.model.vertex.Vertex;
@@ -70,6 +71,7 @@ public class CarpoolTreeStreetRouter implements CarpoolRouter {
       ? StreetSearchRequest.of().withMode(StreetMode.CAR).withArriveBy(true).build()
       : StreetSearchRequest.of().withMode(StreetMode.CAR).build();
     var builder = StreetSearchBuilder.of()
+      .withPreStartHook(OTPRequestTimeoutException::checkForTimeout)
       .withSkipEdgeStrategy(new DurationSkipEdgeStrategy<>(searchLimit))
       .withDominanceFunction(new DominanceFunctions.EarliestArrival())
       .withRequest(streetSearchRequest);
@@ -133,11 +135,32 @@ public class CarpoolTreeStreetRouter implements CarpoolRouter {
       );
     }
     if (direction == Direction.FROM || direction == Direction.BOTH) {
-      forwardRegistrations.put(vertex, new VertexRegistration(vertex, searchLimit));
+      registerLargest(forwardRegistrations, vertex, searchLimit);
     }
     if (direction == Direction.TO || direction == Direction.BOTH) {
-      reverseRegistrations.put(vertex, new VertexRegistration(vertex, searchLimit));
+      registerLargest(reverseRegistrations, vertex, searchLimit);
     }
+  }
+
+  /**
+   * Registers {@code vertex} keeping the larger of any already-registered limit and
+   * {@code searchLimit}. Distinct
+   * {@link org.opentripplanner.street.model.vertex.TemporaryStreetLocation}s at the same
+   * coordinate compare equal, so two trips — or two legs of one trip — routing through the same
+   * point collapse to a single registration here. The shared tree must span the longest leg
+   * registered at that point, so the largest limit wins: a smaller limit would build a tree too
+   * short for a longer leg's baseline, making it unroutable. An over-large tree only widens the
+   * search — any insertion it would wrongly admit is rejected by the delay constraints — so taking
+   * the maximum is always safe.
+   */
+  private static void registerLargest(
+    Map<Vertex, VertexRegistration> registrations,
+    Vertex vertex,
+    Duration searchLimit
+  ) {
+    registrations.merge(vertex, new VertexRegistration(vertex, searchLimit), (existing, added) ->
+      existing.searchLimit().compareTo(added.searchLimit()) >= 0 ? existing : added
+    );
   }
 
   /** Returns the total number of forward vertices (pending and computed). Package-private for testing. */
@@ -155,9 +178,11 @@ public class CarpoolTreeStreetRouter implements CarpoolRouter {
    * Results are cached so repeated queries for the same vertex pair are free.
    * The tree for a vertex is computed on the first {@link #route} call that needs it.
    * <p>
-   * The method first looks for a forward tree rooted at {@code from}; if none exists
-   * it falls back to a reverse tree rooted at {@code to}. Returns {@code null} if
-   * neither tree is available or no path exists.
+   * The method first looks for a forward tree rooted at {@code from}; if none exists it falls back
+   * to a reverse tree rooted at {@code to}. At least one of the two endpoints must therefore have
+   * been registered with {@link #addVertex} in the matching direction; a call whose endpoints were
+   * both left unregistered cannot be served and returns {@code null}. A registered endpoint whose
+   * tree does not reach the other endpoint within its search limit returns {@code null} as well.
    */
   @Override
   public GraphPath<State, Edge, Vertex> route(Vertex from, Vertex to) {

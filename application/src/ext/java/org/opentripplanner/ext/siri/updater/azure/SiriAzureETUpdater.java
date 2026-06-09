@@ -5,6 +5,7 @@ import java.util.Objects;
 import java.util.concurrent.Future;
 import java.util.function.Consumer;
 import javax.annotation.Nullable;
+import org.opentripplanner.updater.TransitRealTimeUpdateContext;
 import org.opentripplanner.updater.spi.ResultLogger;
 import org.opentripplanner.updater.spi.UpdateResult;
 import org.opentripplanner.updater.spi.WriteToGraphCallback;
@@ -22,10 +23,9 @@ public class SiriAzureETUpdater implements SiriAzureMessageHandler {
 
   private final SiriRealTimeTripUpdateAdapter adapter;
   private final Consumer<UpdateResult> recordMetrics;
-  private final boolean fuzzyTripMatching;
   private final String feedId;
 
-  private WriteToGraphCallback writeToGraphCallback;
+  private WriteToGraphCallback<TransitRealTimeUpdateContext> writeToGraphCallback;
 
   public SiriAzureETUpdater(
     SiriAzureETUpdaterParameters config,
@@ -33,12 +33,11 @@ public class SiriAzureETUpdater implements SiriAzureMessageHandler {
   ) {
     this.adapter = adapter;
     this.recordMetrics = TripUpdateMetrics.streaming(config);
-    this.fuzzyTripMatching = config.isFuzzyTripMatching();
     this.feedId = Objects.requireNonNull(config.feedId(), "feedId must not be null");
   }
 
   @Override
-  public void setup(WriteToGraphCallback writeToGraphCallback) {
+  public void setup(WriteToGraphCallback<TransitRealTimeUpdateContext> writeToGraphCallback) {
     this.writeToGraphCallback = writeToGraphCallback;
   }
 
@@ -56,13 +55,14 @@ public class SiriAzureETUpdater implements SiriAzureMessageHandler {
 
   private Future<?> processMessage(List<EstimatedTimetableDeliveryStructure> updates) {
     return writeToGraphCallback.execute(context -> {
-      var result = adapter.applyEstimatedTimetable(
-        fuzzyTripMatching ? context.siriFuzzyTripMatcher() : null,
-        context.entityResolver(feedId),
-        feedId,
-        UpdateIncrementality.DIFFERENTIAL,
-        updates
-      );
+      var result = adapter
+        .forUpdate(context.timetableRepository())
+        .applyEstimatedTimetable(
+          context.entityResolver(feedId),
+          feedId,
+          UpdateIncrementality.DIFFERENTIAL,
+          updates
+        );
       ResultLogger.logUpdateResultErrors(feedId, "siri-et", result);
       recordMetrics.accept(result);
     });

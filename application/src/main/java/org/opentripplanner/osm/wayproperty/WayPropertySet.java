@@ -5,9 +5,7 @@ import static org.opentripplanner.osm.model.TraverseDirection.DIRECTIONLESS;
 import static org.opentripplanner.osm.model.TraverseDirection.FORWARD;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import org.opentripplanner.core.model.i18n.I18NString;
 import org.opentripplanner.framework.functional.FunctionUtils.TriFunction;
 import org.opentripplanner.graph_builder.issue.api.DataImportIssueStore;
@@ -16,7 +14,6 @@ import org.opentripplanner.osm.model.OsmWay;
 import org.opentripplanner.osm.model.TraverseDirection;
 import org.opentripplanner.osm.wayproperty.specifier.OsmSpecifier;
 import org.opentripplanner.street.model.StreetTraversalPermission;
-import org.opentripplanner.street.model.note.StreetNoteAndMatcher;
 
 /**
  * Information given to the GraphBuilder about how to assign permissions, safety values, names, etc.
@@ -34,7 +31,14 @@ public class WayPropertySet {
     Float,
     OsmEntity,
     Double
-  > DEFAULT_SAFETY_RESOLVER = ((permission, speedLimit, osmWay) -> 1.0);
+  > DEFAULT_BICYCLE_SAFETY_RESOLVER = (permission, speedLimit, osmWay) -> 1.0;
+
+  public static final TriFunction<
+    StreetTraversalPermission,
+    Float,
+    OsmEntity,
+    Double
+  > DEFAULT_WALK_SAFETY_RESOLVER = (permission, speedLimit, osmWay) -> 1.25;
 
   private final List<WayPropertyPicker> wayProperties;
 
@@ -45,8 +49,6 @@ public class WayPropertySet {
 
   /** Assign automobile speeds based on OSM tags. */
   private final List<SpeedPicker> speedPickers;
-
-  private final List<NotePicker> notes;
 
   private final List<MixinProperties> mixins;
 
@@ -83,7 +85,6 @@ public class WayPropertySet {
     this.creativeNamers = List.copyOf(builder.creativeNamers);
     this.slopeOverrides = List.copyOf(builder.slopeOverrides);
     this.speedPickers = List.copyOf(builder.speedPickers);
-    this.notes = List.copyOf(builder.notes);
     this.mixins = List.copyOf(builder.mixins);
     this.defaultCarSpeed = builder.defaultCarSpeed;
     this.maxPossibleCarSpeed = builder.maxPossibleCarSpeed;
@@ -108,8 +109,11 @@ public class WayPropertySet {
    * Applies the WayProperties whose OSMPicker best matches this way. In addition, WayProperties
    * that are mixins will have their safety values applied if they match at all.
    */
-  public WayPropertiesPair getDataForWay(OsmWay way) {
-    return new WayPropertiesPair(getDataForEntity(way, FORWARD), getDataForEntity(way, BACKWARD));
+  public BidirectionalWayProperties getDataForWay(OsmWay way) {
+    return new BidirectionalWayProperties(
+      getDataForEntity(way, FORWARD),
+      getDataForEntity(way, BACKWARD)
+    );
   }
 
   /**
@@ -207,8 +211,9 @@ public class WayPropertySet {
     Float speed = null;
     Float currentSpeed;
 
-    if (way.hasTag("maxspeed:motorcar")) {
-      speed = SpeedParser.getMetersSecondFromSpeed(way.getTag("maxspeed:motorcar"));
+    var motorCar = way.getTag("maxspeed:motorcar");
+    if (motorCar != null) {
+      speed = SpeedParser.getMetersSecondFromSpeed(motorCar);
     }
 
     if (speed == null && direction == FORWARD && way.hasTag("maxspeed:forward")) {
@@ -230,8 +235,9 @@ public class WayPropertySet {
       }
     }
 
-    if (way.hasTag("maxspeed") && speed == null) {
-      speed = SpeedParser.getMetersSecondFromSpeed(way.getTag("maxspeed"));
+    var maxSpeed = way.getTag("maxspeed");
+    if (maxSpeed != null && speed == null) {
+      speed = SpeedParser.getMetersSecondFromSpeed(maxSpeed);
     }
 
     if (speed != null) {
@@ -277,18 +283,6 @@ public class WayPropertySet {
     }
   }
 
-  public Set<StreetNoteAndMatcher> getNoteForWay(OsmEntity way) {
-    HashSet<StreetNoteAndMatcher> out = new HashSet<>();
-    for (NotePicker picker : notes) {
-      OsmSpecifier specifier = picker.specifier();
-      NoteProperties noteProperties = picker.noteProperties();
-      if (specifier.matchScore(way, DIRECTIONLESS) > 0) {
-        out.add(noteProperties.generateNote(way));
-      }
-    }
-    return out;
-  }
-
   public boolean getSlopeOverride(OsmEntity way) {
     boolean result = false;
     int bestScore = 0;
@@ -320,8 +314,7 @@ public class WayPropertySet {
         defaultProperties.equals(other.defaultProperties) &&
         wayProperties.equals(other.wayProperties) &&
         creativeNamers.equals(other.creativeNamers) &&
-        slopeOverrides.equals(other.slopeOverrides) &&
-        notes.equals(other.notes)
+        slopeOverrides.equals(other.slopeOverrides)
       );
     }
     return false;
@@ -345,10 +338,6 @@ public class WayPropertySet {
 
   public List<SpeedPicker> listSpeedPickers() {
     return speedPickers;
-  }
-
-  public List<NotePicker> listNotes() {
-    return notes;
   }
 
   private WayProperties applyMixins(

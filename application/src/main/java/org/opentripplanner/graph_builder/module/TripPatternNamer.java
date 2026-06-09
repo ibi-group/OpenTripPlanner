@@ -12,24 +12,24 @@ import org.opentripplanner.transit.model.network.Route;
 import org.opentripplanner.transit.model.network.TripPattern;
 import org.opentripplanner.transit.model.site.StopLocation;
 import org.opentripplanner.transit.model.timetable.TripTimes;
-import org.opentripplanner.transit.service.TimetableRepository;
+import org.opentripplanner.transit.service.TransitRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class TripPatternNamer implements GraphBuilderModule {
 
   private static final Logger LOG = LoggerFactory.getLogger(TripPatternNamer.class);
-  private final TimetableRepository timetableRepository;
+  private final TransitRepository transitRepository;
 
   @Inject
-  public TripPatternNamer(TimetableRepository timetableRepository) {
-    this.timetableRepository = timetableRepository;
+  public TripPatternNamer(TransitRepository transitRepository) {
+    this.transitRepository = transitRepository;
   }
 
   @Override
   public void buildGraph() {
     /* Generate unique human-readable names for all the TableTripPatterns. */
-    generateUniqueNames(timetableRepository.getAllTripPatterns());
+    generateUniqueNames(transitRepository.getAllTripPatterns());
   }
 
   /**
@@ -100,9 +100,8 @@ public class TripPatternNamer implements GraphBuilderModule {
       for (TripPattern pattern : routeTripPatterns) {
         StopLocation start = pattern.firstStop();
         StopLocation end = pattern.lastStop();
-        String headsign = pattern.getTripHeadsign() != null
-          ? pattern.getTripHeadsign().toString()
-          : null;
+        String headsign =
+          pattern.getTripHeadsign() != null ? pattern.getTripHeadsign().toString() : null;
         if (headsign != null) {
           signs.put(headsign, pattern);
         }
@@ -117,9 +116,8 @@ public class TripPatternNamer implements GraphBuilderModule {
           continue;
         }
         StringBuilder sb = new StringBuilder(routeName);
-        String headsign = pattern.getTripHeadsign() != null
-          ? pattern.getTripHeadsign().toString()
-          : null;
+        String headsign =
+          pattern.getTripHeadsign() != null ? pattern.getTripHeadsign().toString() : null;
         if (headsign != null && signs.get(headsign).size() == 1) {
           pattern.initName(sb.append(" ").append(headsign).toString());
           continue;
@@ -138,7 +136,7 @@ public class TripPatternNamer implements GraphBuilderModule {
         var start = pattern.firstStop();
         sb.append(" from ").append(stopNameAndId(start));
         if (starts.get(start).size() == 1) {
-          pattern.initName((sb.toString()));
+          pattern.initName(sb.toString());
           // only pattern with this first stop
           continue;
         }
@@ -149,7 +147,7 @@ public class TripPatternNamer implements GraphBuilderModule {
         // set intersection
         remainingPatterns.retainAll(ends.get(end));
         if (remainingPatterns.size() == 1) {
-          pattern.initName((sb.toString()));
+          pattern.initName(sb.toString());
           continue;
         }
 
@@ -162,7 +160,7 @@ public class TripPatternNamer implements GraphBuilderModule {
           intersection.retainAll(vias.get(via));
           if (intersection.size() == 1) {
             sb.append(" via ").append(stopNameAndId(via));
-            pattern.initName((sb.toString()));
+            pattern.initName(sb.toString());
             continue PATTERN;
           }
         }
@@ -179,7 +177,7 @@ public class TripPatternNamer implements GraphBuilderModule {
             .map(TripTimes::getTrip)
             .ifPresent(value -> sb.append(" like trip ").append(value.getId()));
         }
-        pattern.initName((sb.toString()));
+        pattern.initName(sb.toString());
       }
     }
 

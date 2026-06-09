@@ -31,8 +31,8 @@ import org.opentripplanner.routing.api.request.framework.CostLinearFunction;
 import org.opentripplanner.routing.api.response.RoutingError;
 import org.opentripplanner.routing.api.response.RoutingErrorCode;
 import org.opentripplanner.routing.services.TransitAlertService;
-import org.opentripplanner.transit.model._data.TransitTestEnvironment;
-import org.opentripplanner.transit.model._data.TransitTestEnvironmentBuilder;
+import org.opentripplanner.transit.model.TransitTestEnvironment;
+import org.opentripplanner.transit.model.TransitTestEnvironmentBuilder;
 import org.opentripplanner.utils.lang.Box;
 
 /**
@@ -75,7 +75,9 @@ class ItineraryListFilterChainTest implements PlanTestConstants {
     i2 = newItinerary(A).bus(21, T11_06, T11_09, E).build();
 
     // Not optimal, departure is very late
-    i3 = newItinerary(A).bus(20, I3_LATE_START_TIME, I3_LATE_START_TIME + D1_m, E).build();
+    i3 = newItinerary(A)
+      .bus(20, I3_LATE_START_TIME, I3_LATE_START_TIME + D1_m, E)
+      .build();
   }
 
   @Test
@@ -279,7 +281,9 @@ class ItineraryListFilterChainTest implements PlanTestConstants {
     // group these and flag any of them for deletion, because the 24h difference means they are
     // different TripOnServiceDate. This situation commonly arises with multi-day ferry routes,
     // such as the ones along the Norwegian cost.
-    var day1 = newItinerary(A).bus(TRIP_ID, T11_00, T11_00 + D50_h, B, date1).build(COST);
+    var day1 = newItinerary(A)
+      .bus(TRIP_ID, T11_00, T11_00 + D50_h, B, date1)
+      .build(COST);
     var day2 = newItinerary(A)
       .bus(TRIP_ID, T11_00 + D24_h, T11_00 + D24_h + D50_h, B, date2)
       .build(COST);
@@ -314,12 +318,12 @@ class ItineraryListFilterChainTest implements PlanTestConstants {
   @Test
   void makeSureEmissionDecoratorIsAddedToTheFilterChainTest() {
     final Box<String> state = Box.of("I");
-    ItineraryDecorator emissionDecorator = it -> {
+    ItineraryDecorator emissionItineraryDecorator = it -> {
       state.modify(v -> v + "+C");
       return it;
     };
     createBuilder(false, false, 10)
-      .withEmissions(emissionDecorator)
+      .withEmissionItineraryDecorator(emissionItineraryDecorator)
       .build()
       .filter(List.of(i1, i2));
     assertEquals("I+C+C", state.get());

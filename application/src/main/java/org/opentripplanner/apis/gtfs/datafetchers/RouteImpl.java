@@ -7,7 +7,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
-import org.opentripplanner.apis.gtfs.GraphQLRequestContext;
+import org.opentripplanner.apis.gtfs.GtfsGraphQLRequestContext;
 import org.opentripplanner.apis.gtfs.generated.GraphQLDataFetchers;
 import org.opentripplanner.apis.gtfs.generated.GraphQLTypes;
 import org.opentripplanner.apis.gtfs.generated.GraphQLTypes.GraphQLBikesAllowed;
@@ -19,6 +19,7 @@ import org.opentripplanner.apis.gtfs.support.time.LocalDateRangeUtil;
 import org.opentripplanner.routing.alertpatch.EntitySelector;
 import org.opentripplanner.routing.alertpatch.TransitAlert;
 import org.opentripplanner.routing.services.TransitAlertService;
+import org.opentripplanner.transit.model.basic.Notice;
 import org.opentripplanner.transit.model.network.Route;
 import org.opentripplanner.transit.model.network.TripPattern;
 import org.opentripplanner.transit.model.organization.Agency;
@@ -88,9 +89,12 @@ public class RouteImpl implements GraphQLDataFetchers.GraphQLRoute {
                   )
                   .toList()
               );
-              getStops(environment).forEach(stop ->
-                alerts.addAll(alertService.getStopAlerts(((StopLocation) stop).getId()))
-              );
+              getStops(environment).forEach(stop -> {
+                StopLocation stopLocation = (StopLocation) stop;
+                alerts.addAll(
+                  alertService.getStopLocationsAlerts(stopLocation.getIdAndParentStationId())
+                );
+              });
               break;
             case STOPS_ON_TRIPS:
               Iterable<Trip> trips = getTrips(environment);
@@ -186,6 +190,11 @@ public class RouteImpl implements GraphQLDataFetchers.GraphQLRoute {
   }
 
   @Override
+  public DataFetcher<Iterable<Notice>> notices() {
+    return env -> getTransitService(env).findNotices(getSource(env));
+  }
+
+  @Override
   public DataFetcher<Iterable<TripPattern>> patterns() {
     return environment -> {
       final TransitService transitService = getTransitService(environment);
@@ -266,11 +275,11 @@ public class RouteImpl implements GraphQLDataFetchers.GraphQLRoute {
   }
 
   private TransitAlertService getAlertService(DataFetchingEnvironment environment) {
-    return getTransitService(environment).getTransitAlertService();
+    return environment.<GtfsGraphQLRequestContext>getContext().transitAlertService();
   }
 
   private TransitService getTransitService(DataFetchingEnvironment environment) {
-    return environment.<GraphQLRequestContext>getContext().transitService();
+    return environment.<GtfsGraphQLRequestContext>getContext().transitService();
   }
 
   private Route getSource(DataFetchingEnvironment environment) {

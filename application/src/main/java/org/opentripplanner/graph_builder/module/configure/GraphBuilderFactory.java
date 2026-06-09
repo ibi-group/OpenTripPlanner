@@ -19,6 +19,9 @@ import org.opentripplanner.ext.flex.AreaStopsToVerticesMapper;
 import org.opentripplanner.ext.stopconsolidation.StopConsolidationModule;
 import org.opentripplanner.ext.stopconsolidation.StopConsolidationRepository;
 import org.opentripplanner.ext.transferanalyzer.DirectTransferAnalyzer;
+import org.opentripplanner.ext.vehiclerentalgeofencing.configure.VehicleRentalGeofencingModule;
+import org.opentripplanner.ext.vehiclerentalgeofencing.internal.graphbuilder.VehicleRentalGeofencingGraphBuilder;
+import org.opentripplanner.gbfs.network.GbfsNetworkOverrides;
 import org.opentripplanner.graph_builder.GraphBuilder;
 import org.opentripplanner.graph_builder.GraphBuilderDataSources;
 import org.opentripplanner.graph_builder.configure.GraphBuilderModule;
@@ -31,7 +34,7 @@ import org.opentripplanner.graph_builder.module.TimeZoneAdjusterModule;
 import org.opentripplanner.graph_builder.module.TripPatternNamer;
 import org.opentripplanner.graph_builder.module.TurnRestrictionModule;
 import org.opentripplanner.graph_builder.module.geometry.CalculateWorldEnvelopeModule;
-import org.opentripplanner.graph_builder.module.islandpruning.PruneIslands;
+import org.opentripplanner.graph_builder.module.islandpruning.IslandPruningModule;
 import org.opentripplanner.graph_builder.module.ned.ElevationModule;
 import org.opentripplanner.graph_builder.module.osm.OsmModule;
 import org.opentripplanner.graph_builder.module.stopconnectivity.StopConnectivityModule;
@@ -50,7 +53,7 @@ import org.opentripplanner.street.StreetRepository;
 import org.opentripplanner.street.graph.Graph;
 import org.opentripplanner.street.linking.VertexLinker;
 import org.opentripplanner.transfer.regular.TransferRepository;
-import org.opentripplanner.transit.service.TimetableRepository;
+import org.opentripplanner.transit.service.TransitRepository;
 
 @Singleton
 @Component(
@@ -59,6 +62,7 @@ import org.opentripplanner.transit.service.TimetableRepository;
     EdgeNamerModule.class,
     EmissionGraphBuilderModule.class,
     EmpiricalDelayGraphBuilderModule.class,
+    VehicleRentalGeofencingModule.class,
     GraphBuilderModule.class,
     GraphBuilderModules.class,
     OsmInfoGraphBuildServiceModule.class,
@@ -78,7 +82,7 @@ public interface GraphBuilderFactory {
   NetexModule netexModule();
   OsmBoardingLocationsModule osmBoardingLocationsModule();
   OsmModule osmModule();
-  PruneIslands pruneIslands();
+  IslandPruningModule pruneIslands();
   StopConnectivityModule stopConnectivityModule();
   StreetLinkerModule streetLinkerModule();
   TimeZoneAdjusterModule timeZoneAdjusterModule();
@@ -96,6 +100,9 @@ public interface GraphBuilderFactory {
   EmpiricalDelayGraphBuilder empiricalDelayGraphBuilder();
 
   @Nullable
+  VehicleRentalGeofencingGraphBuilder vehicleRentalGeofencingGraphBuilder();
+
+  @Nullable
   RouteToCentroidStationIdsValidator routeToCentroidStationIdValidator();
 
   @Nullable
@@ -111,10 +118,13 @@ public interface GraphBuilderFactory {
     Builder config(BuildConfig config);
 
     @BindsInstance
+    Builder gbfsNetworkOverrides(GbfsNetworkOverrides gbfsNetworkOverrides);
+
+    @BindsInstance
     Builder graph(Graph graph);
 
     @BindsInstance
-    Builder timetableRepository(TimetableRepository timetableRepository);
+    Builder transitRepository(TransitRepository transitRepository);
 
     @BindsInstance
     Builder transferRepository(TransferRepository transferRepository);

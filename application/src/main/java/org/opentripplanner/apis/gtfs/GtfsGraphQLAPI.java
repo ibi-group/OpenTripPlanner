@@ -18,7 +18,7 @@ import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import org.opentripplanner.apis.support.TracingUtils;
-import org.opentripplanner.standalone.api.OtpServerRequestContext;
+import org.opentripplanner.routing.api.request.RouteRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,11 +28,16 @@ public class GtfsGraphQLAPI {
 
   private static final Logger LOG = LoggerFactory.getLogger(GtfsGraphQLAPI.class);
 
-  private final OtpServerRequestContext serverContext;
+  private final RouteRequest defaultRouteRequest;
+  private final GtfsApiParameters gtfsApiParameters;
   private final ObjectMapper deserializer = new ObjectMapper();
 
-  public GtfsGraphQLAPI(@Context OtpServerRequestContext serverContext) {
-    this.serverContext = serverContext;
+  public GtfsGraphQLAPI(
+    @Context RouteRequest defaultRouteRequest,
+    @Context GtfsApiParameters gtfsApiParameters
+  ) {
+    this.defaultRouteRequest = defaultRouteRequest;
+    this.gtfsApiParameters = gtfsApiParameters;
   }
 
   /**
@@ -42,10 +47,11 @@ public class GtfsGraphQLAPI {
   public static class GtfsGraphQLAPIOldPath extends GtfsGraphQLAPI {
 
     public GtfsGraphQLAPIOldPath(
-      @Context OtpServerRequestContext serverContext,
+      @Context RouteRequest defaultRouteRequest,
+      @Context GtfsApiParameters gtfsApiParameters,
       @PathParam("ignoreRouterId") String ignore
     ) {
-      super(serverContext);
+      super(defaultRouteRequest, gtfsApiParameters);
     }
   }
 
@@ -56,7 +62,8 @@ public class GtfsGraphQLAPI {
     @HeaderParam("OTPTimeout") @DefaultValue("30000") int timeout,
     @HeaderParam("OTPMaxResolves") @DefaultValue("1000000") int maxResolves,
     @Context HttpHeaders headers,
-    @Context UriInfo uriInfo
+    @Context UriInfo uriInfo,
+    @Context GtfsGraphQLRequestContext requestContext
   ) {
     if (jsonParameters == null || !jsonParameters.containsKey("query")) {
       LOG.debug("No query found in body");
@@ -66,9 +73,10 @@ public class GtfsGraphQLAPI {
         .build();
     }
 
-    Locale locale = headers.getAcceptableLanguages().size() > 0
-      ? headers.getAcceptableLanguages().get(0)
-      : serverContext.defaultRouteRequest().preferences().locale();
+    Locale locale =
+      headers.getAcceptableLanguages().size() > 0
+        ? headers.getAcceptableLanguages().get(0)
+        : defaultRouteRequest.preferences().locale();
 
     String query = (String) jsonParameters.get("query");
     Object queryVariables = jsonParameters.getOrDefault("variables", null);
@@ -96,9 +104,9 @@ public class GtfsGraphQLAPI {
       maxResolves,
       timeout,
       locale,
-      GraphQLRequestContext.ofServerContext(serverContext),
+      requestContext,
       TracingUtils.findTagsInHeadersOrQueryParameters(
-        serverContext.gtfsApiParameters().tracingTags(),
+        gtfsApiParameters.tracingTags(),
         headers,
         uriInfo.getQueryParameters()
       )
@@ -112,11 +120,13 @@ public class GtfsGraphQLAPI {
     @HeaderParam("OTPTimeout") @DefaultValue("30000") int timeout,
     @HeaderParam("OTPMaxResolves") @DefaultValue("1000000") int maxResolves,
     @Context HttpHeaders headers,
-    @Context UriInfo uriInfo
+    @Context UriInfo uriInfo,
+    @Context GtfsGraphQLRequestContext requestContext
   ) {
-    Locale locale = headers.getAcceptableLanguages().size() > 0
-      ? headers.getAcceptableLanguages().get(0)
-      : serverContext.defaultRouteRequest().preferences().locale();
+    Locale locale =
+      headers.getAcceptableLanguages().size() > 0
+        ? headers.getAcceptableLanguages().get(0)
+        : defaultRouteRequest.preferences().locale();
     return GtfsGraphQLIndex.getGraphQLResponse(
       query,
       null,
@@ -124,9 +134,9 @@ public class GtfsGraphQLAPI {
       maxResolves,
       timeout,
       locale,
-      GraphQLRequestContext.ofServerContext(serverContext),
+      requestContext,
       TracingUtils.findTagsInHeadersOrQueryParameters(
-        serverContext.gtfsApiParameters().tracingTags(),
+        gtfsApiParameters.tracingTags(),
         headers,
         uriInfo.getQueryParameters()
       )
