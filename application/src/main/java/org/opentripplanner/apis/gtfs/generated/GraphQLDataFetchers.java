@@ -1209,7 +1209,7 @@ public class GraphQLDataFetchers {
     public DataFetcher<Boolean> bogusName();
     public DataFetcher<Double> distance();
     public DataFetcher<
-      Iterable<org.opentripplanner.model.plan.leg.ElevationProfile.Step>
+      Iterable<org.opentripplanner.street.model.elevation.ElevationProfile.Step>
     > elevationProfile();
     public DataFetcher<String> exit();
     public DataFetcher<Object> feature();

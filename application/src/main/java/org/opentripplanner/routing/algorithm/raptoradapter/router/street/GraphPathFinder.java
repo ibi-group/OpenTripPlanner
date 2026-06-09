@@ -16,6 +16,7 @@ import org.opentripplanner.street.model.vertex.Vertex;
 import org.opentripplanner.street.search.EuclideanRemainingWeightHeuristic;
 import org.opentripplanner.street.search.StreetSearchBuilder;
 import org.opentripplanner.street.search.strategy.DominanceFunctions;
+import org.opentripplanner.street.service.StreetLimitationParametersService;
 import org.opentripplanner.streetadapter.StreetSearchRequestMapper;
 
 /// A helper class for finding paths through the street graph.
@@ -26,11 +27,14 @@ class GraphPathFinder {
 
   private final Collection<ExtensionRequestContext> extensionRequestContexts;
 
-  private final float maxCarSpeed;
+  private final StreetLimitationParametersService streetLimitationParametersService;
 
-  GraphPathFinder(Collection<ExtensionRequestContext> extensionRequestContexts, float maxCarSpeed) {
+  GraphPathFinder(
+    Collection<ExtensionRequestContext> extensionRequestContexts,
+    StreetLimitationParametersService streetLimitationParametersService
+  ) {
     this.extensionRequestContexts = Objects.requireNonNull(extensionRequestContexts);
-    this.maxCarSpeed = maxCarSpeed;
+    this.streetLimitationParametersService = streetLimitationParametersService;
   }
 
   List<StreetPath> find(RouteRequest request, LinkingContext linkingContext) {
@@ -52,7 +56,7 @@ class GraphPathFinder {
 
     StreetSearchBuilder streetSearch = StreetSearchBuilder.of()
       .withPreStartHook(OTPRequestTimeoutException::checkForTimeout)
-      .withHeuristic(new EuclideanRemainingWeightHeuristic(maxCarSpeed))
+      .withHeuristic(new EuclideanRemainingWeightHeuristic(streetLimitationParametersService))
       .withSkipEdgeStrategy(
         new DurationSkipEdgeStrategy(
           preferences.maxDirectDuration().valueOf(request.journey().direct().mode())

@@ -142,6 +142,56 @@ public class CarpoolEstimatedVehicleJourneyData {
     return journey;
   }
 
+  /**
+   * A minimal complete journey flagged as cancelled at the trip level.
+   */
+  public static EstimatedVehicleJourney cancelledJourney() {
+    var journey = minimalCompleteJourney();
+    journey.setCancellation(true);
+    return journey;
+  }
+
+  /**
+   * A 3-stop journey where the intermediate call is flagged as cancelled — the driver still
+   * drives origin → destination but skips the middle waypoint.
+   */
+  public static EstimatedVehicleJourney journeyWithCancelledIntermediateCall() {
+    var journey = minimalCompleteJourney();
+    var calls = journey.getEstimatedCalls().getEstimatedCalls();
+    var base = calls.getFirst().getAimedDepartureTime();
+
+    var intermediate = forPoint(OSLO_NORTH);
+    intermediate.setAimedArrivalTime(base.plusMinutes(20));
+    intermediate.setAimedDepartureTime(base.plusMinutes(20));
+    intermediate.setCancellation(true);
+    addStopName(intermediate, "Cancelled intermediate");
+
+    calls.add(1, intermediate);
+    return journey;
+  }
+
+  /**
+   * A 3-stop journey where two of three calls are cancelled, leaving fewer than 2 active calls.
+   */
+  public static EstimatedVehicleJourney journeyWithAllButOneCallCancelled() {
+    var journey = journeyWithCancelledIntermediateCall();
+    journey.getEstimatedCalls().getEstimatedCalls().getLast().setCancellation(true);
+    return journey;
+  }
+
+  /**
+   * Same trip id as {@link #minimalCompleteJourney()} but with the last call's aimed arrival
+   * time set before the first call's aimed departure time, causing the mapper to throw during
+   * call-order validation. Not flagged as cancelled.
+   */
+  public static EstimatedVehicleJourney malformedNonCancelledJourney() {
+    var journey = minimalCompleteJourney();
+    var calls = journey.getEstimatedCalls().getEstimatedCalls();
+    var firstDeparture = calls.getFirst().getAimedDepartureTime();
+    calls.getLast().setAimedArrivalTime(firstDeparture.minusMinutes(45));
+    return journey;
+  }
+
   public static EstimatedVehicleJourney stopTimesAreOutOfOrder() {
     var journey = new EstimatedVehicleJourney();
     journey.setEstimatedCalls(new EstimatedVehicleJourney.EstimatedCalls());

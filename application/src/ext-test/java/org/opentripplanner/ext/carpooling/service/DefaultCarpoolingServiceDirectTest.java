@@ -157,6 +157,16 @@ class DefaultCarpoolingServiceDirectTest extends GraphRoutingTest {
         public int maxAreaNodes() {
           return 500;
         }
+
+        @Override
+        public float getBestWalkSafety() {
+          return 1;
+        }
+
+        @Override
+        public float getBestBikeSafety() {
+          return 1;
+        }
       };
 
     service = new DefaultCarpoolingService(

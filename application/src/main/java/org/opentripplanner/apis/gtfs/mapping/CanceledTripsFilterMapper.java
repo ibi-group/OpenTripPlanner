@@ -8,9 +8,11 @@ import java.util.stream.Stream;
 import javax.annotation.Nullable;
 import org.opentripplanner.apis.gtfs.generated.GraphQLTypes;
 import org.opentripplanner.apis.support.InvalidInputException;
-import org.opentripplanner.transit.api.model.FilterValues;
 import org.opentripplanner.transit.api.request.TripOnServiceDateRequest;
+import org.opentripplanner.transit.model.basic.MainAndSubMode;
 import org.opentripplanner.transit.model.basic.TransitMode;
+import org.opentripplanner.transit.model.filter.selector.FilterRequest;
+import org.opentripplanner.transit.model.filter.transit.TripOnServiceDateSelectRequest;
 import org.opentripplanner.utils.collection.CollectionUtils;
 
 public class CanceledTripsFilterMapper {
@@ -34,12 +36,25 @@ public class CanceledTripsFilterMapper {
     CollectionUtils.requireNullOrNonEmpty(excludes, "filters.exclude");
     var modesToInclude = CanceledTripsFilterMapper.toTransitModes(includes);
     var modesToExclude = CanceledTripsFilterMapper.toTransitModes(excludes);
-    var modesToIncludeFilter = FilterValues.ofNullIsEverything("modesToInclude", modesToInclude);
-    var modesToExcludeFilter = FilterValues.ofNullIsEverything("modesToExclude", modesToExclude);
-    return TripOnServiceDateRequest.of()
-      .withIncludeModes(modesToIncludeFilter)
-      .withExcludeModes(modesToExcludeFilter)
-      .build();
+
+    // Because only one filter is allowed for now, we can create a single flat list of includes/excludes
+    var filterRequestBuilder = FilterRequest.<TripOnServiceDateSelectRequest>of();
+    if (modesToInclude != null) {
+      filterRequestBuilder.addSelect(
+        TripOnServiceDateSelectRequest.of()
+          .withTransportModes(MainAndSubMode.ofTransitModes(modesToInclude))
+          .build()
+      );
+    }
+    if (modesToExclude != null) {
+      filterRequestBuilder.addNot(
+        TripOnServiceDateSelectRequest.of()
+          .withTransportModes(MainAndSubMode.ofTransitModes(modesToExclude))
+          .build()
+      );
+    }
+    var filterRequest = filterRequestBuilder.build();
+    return TripOnServiceDateRequest.of().withFilters(List.of(filterRequest)).build();
   }
 
   @Nullable

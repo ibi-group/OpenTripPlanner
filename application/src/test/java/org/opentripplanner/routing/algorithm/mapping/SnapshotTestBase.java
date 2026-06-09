@@ -91,7 +91,9 @@ public abstract class SnapshotTestBase {
         model.graph(),
         model.timetableRepository(),
         model.transferRepository(),
-        model.fareServiceFactory().makeFareService()
+        model.fareServiceFactory().makeFareService(),
+        null,
+        null
       );
     }
 

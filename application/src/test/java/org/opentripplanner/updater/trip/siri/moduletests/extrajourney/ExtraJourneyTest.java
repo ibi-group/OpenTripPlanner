@@ -2,6 +2,7 @@ package org.opentripplanner.updater.trip.siri.moduletests.extrajourney;
 
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.opentripplanner.core.model.id.FeedScopedIdForTestFactory.id;
@@ -20,7 +21,6 @@ import org.opentripplanner.transit.model.network.Route;
 import org.opentripplanner.transit.model.organization.Operator;
 import org.opentripplanner.transit.model.site.RegularStop;
 import org.opentripplanner.transit.model.timetable.OccupancyStatus;
-import org.opentripplanner.transit.model.timetable.RealTimeState;
 import org.opentripplanner.transit.model.timetable.Trip;
 import org.opentripplanner.transit.model.timetable.TripIdAndServiceDate;
 import org.opentripplanner.transit.service.TransitService;
@@ -64,7 +64,7 @@ class ExtraJourneyTest implements RealtimeTestConstants {
   @Test
   void testAddJourneyWithExistingRoute() {
     var env = ENV_BUILDER.addTrip(TRIP_1_INPUT).build();
-    assertThat(env.raptorData().summarizePatterns()).containsExactly("F:Pattern1[SCHEDULED]");
+    assertThat(env.raptorData().summarizePatterns()).containsExactly("F:Pattern1[S]");
     var siri = SiriTestHelper.of(env);
 
     Route route = ROUTE;
@@ -76,11 +76,11 @@ class ExtraJourneyTest implements RealtimeTestConstants {
 
     assertSuccess(result);
     assertEquals(
-      "ADDED | C [R] 0:02 0:02 | D 0:04 0:04",
+      "A U | C [R] 0:02 0:02 | D 0:04 0:04",
       env.tripData(ADDED_TRIP_ID).showTimetable()
     );
     assertEquals(
-      "SCHEDULED | C 0:01 0:01 | D 0:03 0:03",
+      "S | C 0:01 0:01 | D 0:03 0:03",
       env.tripData(ADDED_TRIP_ID).showScheduledTimetable()
     );
     FeedScopedId tripId = id(ADDED_TRIP_ID);
@@ -105,8 +105,8 @@ class ExtraJourneyTest implements RealtimeTestConstants {
       "The added trip should use a new pattern for this route"
     );
     assertThat(env.raptorData().summarizePatterns()).containsExactly(
-      "F:Pattern1[SCHEDULED]",
-      "F:routeId::001:RT[ADDED]"
+      "F:Pattern1[S]",
+      "F:routeId::001:RT[A U]"
     );
   }
 
@@ -115,7 +115,7 @@ class ExtraJourneyTest implements RealtimeTestConstants {
     // we actually don't need the trip, but it's the only way to add a route to the index
     var env = ENV_BUILDER.addTrip(TRIP_1_INPUT).build();
 
-    assertThat(env.raptorData().summarizePatterns()).containsExactly("F:Pattern1[SCHEDULED]");
+    assertThat(env.raptorData().summarizePatterns()).containsExactly("F:Pattern1[S]");
     var siri = SiriTestHelper.of(env);
 
     String newRouteRef = "new route ref";
@@ -128,11 +128,11 @@ class ExtraJourneyTest implements RealtimeTestConstants {
 
     assertSuccess(result);
     assertEquals(
-      "ADDED | C [R] 0:02 0:02 | D 0:04 0:04",
+      "A U | C [R] 0:02 0:02 | D 0:04 0:04",
       env.tripData(ADDED_TRIP_ID).showTimetable()
     );
     assertEquals(
-      "SCHEDULED | C 0:01 0:01 | D 0:03 0:03",
+      "S | C 0:01 0:01 | D 0:03 0:03",
       env.tripData(ADDED_TRIP_ID).showScheduledTimetable()
     );
     TransitService transitService = env.transitService();
@@ -143,8 +143,8 @@ class ExtraJourneyTest implements RealtimeTestConstants {
     assertEquals(1, transitService.findPatterns(newRoute).size());
 
     assertThat(env.raptorData().summarizePatterns()).containsExactly(
-      "F:Pattern1[SCHEDULED]",
-      "F:new route ref::001:RT[ADDED]"
+      "F:Pattern1[S]",
+      "F:new route ref::001:RT[A U]"
     );
   }
 
@@ -163,8 +163,8 @@ class ExtraJourneyTest implements RealtimeTestConstants {
     assertEquals(numTrips + 1, env.transitService().listTrips().size());
 
     assertThat(env.raptorData().summarizePatterns()).containsExactly(
-      "F:Pattern1[SCHEDULED]",
-      "F:routeId::001:RT[UPDATED]"
+      "F:Pattern1[S]",
+      "F:routeId::001:RT[A U]"
     );
   }
 
@@ -199,7 +199,7 @@ class ExtraJourneyTest implements RealtimeTestConstants {
   @Test
   void testReplaceJourney() {
     var env = ENV_BUILDER.addTrip(TRIP_1_INPUT).build();
-    assertThat(env.raptorData().summarizePatterns()).containsExactly("F:Pattern1[SCHEDULED]");
+    assertThat(env.raptorData().summarizePatterns()).containsExactly("F:Pattern1[S]");
     var siri = SiriTestHelper.of(env);
 
     var updates = siri
@@ -217,20 +217,20 @@ class ExtraJourneyTest implements RealtimeTestConstants {
     assertSuccess(siri.applyEstimatedTimetable(updates));
 
     assertEquals(
-      "ADDED | A [R] 0:02 0:02 | C 0:04 0:04",
+      "A U | A [R] 0:02 0:02 | C 0:04 0:04",
       env.tripData(ADDED_TRIP_ID).showTimetable()
     );
     assertEquals(
-      "SCHEDULED | A 0:01 0:01 | C 0:03 0:03",
+      "S | A 0:01 0:01 | C 0:03 0:03",
       env.tripData(ADDED_TRIP_ID).showScheduledTimetable()
     );
 
     // Original trip should not get canceled
     var originalTripTimes = env.tripData(TRIP_1_ID).tripTimes();
-    assertEquals(RealTimeState.SCHEDULED, originalTripTimes.getRealTimeState());
+    assertFalse(originalTripTimes.hasAnyUpdates());
     assertThat(env.raptorData().summarizePatterns()).containsExactly(
-      "F:Pattern1[SCHEDULED]",
-      "F:routeId::001:RT[ADDED]"
+      "F:Pattern1[S]",
+      "F:routeId::001:RT[A U]"
     );
   }
 
@@ -288,11 +288,11 @@ class ExtraJourneyTest implements RealtimeTestConstants {
 
     assertSuccess(siri.applyEstimatedTimetable(updates));
     assertEquals(
-      "ADDED | A [R] 0:02 0:02 | B 0:04 0:06 | C 0:08 0:08",
+      "A U | A [R] 0:02 0:02 | B 0:04 0:06 | C 0:08 0:08",
       env.tripData(ADDED_TRIP_ID).showTimetable()
     );
     assertEquals(
-      "SCHEDULED | A 0:01 0:01 | B 0:03 0:05 | C 0:07 0:07",
+      "S | A 0:01 0:01 | B 0:03 0:05 | C 0:07 0:07",
       env.tripData(ADDED_TRIP_ID).showScheduledTimetable()
     );
   }
@@ -367,7 +367,7 @@ class ExtraJourneyTest implements RealtimeTestConstants {
 
     assertSuccess(siri.applyEstimatedTimetable(updates));
     assertEquals(
-      "ADDED | C [R,PI] 0:02 0:02 | D [PI] 0:04 0:04",
+      "A U | C [R,PI] 0:02 0:02 | D [PI] 0:04 0:04",
       env.tripData(ADDED_TRIP_ID).showTimetable()
     );
   }
@@ -434,7 +434,7 @@ class ExtraJourneyTest implements RealtimeTestConstants {
     var creationResult = siri.applyEstimatedTimetable(creation);
     assertSuccess(creationResult);
     assertEquals(
-      "ADDED | C [R] 0:02 0:02 | D 0:04 0:04",
+      "A U | C [R] 0:02 0:02 | D 0:04 0:04",
       env.tripData(ADDED_TRIP_ID).showTimetable()
     );
 
@@ -453,10 +453,7 @@ class ExtraJourneyTest implements RealtimeTestConstants {
 
     var updateResult = siri.applyEstimatedTimetable(update);
     assertSuccess(updateResult);
-    assertEquals(
-      "UPDATED | C 0:05 0:05 | D 0:07 0:07",
-      env.tripData(ADDED_TRIP_ID).showTimetable()
-    );
+    assertEquals("U | C 0:05 0:05 | D 0:07 0:07", env.tripData(ADDED_TRIP_ID).showTimetable());
   }
 
   @Test

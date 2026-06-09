@@ -8,6 +8,7 @@ import java.time.Duration;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import javax.annotation.Nullable;
 import net.opengis.gml.siri.LinearRingType;
 import net.opengis.gml.siri.PolygonType;
 import org.locationtech.jts.geom.Coordinate;
@@ -37,6 +38,26 @@ public class CarpoolSiriMapper {
   private static final String FEED_ID = "ENT";
   private static final GeometryFactory GEOMETRY_FACTORY = new GeometryFactory();
 
+  /**
+   * Returns the trip id for the given journey.
+   */
+  FeedScopedId tripId(EstimatedVehicleJourney journey) {
+    return new FeedScopedId(FEED_ID, journey.getEstimatedVehicleJourneyCode());
+  }
+
+  private static boolean isCancelled(EstimatedCall call) {
+    return Boolean.TRUE.equals(call.isCancellation());
+  }
+
+  /**
+   * Maps a SIRI {@link EstimatedVehicleJourney} to a {@link CarpoolTrip}. Calls flagged as
+   * cancelled are filtered out before stops are built. Returns {@code null} when fewer than
+   * 2 non-cancelled calls remain.
+   *
+   * @throws IllegalArgumentException if the raw message is malformed (fewer than 2 calls
+   *         before filtering, calls out of order, missing flexible areas, etc.)
+   */
+  @Nullable
   public CarpoolTrip mapSiriToCarpoolTrip(EstimatedVehicleJourney journey) {
     var calls = journey.getEstimatedCalls().getEstimatedCalls();
     if (calls.size() < 2) {
@@ -46,14 +67,28 @@ public class CarpoolSiriMapper {
     }
 
     var tripId = journey.getEstimatedVehicleJourneyCode();
-    validateEstimatedCallOrder(calls);
+    var activeCalls = calls
+      .stream()
+      .filter(c -> !isCancelled(c))
+      .toList();
+    if (activeCalls.size() < 2) {
+      LOG.info(
+        "Trip {}: fewer than 2 non-cancelled calls remain ({} of {}), treating as cancellation",
+        tripId,
+        activeCalls.size(),
+        calls.size()
+      );
+      return null;
+    }
+
+    validateEstimatedCallOrder(activeCalls);
 
     List<CarpoolStop> stops = new ArrayList<>();
 
-    for (int i = 0; i < calls.size(); i++) {
-      EstimatedCall call = calls.get(i);
+    for (int i = 0; i < activeCalls.size(); i++) {
+      EstimatedCall call = activeCalls.get(i);
       boolean isFirst = (i == 0);
-      boolean isLast = (i == calls.size() - 1);
+      boolean isLast = (i == activeCalls.size() - 1);
 
       var stop = buildCarpoolStopForPosition(call, tripId, i, isFirst, isLast);
       stops.add(stop);
@@ -71,7 +106,7 @@ public class CarpoolSiriMapper {
       ? lastStop.getExpectedArrivalTime()
       : lastStop.getAimedArrivalTime();
 
-    int totalCapacity = extractTotalCapacity(tripId, calls);
+    int totalCapacity = extractTotalCapacity(tripId, activeCalls);
 
     var builder = new CarpoolTripBuilder(new FeedScopedId(FEED_ID, tripId))
       .withStartTime(startTime)
@@ -121,10 +156,11 @@ public class CarpoolSiriMapper {
 
   /**
    * Extracts the total capacity from the EstimatedCalls' ExpectedDepartureCapacities.
-   * Only the first element of each call's capacities list is inspected; additional
-   * entries are ignored. Uses the value from the first call that has it. Logs a warning
-   * if different calls report different capacity values. Returns
-   * {@link CarpoolTrip#DEFAULT_TOTAL_CAPACITY} if no call has capacity data or if the value is invalid.
+   * Expects the cancelled calls to have already been filtered out. Only the first element
+   * of each call's capacities list is inspected; additional entries are ignored. Uses the
+   * value from the first call that has it. Logs a warning if calls report different capacity
+   * values. Returns {@link CarpoolTrip#DEFAULT_TOTAL_CAPACITY} if no call has capacity data
+   * or if the value is invalid.
    */
   private int extractTotalCapacity(String tripId, List<EstimatedCall> calls) {
     Integer firstCapacity = null;
