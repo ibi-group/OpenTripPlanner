@@ -231,7 +231,7 @@ class AddedTripBuilder {
     // but in case of trip cancellation, OTP will fall back to scheduled trip times
     // therefore they must be valid
     var tripTimes = TripTimesFactory.tripTimes(trip, aimedStopTimes, deduplicator).withServiceCode(
-      transitService.getServiceCode(trip.getServiceId())
+      transitService.getTripCalendars().getServiceCode(trip.getServiceId())
     );
     tripTimes.validateNonIncreasingTimes();
 

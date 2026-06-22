@@ -29,7 +29,7 @@ public class TransitStopVertexBuilder {
   }
 
   public TransitStopVertexBuilder withCoordinate(double lat, double lon) {
-    this.coordinate = new WgsCoordinate(lon, lat);
+    this.coordinate = new WgsCoordinate(lat, lon);
     return this;
   }
 

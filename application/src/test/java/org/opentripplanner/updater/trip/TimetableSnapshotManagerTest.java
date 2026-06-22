@@ -18,6 +18,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.opentripplanner.transit.model._data.TimetableRepositoryForTest;
+import org.opentripplanner.transit.model.calendar.DefaultTripCalendars;
 import org.opentripplanner.transit.model.network.Route;
 import org.opentripplanner.transit.model.network.TripPattern;
 import org.opentripplanner.transit.model.site.RegularStop;
@@ -139,6 +140,7 @@ class TimetableSnapshotManagerTest {
     final AtomicReference<LocalDate> clock = new AtomicReference<>(YESTERDAY);
 
     var snapshotManager = new TimetableSnapshotManager(
+      new DefaultTripCalendars(),
       null,
       TimetableSnapshotParameters.DEFAULT.withPurgeExpiredData(purgeExpiredData),
       clock::get
@@ -402,6 +404,11 @@ class TimetableSnapshotManagerTest {
   }
 
   private static TimetableSnapshotManager createManager() {
-    return new TimetableSnapshotManager(null, TimetableSnapshotParameters.DEFAULT, () -> TODAY);
+    return new TimetableSnapshotManager(
+      new DefaultTripCalendars(),
+      null,
+      TimetableSnapshotParameters.DEFAULT,
+      () -> TODAY
+    );
   }
 }

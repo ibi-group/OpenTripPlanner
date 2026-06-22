@@ -1171,8 +1171,6 @@ only available in the TransmodelAPI for now.
 Unmatched patterns are put in the BASE priority-group.
 
 
-**THIS IS STILL AN EXPERIMENTAL FEATURE - IT MAY CHANGE WITHOUT ANY NOTICE!**
-
 <h3 id="rd_transitReluctanceForMode">transitReluctanceForMode</h3>
 
 **Since version:** `2.1` ∙ **Type:** `enum map of double` ∙ **Cardinality:** `Optional`   

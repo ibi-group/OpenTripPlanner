@@ -1,5 +1,7 @@
 package org.opentripplanner.ext.carpooling.updater;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import org.opentripplanner.core.model.id.FeedScopedId;
 import org.opentripplanner.ext.carpooling.CarpoolingRepository;
@@ -23,6 +25,16 @@ import uk.org.siri.siri21.ServiceDelivery;
 public class SiriETCarpoolingUpdater extends PollingGraphUpdater {
 
   private static final Logger LOG = LoggerFactory.getLogger(SiriETCarpoolingUpdater.class);
+
+  /**
+   * How long a carpool trip is kept after its latest end time before it is purged. The SIRI-ET
+   * source is not guaranteed to send an explicit cancellation once a journey has completed, so
+   * completed trips are removed once their latest end time is further in the past than this
+   * duration. This keeps instances that run for a long time from accumulating trips that can no
+   * longer be routed.
+   */
+  private static final Duration TRIP_EXPIRY = Duration.ofDays(2);
+
   private final EstimatedTimetableSource updateSource;
 
   private final CarpoolingRepository repository;
@@ -39,7 +51,7 @@ public class SiriETCarpoolingUpdater extends PollingGraphUpdater {
 
     LOG.info("Creating SIRI-ET updater running every {}: {}", pollingPeriod(), updateSource);
 
-    this.mapper = new CarpoolSiriMapper();
+    this.mapper = new CarpoolSiriMapper(config.feedId());
   }
 
   /**
@@ -51,6 +63,17 @@ public class SiriETCarpoolingUpdater extends PollingGraphUpdater {
     do {
       moreData = fetchAndProcessUpdates();
     } while (moreData);
+    removeExpiredTrips();
+  }
+
+  /**
+   * Asks the repository to purge trips that have ended more than {@link #TRIP_EXPIRY} ago, so
+   * completed trips are eventually removed even when the source stops sending updates for them. The
+   * repository throttles the actual scan and shares that throttle across every feed, so calling
+   * this on every poll is cheap.
+   */
+  private void removeExpiredTrips() {
+    repository.removeExpiredTrips(Instant.now(), TRIP_EXPIRY);
   }
 
   /**

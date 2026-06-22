@@ -19,16 +19,18 @@ import org.opentripplanner.updater.trip.siri.updater.DefaultSiriETUpdaterParamet
 
 class SiriETCarpoolingUpdaterTest {
 
+  private static final String FEED_ID = "EN";
+
   private DefaultCarpoolingRepository repository;
   private SiriETCarpoolingUpdater updater;
-  private final CarpoolSiriMapper mapper = new CarpoolSiriMapper();
+  private final CarpoolSiriMapper mapper = new CarpoolSiriMapper(FEED_ID);
 
   @BeforeEach
   void setUp() {
     repository = new DefaultCarpoolingRepository();
     var params = new DefaultSiriETUpdaterParameters(
       "carpool-test",
-      "ENT",
+      FEED_ID,
       false,
       "http://localhost/never-fetched",
       Duration.ofMinutes(1),

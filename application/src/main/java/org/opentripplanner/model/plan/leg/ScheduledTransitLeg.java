@@ -84,9 +84,7 @@ public class ScheduledTransitLeg implements TransitLeg {
   private final List<FareOffer> fareOffers;
 
   protected ScheduledTransitLeg(ScheduledTransitLegBuilder<?> builder) {
-    // TODO - Add requireNonNull for trip-times. Some tests fails when this is done, these tests
-    //        should be fixed.
-    this.tripTimes = builder.tripTimes();
+    this.tripTimes = Objects.requireNonNull(builder.tripTimes());
     this.tripPattern = Objects.requireNonNull(builder.tripPattern());
 
     int maxStopPosInPatternLimit = tripPattern.numberOfStops() - 1;

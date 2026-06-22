@@ -28,6 +28,9 @@ import org.opentripplanner.apis.gtfs.generated.GraphQLTypes.GraphQLVerticalDirec
 import org.opentripplanner.apis.gtfs.model.CallRealTime;
 import org.opentripplanner.apis.gtfs.model.CallSchedule;
 import org.opentripplanner.apis.gtfs.model.CallScheduledTime;
+import org.opentripplanner.apis.gtfs.model.CanceledTripsSummary;
+import org.opentripplanner.apis.gtfs.model.CanceledTripsSummaryPattern;
+import org.opentripplanner.apis.gtfs.model.CanceledTripsSummaryRoute;
 import org.opentripplanner.apis.gtfs.model.FeedPublisher;
 import org.opentripplanner.apis.gtfs.model.PlanPageInfo;
 import org.opentripplanner.apis.gtfs.model.RideHailingProvider;
@@ -212,6 +215,27 @@ public class GraphQLDataFetchers {
 
   /** Location where a transit vehicle stops at. */
   public interface GraphQLCallStopLocation extends TypeResolver {}
+
+  /** Cancellation statistics grouped by entities. */
+  public interface GraphQLCanceledTripsSummary {
+    public DataFetcher<Iterable<CanceledTripsSummaryRoute>> routes();
+  }
+
+  /** Contains pattern and the information for how many canceled trips there are for the pattern. */
+  public interface GraphQLCanceledTripsSummaryPattern {
+    public DataFetcher<Integer> cancellationCount();
+    public DataFetcher<TripPattern> pattern();
+  }
+
+  /**
+   * Contains route, how many canceled trips there are for the route and cancellation statistics grouped
+   * by patterns.
+   */
+  public interface GraphQLCanceledTripsSummaryRoute {
+    public DataFetcher<Integer> cancellationCount();
+    public DataFetcher<Iterable<CanceledTripsSummaryPattern>> patterns();
+    public DataFetcher<Route> route();
+  }
 
   /** Car park represents a location where cars can be parked. */
   public interface GraphQLCarPark {
@@ -663,6 +687,7 @@ public class GraphQLDataFetchers {
     public DataFetcher<VehicleRentalPlace> bikeRentalStation();
     public DataFetcher<Iterable<VehicleRentalPlace>> bikeRentalStations();
     public DataFetcher<CountedConnection<TripOnServiceDate>> canceledTrips();
+    public DataFetcher<CanceledTripsSummary> canceledTripsSummary();
     public DataFetcher<Iterable<TripTimeOnDate>> cancelledTripTimes();
     public DataFetcher<VehicleParking> carPark();
     public DataFetcher<Iterable<VehicleParking>> carParks();

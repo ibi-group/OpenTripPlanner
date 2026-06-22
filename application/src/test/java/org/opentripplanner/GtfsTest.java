@@ -45,6 +45,7 @@ import org.opentripplanner.transfer.regular.TransferRepository;
 import org.opentripplanner.transfer.regular.TransferServiceTestFactory;
 import org.opentripplanner.transit.model.basic.MainAndSubMode;
 import org.opentripplanner.transit.model.basic.TransitMode;
+import org.opentripplanner.transit.model.calendar.DefaultTripCalendars;
 import org.opentripplanner.transit.model.framework.Deduplicator;
 import org.opentripplanner.transit.model.timetable.TimetableSnapshot;
 import org.opentripplanner.transit.service.SiteRepository;
@@ -201,7 +202,11 @@ public abstract class GtfsTest {
     timetableRepository = new TimetableRepository(new SiteRepository());
     timetableRepository.setUpdaterManager(
       new GraphUpdaterManager(
-        new DefaultRealTimeUpdateContext(new Graph(), timetableRepository, new TimetableSnapshot()),
+        new DefaultRealTimeUpdateContext(
+          new Graph(),
+          timetableRepository,
+          new TimetableSnapshot(new DefaultTripCalendars())
+        ),
         List.of()
       )
     );
@@ -225,6 +230,7 @@ public abstract class GtfsTest {
     );
 
     var snapshotManager = new TimetableSnapshotManager(
+      (DefaultTripCalendars) timetableRepository.getTripCalendar(),
       new RealTimeRaptorTransitDataUpdater(timetableRepository),
       TimetableSnapshotParameters.PUBLISH_IMMEDIATELY,
       LocalDate::now
@@ -256,13 +262,14 @@ public abstract class GtfsTest {
         FEED_ID
       );
       alertsUpdateHandler.update(feedMessage, null);
-    } catch (FileNotFoundException exception) {}
+    } catch (FileNotFoundException _) {}
     serverContext = TestServerContext.createServerContext(
       graph,
       timetableRepository,
       transferRepository,
       new DefaultFareService(),
       snapshotManager,
+      null,
       null
     );
   }

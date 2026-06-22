@@ -37,6 +37,7 @@ import org.opentripplanner.standalone.server.DefaultServerRequestContext;
 import org.opentripplanner.street.graph.Graph;
 import org.opentripplanner.transfer.regular.TransferRepository;
 import org.opentripplanner.transfer.regular.TransferServiceTestFactory;
+import org.opentripplanner.transit.model.calendar.DefaultTripCalendars;
 import org.opentripplanner.transit.service.DefaultTransitService;
 import org.opentripplanner.transit.service.TimetableRepository;
 import org.opentripplanner.transit.speed_test.model.SpeedTestProfile;
@@ -113,7 +114,12 @@ public class SpeedTest {
       new DefaultVehicleParkingRepository(),
       timetableRepository,
       new DefaultCarpoolingRepository(),
-      new TimetableSnapshotManager(null, TimetableSnapshotParameters.DEFAULT, LocalDate::now),
+      new TimetableSnapshotManager(
+        (DefaultTripCalendars) timetableRepository.getTripCalendar(),
+        null,
+        TimetableSnapshotParameters.DEFAULT,
+        LocalDate::now
+      ),
       routerConfig.updaterConfig()
     );
     if (timetableRepository.getUpdaterManager() != null) {

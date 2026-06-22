@@ -72,38 +72,31 @@ public class CarpoolTrip
 
   public CarpoolTrip(CarpoolTripBuilder builder) {
     super(builder.getId());
-    this.startTime = builder.startTime();
-    this.endTime = builder.endTime();
+    this.startTime = Objects.requireNonNull(builder.startTime());
+    this.endTime = Objects.requireNonNull(builder.endTime());
     this.provider = builder.provider();
     this.totalCapacity = builder.totalCapacity();
     this.stops = Collections.unmodifiableList(builder.stops());
+    if (stops.size() < 2) {
+      throw new IllegalArgumentException(
+        "Carpool trip " + getId() + " must contain at least an origin and a destination stop"
+      );
+    }
     this.publicContactInformation = builder.publicContactInformation();
   }
 
   /**
    * Returns the origin stop (first stop in the trip).
-   *
-   * @return the origin stop
-   * @throws IllegalStateException if the trip has no stops
    */
   public CarpoolStop getOrigin() {
-    if (stops.isEmpty()) {
-      throw new IllegalStateException("Trip has no stops");
-    }
-    return stops.get(0);
+    return stops.getFirst();
   }
 
   /**
    * Returns the destination stop (last stop in the trip).
-   *
-   * @return the destination stop
-   * @throws IllegalStateException if the trip has no stops
    */
   public CarpoolStop getDestination() {
-    if (stops.isEmpty()) {
-      throw new IllegalStateException("Trip has no stops");
-    }
-    return stops.get(stops.size() - 1);
+    return stops.getLast();
   }
 
   public ZonedDateTime startTime() {

@@ -1,4 +1,4 @@
-package org.opentripplanner.apis.gtfs.model;
+package org.opentripplanner.core.model.time;
 
 import java.time.LocalDate;
 import javax.annotation.Nullable;
