@@ -35,14 +35,25 @@ import uk.org.siri.siri21.EstimatedVehicleJourney;
 public class CarpoolSiriMapper {
 
   private static final Logger LOG = LoggerFactory.getLogger(CarpoolSiriMapper.class);
-  private static final String FEED_ID = "ENT";
   private static final GeometryFactory GEOMETRY_FACTORY = new GeometryFactory();
+
+  private final String feedId;
+
+  /**
+   * @param feedId the feed prefix used for every {@link FeedScopedId} this mapper produces.
+   *        Owned by the enclosing updater instance and supplied from
+   *        {@code router-config.json}, so one OTP can run multiple carpool updaters
+   *        side-by-side without trip-id collisions across feeds.
+   */
+  public CarpoolSiriMapper(String feedId) {
+    this.feedId = feedId;
+  }
 
   /**
    * Returns the trip id for the given journey.
    */
   FeedScopedId tripId(EstimatedVehicleJourney journey) {
-    return new FeedScopedId(FEED_ID, journey.getEstimatedVehicleJourneyCode());
+    return new FeedScopedId(feedId, journey.getEstimatedVehicleJourneyCode());
   }
 
   private static boolean isCancelled(EstimatedCall call) {
@@ -55,7 +66,8 @@ public class CarpoolSiriMapper {
    * 2 non-cancelled calls remain.
    *
    * @throws IllegalArgumentException if the raw message is malformed (fewer than 2 calls
-   *         before filtering, calls out of order, missing flexible areas, etc.)
+   *         before filtering, calls out of order, missing flexible areas, no departure time
+   *         on the first call or no arrival time on the last call, etc.)
    */
   @Nullable
   public CarpoolTrip mapSiriToCarpoolTrip(EstimatedVehicleJourney journey) {
@@ -106,9 +118,20 @@ public class CarpoolSiriMapper {
       ? lastStop.getExpectedArrivalTime()
       : lastStop.getAimedArrivalTime();
 
+    if (startTime == null) {
+      throw new IllegalArgumentException(
+        "Trip " + tripId + ": first call has neither expected nor aimed departure time."
+      );
+    }
+    if (endTime == null) {
+      throw new IllegalArgumentException(
+        "Trip " + tripId + ": last call has neither expected nor aimed arrival time."
+      );
+    }
+
     int totalCapacity = extractTotalCapacity(tripId, activeCalls);
 
-    var builder = new CarpoolTripBuilder(new FeedScopedId(FEED_ID, tripId))
+    var builder = new CarpoolTripBuilder(new FeedScopedId(feedId, tripId))
       .withStartTime(startTime)
       .withEndTime(endTime)
       .withProvider(journey.getOperatorRef().getValue())
@@ -348,7 +371,7 @@ public class CarpoolSiriMapper {
       ? toWgsCoordinate(toPolygon(legacyGeometry))
       : toWgsCoordinate(circleLocation);
 
-    return CarpoolStop.of(new FeedScopedId(FEED_ID, id))
+    return CarpoolStop.of(new FeedScopedId(feedId, id))
       .withCoordinate(centroid)
       .withAimedDepartureTime(isLast ? null : call.getAimedDepartureTime())
       .withExpectedDepartureTime(isLast ? null : call.getExpectedDepartureTime())

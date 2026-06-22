@@ -43,6 +43,8 @@ import org.opentripplanner.transit.service.TimetableRepository;
  */
 public class FlexIntegrationTest {
 
+  private static final FlexParameters FLEX_PARAMETERS = FlexParameters.defaultValues();
+
   public static final GenericLocation OUTSIDE_FLEX_ZONE = GenericLocation.fromCoordinate(
     33.7552,
     -84.4631
@@ -84,7 +86,10 @@ public class FlexIntegrationTest {
       graph,
       timetableRepository,
       transferRepository,
-      model.fareServiceFactory().makeFareService()
+      model.fareServiceFactory().makeFareService(),
+      null,
+      null,
+      FLEX_PARAMETERS
     ).routingService();
   }
 

@@ -29,6 +29,7 @@ import org.opentripplanner.transit.api.request.TripOnServiceDateRequest;
 import org.opentripplanner.transit.model._data.TimetableRepositoryForTest;
 import org.opentripplanner.transit.model.basic.MainAndSubMode;
 import org.opentripplanner.transit.model.basic.TransitMode;
+import org.opentripplanner.transit.model.calendar.DefaultTripCalendars;
 import org.opentripplanner.transit.model.filter.selector.FilterRequest;
 import org.opentripplanner.transit.model.filter.transit.TripOnServiceDateSelectRequest;
 import org.opentripplanner.transit.model.framework.Deduplicator;
@@ -194,7 +195,7 @@ class DefaultTransitServiceTest {
 
     timetableRepository.index();
 
-    TimetableSnapshot timetableSnapshot = new TimetableSnapshot();
+    TimetableSnapshot timetableSnapshot = new TimetableSnapshot(new DefaultTripCalendars());
     TripTimes tripTimes = ScheduledTripTimes.of()
       .withTrip(TimetableRepositoryForTest.trip("123").build())
       .withDepartureTimes(new int[] { 0, 1 })

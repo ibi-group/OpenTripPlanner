@@ -17,6 +17,7 @@ import org.opentripplanner.routing.api.request.RouteRequest;
 import org.opentripplanner.routing.linking.LinkingContextFactory;
 import org.opentripplanner.routing.linking.internal.VertexCreationService;
 import org.opentripplanner.service.streetdetails.StreetDetailsService;
+import org.opentripplanner.service.vehiclerental.GeofencingZoneService;
 import org.opentripplanner.street.geometry.GeometryUtils;
 import org.opentripplanner.street.geometry.WgsCoordinate;
 import org.opentripplanner.street.graph.Graph;
@@ -298,7 +299,13 @@ class RefetchItineraryServiceTest {
   private RefetchItineraryService createRefetchService() {
     StreetDetailsService streetDetailsService = null;
     VertexCreationService vertexCreationService = new VertexCreationService(
-      new VertexLinker(GRAPH, VisibilityMode.TRAVERSE_AREA_EDGES, 10, false)
+      new VertexLinker(
+        GRAPH,
+        GeofencingZoneService.EMPTY,
+        VisibilityMode.TRAVERSE_AREA_EDGES,
+        10,
+        false
+      )
     );
     LinkingContextFactory linkingContextFactory = new LinkingContextFactory(
       GRAPH,

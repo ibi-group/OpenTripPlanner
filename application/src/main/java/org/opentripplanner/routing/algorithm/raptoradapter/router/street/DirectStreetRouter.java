@@ -45,7 +45,8 @@ public class DirectStreetRouter {
       // we could also get a persistent router-scoped GraphPathFinder but there's no setup cost here
       GraphPathFinder gpFinder = new GraphPathFinder(
         serverContext.listExtensionRequestContexts(request),
-        streetLimitationParametersService
+        streetLimitationParametersService,
+        serverContext.vehicleRentalService()
       );
       var paths = gpFinder.find(request, linkingContext);
 

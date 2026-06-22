@@ -141,7 +141,7 @@ class ExtraCallTripBuilder {
     StopPattern stopPattern = new StopPattern(aimedStopTimes);
 
     var tripTimes = TripTimesFactory.tripTimes(trip, aimedStopTimes, deduplicator).withServiceCode(
-      transitService.getServiceCode(trip.getServiceId())
+      transitService.getTripCalendars().getServiceCode(trip.getServiceId())
     );
     // validate the scheduled trip times
     // they are in general superseded by real-time trip times

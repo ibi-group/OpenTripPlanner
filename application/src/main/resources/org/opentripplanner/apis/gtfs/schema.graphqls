@@ -346,6 +346,33 @@ type CallSchedule {
   time: CallScheduledTime
 }
 
+"Cancellation statistics grouped by entities."
+type CanceledTripsSummary {
+  "How many canceled trips there are for the routes which have any cancellations."
+  routes: [CanceledTripsSummaryRoute!]!
+}
+
+"Contains pattern and the information for how many canceled trips there are for the pattern."
+type CanceledTripsSummaryPattern {
+  "How many canceled trips there are for the pattern."
+  cancellationCount: Int!
+  "The pattern for which the cancellation statistics are provided for."
+  pattern: Pattern!
+}
+
+"""
+Contains route, how many canceled trips there are for the route and cancellation statistics grouped
+by patterns.
+"""
+type CanceledTripsSummaryRoute {
+  "How many canceled trips there are for the route."
+  cancellationCount: Int!
+  "How many canceled trips there are for the patterns which have any cancellations."
+  patterns: [CanceledTripsSummaryPattern!]!
+  "The route for which the cancellation statistics are provided for."
+  route: Route!
+}
+
 "Car park represents a location where cars can be parked."
 type CarPark implements Node & PlaceInterface {
   "ID of the car park"
@@ -1350,8 +1377,14 @@ type QueryType {
     """
     Can be used to filter the results. When paging, the filter should not be changed between pages.
         
-    An empty list of filters or no value means that all trips should be included. Only one filter
-    is allowed for now. Once new filtering criteria is introduced, this limitation will be removed.
+    An empty list of filters or no value means that all trips should be included. Multiple filters
+    are allowed.
+        
+    Filter order does not matter. Each filter entry is evaluated independently and the final result
+    is the union (OR) of all matching filter entries.
+        
+    Inside one filter entry, selectors in `include` are combined with OR, selectors in `exclude`
+    are combined with OR, and the final match is `include AND NOT(exclude)`.
     """
     filters: [CanceledTripsFilterInput!],
     """
@@ -1366,6 +1399,18 @@ type QueryType {
     """
     last: Int
   ): TripOnServiceDateConnection @timingData
+  """
+  Summary of canceled trips. Can be used as a preliminary query before using other
+  queries to fetch the details of the canceled trips.
+  """
+  canceledTripsSummary(
+    """
+    Can be used to filter the results.
+        
+    An empty list of filters or no value means that all cancellations should be included.
+    """
+    filters: [CanceledTripsSummaryFilterInput!]
+  ): CanceledTripsSummary @timingData
   "Get canceled TripTimes."
   cancelledTripTimes(
     "Feed feedIds (e.g. [\"HSL\"])."
@@ -4307,10 +4352,10 @@ input BoardPreferencesInput {
 }
 
 """
-A collection of selectors for including or excluding trips from canceled trips search. Currently,
-you can only use either include or exclude filter (as filtering is only supported with transit modes).
+A collection of selectors for including or excluding trips from canceled trips search. Excludes
+override includes.
 """
-input CanceledTripsFilterInput @oneOf {
+input CanceledTripsFilterInput {
   """
   A list of selectors for excluding canceled trips.
     
@@ -4332,6 +4377,38 @@ means everything is allowed to be returned and empty lists are not allowed.
 input CanceledTripsFilterSelectInput {
   "Canceled trips from these transit modes should be included/excluded."
   modes: [TransitMode!]
+  """
+  Canceled trips are included/excluded based on if their service date (but not necessarily their running date)  is within any of these time
+  ranges.
+  """
+  serviceDateRanges: [LocalDateRangeInput!]
+}
+
+"Used to limit which canceled trips are included for the summary."
+input CanceledTripsSummaryFilterInput {
+  """
+  A list of selectors for excluding canceled trips.
+    
+  An empty list or a list containing `null` is forbidden.
+  """
+  exclude: [CanceledTripsSummaryFilterSelectInput!]
+  """
+  A list of selectors for including canceled trips.
+    
+  An empty list or a list containing `null` is forbidden.
+  """
+  include: [CanceledTripsSummaryFilterSelectInput!]
+}
+
+"Filter options for including or excluding canceled trips from the canceled trips summary."
+input CanceledTripsSummaryFilterSelectInput {
+  "Canceled trips from these transit modes should be included/excluded."
+  modes: [TransitMode!]
+  """
+  Canceled trips are included/excluded based on if their service date is within any of these time
+  ranges.
+  """
+  serviceDateRanges: [LocalDateRangeInput!]
 }
 
 "Preferences for car parking facilities used during the routing."

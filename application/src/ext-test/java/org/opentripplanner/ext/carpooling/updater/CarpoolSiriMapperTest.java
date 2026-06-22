@@ -31,7 +31,7 @@ import uk.org.siri.siri21.EstimatedCall;
 
 public class CarpoolSiriMapperTest {
 
-  private final CarpoolSiriMapper mapper = new CarpoolSiriMapper();
+  private final CarpoolSiriMapper mapper = new CarpoolSiriMapper("EN");
 
   @Test
   void mapSiriToCarpoolTrip_arrivalIsAfterDepartureTime_throwsIllegalArgumentException() {

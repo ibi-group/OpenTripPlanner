@@ -35,6 +35,7 @@ import org.opentripplanner.apis.gtfs.generated.GraphQLTypes.GraphQLQueryTypeStop
 import org.opentripplanner.apis.gtfs.mapping.CanceledTripsFilterMapper;
 import org.opentripplanner.apis.gtfs.mapping.routerequest.LegacyRouteRequestMapper;
 import org.opentripplanner.apis.gtfs.mapping.routerequest.RouteRequestMapper;
+import org.opentripplanner.apis.gtfs.model.CanceledTripsSummary;
 import org.opentripplanner.apis.gtfs.support.filter.PatternByDateFilterUtil;
 import org.opentripplanner.apis.gtfs.support.time.LocalDateRangeUtil;
 import org.opentripplanner.core.model.id.FeedScopedId;
@@ -824,6 +825,27 @@ public class QueryTypeImpl implements GraphQLDataFetchers.GraphQLQueryType {
       var request = CanceledTripsFilterMapper.mapToTripOnServiceDateRequest(environment);
       var trips = getTransitService(environment).findCanceledTrips(request);
       return new SimpleCountedListConnection<>(trips).get(environment);
+    };
+  }
+
+  @Override
+  public DataFetcher<CanceledTripsSummary> canceledTripsSummary() {
+    return environment -> {
+      var request = CanceledTripsFilterMapper.mapToTripOnServiceDateRequest(environment);
+      var transitService = getTransitService(environment);
+      var trips = transitService.findCanceledTrips(request);
+      var patternTripCounts = trips
+        .stream()
+        .collect(
+          Collectors.groupingBy(
+            t -> t.getTrip().getRoute(),
+            Collectors.groupingBy(
+              t -> transitService.findPattern(t.getTrip(), t.getServiceDate()),
+              Collectors.counting()
+            )
+          )
+        );
+      return new CanceledTripsSummary(patternTripCounts);
     };
   }
 

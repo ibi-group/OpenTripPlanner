@@ -537,6 +537,7 @@ public class GraphQLTypes {
   public static class GraphQLCanceledTripsFilterSelectInput {
 
     private List<GraphQLTransitMode> modes;
+    private List<GraphQLLocalDateRangeInput> serviceDateRanges;
 
     public GraphQLCanceledTripsFilterSelectInput(Map<String, Object> args) {
       if (args != null) {
@@ -548,6 +549,13 @@ public class GraphQLTypes {
             .map(GraphQLTransitMode.class::cast)
             .collect(Collectors.toList());
         }
+        if (args.get("serviceDateRanges") != null) {
+          this.serviceDateRanges = ((List<Map<String, Object>>) args.get(
+              "serviceDateRanges"
+            )).stream()
+            .map(o -> o == null ? null : new GraphQLLocalDateRangeInput(o))
+            .collect(Collectors.toList());
+        }
       }
     }
 
@@ -555,8 +563,95 @@ public class GraphQLTypes {
       return this.modes;
     }
 
+    public List<GraphQLLocalDateRangeInput> getGraphQLServiceDateRanges() {
+      return this.serviceDateRanges;
+    }
+
     public void setGraphQLModes(List<GraphQLTransitMode> modes) {
       this.modes = modes;
+    }
+
+    public void setGraphQLServiceDateRanges(List<GraphQLLocalDateRangeInput> serviceDateRanges) {
+      this.serviceDateRanges = serviceDateRanges;
+    }
+  }
+
+  public static class GraphQLCanceledTripsSummaryFilterInput {
+
+    private List<GraphQLCanceledTripsSummaryFilterSelectInput> exclude;
+    private List<GraphQLCanceledTripsSummaryFilterSelectInput> include;
+
+    public GraphQLCanceledTripsSummaryFilterInput(Map<String, Object> args) {
+      if (args != null) {
+        if (args.get("exclude") != null) {
+          this.exclude = ((List<Map<String, Object>>) args.get("exclude")).stream()
+            .map(o -> o == null ? null : new GraphQLCanceledTripsSummaryFilterSelectInput(o))
+            .collect(Collectors.toList());
+        }
+        if (args.get("include") != null) {
+          this.include = ((List<Map<String, Object>>) args.get("include")).stream()
+            .map(o -> o == null ? null : new GraphQLCanceledTripsSummaryFilterSelectInput(o))
+            .collect(Collectors.toList());
+        }
+      }
+    }
+
+    public List<GraphQLCanceledTripsSummaryFilterSelectInput> getGraphQLExclude() {
+      return this.exclude;
+    }
+
+    public List<GraphQLCanceledTripsSummaryFilterSelectInput> getGraphQLInclude() {
+      return this.include;
+    }
+
+    public void setGraphQLExclude(List<GraphQLCanceledTripsSummaryFilterSelectInput> exclude) {
+      this.exclude = exclude;
+    }
+
+    public void setGraphQLInclude(List<GraphQLCanceledTripsSummaryFilterSelectInput> include) {
+      this.include = include;
+    }
+  }
+
+  public static class GraphQLCanceledTripsSummaryFilterSelectInput {
+
+    private List<GraphQLTransitMode> modes;
+    private List<GraphQLLocalDateRangeInput> serviceDateRanges;
+
+    public GraphQLCanceledTripsSummaryFilterSelectInput(Map<String, Object> args) {
+      if (args != null) {
+        if (args.get("modes") != null) {
+          this.modes = ((List<Object>) args.get("modes")).stream()
+            .map(item ->
+              item instanceof GraphQLTransitMode ? item : GraphQLTransitMode.valueOf((String) item)
+            )
+            .map(GraphQLTransitMode.class::cast)
+            .collect(Collectors.toList());
+        }
+        if (args.get("serviceDateRanges") != null) {
+          this.serviceDateRanges = ((List<Map<String, Object>>) args.get(
+              "serviceDateRanges"
+            )).stream()
+            .map(o -> o == null ? null : new GraphQLLocalDateRangeInput(o))
+            .collect(Collectors.toList());
+        }
+      }
+    }
+
+    public List<GraphQLTransitMode> getGraphQLModes() {
+      return this.modes;
+    }
+
+    public List<GraphQLLocalDateRangeInput> getGraphQLServiceDateRanges() {
+      return this.serviceDateRanges;
+    }
+
+    public void setGraphQLModes(List<GraphQLTransitMode> modes) {
+      this.modes = modes;
+    }
+
+    public void setGraphQLServiceDateRanges(List<GraphQLLocalDateRangeInput> serviceDateRanges) {
+      this.serviceDateRanges = serviceDateRanges;
     }
   }
 
@@ -2775,6 +2870,29 @@ public class GraphQLTypes {
 
     public void setGraphQLLast(Integer last) {
       this.last = last;
+    }
+  }
+
+  public static class GraphQLQueryTypeCanceledTripsSummaryArgs {
+
+    private List<GraphQLCanceledTripsSummaryFilterInput> filters;
+
+    public GraphQLQueryTypeCanceledTripsSummaryArgs(Map<String, Object> args) {
+      if (args != null) {
+        if (args.get("filters") != null) {
+          this.filters = ((List<Map<String, Object>>) args.get("filters")).stream()
+            .map(o -> o == null ? null : new GraphQLCanceledTripsSummaryFilterInput(o))
+            .collect(Collectors.toList());
+        }
+      }
+    }
+
+    public List<GraphQLCanceledTripsSummaryFilterInput> getGraphQLFilters() {
+      return this.filters;
+    }
+
+    public void setGraphQLFilters(List<GraphQLCanceledTripsSummaryFilterInput> filters) {
+      this.filters = filters;
     }
   }
 

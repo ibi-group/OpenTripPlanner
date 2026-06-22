@@ -8,6 +8,7 @@ import java.time.LocalDate;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.opentripplanner.core.model.time.LocalDateRange;
 import org.opentripplanner.transit.api.model.FilterValues;
 import org.opentripplanner.transit.api.request.TripOnServiceDateRequest;
 import org.opentripplanner.transit.model.basic.MainAndSubMode;
@@ -58,7 +59,7 @@ class TripOnServiceDateMatcherFactoryTest {
           )
           .build()
       )
-      .withServiceDate(LocalDate.of(2024, 2, 22))
+      .withServiceDate(LocalDate.of(2024, 2, 23))
       .build();
 
     tripOnServiceDateAkt = TripOnServiceDate.of(id("AKT:route:trip:date:1"))
@@ -75,12 +76,12 @@ class TripOnServiceDateMatcherFactoryTest {
           )
           .build()
       )
-      .withServiceDate(LocalDate.of(2024, 2, 22))
+      .withServiceDate(LocalDate.of(2024, 2, 24))
       .build();
   }
 
   @Test
-  void testMatchOperatingDays() {
+  void testMatchServiceDates() {
     TripOnServiceDateRequest request = TripOnServiceDateRequest.of()
       .withIncludeServiceDates(
         FilterValues.ofRequired("serviceDates", List.of(LocalDate.of(2024, 2, 22)))
@@ -90,8 +91,26 @@ class TripOnServiceDateMatcherFactoryTest {
     Matcher<TripOnServiceDate> matcher = TripOnServiceDateMatcherFactory.of(request);
 
     assertTrue(matcher.match(tripOnServiceDateRut));
+    assertFalse(matcher.match(tripOnServiceDateRut2));
+    assertFalse(matcher.match(tripOnServiceDateAkt));
+  }
+
+  @Test
+  void testMatchServiceDateRanges() {
+    TripOnServiceDateRequest request = TripOnServiceDateRequest.of()
+      .withIncludeServiceDateRanges(
+        FilterValues.ofRequired(
+          "serviceDateRanges",
+          List.of(new LocalDateRange(LocalDate.of(2024, 2, 22), LocalDate.of(2024, 2, 24)))
+        )
+      )
+      .build();
+
+    Matcher<TripOnServiceDate> matcher = TripOnServiceDateMatcherFactory.of(request);
+
+    assertTrue(matcher.match(tripOnServiceDateRut));
     assertTrue(matcher.match(tripOnServiceDateRut2));
-    assertTrue(matcher.match(tripOnServiceDateAkt));
+    assertFalse(matcher.match(tripOnServiceDateAkt));
   }
 
   @Test
@@ -129,7 +148,10 @@ class TripOnServiceDateMatcherFactoryTest {
   void testMatchMultipleServiceJourneyMatchers() {
     TripOnServiceDateRequest request = TripOnServiceDateRequest.of()
       .withIncludeServiceDates(
-        FilterValues.ofRequired("serviceDates", List.of(LocalDate.of(2024, 2, 22)))
+        FilterValues.ofRequired(
+          "serviceDates",
+          List.of(LocalDate.of(2024, 2, 22), LocalDate.of(2024, 2, 23))
+        )
       )
       .withIncludeAgencies(
         FilterValues.ofEmptyIsEverything("agencies", List.of(id("RUT:1"), id("RUT:2")))

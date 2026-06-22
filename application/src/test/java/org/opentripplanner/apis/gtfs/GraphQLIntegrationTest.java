@@ -104,6 +104,7 @@ import org.opentripplanner.transfer.regular.TransferServiceTestFactory;
 import org.opentripplanner.transit.model._data.TimetableRepositoryForTest;
 import org.opentripplanner.transit.model.basic.Money;
 import org.opentripplanner.transit.model.basic.TransitMode;
+import org.opentripplanner.transit.model.calendar.DefaultTripCalendars;
 import org.opentripplanner.transit.model.framework.AbstractBuilder;
 import org.opentripplanner.transit.model.framework.Deduplicator;
 import org.opentripplanner.transit.model.network.BikeAccess;
@@ -275,7 +276,7 @@ class GraphQLIntegrationTest {
     timetableRepository.updateCalendarServiceData(calendarServiceData);
     timetableRepository.index();
 
-    TimetableSnapshot timetableSnapshot = new TimetableSnapshot();
+    TimetableSnapshot timetableSnapshot = new TimetableSnapshot(new DefaultTripCalendars());
     timetableSnapshot.update(
       RealTimeTripUpdate.of(
         pattern,

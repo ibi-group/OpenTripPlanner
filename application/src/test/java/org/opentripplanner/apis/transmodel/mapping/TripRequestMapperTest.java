@@ -134,7 +134,8 @@ public class TripRequestMapperTest implements PlanTestConstants {
       TRANSFER_REPOSITORY,
       new DefaultFareService(),
       null,
-      defaultRequest
+      defaultRequest,
+      null
     );
 
     context = new TransmodelRequestContext(

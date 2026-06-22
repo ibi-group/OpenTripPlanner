@@ -93,6 +93,7 @@ public abstract class SnapshotTestBase {
         model.transferRepository(),
         model.fareServiceFactory().makeFareService(),
         null,
+        null,
         null
       );
     }

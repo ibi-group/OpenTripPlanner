@@ -948,7 +948,9 @@ Ordered list of `StreetMode` values used as egress modes. Each entry is paired w
       "language" : "en",
       "frequency" : "1m",
       "allowKeepingRentedVehicleAtDestination" : false,
-      "geofencingZones" : false,
+      "geofencing" : {
+        "enabled" : false
+      },
       "url" : "http://coast.socialbicycles.com/opendata/gbfs.json",
       "headers" : {
         "Auth" : "<any-token>",

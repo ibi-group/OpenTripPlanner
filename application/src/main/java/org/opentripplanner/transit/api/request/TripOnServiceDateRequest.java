@@ -3,6 +3,7 @@ package org.opentripplanner.transit.api.request;
 import java.time.LocalDate;
 import java.util.List;
 import org.opentripplanner.core.model.id.FeedScopedId;
+import org.opentripplanner.core.model.time.LocalDateRange;
 import org.opentripplanner.transit.api.model.FilterValues;
 import org.opentripplanner.transit.model.basic.MainAndSubMode;
 import org.opentripplanner.transit.model.basic.TransitMode;
@@ -20,6 +21,7 @@ import org.opentripplanner.transit.model.timetable.TripOnServiceDate;
 public class TripOnServiceDateRequest {
 
   private final FilterValues<LocalDate> includeServiceDates;
+  private final FilterValues<LocalDateRange> includeServiceDateRanges;
   private final FilterValues<FeedScopedId> includeAgencies;
   private final FilterValues<FeedScopedId> includeRoutes;
   private final FilterValues<FeedScopedId> includeServiceJourneys;
@@ -30,6 +32,7 @@ public class TripOnServiceDateRequest {
 
   TripOnServiceDateRequest(
     FilterValues<LocalDate> includeServiceDates,
+    FilterValues<LocalDateRange> includeServiceDateRanges,
     FilterValues<FeedScopedId> includeAgencies,
     FilterValues<FeedScopedId> includeRoutes,
     FilterValues<FeedScopedId> includeServiceJourneys,
@@ -39,6 +42,7 @@ public class TripOnServiceDateRequest {
     List<FilterRequest<TripOnServiceDateSelectRequest>> filters
   ) {
     this.includeServiceDates = includeServiceDates;
+    this.includeServiceDateRanges = includeServiceDateRanges;
     this.includeAgencies = includeAgencies;
     this.includeRoutes = includeRoutes;
     this.includeServiceJourneys = includeServiceJourneys;
@@ -78,6 +82,10 @@ public class TripOnServiceDateRequest {
 
   public FilterValues<LocalDate> includeServiceDates() {
     return includeServiceDates;
+  }
+
+  public FilterValues<LocalDateRange> includeServiceDateRanges() {
+    return includeServiceDateRanges;
   }
 
   public FilterValues<TransitMode> includeModes() {

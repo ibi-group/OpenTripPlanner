@@ -16,8 +16,8 @@ import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 import org.opentripplanner.core.model.id.FeedScopedId;
-import org.opentripplanner.model.calendar.CalendarService;
 import org.opentripplanner.transit.model.basic.TransitMode;
+import org.opentripplanner.transit.model.calendar.TripCalendars;
 import org.opentripplanner.transit.model.network.Route;
 import org.opentripplanner.transit.model.network.TripPattern;
 import org.opentripplanner.transit.model.site.RegularStop;
@@ -135,8 +135,8 @@ public class SiriFuzzyTripMatcher {
     List<FeedScopedId> matches = new ArrayList<>();
     for (Trip trip : getCachedTripsByInternalPlanningCode(internalPlanningCode)) {
       Set<LocalDate> serviceDates = transitService
-        .getCalendarService()
-        .getServiceDatesForServiceId(trip.getServiceId());
+        .getTripCalendars()
+        .listServiceDates(trip.getServiceId());
       if (serviceDates.contains(serviceDate)) {
         matches.add(trip.getId());
       }
@@ -258,10 +258,10 @@ public class SiriFuzzyTripMatcher {
       date,
       transitService.getTimeZone()
     );
-    CalendarService calendarService = transitService.getCalendarService();
+    TripCalendars calendarService = transitService.getTripCalendars();
     Set<TripAndPattern> possibleTrips = new HashSet<>();
     for (Trip trip : trips) {
-      if (!calendarService.getServiceDatesForServiceId(trip.getServiceId()).contains(serviceDate)) {
+      if (!calendarService.listServiceDates(trip.getServiceId()).contains(serviceDate)) {
         continue;
       }
 

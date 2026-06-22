@@ -184,7 +184,10 @@ public class DebugVectorTilesResource {
         // There are not many GroupStops, so we can just list them all.
         context.transitService().listGroupStops()
       );
-      case GeofencingZones -> new GeofencingZonesLayerBuilder(context.graph(), layerParameters);
+      case GeofencingZones -> new GeofencingZonesLayerBuilder(
+        context.vehicleRentalService(),
+        layerParameters
+      );
       case Edge -> new EdgeLayerBuilder(
         context.graph(),
         layerParameters,
