@@ -6,10 +6,6 @@ org.opentripplanner.routing.algorithm.mapping.ElevationSnapshotTest.directBike=[
       "elevationGained" : 18.9,
       "elevationLost" : 30.64,
       "endTime" : "2009-10-21T23:10:00.000+00:00",
-      "fare" : {
-        "details" : { },
-        "fare" : { }
-      },
       "generalizedCost" : 1467,
       "legs" : [
         {
@@ -134,10 +130,6 @@ org.opentripplanner.routing.algorithm.mapping.ElevationSnapshotTest.directBikeRe
       "elevationGained" : 12.86,
       "elevationLost" : 38.12,
       "endTime" : "2009-10-21T23:17:27.000+00:00",
-      "fare" : {
-        "details" : { },
-        "fare" : { }
-      },
       "generalizedCost" : 997,
       "legs" : [
         {
@@ -391,10 +383,6 @@ org.opentripplanner.routing.algorithm.mapping.ElevationSnapshotTest.directWalk=[
       "elevationGained" : 0.7,
       "elevationLost" : 12.44,
       "endTime" : "2009-10-21T23:40:04.000+00:00",
-      "fare" : {
-        "details" : { },
-        "fare" : { }
-      },
       "generalizedCost" : 3609,
       "legs" : [
         {
@@ -519,25 +507,6 @@ org.opentripplanner.routing.algorithm.mapping.ElevationSnapshotTest.transit=[
       "elevationGained" : 15.02,
       "elevationLost" : 4.22,
       "endTime" : "2009-10-21T23:31:10.000+00:00",
-      "fare" : {
-        "details" : { },
-        "fare" : { },
-        "legProducts" : [
-          {
-            "amount" : {
-              "cents" : 200,
-              "currency" : {
-                "currency" : "USD",
-                "currencyCode" : "USD",
-                "defaultFractionDigits" : 2,
-                "symbol" : "$"
-              }
-            },
-            "id" : "prt:8",
-            "name" : "regular"
-          }
-        ]
-      },
       "generalizedCost" : 2301,
       "legs" : [
         {
@@ -872,25 +841,6 @@ org.opentripplanner.routing.algorithm.mapping.ElevationSnapshotTest.transit=[
       "elevationGained" : 5.48,
       "elevationLost" : 23.58,
       "endTime" : "2009-10-21T23:34:51.000+00:00",
-      "fare" : {
-        "details" : { },
-        "fare" : { },
-        "legProducts" : [
-          {
-            "amount" : {
-              "cents" : 200,
-              "currency" : {
-                "currency" : "USD",
-                "currencyCode" : "USD",
-                "defaultFractionDigits" : 2,
-                "symbol" : "$"
-              }
-            },
-            "id" : "prt:8",
-            "name" : "regular"
-          }
-        ]
-      },
       "generalizedCost" : 2464,
       "legs" : [
         {
@@ -1251,25 +1201,6 @@ org.opentripplanner.routing.algorithm.mapping.ElevationSnapshotTest.transit=[
       "elevationGained" : 9.14,
       "elevationLost" : 1.09,
       "endTime" : "2009-10-21T23:37:30.000+00:00",
-      "fare" : {
-        "details" : { },
-        "fare" : { },
-        "legProducts" : [
-          {
-            "amount" : {
-              "cents" : 200,
-              "currency" : {
-                "currency" : "USD",
-                "currencyCode" : "USD",
-                "defaultFractionDigits" : 2,
-                "symbol" : "$"
-              }
-            },
-            "id" : "prt:8",
-            "name" : "regular"
-          }
-        ]
-      },
       "generalizedCost" : 2393,
       "legs" : [
         {
@@ -1604,25 +1535,6 @@ org.opentripplanner.routing.algorithm.mapping.ElevationSnapshotTest.transit=[
       "elevationGained" : 15.02,
       "elevationLost" : 4.22,
       "endTime" : "2009-10-21T23:46:10.000+00:00",
-      "fare" : {
-        "details" : { },
-        "fare" : { },
-        "legProducts" : [
-          {
-            "amount" : {
-              "cents" : 200,
-              "currency" : {
-                "currency" : "USD",
-                "currencyCode" : "USD",
-                "defaultFractionDigits" : 2,
-                "symbol" : "$"
-              }
-            },
-            "id" : "prt:8",
-            "name" : "regular"
-          }
-        ]
-      },
       "generalizedCost" : 2301,
       "legs" : [
         {
@@ -1957,25 +1869,6 @@ org.opentripplanner.routing.algorithm.mapping.ElevationSnapshotTest.transit=[
       "elevationGained" : 5.48,
       "elevationLost" : 23.58,
       "endTime" : "2009-10-21T23:50:51.000+00:00",
-      "fare" : {
-        "details" : { },
-        "fare" : { },
-        "legProducts" : [
-          {
-            "amount" : {
-              "cents" : 200,
-              "currency" : {
-                "currency" : "USD",
-                "currencyCode" : "USD",
-                "defaultFractionDigits" : 2,
-                "symbol" : "$"
-              }
-            },
-            "id" : "prt:8",
-            "name" : "regular"
-          }
-        ]
-      },
       "generalizedCost" : 2524,
       "legs" : [
         {
@@ -2336,25 +2229,6 @@ org.opentripplanner.routing.algorithm.mapping.ElevationSnapshotTest.transit=[
       "elevationGained" : 9.14,
       "elevationLost" : 1.09,
       "endTime" : "2009-10-21T23:56:30.000+00:00",
-      "fare" : {
-        "details" : { },
-        "fare" : { },
-        "legProducts" : [
-          {
-            "amount" : {
-              "cents" : 200,
-              "currency" : {
-                "currency" : "USD",
-                "currencyCode" : "USD",
-                "defaultFractionDigits" : 2,
-                "symbol" : "$"
-              }
-            },
-            "id" : "prt:8",
-            "name" : "regular"
-          }
-        ]
-      },
       "generalizedCost" : 2393,
       "legs" : [
         {

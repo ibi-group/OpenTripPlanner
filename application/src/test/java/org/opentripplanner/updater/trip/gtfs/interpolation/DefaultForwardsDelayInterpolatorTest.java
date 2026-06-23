@@ -1,4 +1,4 @@
-package org.opentripplanner.updater.trip.gtfs;
+package org.opentripplanner.updater.trip.gtfs.interpolation;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;

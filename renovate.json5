@@ -11,7 +11,8 @@
   "enabledManagers": [
     "npm",
     "maven",
-    "pip_requirements"
+    "pip_requirements",
+    "github-actions"
   ],
   "packageRules": [
     {
@@ -234,6 +235,14 @@
       "matchUpdateTypes": ["major", "minor"],
       "schedule": "on the 14th day of the month",
       "reviewers": ["habrahamsson-skanetrafiken", "svedbod"]
+    },
+    {
+      "groupName": "GitHub Actions",
+      "description": "Update GitHub Actions quarterly",
+      "matchManagers": ["github-actions"],
+      "extends": [
+        "schedule:quarterly"
+      ]
     },
     {
       "groupName": "Hive MQTT client",

@@ -31,6 +31,8 @@ import org.opentripplanner.transit.model.timetable.Timetable;
 import org.opentripplanner.transit.model.timetable.TimetableSnapshot;
 import org.opentripplanner.transit.service.TimetableRepository;
 import org.opentripplanner.updater.spi.UpdateSuccess;
+import org.opentripplanner.updater.trip.gtfs.interpolation.BackwardsDelayPropagationType;
+import org.opentripplanner.updater.trip.gtfs.interpolation.ForwardsDelayPropagationType;
 import org.opentripplanner.updater.trip.gtfs.model.TripUpdate;
 
 /**

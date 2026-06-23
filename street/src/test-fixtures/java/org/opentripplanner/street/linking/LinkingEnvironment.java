@@ -73,7 +73,7 @@ public class LinkingEnvironment {
     return disposable;
   }
 
-  public void linkVertexPermanently(Vertex linkedVertex) {
+  public void linkVertexPermanently(TransitStopVertex linkedVertex) {
     linker.linkVertexPermanently(
       linkedVertex,
       new TraverseModeSet(TraverseMode.WALK),

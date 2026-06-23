@@ -1,4 +1,4 @@
-package org.opentripplanner.updater.trip.gtfs;
+package org.opentripplanner.updater.trip.gtfs.interpolation;
 
 import org.opentripplanner.core.model.doc.DocumentedEnum;
 

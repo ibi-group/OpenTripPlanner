@@ -8,9 +8,9 @@ import java.util.List;
 import org.opentripplanner.core.framework.deduplicator.DeduplicatorService;
 import org.opentripplanner.transit.model._data.TransitTestEnvironment;
 import org.opentripplanner.updater.spi.UpdateResult;
-import org.opentripplanner.updater.trip.gtfs.BackwardsDelayPropagationType;
-import org.opentripplanner.updater.trip.gtfs.ForwardsDelayPropagationType;
 import org.opentripplanner.updater.trip.gtfs.GtfsRealTimeTripUpdateAdapter;
+import org.opentripplanner.updater.trip.gtfs.interpolation.BackwardsDelayPropagationType;
+import org.opentripplanner.updater.trip.gtfs.interpolation.ForwardsDelayPropagationType;
 
 public class GtfsRtTestHelper {
 
