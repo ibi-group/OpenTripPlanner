@@ -56,9 +56,9 @@ import org.opentripplanner.updater.TimetableSnapshotParameters;
 import org.opentripplanner.updater.alert.gtfs.AlertsUpdateHandler;
 import org.opentripplanner.updater.trip.TimetableSnapshotManager;
 import org.opentripplanner.updater.trip.UpdateIncrementality;
-import org.opentripplanner.updater.trip.gtfs.BackwardsDelayPropagationType;
-import org.opentripplanner.updater.trip.gtfs.ForwardsDelayPropagationType;
 import org.opentripplanner.updater.trip.gtfs.GtfsRealTimeTripUpdateAdapter;
+import org.opentripplanner.updater.trip.gtfs.interpolation.BackwardsDelayPropagationType;
+import org.opentripplanner.updater.trip.gtfs.interpolation.ForwardsDelayPropagationType;
 
 /** Common base class for many test classes which need to load a GTFS feed in preparation for tests. */
 public abstract class GtfsTest {

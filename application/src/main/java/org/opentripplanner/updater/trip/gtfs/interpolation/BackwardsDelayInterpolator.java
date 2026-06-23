@@ -1,9 +1,9 @@
-package org.opentripplanner.updater.trip.gtfs;
+package org.opentripplanner.updater.trip.gtfs.interpolation;
 
 import java.util.OptionalInt;
 import org.opentripplanner.transit.model.timetable.RealTimeTripTimesBuilder;
 
-interface BackwardsDelayInterpolator {
+public interface BackwardsDelayInterpolator {
   /**
    * Propagate backwards from the first stop with real-time information
    * @return The first stop position with given time if propagation is done.

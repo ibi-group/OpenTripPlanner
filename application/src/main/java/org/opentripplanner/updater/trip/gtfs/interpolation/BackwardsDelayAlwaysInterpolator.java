@@ -1,4 +1,4 @@
-package org.opentripplanner.updater.trip.gtfs;
+package org.opentripplanner.updater.trip.gtfs.interpolation;
 
 import java.util.Objects;
 import org.opentripplanner.transit.model.timetable.RealTimeTripTimesBuilder;

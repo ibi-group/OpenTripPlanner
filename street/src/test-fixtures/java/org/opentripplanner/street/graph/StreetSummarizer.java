@@ -29,7 +29,7 @@ class StreetSummarizer {
         tpe.getPermission(),
         summarizeBoolean(tpe.isWheelchairAccessible())
       );
-      case TemporaryFreeEdge tfe -> String.format(
+      case TemporaryFreeEdge _ -> String.format(
         "%s → %s ALL",
         summarizeVertex(e.getFromVertex()),
         summarizeVertex(e.getToVertex())

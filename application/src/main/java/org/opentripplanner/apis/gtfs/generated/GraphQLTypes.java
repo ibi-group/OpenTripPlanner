@@ -1932,6 +1932,31 @@ public class GraphQLTypes {
     }
   }
 
+  public static class GraphQLPatternCanceledTripsArgs {
+
+    private List<GraphQLLocalDateRangeInput> serviceDateRanges;
+
+    public GraphQLPatternCanceledTripsArgs(Map<String, Object> args) {
+      if (args != null) {
+        if (args.get("serviceDateRanges") != null) {
+          this.serviceDateRanges = ((List<Map<String, Object>>) args.get(
+              "serviceDateRanges"
+            )).stream()
+            .map(o -> o == null ? null : new GraphQLLocalDateRangeInput(o))
+            .collect(Collectors.toList());
+        }
+      }
+    }
+
+    public List<GraphQLLocalDateRangeInput> getGraphQLServiceDateRanges() {
+      return this.serviceDateRanges;
+    }
+
+    public void setGraphQLServiceDateRanges(List<GraphQLLocalDateRangeInput> serviceDateRanges) {
+      this.serviceDateRanges = serviceDateRanges;
+    }
+  }
+
   public static class GraphQLPatternTripsForDateArgs {
 
     private String serviceDate;
@@ -3329,6 +3354,25 @@ public class GraphQLTypes {
 
     public void setGraphQLId(String id) {
       this.id = id;
+    }
+  }
+
+  public static class GraphQLQueryTypePatternsByIdsArgs {
+
+    private List<String> ids;
+
+    public GraphQLQueryTypePatternsByIdsArgs(Map<String, Object> args) {
+      if (args != null) {
+        this.ids = (List<String>) args.get("ids");
+      }
+    }
+
+    public List<String> getGraphQLIds() {
+      return this.ids;
+    }
+
+    public void setGraphQLIds(List<String> ids) {
+      this.ids = ids;
     }
   }
 

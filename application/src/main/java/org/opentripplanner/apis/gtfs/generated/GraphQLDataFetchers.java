@@ -568,6 +568,7 @@ public class GraphQLDataFetchers {
    */
   public interface GraphQLPattern {
     public DataFetcher<Iterable<TransitAlert>> alerts();
+    public DataFetcher<Iterable<TripOnServiceDate>> canceledTrips();
     public DataFetcher<String> code();
     public DataFetcher<Integer> directionId();
     public DataFetcher<Iterable<Coordinate>> geometry();
@@ -701,6 +702,7 @@ public class GraphQLDataFetchers {
     public DataFetcher<Object> node();
     public DataFetcher<TripPattern> pattern();
     public DataFetcher<Iterable<TripPattern>> patterns();
+    public DataFetcher<Iterable<TripPattern>> patternsByIds();
     public DataFetcher<
       graphql.execution.DataFetcherResult<org.opentripplanner.routing.api.response.RoutingResponse>
     > plan();

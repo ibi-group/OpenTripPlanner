@@ -357,7 +357,10 @@ public class DefaultTransitService implements TransitEditorService {
    */
   @Override
   public List<TripOnServiceDate> findCanceledTrips(TripOnServiceDateRequest request) {
-    Matcher<TripOnServiceDate> matcher = TripOnServiceDateMatcherFactory.of(request);
+    Matcher<TripOnServiceDate> matcher = TripOnServiceDateMatcherFactory.of(
+      request,
+      this::findPattern
+    );
     return listCanceledTrips().stream().filter(matcher::match).toList();
   }
 
@@ -598,7 +601,10 @@ public class DefaultTransitService implements TransitEditorService {
    */
   @Override
   public List<TripOnServiceDate> findTripsOnServiceDate(TripOnServiceDateRequest request) {
-    Matcher<TripOnServiceDate> matcher = TripOnServiceDateMatcherFactory.of(request);
+    Matcher<TripOnServiceDate> matcher = TripOnServiceDateMatcherFactory.of(
+      request,
+      this::findPattern
+    );
     return listTripsOnServiceDate().stream().filter(matcher::match).toList();
   }
 
