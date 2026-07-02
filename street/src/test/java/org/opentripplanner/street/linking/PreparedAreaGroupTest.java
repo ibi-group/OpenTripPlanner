@@ -51,6 +51,22 @@ class PreparedAreaGroupTest {
   }
 
   @Test
+  void containsInteriorPoint() {
+    assertTrue(area.containsPoint(new Coordinate(1, 1)));
+  }
+
+  @Test
+  void doesNotContainPointInHole() {
+    // The 2x2 hole is centred at x,y in (4,6); a point in its middle is not inside the area.
+    assertFalse(area.containsPoint(new Coordinate(5, 5)));
+  }
+
+  @Test
+  void doesNotContainExteriorPoint() {
+    assertFalse(area.containsPoint(new Coordinate(11, 11)));
+  }
+
+  @Test
   void exposesWrappedAreaGroup() {
     var ag = new AreaGroup(SQUARE_WITH_HOLE);
     assertSame(ag, new PreparedAreaGroup(ag).areaGroup());

@@ -41,7 +41,7 @@ public class LayerFilters {
 
     var filter = new PatternByServiceDatesFilter(
       // reminder, the end of the date range is exclusive so it's the next Sunday plus one day
-      new LocalDateRange(lastSunday, nextSundayPlusOne),
+      LocalDateRange.ofExclusiveEnd(lastSunday, nextSundayPlusOne),
       // not used
       route -> List.of(),
       getServiceDatesForTrip

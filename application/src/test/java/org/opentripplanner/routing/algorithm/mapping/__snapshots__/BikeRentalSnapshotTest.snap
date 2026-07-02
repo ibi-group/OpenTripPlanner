@@ -6,7 +6,7 @@ org.opentripplanner.routing.algorithm.mapping.BikeRentalSnapshotTest.accessBikeR
       "elevationGained" : 0.0,
       "elevationLost" : 0.0,
       "endTime" : "2009-10-21T23:32:20.000+00:00",
-      "generalizedCost" : 2099,
+      "generalizedCost" : 2332,
       "legs" : [
         {
           "agencyTimeZoneOffset" : -25200000,
@@ -21,7 +21,7 @@ org.opentripplanner.routing.algorithm.mapping.BikeRentalSnapshotTest.accessBikeR
             "name" : "SW Johnson St. & NW 24th Ave. (P1)",
             "vertexType" : "NORMAL"
           },
-          "generalizedCost" : 293,
+          "generalizedCost" : 321,
           "interlineWithPreviousLeg" : false,
           "legGeometry" : { },
           "mode" : "WALK",
@@ -174,7 +174,7 @@ org.opentripplanner.routing.algorithm.mapping.BikeRentalSnapshotTest.accessBikeR
             ],
             "vertexType" : "BIKESHARE"
           },
-          "generalizedCost" : 52,
+          "generalizedCost" : 60,
           "interlineWithPreviousLeg" : false,
           "legGeometry" : { },
           "mode" : "WALK",
@@ -376,7 +376,7 @@ org.opentripplanner.routing.algorithm.mapping.BikeRentalSnapshotTest.accessBikeR
             "vertexType" : "TRANSIT",
             "zoneId" : "0"
           },
-          "generalizedCost" : 281,
+          "generalizedCost" : 479,
           "interlineWithPreviousLeg" : false,
           "legGeometry" : { },
           "mode" : "WALK",
@@ -426,7 +426,7 @@ org.opentripplanner.routing.algorithm.mapping.BikeRentalSnapshotTest.accessBikeR
       "elevationGained" : 0.0,
       "elevationLost" : 0.0,
       "endTime" : "2009-10-21T23:37:56.000+00:00",
-      "generalizedCost" : 2540,
+      "generalizedCost" : 2862,
       "legs" : [
         {
           "agencyTimeZoneOffset" : -25200000,
@@ -441,7 +441,7 @@ org.opentripplanner.routing.algorithm.mapping.BikeRentalSnapshotTest.accessBikeR
             "name" : "SW Johnson St. & NW 24th Ave. (P1)",
             "vertexType" : "NORMAL"
           },
-          "generalizedCost" : 867,
+          "generalizedCost" : 1076,
           "interlineWithPreviousLeg" : false,
           "legGeometry" : { },
           "mode" : "WALK",
@@ -721,7 +721,7 @@ org.opentripplanner.routing.algorithm.mapping.BikeRentalSnapshotTest.accessBikeR
             "vertexType" : "TRANSIT",
             "zoneId" : "0"
           },
-          "generalizedCost" : 473,
+          "generalizedCost" : 585,
           "interlineWithPreviousLeg" : false,
           "legGeometry" : { },
           "mode" : "WALK",
@@ -810,7 +810,7 @@ org.opentripplanner.routing.algorithm.mapping.BikeRentalSnapshotTest.accessBikeR
       "elevationGained" : 0.0,
       "elevationLost" : 0.0,
       "endTime" : "2009-10-21T23:40:09.000+00:00",
-      "generalizedCost" : 1802,
+      "generalizedCost" : 1965,
       "legs" : [
         {
           "agencyTimeZoneOffset" : -25200000,
@@ -825,7 +825,7 @@ org.opentripplanner.routing.algorithm.mapping.BikeRentalSnapshotTest.accessBikeR
             "name" : "SW Johnson St. & NW 24th Ave. (P1)",
             "vertexType" : "NORMAL"
           },
-          "generalizedCost" : 335,
+          "generalizedCost" : 446,
           "interlineWithPreviousLeg" : false,
           "legGeometry" : { },
           "mode" : "WALK",
@@ -1040,7 +1040,7 @@ org.opentripplanner.routing.algorithm.mapping.BikeRentalSnapshotTest.accessBikeR
             "vertexType" : "TRANSIT",
             "zoneId" : "0"
           },
-          "generalizedCost" : 76,
+          "generalizedCost" : 129,
           "interlineWithPreviousLeg" : false,
           "legGeometry" : { },
           "mode" : "WALK",
@@ -1090,7 +1090,7 @@ org.opentripplanner.routing.algorithm.mapping.BikeRentalSnapshotTest.accessBikeR
       "elevationGained" : 0.0,
       "elevationLost" : 0.0,
       "endTime" : "2009-10-21T23:45:20.000+00:00",
-      "generalizedCost" : 2099,
+      "generalizedCost" : 2332,
       "legs" : [
         {
           "agencyTimeZoneOffset" : -25200000,
@@ -1105,7 +1105,7 @@ org.opentripplanner.routing.algorithm.mapping.BikeRentalSnapshotTest.accessBikeR
             "name" : "SW Johnson St. & NW 24th Ave. (P1)",
             "vertexType" : "NORMAL"
           },
-          "generalizedCost" : 293,
+          "generalizedCost" : 321,
           "interlineWithPreviousLeg" : false,
           "legGeometry" : { },
           "mode" : "WALK",
@@ -1258,7 +1258,7 @@ org.opentripplanner.routing.algorithm.mapping.BikeRentalSnapshotTest.accessBikeR
             ],
             "vertexType" : "BIKESHARE"
           },
-          "generalizedCost" : 52,
+          "generalizedCost" : 60,
           "interlineWithPreviousLeg" : false,
           "legGeometry" : { },
           "mode" : "WALK",
@@ -1460,7 +1460,7 @@ org.opentripplanner.routing.algorithm.mapping.BikeRentalSnapshotTest.accessBikeR
             "vertexType" : "TRANSIT",
             "zoneId" : "0"
           },
-          "generalizedCost" : 281,
+          "generalizedCost" : 479,
           "interlineWithPreviousLeg" : false,
           "legGeometry" : { },
           "mode" : "WALK",
@@ -1510,7 +1510,7 @@ org.opentripplanner.routing.algorithm.mapping.BikeRentalSnapshotTest.accessBikeR
       "elevationGained" : 0.0,
       "elevationLost" : 0.0,
       "endTime" : "2009-10-21T23:54:20.000+00:00",
-      "generalizedCost" : 2099,
+      "generalizedCost" : 2332,
       "legs" : [
         {
           "agencyTimeZoneOffset" : -25200000,
@@ -1525,7 +1525,7 @@ org.opentripplanner.routing.algorithm.mapping.BikeRentalSnapshotTest.accessBikeR
             "name" : "SW Johnson St. & NW 24th Ave. (P1)",
             "vertexType" : "NORMAL"
           },
-          "generalizedCost" : 293,
+          "generalizedCost" : 321,
           "interlineWithPreviousLeg" : false,
           "legGeometry" : { },
           "mode" : "WALK",
@@ -1678,7 +1678,7 @@ org.opentripplanner.routing.algorithm.mapping.BikeRentalSnapshotTest.accessBikeR
             ],
             "vertexType" : "BIKESHARE"
           },
-          "generalizedCost" : 52,
+          "generalizedCost" : 60,
           "interlineWithPreviousLeg" : false,
           "legGeometry" : { },
           "mode" : "WALK",
@@ -1880,7 +1880,7 @@ org.opentripplanner.routing.algorithm.mapping.BikeRentalSnapshotTest.accessBikeR
             "vertexType" : "TRANSIT",
             "zoneId" : "0"
           },
-          "generalizedCost" : 281,
+          "generalizedCost" : 479,
           "interlineWithPreviousLeg" : false,
           "legGeometry" : { },
           "mode" : "WALK",
@@ -1930,7 +1930,7 @@ org.opentripplanner.routing.algorithm.mapping.BikeRentalSnapshotTest.accessBikeR
       "elevationGained" : 0.0,
       "elevationLost" : 0.0,
       "endTime" : "2009-10-21T23:56:09.000+00:00",
-      "generalizedCost" : 1802,
+      "generalizedCost" : 1965,
       "legs" : [
         {
           "agencyTimeZoneOffset" : -25200000,
@@ -1945,7 +1945,7 @@ org.opentripplanner.routing.algorithm.mapping.BikeRentalSnapshotTest.accessBikeR
             "name" : "SW Johnson St. & NW 24th Ave. (P1)",
             "vertexType" : "NORMAL"
           },
-          "generalizedCost" : 335,
+          "generalizedCost" : 446,
           "interlineWithPreviousLeg" : false,
           "legGeometry" : { },
           "mode" : "WALK",
@@ -2160,7 +2160,7 @@ org.opentripplanner.routing.algorithm.mapping.BikeRentalSnapshotTest.accessBikeR
             "vertexType" : "TRANSIT",
             "zoneId" : "0"
           },
-          "generalizedCost" : 76,
+          "generalizedCost" : 129,
           "interlineWithPreviousLeg" : false,
           "legGeometry" : { },
           "mode" : "WALK",
@@ -2216,7 +2216,7 @@ org.opentripplanner.routing.algorithm.mapping.BikeRentalSnapshotTest.directBikeR
       "elevationGained" : 0.0,
       "elevationLost" : 0.0,
       "endTime" : "2009-10-21T23:17:45.000+00:00",
-      "generalizedCost" : 930,
+      "generalizedCost" : 1023,
       "legs" : [
         {
           "agencyTimeZoneOffset" : -25200000,
@@ -2231,7 +2231,7 @@ org.opentripplanner.routing.algorithm.mapping.BikeRentalSnapshotTest.directBikeR
             "name" : "SW Johnson St. & NW 24th Ave. (P1)",
             "vertexType" : "NORMAL"
           },
-          "generalizedCost" : 293,
+          "generalizedCost" : 321,
           "interlineWithPreviousLeg" : false,
           "legGeometry" : { },
           "mode" : "WALK",
@@ -2384,7 +2384,7 @@ org.opentripplanner.routing.algorithm.mapping.BikeRentalSnapshotTest.directBikeR
             ],
             "vertexType" : "BIKESHARE"
           },
-          "generalizedCost" : 340,
+          "generalizedCost" : 405,
           "interlineWithPreviousLeg" : false,
           "legGeometry" : { },
           "mode" : "WALK",
@@ -2466,7 +2466,7 @@ org.opentripplanner.routing.algorithm.mapping.BikeRentalSnapshotTest.directBikeR
       "elevationGained" : 0.0,
       "elevationLost" : 0.0,
       "endTime" : "2009-10-21T23:10:00.000+00:00",
-      "generalizedCost" : 683,
+      "generalizedCost" : 711,
       "legs" : [
         {
           "agencyTimeZoneOffset" : -25200000,
@@ -2481,7 +2481,7 @@ org.opentripplanner.routing.algorithm.mapping.BikeRentalSnapshotTest.directBikeR
             "name" : "SW Johnson St. & NW 24th Ave. (P1)",
             "vertexType" : "NORMAL"
           },
-          "generalizedCost" : 293,
+          "generalizedCost" : 321,
           "interlineWithPreviousLeg" : false,
           "legGeometry" : { },
           "mode" : "WALK",
@@ -2659,7 +2659,7 @@ org.opentripplanner.routing.algorithm.mapping.BikeRentalSnapshotTest.directBikeR
       "elevationGained" : 0.0,
       "elevationLost" : 0.0,
       "endTime" : "2009-10-21T23:15:28.000+00:00",
-      "generalizedCost" : 682,
+      "generalizedCost" : 710,
       "legs" : [
         {
           "agencyTimeZoneOffset" : -25200000,
@@ -2674,7 +2674,7 @@ org.opentripplanner.routing.algorithm.mapping.BikeRentalSnapshotTest.directBikeR
             "name" : "SW Johnson St. & NW 24th Ave. (P1)",
             "vertexType" : "NORMAL"
           },
-          "generalizedCost" : 293,
+          "generalizedCost" : 321,
           "interlineWithPreviousLeg" : false,
           "legGeometry" : { },
           "mode" : "WALK",
@@ -2852,7 +2852,7 @@ org.opentripplanner.routing.algorithm.mapping.BikeRentalSnapshotTest.egressBikeR
       "elevationGained" : 0.0,
       "elevationLost" : 0.0,
       "endTime" : "2009-10-21T23:28:42.000+00:00",
-      "generalizedCost" : 2016,
+      "generalizedCost" : 2106,
       "legs" : [
         {
           "agencyTimeZoneOffset" : -25200000,
@@ -2867,7 +2867,7 @@ org.opentripplanner.routing.algorithm.mapping.BikeRentalSnapshotTest.egressBikeR
             "name" : "NW Everett St. & NW 5th Ave. (P3)",
             "vertexType" : "NORMAL"
           },
-          "generalizedCost" : 264,
+          "generalizedCost" : 319,
           "interlineWithPreviousLeg" : false,
           "legGeometry" : { },
           "mode" : "WALK",
@@ -3108,7 +3108,7 @@ org.opentripplanner.routing.algorithm.mapping.BikeRentalSnapshotTest.egressBikeR
             "vertexType" : "TRANSIT",
             "zoneId" : "1"
           },
-          "generalizedCost" : 171,
+          "generalizedCost" : 178,
           "interlineWithPreviousLeg" : false,
           "legGeometry" : { },
           "mode" : "WALK",
@@ -3248,7 +3248,7 @@ org.opentripplanner.routing.algorithm.mapping.BikeRentalSnapshotTest.egressBikeR
             ],
             "vertexType" : "BIKESHARE"
           },
-          "generalizedCost" : 173,
+          "generalizedCost" : 201,
           "interlineWithPreviousLeg" : false,
           "legGeometry" : { },
           "mode" : "WALK",
@@ -3324,7 +3324,7 @@ org.opentripplanner.routing.algorithm.mapping.BikeRentalSnapshotTest.egressBikeR
       "elevationGained" : 0.0,
       "elevationLost" : 0.0,
       "endTime" : "2009-10-21T23:35:11.000+00:00",
-      "generalizedCost" : 2502,
+      "generalizedCost" : 2823,
       "legs" : [
         {
           "agencyTimeZoneOffset" : -25200000,
@@ -3339,7 +3339,7 @@ org.opentripplanner.routing.algorithm.mapping.BikeRentalSnapshotTest.egressBikeR
             "name" : "NW Everett St. & NW 5th Ave. (P3)",
             "vertexType" : "NORMAL"
           },
-          "generalizedCost" : 443,
+          "generalizedCost" : 544,
           "interlineWithPreviousLeg" : false,
           "legGeometry" : { },
           "mode" : "WALK",
@@ -3593,7 +3593,7 @@ org.opentripplanner.routing.algorithm.mapping.BikeRentalSnapshotTest.egressBikeR
             "vertexType" : "TRANSIT",
             "zoneId" : "1"
           },
-          "generalizedCost" : 856,
+          "generalizedCost" : 1076,
           "interlineWithPreviousLeg" : false,
           "legGeometry" : { },
           "mode" : "WALK",
@@ -3678,26 +3678,26 @@ org.opentripplanner.routing.algorithm.mapping.BikeRentalSnapshotTest.egressBikeR
     },
     {
       "arrivedAtDestinationWithRentedBicycle" : false,
-      "duration" : 1112,
+      "duration" : 1131,
       "elevationGained" : 0.0,
       "elevationLost" : 0.0,
-      "endTime" : "2009-10-21T23:37:07.000+00:00",
-      "generalizedCost" : 2349,
+      "endTime" : "2009-10-21T23:37:08.000+00:00",
+      "generalizedCost" : 2591,
       "legs" : [
         {
           "agencyTimeZoneOffset" : -25200000,
           "arrivalDelay" : 0,
           "departureDelay" : 0,
-          "distance" : 252.88,
+          "distance" : 267.58,
           "endTime" : "2009-10-21T23:21:53.000+00:00",
           "from" : {
-            "departure" : "2009-10-21T23:18:35.000+00:00",
+            "departure" : "2009-10-21T23:18:17.000+00:00",
             "lat" : 45.52523,
             "lon" : -122.67525,
             "name" : "NW Everett St. & NW 5th Ave. (P3)",
             "vertexType" : "NORMAL"
           },
-          "generalizedCost" : 397,
+          "generalizedCost" : 511,
           "interlineWithPreviousLeg" : false,
           "legGeometry" : { },
           "mode" : "WALK",
@@ -3705,7 +3705,7 @@ org.opentripplanner.routing.algorithm.mapping.BikeRentalSnapshotTest.egressBikeR
           "realTime" : false,
           "rentedBike" : false,
           "route" : "",
-          "startTime" : "2009-10-21T23:18:35.000+00:00",
+          "startTime" : "2009-10-21T23:18:17.000+00:00",
           "steps" : [
             {
               "absoluteDirection" : "WEST",
@@ -3724,7 +3724,7 @@ org.opentripplanner.routing.algorithm.mapping.BikeRentalSnapshotTest.egressBikeR
               "absoluteDirection" : "NORTH",
               "area" : false,
               "bogusName" : false,
-              "distance" : 158.01,
+              "distance" : 78.51,
               "elevation" : "",
               "lat" : 45.5252242,
               "lon" : -122.6754806,
@@ -3737,11 +3737,37 @@ org.opentripplanner.routing.algorithm.mapping.BikeRentalSnapshotTest.egressBikeR
               "absoluteDirection" : "WEST",
               "area" : false,
               "bogusName" : false,
-              "distance" : 74.23,
+              "distance" : 81.71,
               "elevation" : "",
-              "lat" : 45.5266447,
-              "lon" : -122.6755391,
+              "lat" : 45.52593,
+              "lon" : -122.6755097,
               "relativeDirection" : "LEFT",
+              "stayOn" : false,
+              "streetName" : "Northwest Flanders Street",
+              "walkingBike" : false
+            },
+            {
+              "absoluteDirection" : "NORTH",
+              "area" : false,
+              "bogusName" : false,
+              "distance" : 80.14,
+              "elevation" : "",
+              "lat" : 45.5259105,
+              "lon" : -122.6765581,
+              "relativeDirection" : "RIGHT",
+              "stayOn" : false,
+              "streetName" : "Northwest 6th Avenue",
+              "walkingBike" : false
+            },
+            {
+              "absoluteDirection" : "EAST",
+              "area" : false,
+              "bogusName" : false,
+              "distance" : 6.6,
+              "elevation" : "",
+              "lat" : 45.526631,
+              "lon" : -122.6765763,
+              "relativeDirection" : "RIGHT",
               "stayOn" : false,
               "streetName" : "Northwest Glisan Street",
               "walkingBike" : false
@@ -3754,7 +3780,7 @@ org.opentripplanner.routing.algorithm.mapping.BikeRentalSnapshotTest.egressBikeR
               "elevation" : "",
               "lat" : 45.5266303,
               "lon" : -122.6764917,
-              "relativeDirection" : "RIGHT",
+              "relativeDirection" : "LEFT",
               "stayOn" : false,
               "streetName" : "path",
               "walkingBike" : false
@@ -3925,8 +3951,8 @@ org.opentripplanner.routing.algorithm.mapping.BikeRentalSnapshotTest.egressBikeR
           "agencyTimeZoneOffset" : -25200000,
           "arrivalDelay" : 0,
           "departureDelay" : 0,
-          "distance" : 580.63,
-          "endTime" : "2009-10-21T23:37:07.000+00:00",
+          "distance" : 581.2,
+          "endTime" : "2009-10-21T23:37:08.000+00:00",
           "from" : {
             "arrival" : "2009-10-21T23:29:50.000+00:00",
             "departure" : "2009-10-21T23:29:50.000+00:00",
@@ -3938,7 +3964,7 @@ org.opentripplanner.routing.algorithm.mapping.BikeRentalSnapshotTest.egressBikeR
             "vertexType" : "TRANSIT",
             "zoneId" : "1"
           },
-          "generalizedCost" : 876,
+          "generalizedCost" : 1002,
           "interlineWithPreviousLeg" : false,
           "legGeometry" : { },
           "mode" : "WALK",
@@ -3952,7 +3978,7 @@ org.opentripplanner.routing.algorithm.mapping.BikeRentalSnapshotTest.egressBikeR
               "absoluteDirection" : "SOUTH",
               "area" : false,
               "bogusName" : false,
-              "distance" : 24.9,
+              "distance" : 421.37,
               "elevation" : "",
               "lat" : 45.5321578,
               "lon" : -122.6987026,
@@ -3965,23 +3991,23 @@ org.opentripplanner.routing.algorithm.mapping.BikeRentalSnapshotTest.egressBikeR
               "absoluteDirection" : "WEST",
               "area" : false,
               "bogusName" : false,
-              "distance" : 158.45,
+              "distance" : 158.43,
               "elevation" : "",
-              "lat" : 45.531934,
-              "lon" : -122.698695,
+              "lat" : 45.5283699,
+              "lon" : -122.6985634,
               "relativeDirection" : "RIGHT",
               "stayOn" : false,
-              "streetName" : "Northwest Overton Street",
+              "streetName" : "Northwest Johnson Street",
               "walkingBike" : false
             },
             {
               "absoluteDirection" : "SOUTH",
               "area" : false,
               "bogusName" : false,
-              "distance" : 397.28,
+              "distance" : 1.42,
               "elevation" : "",
-              "lat" : 45.5318916,
-              "lon" : -122.7007283,
+              "lat" : 45.5283327,
+              "lon" : -122.7005966,
               "relativeDirection" : "LEFT",
               "stayOn" : false,
               "streetName" : "Northwest 24th Avenue",
@@ -3989,7 +4015,7 @@ org.opentripplanner.routing.algorithm.mapping.BikeRentalSnapshotTest.egressBikeR
             }
           ],
           "to" : {
-            "arrival" : "2009-10-21T23:37:07.000+00:00",
+            "arrival" : "2009-10-21T23:37:08.000+00:00",
             "lat" : 45.52832,
             "lon" : -122.70059,
             "name" : "SW Johnson St. & NW 24th Ave. (P1)",
@@ -3999,14 +4025,14 @@ org.opentripplanner.routing.algorithm.mapping.BikeRentalSnapshotTest.egressBikeR
           "walkingBike" : false
         }
       ],
-      "startTime" : "2009-10-21T23:18:35.000+00:00",
+      "startTime" : "2009-10-21T23:18:17.000+00:00",
       "tooSloped" : false,
       "transfers" : 0,
       "transitTime" : 477,
       "waitingTime" : 0,
-      "walkDistance" : 833.51,
+      "walkDistance" : 848.78,
       "walkLimitExceeded" : false,
-      "walkTime" : 635
+      "walkTime" : 654
     },
     {
       "arrivedAtDestinationWithRentedBicycle" : false,
@@ -4014,7 +4040,7 @@ org.opentripplanner.routing.algorithm.mapping.BikeRentalSnapshotTest.egressBikeR
       "elevationGained" : 0.0,
       "elevationLost" : 0.0,
       "endTime" : "2009-10-21T23:43:42.000+00:00",
-      "generalizedCost" : 2016,
+      "generalizedCost" : 2106,
       "legs" : [
         {
           "agencyTimeZoneOffset" : -25200000,
@@ -4029,7 +4055,7 @@ org.opentripplanner.routing.algorithm.mapping.BikeRentalSnapshotTest.egressBikeR
             "name" : "NW Everett St. & NW 5th Ave. (P3)",
             "vertexType" : "NORMAL"
           },
-          "generalizedCost" : 264,
+          "generalizedCost" : 319,
           "interlineWithPreviousLeg" : false,
           "legGeometry" : { },
           "mode" : "WALK",
@@ -4270,7 +4296,7 @@ org.opentripplanner.routing.algorithm.mapping.BikeRentalSnapshotTest.egressBikeR
             "vertexType" : "TRANSIT",
             "zoneId" : "1"
           },
-          "generalizedCost" : 171,
+          "generalizedCost" : 178,
           "interlineWithPreviousLeg" : false,
           "legGeometry" : { },
           "mode" : "WALK",
@@ -4410,7 +4436,7 @@ org.opentripplanner.routing.algorithm.mapping.BikeRentalSnapshotTest.egressBikeR
             ],
             "vertexType" : "BIKESHARE"
           },
-          "generalizedCost" : 173,
+          "generalizedCost" : 201,
           "interlineWithPreviousLeg" : false,
           "legGeometry" : { },
           "mode" : "WALK",
@@ -4486,7 +4512,7 @@ org.opentripplanner.routing.algorithm.mapping.BikeRentalSnapshotTest.egressBikeR
       "elevationGained" : 0.0,
       "elevationLost" : 0.0,
       "endTime" : "2009-10-21T23:51:11.000+00:00",
-      "generalizedCost" : 2562,
+      "generalizedCost" : 2883,
       "legs" : [
         {
           "agencyTimeZoneOffset" : -25200000,
@@ -4501,7 +4527,7 @@ org.opentripplanner.routing.algorithm.mapping.BikeRentalSnapshotTest.egressBikeR
             "name" : "NW Everett St. & NW 5th Ave. (P3)",
             "vertexType" : "NORMAL"
           },
-          "generalizedCost" : 443,
+          "generalizedCost" : 544,
           "interlineWithPreviousLeg" : false,
           "legGeometry" : { },
           "mode" : "WALK",
@@ -4755,7 +4781,7 @@ org.opentripplanner.routing.algorithm.mapping.BikeRentalSnapshotTest.egressBikeR
             "vertexType" : "TRANSIT",
             "zoneId" : "1"
           },
-          "generalizedCost" : 856,
+          "generalizedCost" : 1076,
           "interlineWithPreviousLeg" : false,
           "legGeometry" : { },
           "mode" : "WALK",
@@ -4840,26 +4866,26 @@ org.opentripplanner.routing.algorithm.mapping.BikeRentalSnapshotTest.egressBikeR
     },
     {
       "arrivedAtDestinationWithRentedBicycle" : false,
-      "duration" : 1112,
+      "duration" : 1131,
       "elevationGained" : 0.0,
       "elevationLost" : 0.0,
-      "endTime" : "2009-10-21T23:56:07.000+00:00",
-      "generalizedCost" : 2349,
+      "endTime" : "2009-10-21T23:56:08.000+00:00",
+      "generalizedCost" : 2591,
       "legs" : [
         {
           "agencyTimeZoneOffset" : -25200000,
           "arrivalDelay" : 0,
           "departureDelay" : 0,
-          "distance" : 252.88,
+          "distance" : 267.58,
           "endTime" : "2009-10-21T23:40:53.000+00:00",
           "from" : {
-            "departure" : "2009-10-21T23:37:35.000+00:00",
+            "departure" : "2009-10-21T23:37:17.000+00:00",
             "lat" : 45.52523,
             "lon" : -122.67525,
             "name" : "NW Everett St. & NW 5th Ave. (P3)",
             "vertexType" : "NORMAL"
           },
-          "generalizedCost" : 397,
+          "generalizedCost" : 511,
           "interlineWithPreviousLeg" : false,
           "legGeometry" : { },
           "mode" : "WALK",
@@ -4867,7 +4893,7 @@ org.opentripplanner.routing.algorithm.mapping.BikeRentalSnapshotTest.egressBikeR
           "realTime" : false,
           "rentedBike" : false,
           "route" : "",
-          "startTime" : "2009-10-21T23:37:35.000+00:00",
+          "startTime" : "2009-10-21T23:37:17.000+00:00",
           "steps" : [
             {
               "absoluteDirection" : "WEST",
@@ -4886,7 +4912,7 @@ org.opentripplanner.routing.algorithm.mapping.BikeRentalSnapshotTest.egressBikeR
               "absoluteDirection" : "NORTH",
               "area" : false,
               "bogusName" : false,
-              "distance" : 158.01,
+              "distance" : 78.51,
               "elevation" : "",
               "lat" : 45.5252242,
               "lon" : -122.6754806,
@@ -4899,11 +4925,37 @@ org.opentripplanner.routing.algorithm.mapping.BikeRentalSnapshotTest.egressBikeR
               "absoluteDirection" : "WEST",
               "area" : false,
               "bogusName" : false,
-              "distance" : 74.23,
+              "distance" : 81.71,
               "elevation" : "",
-              "lat" : 45.5266447,
-              "lon" : -122.6755391,
+              "lat" : 45.52593,
+              "lon" : -122.6755097,
               "relativeDirection" : "LEFT",
+              "stayOn" : false,
+              "streetName" : "Northwest Flanders Street",
+              "walkingBike" : false
+            },
+            {
+              "absoluteDirection" : "NORTH",
+              "area" : false,
+              "bogusName" : false,
+              "distance" : 80.14,
+              "elevation" : "",
+              "lat" : 45.5259105,
+              "lon" : -122.6765581,
+              "relativeDirection" : "RIGHT",
+              "stayOn" : false,
+              "streetName" : "Northwest 6th Avenue",
+              "walkingBike" : false
+            },
+            {
+              "absoluteDirection" : "EAST",
+              "area" : false,
+              "bogusName" : false,
+              "distance" : 6.6,
+              "elevation" : "",
+              "lat" : 45.526631,
+              "lon" : -122.6765763,
+              "relativeDirection" : "RIGHT",
               "stayOn" : false,
               "streetName" : "Northwest Glisan Street",
               "walkingBike" : false
@@ -4916,7 +4968,7 @@ org.opentripplanner.routing.algorithm.mapping.BikeRentalSnapshotTest.egressBikeR
               "elevation" : "",
               "lat" : 45.5266303,
               "lon" : -122.6764917,
-              "relativeDirection" : "RIGHT",
+              "relativeDirection" : "LEFT",
               "stayOn" : false,
               "streetName" : "path",
               "walkingBike" : false
@@ -5087,8 +5139,8 @@ org.opentripplanner.routing.algorithm.mapping.BikeRentalSnapshotTest.egressBikeR
           "agencyTimeZoneOffset" : -25200000,
           "arrivalDelay" : 0,
           "departureDelay" : 0,
-          "distance" : 580.63,
-          "endTime" : "2009-10-21T23:56:07.000+00:00",
+          "distance" : 581.2,
+          "endTime" : "2009-10-21T23:56:08.000+00:00",
           "from" : {
             "arrival" : "2009-10-21T23:48:50.000+00:00",
             "departure" : "2009-10-21T23:48:50.000+00:00",
@@ -5100,7 +5152,7 @@ org.opentripplanner.routing.algorithm.mapping.BikeRentalSnapshotTest.egressBikeR
             "vertexType" : "TRANSIT",
             "zoneId" : "1"
           },
-          "generalizedCost" : 876,
+          "generalizedCost" : 1002,
           "interlineWithPreviousLeg" : false,
           "legGeometry" : { },
           "mode" : "WALK",
@@ -5114,7 +5166,7 @@ org.opentripplanner.routing.algorithm.mapping.BikeRentalSnapshotTest.egressBikeR
               "absoluteDirection" : "SOUTH",
               "area" : false,
               "bogusName" : false,
-              "distance" : 24.9,
+              "distance" : 421.37,
               "elevation" : "",
               "lat" : 45.5321578,
               "lon" : -122.6987026,
@@ -5127,23 +5179,23 @@ org.opentripplanner.routing.algorithm.mapping.BikeRentalSnapshotTest.egressBikeR
               "absoluteDirection" : "WEST",
               "area" : false,
               "bogusName" : false,
-              "distance" : 158.45,
+              "distance" : 158.43,
               "elevation" : "",
-              "lat" : 45.531934,
-              "lon" : -122.698695,
+              "lat" : 45.5283699,
+              "lon" : -122.6985634,
               "relativeDirection" : "RIGHT",
               "stayOn" : false,
-              "streetName" : "Northwest Overton Street",
+              "streetName" : "Northwest Johnson Street",
               "walkingBike" : false
             },
             {
               "absoluteDirection" : "SOUTH",
               "area" : false,
               "bogusName" : false,
-              "distance" : 397.28,
+              "distance" : 1.42,
               "elevation" : "",
-              "lat" : 45.5318916,
-              "lon" : -122.7007283,
+              "lat" : 45.5283327,
+              "lon" : -122.7005966,
               "relativeDirection" : "LEFT",
               "stayOn" : false,
               "streetName" : "Northwest 24th Avenue",
@@ -5151,7 +5203,7 @@ org.opentripplanner.routing.algorithm.mapping.BikeRentalSnapshotTest.egressBikeR
             }
           ],
           "to" : {
-            "arrival" : "2009-10-21T23:56:07.000+00:00",
+            "arrival" : "2009-10-21T23:56:08.000+00:00",
             "lat" : 45.52832,
             "lon" : -122.70059,
             "name" : "SW Johnson St. & NW 24th Ave. (P1)",
@@ -5161,14 +5213,14 @@ org.opentripplanner.routing.algorithm.mapping.BikeRentalSnapshotTest.egressBikeR
           "walkingBike" : false
         }
       ],
-      "startTime" : "2009-10-21T23:37:35.000+00:00",
+      "startTime" : "2009-10-21T23:37:17.000+00:00",
       "tooSloped" : false,
       "transfers" : 0,
       "transitTime" : 477,
       "waitingTime" : 0,
-      "walkDistance" : 833.51,
+      "walkDistance" : 848.78,
       "walkLimitExceeded" : false,
-      "walkTime" : 635
+      "walkTime" : 654
     }
   ]
 ]
