@@ -1,4 +1,4 @@
-package org.opentripplanner.updater.trip.siri.mapper;
+package org.opentripplanner.updater.trip.siri;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -10,17 +10,15 @@ import static uk.org.siri.siri21.DepartureBoardingActivityEnumeration.NO_BOARDIN
 
 import org.junit.jupiter.api.Test;
 import org.opentripplanner.model.PickDrop;
-import org.opentripplanner.updater.trip.siri.TestCall;
-import org.opentripplanner.updater.trip.siri.mapping.PickDropMapper;
 import uk.org.siri.siri21.CallStatusEnumeration;
 
-class PickDropMapperTest {
+class CallWrapperPickDropTest {
 
   @Test
   public void testNoRoutabilityChangeDropOff() {
     var originalDropOffType = PickDrop.COORDINATE_WITH_DRIVER;
     TestCall call = TestCall.of().withArrivalBoardingActivity(ALIGHTING).build();
-    var testResult = PickDropMapper.mapDropOffType(call, originalDropOffType);
+    var testResult = call.dropOff().applyTo(originalDropOffType);
 
     assertTrue(
       testResult.isEmpty(),
@@ -32,7 +30,7 @@ class PickDropMapperTest {
   public void testNoRoutabilityChangePickUp() {
     var originalPickUpType = PickDrop.COORDINATE_WITH_DRIVER;
     TestCall call = TestCall.of().withDepartureBoardingActivity(BOARDING).build();
-    var testResult = PickDropMapper.mapPickUpType(call, originalPickUpType);
+    var testResult = call.pickUp().applyTo(originalPickUpType);
 
     assertTrue(
       testResult.isEmpty(),
@@ -44,7 +42,7 @@ class PickDropMapperTest {
   public void testChangeInRoutabilityChangePickUp() {
     var originalPickUpType = PickDrop.NONE;
     TestCall call = TestCall.of().withDepartureBoardingActivity(BOARDING).build();
-    var testResult = PickDropMapper.mapPickUpType(call, originalPickUpType);
+    var testResult = call.pickUp().applyTo(originalPickUpType);
 
     assertTrue(
       testResult.isPresent(),
@@ -57,7 +55,7 @@ class PickDropMapperTest {
   public void testChangeInRoutabilityChangeDropOff() {
     var originalDropOffType = PickDrop.NONE;
     TestCall call = TestCall.of().withArrivalBoardingActivity(ALIGHTING).build();
-    var testResult = PickDropMapper.mapDropOffType(call, originalDropOffType);
+    var testResult = call.dropOff().applyTo(originalDropOffType);
 
     assertTrue(
       testResult.isPresent(),
@@ -70,7 +68,7 @@ class PickDropMapperTest {
   public void testChangeInRoutabilityChangeDropOff_NoAlighting() {
     var originalDropOffType = PickDrop.COORDINATE_WITH_DRIVER;
     TestCall call = TestCall.of().withArrivalBoardingActivity(NO_ALIGHTING).build();
-    var testResult = PickDropMapper.mapDropOffType(call, originalDropOffType);
+    var testResult = call.dropOff().applyTo(originalDropOffType);
 
     assertTrue(
       testResult.isPresent(),
@@ -83,7 +81,7 @@ class PickDropMapperTest {
   public void testChangeInRoutabilityChangePickUp_NoBoarding() {
     var originalPickUpType = PickDrop.COORDINATE_WITH_DRIVER;
     TestCall call = TestCall.of().withDepartureBoardingActivity(NO_BOARDING).build();
-    var testResult = PickDropMapper.mapPickUpType(call, originalPickUpType);
+    var testResult = call.pickUp().applyTo(originalPickUpType);
 
     assertTrue(
       testResult.isPresent(),
@@ -96,7 +94,7 @@ class PickDropMapperTest {
   public void testNullBoardingActivity() {
     var originalPickUpType = PickDrop.COORDINATE_WITH_DRIVER;
     TestCall call = TestCall.of().build();
-    var testResult = PickDropMapper.mapPickUpType(call, originalPickUpType);
+    var testResult = call.pickUp().applyTo(originalPickUpType);
 
     assertTrue(testResult.isEmpty(), "There should be an empty optional returned");
   }
@@ -105,7 +103,7 @@ class PickDropMapperTest {
   public void testNullArrivalActivity() {
     var originalDropOffType = PickDrop.COORDINATE_WITH_DRIVER;
     TestCall call = TestCall.of().build();
-    var testResult = PickDropMapper.mapDropOffType(call, originalDropOffType);
+    var testResult = call.dropOff().applyTo(originalDropOffType);
 
     assertTrue(testResult.isEmpty(), "There should be an empty optional returned");
   }
@@ -114,7 +112,7 @@ class PickDropMapperTest {
   public void testCancellationBoardingActivity() {
     var originalPickUpType = PickDrop.SCHEDULED;
     TestCall call = TestCall.of().withCancellation(true).build();
-    var testResult = PickDropMapper.mapPickUpType(call, originalPickUpType);
+    var testResult = call.pickUp().applyTo(originalPickUpType);
 
     assertTrue(
       testResult.isPresent(),
@@ -127,7 +125,7 @@ class PickDropMapperTest {
   public void testCancellationArrivalActivity() {
     var originalDropOffType = PickDrop.SCHEDULED;
     TestCall call = TestCall.of().withCancellation(true).build();
-    var testResult = PickDropMapper.mapDropOffType(call, originalDropOffType);
+    var testResult = call.dropOff().applyTo(originalDropOffType);
 
     assertTrue(
       testResult.isPresent(),
@@ -140,7 +138,7 @@ class PickDropMapperTest {
   public void testCancelledDepartureBoardingActivity() {
     var originalPickUpType = PickDrop.SCHEDULED;
     TestCall call = TestCall.of().withDepartureStatus(CallStatusEnumeration.CANCELLED).build();
-    var testResult = PickDropMapper.mapPickUpType(call, originalPickUpType);
+    var testResult = call.pickUp().applyTo(originalPickUpType);
 
     assertTrue(
       testResult.isPresent(),
@@ -153,7 +151,7 @@ class PickDropMapperTest {
   public void testCancelledArrivalBoardingActivity() {
     var originalPickUpType = PickDrop.SCHEDULED;
     TestCall call = TestCall.of().withArrivalStatus(CallStatusEnumeration.CANCELLED).build();
-    var testResult = PickDropMapper.mapPickUpType(call, originalPickUpType);
+    var testResult = call.pickUp().applyTo(originalPickUpType);
 
     assertTrue(
       testResult.isEmpty(),
@@ -165,7 +163,7 @@ class PickDropMapperTest {
   public void testCancelledArrivalAlightingActivity() {
     var originalDropOffType = PickDrop.SCHEDULED;
     TestCall call = TestCall.of().withArrivalStatus(CallStatusEnumeration.CANCELLED).build();
-    var testResult = PickDropMapper.mapDropOffType(call, originalDropOffType);
+    var testResult = call.dropOff().applyTo(originalDropOffType);
 
     assertTrue(
       testResult.isPresent(),
@@ -178,7 +176,7 @@ class PickDropMapperTest {
   public void testCancelledDepartureAlightingActivity() {
     var originalPickUpType = PickDrop.SCHEDULED;
     TestCall call = TestCall.of().withDepartureStatus(CallStatusEnumeration.CANCELLED).build();
-    var testResult = PickDropMapper.mapDropOffType(call, originalPickUpType);
+    var testResult = call.dropOff().applyTo(originalPickUpType);
 
     assertTrue(
       testResult.isEmpty(),
@@ -190,7 +188,7 @@ class PickDropMapperTest {
   public void testCancellationWithNoPlannedBoarding() {
     var originalPickUpType = PickDrop.NONE;
     TestCall call = TestCall.of().withCancellation(Boolean.TRUE).build();
-    var testResult = PickDropMapper.mapPickUpType(call, originalPickUpType);
+    var testResult = call.pickUp().applyTo(originalPickUpType);
 
     assertTrue(
       testResult.isEmpty(),
@@ -202,7 +200,7 @@ class PickDropMapperTest {
   public void testCancellationWithPlannedBoarding() {
     var originalPickUpType = PickDrop.SCHEDULED;
     TestCall call = TestCall.of().withCancellation(Boolean.TRUE).build();
-    var testResult = PickDropMapper.mapPickUpType(call, originalPickUpType);
+    var testResult = call.pickUp().applyTo(originalPickUpType);
 
     assertFalse(
       testResult.isEmpty(),
@@ -214,7 +212,7 @@ class PickDropMapperTest {
   public void testCancellationWithNoPlannedAlighting() {
     var originalDropOffType = PickDrop.NONE;
     TestCall call = TestCall.of().withCancellation(Boolean.TRUE).build();
-    var testResult = PickDropMapper.mapDropOffType(call, originalDropOffType);
+    var testResult = call.dropOff().applyTo(originalDropOffType);
 
     assertTrue(
       testResult.isEmpty(),
@@ -226,7 +224,7 @@ class PickDropMapperTest {
   public void testCancellationWithPlannedAlighting() {
     var originalDropOffType = PickDrop.SCHEDULED;
     TestCall call = TestCall.of().withCancellation(Boolean.TRUE).build();
-    var testResult = PickDropMapper.mapDropOffType(call, originalDropOffType);
+    var testResult = call.dropOff().applyTo(originalDropOffType);
 
     assertFalse(
       testResult.isEmpty(),

@@ -31,6 +31,7 @@ import org.opentripplanner.routing.alertpatch.EntitySelector;
 import org.opentripplanner.routing.alertpatch.TransitAlert;
 import org.opentripplanner.routing.services.TransitAlertService;
 import org.opentripplanner.service.realtimevehicles.RealtimeVehicleService;
+import org.opentripplanner.transit.model.basic.Notice;
 import org.opentripplanner.transit.model.network.Route;
 import org.opentripplanner.transit.model.network.TripPattern;
 import org.opentripplanner.transit.model.organization.Agency;
@@ -263,6 +264,11 @@ public class TripImpl implements GraphQLDataFetchers.GraphQLTrip {
       getTransitService(environment)
         .getReplacementHelper()
         .isReplacementTrip(getSource(environment));
+  }
+
+  @Override
+  public DataFetcher<Iterable<Notice>> notices() {
+    return env -> getTransitService(env).findNotices(getSource(env));
   }
 
   @Override
