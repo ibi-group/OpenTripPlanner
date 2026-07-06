@@ -6,7 +6,7 @@ org.opentripplanner.routing.algorithm.mapping.CarSnapshotTest.directCarPark=[
       "elevationGained" : 0.0,
       "elevationLost" : 0.0,
       "endTime" : "2009-10-21T23:14:05.000+00:00",
-      "generalizedCost" : 494,
+      "generalizedCost" : 541,
       "legs" : [
         {
           "agencyTimeZoneOffset" : -25200000,
@@ -137,7 +137,7 @@ org.opentripplanner.routing.algorithm.mapping.CarSnapshotTest.directCarPark=[
             },
             "vertexType" : "BIKEPARK"
           },
-          "generalizedCost" : 408,
+          "generalizedCost" : 455,
           "interlineWithPreviousLeg" : false,
           "legGeometry" : { },
           "mode" : "WALK",

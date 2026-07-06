@@ -451,10 +451,11 @@ public class VertexLinker {
       edge instanceof AreaEdge aEdge
     ) {
       AreaGroup ag = aEdge.getArea();
+      var area = new PreparedAreaGroup(ag);
       // is area already linked ?
       start = linkedAreas.get(ag);
       if (start == null) {
-        if (ag.getGeometry().contains(GEOMETRY_FACTORY.createPoint(vertex.getCoordinate()))) {
+        if (area.containsPoint(vertex.getCoordinate())) {
           // vertex is inside an area
           if (distSquared(vertex, split) <= DUPLICATE_NODE_EPSILON_DEGREES_SQUARED) {
             // vertex is so close to the edge that we can use the split point directly
@@ -473,14 +474,14 @@ public class VertexLinker {
         // vertex is inside the area. try connecting the vertex to the edge's split point, because
         // connections to visibility vertices may fail or do not always provide an optimal route
         // note that by definition, connection to closest edge cannot be blocked and edge can be forced
-        addVisibilityEdges(start, split, new PreparedAreaGroup(ag), scope, tempEdges, true);
+        addVisibilityEdges(start, split, area, scope, tempEdges, true);
       } else {
         // vertex is outside an area. Use split point for area connections
         start = split;
       }
       // connect start point to area visibility points to achieve optimal paths
       if (!ag.visibilityVertices().contains(start)) {
-        addAreaVertex(start, ag, scope, tempEdges, false);
+        addAreaVertex(start, area, scope, tempEdges, false);
       }
     } else {
       start = split;
@@ -661,7 +662,7 @@ public class VertexLinker {
    * Link a new vertex permanently with area geometry
    */
   public boolean addPermanentAreaVertex(IntersectionVertex newVertex, AreaGroup areaGroup) {
-    return addAreaVertex(newVertex, areaGroup, Scope.PERMANENT, null, true);
+    return addAreaVertex(newVertex, new PreparedAreaGroup(areaGroup), Scope.PERMANENT, null, true);
   }
 
   /**
@@ -681,14 +682,13 @@ public class VertexLinker {
    */
   private boolean addAreaVertex(
     IntersectionVertex newVertex,
-    AreaGroup areaGroup,
+    PreparedAreaGroup area,
     Scope scope,
     DisposableEdgeCollection tempEdges,
     boolean force
   ) {
+    AreaGroup areaGroup = area.areaGroup();
     Geometry polygon = areaGroup.getGeometry();
-    // Reused across all candidate contains() checks below so the spatial index is built only once.
-    var area = new PreparedAreaGroup(areaGroup);
 
     int added = 0;
 

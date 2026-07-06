@@ -30,8 +30,6 @@ import org.opentripplanner.updater.spi.UpdateException;
 import org.opentripplanner.utils.time.ServiceDateUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import uk.org.siri.siri21.EstimatedVehicleJourney;
-import uk.org.siri.siri21.VehicleModesEnumeration;
 
 /**
  * This class is used for matching TripDescriptors without trip_ids to scheduled GTFS data and to
@@ -63,12 +61,12 @@ public class SiriFuzzyTripMatcher {
    * Matches EstimatedVehicleJourney to a set of possible Trips based on tripId
    */
   public TripAndPattern match(
-    EstimatedVehicleJourney journey,
-    List<CallWrapper> calls,
+    EstimatedVehicleJourneyWrapper journeyWrapper,
     EntityResolver entityResolver,
     BiFunction<TripPattern, LocalDate, Timetable> getCurrentTimetable,
     BiFunction<FeedScopedId, LocalDate, TripPattern> getNewTripPatternForModifiedTrip
   ) throws UpdateException {
+    var calls = journeyWrapper.calls();
     if (calls.isEmpty()) {
       throw UpdateException.of(NO_VALID_STOPS);
     }
@@ -78,11 +76,8 @@ public class SiriFuzzyTripMatcher {
     }
 
     Set<Trip> trips = null;
-    if (
-      journey.getVehicleRef() != null &&
-      journey.getVehicleModes().contains(VehicleModesEnumeration.RAIL)
-    ) {
-      trips = getCachedTripsByInternalPlanningCode(journey.getVehicleRef().getValue());
+    if (journeyWrapper.internalPlanningCode() != null && journeyWrapper.isRail()) {
+      trips = getCachedTripsByInternalPlanningCode(journeyWrapper.internalPlanningCode());
     }
 
     if (trips == null || trips.isEmpty()) {
@@ -105,8 +100,8 @@ public class SiriFuzzyTripMatcher {
       throw UpdateException.of(NO_FUZZY_TRIP_MATCH);
     }
 
-    if (journey.getLineRef() != null) {
-      var lineRef = journey.getLineRef().getValue();
+    String lineRef = journeyWrapper.lineRef();
+    if (lineRef != null) {
       Route route = entityResolver.resolveRoute(lineRef);
       if (route != null) {
         trips = trips

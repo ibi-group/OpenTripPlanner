@@ -136,7 +136,9 @@ class TripOnServiceDateMatcherFactoryTest {
       .withIncludeServiceDateRanges(
         FilterValues.ofRequired(
           "serviceDateRanges",
-          List.of(new LocalDateRange(LocalDate.of(2024, 2, 22), LocalDate.of(2024, 2, 24)))
+          List.of(
+            LocalDateRange.ofExclusiveEnd(LocalDate.of(2024, 2, 22), LocalDate.of(2024, 2, 24))
+          )
         )
       )
       .build();

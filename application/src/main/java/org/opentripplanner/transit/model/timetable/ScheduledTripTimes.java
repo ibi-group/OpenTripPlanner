@@ -231,6 +231,11 @@ public final class ScheduledTripTimes implements TripTimes<ScheduledTripTimes> {
   }
 
   @Override
+  public boolean isTimesModified() {
+    return false;
+  }
+
+  @Override
   public boolean isCanceledStop(int stopPos) {
     return false;
   }

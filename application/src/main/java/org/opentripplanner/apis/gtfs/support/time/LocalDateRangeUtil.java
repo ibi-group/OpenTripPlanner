@@ -15,7 +15,10 @@ public class LocalDateRangeUtil {
   public static boolean hasServiceDateFilter(GraphQLTypes.GraphQLLocalDateRangeInput dateRange) {
     return (
       dateRange != null &&
-      !new LocalDateRange(dateRange.getGraphQLStart(), dateRange.getGraphQLEnd()).unlimited()
+      !LocalDateRange.ofExclusiveEnd(
+        dateRange.getGraphQLStart(),
+        dateRange.getGraphQLEnd()
+      ).isUnbounded()
     );
   }
 
@@ -37,7 +40,7 @@ public class LocalDateRangeUtil {
     }
     return ranges
       .stream()
-      .map(range -> new LocalDateRange(range.getGraphQLStart(), range.getGraphQLEnd()))
+      .map(range -> LocalDateRange.ofExclusiveEnd(range.getGraphQLStart(), range.getGraphQLEnd()))
       .toList();
   }
 }
