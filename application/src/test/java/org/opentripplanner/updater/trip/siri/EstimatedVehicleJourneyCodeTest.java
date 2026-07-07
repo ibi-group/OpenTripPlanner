@@ -5,7 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
-class EstimatedVehicleJourneyCodeAdapterTest {
+class EstimatedVehicleJourneyCodeTest {
 
   @ParameterizedTest
   @CsvSource(
@@ -18,9 +18,8 @@ class EstimatedVehicleJourneyCodeAdapterTest {
       "RUT:DatedServiceJourney:1234:extra, RUT:ServiceJourney:1234:extra",
     }
   )
-  void getServiceJourneyId(String code, String expected) {
-    var adapter = new EstimatedVehicleJourneyCodeAdapter(code);
-    assertEquals(expected, adapter.getServiceJourneyId());
+  void asServiceJourneyId(String code, String expected) {
+    assertEquals(expected, new EstimatedVehicleJourneyCode(code).asServiceJourneyId());
   }
 
   @ParameterizedTest
@@ -39,8 +38,7 @@ class EstimatedVehicleJourneyCodeAdapterTest {
       "NAME_SPACE::, NAME_SPACE::",
     }
   )
-  void getDatedServiceJourneyId(String code, String expected) {
-    var adapter = new EstimatedVehicleJourneyCodeAdapter(code);
-    assertEquals(expected, adapter.getDatedServiceJourneyId());
+  void asDatedServiceJourneyId(String code, String expected) {
+    assertEquals(expected, new EstimatedVehicleJourneyCode(code).asDatedServiceJourneyId());
   }
 }

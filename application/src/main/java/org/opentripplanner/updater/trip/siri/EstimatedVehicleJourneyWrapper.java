@@ -5,10 +5,13 @@ import static org.opentripplanner.updater.trip.siri.support.NaturalLanguageStrin
 
 import java.util.List;
 import javax.annotation.Nullable;
+import org.opentripplanner.transit.model.basic.TransitMode;
+import org.opentripplanner.transit.model.timetable.OccupancyStatus;
+import org.opentripplanner.updater.alert.siri.mapping.SiriTransportModeMapper;
 import org.opentripplanner.updater.spi.UpdateErrorType;
 import org.opentripplanner.updater.spi.UpdateException;
+import org.opentripplanner.updater.trip.siri.mapping.OccupancyMapper;
 import uk.org.siri.siri21.EstimatedVehicleJourney;
-import uk.org.siri.siri21.OccupancyEnumeration;
 import uk.org.siri.siri21.VehicleModesEnumeration;
 
 /**
@@ -20,9 +23,15 @@ final class EstimatedVehicleJourneyWrapper {
   private final EstimatedVehicleJourney journey;
   private final List<CallWrapper> calls;
 
+  @Nullable
+  private final EstimatedVehicleJourneyCode code;
+
   private EstimatedVehicleJourneyWrapper(EstimatedVehicleJourney journey, List<CallWrapper> calls) {
     this.journey = journey;
     this.calls = calls;
+    this.code = journey.getEstimatedVehicleJourneyCode() != null
+      ? new EstimatedVehicleJourneyCode(journey.getEstimatedVehicleJourneyCode())
+      : null;
   }
 
   /* Construction and validation */
@@ -84,11 +93,13 @@ final class EstimatedVehicleJourneyWrapper {
   /* Trip identification */
 
   /**
-   * A code used to build the id of an extra-journey.
+   * The EstimatedVehicleJourneyCode of an extra journey, used to identify the added trip. It can be
+   * viewed as either a {@code ServiceJourney} or a {@code DatedServiceJourney} id. {@code null} when
+   * the journey carries no code.
    */
   @Nullable
-  String estimatedVehicleJourneyCode() {
-    return journey.getEstimatedVehicleJourneyCode();
+  EstimatedVehicleJourneyCode code() {
+    return code;
   }
 
   /**
@@ -167,8 +178,11 @@ final class EstimatedVehicleJourneyWrapper {
     return journey.getVehicleModes().contains(VehicleModesEnumeration.RAIL);
   }
 
-  List<VehicleModesEnumeration> vehicleModes() {
-    return journey.getVehicleModes();
+  /**
+   * The OTP transit mode of this journey, derived from its SIRI vehicle modes.
+   */
+  TransitMode transitMode() {
+    return SiriTransportModeMapper.mapTransitMainMode(journey.getVehicleModes());
   }
 
   /* Descriptive information */
@@ -188,8 +202,10 @@ final class EstimatedVehicleJourneyWrapper {
   }
 
   @Nullable
-  OccupancyEnumeration occupancy() {
-    return journey.getOccupancy();
+  OccupancyStatus occupancy() {
+    return journey.getOccupancy() == null
+      ? null
+      : OccupancyMapper.mapOccupancyStatus(journey.getOccupancy());
   }
 
   @Nullable

@@ -86,6 +86,8 @@ based on merged pull requests. Search GitHub issues and pull requests for smalle
 - Remove vehicle routing optimization and deprecate its API [#7741](https://github.com/opentripplanner/OpenTripPlanner/pull/7741)
 - Make StdTransferEarlyPruning.updateArrival O(1) Replace the per… [#7682](https://github.com/opentripplanner/OpenTripPlanner/pull/7682)
 - Add handling of no_exit/no_entry turn restrictions [#7767](https://github.com/opentripplanner/OpenTripPlanner/pull/7767)
+- Add canceledCalls to Stop type in the GTFS API [#7768](https://github.com/opentripplanner/OpenTripPlanner/pull/7768)
+- Remove computation of artifical P+R intersection nodes [#7753](https://github.com/opentripplanner/OpenTripPlanner/pull/7753)
 [](AUTOMATIC_CHANGELOG_PLACEHOLDER_DO_NOT_REMOVE)
 
 ## 2.9.0 (2026-03-18)

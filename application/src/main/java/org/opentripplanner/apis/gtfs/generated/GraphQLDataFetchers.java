@@ -34,6 +34,7 @@ import org.opentripplanner.apis.gtfs.model.CanceledTripsSummaryRoute;
 import org.opentripplanner.apis.gtfs.model.FeedPublisher;
 import org.opentripplanner.apis.gtfs.model.PlanPageInfo;
 import org.opentripplanner.apis.gtfs.model.RideHailingProvider;
+import org.opentripplanner.apis.gtfs.model.StopCallOnTripOnServiceDate;
 import org.opentripplanner.apis.gtfs.model.StopPosition;
 import org.opentripplanner.apis.gtfs.model.TripOccupancy;
 import org.opentripplanner.ext.fares.model.FareRuleSet;
@@ -548,6 +549,10 @@ public class GraphQLDataFetchers {
     }
   }
 
+  public interface GraphQLNotice {
+    public DataFetcher<String> text();
+  }
+
   public interface GraphQLOpeningHours {
     public DataFetcher<Iterable<Object>> dates();
     public DataFetcher<String> osm();
@@ -836,6 +841,7 @@ public class GraphQLDataFetchers {
     public DataFetcher<Boolean> isReplacement();
     public DataFetcher<String> longName();
     public DataFetcher<GraphQLTransitMode> mode();
+    public DataFetcher<Iterable<org.opentripplanner.transit.model.basic.Notice>> notices();
     public DataFetcher<Iterable<TripPattern>> patterns();
     public DataFetcher<Boolean> replacementsExist();
     public DataFetcher<String> shortName();
@@ -881,6 +887,7 @@ public class GraphQLDataFetchers {
    */
   public interface GraphQLStop {
     public DataFetcher<Iterable<TransitAlert>> alerts();
+    public DataFetcher<Iterable<StopCallOnTripOnServiceDate>> canceledCalls();
     public DataFetcher<Object> cluster();
     public DataFetcher<String> code();
     public DataFetcher<String> desc();
@@ -922,6 +929,12 @@ public class GraphQLDataFetchers {
     public DataFetcher<CallRealTime> realTime();
     public DataFetcher<CallSchedule> schedule();
     public DataFetcher<Object> stopLocation();
+  }
+
+  /** A stop call together with the trip on service date it belongs to. */
+  public interface GraphQLStopCallOnTripOnServiceDate {
+    public DataFetcher<TripTimeOnDate> stopCall();
+    public DataFetcher<TripOnServiceDate> tripOnServiceDate();
   }
 
   public interface GraphQLStopGeometries {
@@ -1024,6 +1037,7 @@ public class GraphQLDataFetchers {
     public DataFetcher<String> gtfsId();
     public DataFetcher<graphql.relay.Relay.ResolvedGlobalId> id();
     public DataFetcher<Boolean> isReplacement();
+    public DataFetcher<Iterable<org.opentripplanner.transit.model.basic.Notice>> notices();
     public DataFetcher<TripOccupancy> occupancy();
     public DataFetcher<TripPattern> pattern();
     public DataFetcher<Boolean> replacementsExist();

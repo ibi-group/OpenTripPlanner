@@ -11,6 +11,8 @@ import java.time.ZoneId;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.opentripplanner.LocalTimeParser;
+import org.opentripplanner.transit.model.basic.TransitMode;
+import org.opentripplanner.transit.model.timetable.OccupancyStatus;
 import org.opentripplanner.updater.spi.UpdateErrorType;
 import uk.org.siri.siri21.OccupancyEnumeration;
 import uk.org.siri.siri21.VehicleModesEnumeration;
@@ -121,10 +123,16 @@ class EstimatedVehicleJourneyWrapperTest {
   }
 
   @Test
-  void estimatedVehicleJourneyCode() {
-    var journey = builder().withEstimatedVehicleJourneyCode("EVJ:1").buildEstimatedVehicleJourney();
+  void code() {
+    var journey = builder()
+      .withEstimatedVehicleJourneyCode("RUT:ServiceJourney:1234")
+      .buildEstimatedVehicleJourney();
 
-    assertEquals("EVJ:1", EstimatedVehicleJourneyWrapper.of(journey).estimatedVehicleJourneyCode());
+    var code = EstimatedVehicleJourneyWrapper.of(journey).code();
+
+    // The EstimatedVehicleJourneyCode can be viewed as either entity type.
+    assertEquals("RUT:ServiceJourney:1234", code.asServiceJourneyId());
+    assertEquals("RUT:DatedServiceJourney:1234", code.asDatedServiceJourneyId());
   }
 
   @Test
@@ -210,10 +218,12 @@ class EstimatedVehicleJourneyWrapperTest {
       .buildEstimatedVehicleJourney();
     var railWrapper = EstimatedVehicleJourneyWrapper.of(rail);
     assertTrue(railWrapper.isRail());
-    assertEquals(List.of(VehicleModesEnumeration.RAIL), railWrapper.vehicleModes());
+    assertEquals(TransitMode.RAIL, railWrapper.transitMode());
 
     var bus = builder().withVehicleMode(VehicleModesEnumeration.BUS).buildEstimatedVehicleJourney();
-    assertFalse(EstimatedVehicleJourneyWrapper.of(bus).isRail());
+    var busWrapper = EstimatedVehicleJourneyWrapper.of(bus);
+    assertFalse(busWrapper.isRail());
+    assertEquals(TransitMode.BUS, busWrapper.transitMode());
   }
 
   /* Descriptive information */
@@ -230,7 +240,7 @@ class EstimatedVehicleJourneyWrapperTest {
 
     assertEquals("Line 1", wrapper.publishedLineName());
     assertEquals("Central Station", wrapper.destinationName());
-    assertEquals(OccupancyEnumeration.FULL, wrapper.occupancy());
+    assertEquals(OccupancyStatus.FULL, wrapper.occupancy());
     assertEquals("DATASOURCE", wrapper.dataSource());
   }
 
@@ -243,7 +253,7 @@ class EstimatedVehicleJourneyWrapperTest {
     assertNull(wrapper.lineRef());
     assertNull(wrapper.operatorRef());
     assertNull(wrapper.datedVehicleJourneyRef());
-    assertNull(wrapper.estimatedVehicleJourneyCode());
+    assertNull(wrapper.code());
     assertNull(wrapper.vehicleJourneyIdAndServiceDate());
     assertNull(wrapper.internalPlanningCode());
     assertNull(wrapper.replacedDatedVehicleJourneyRef());
@@ -255,7 +265,7 @@ class EstimatedVehicleJourneyWrapperTest {
     assertTrue(wrapper.calls().isEmpty());
     assertFalse(wrapper.hasExtraCall());
     assertTrue(wrapper.additionalReplacedDatedVehicleJourneyRefs().isEmpty());
-    assertTrue(wrapper.vehicleModes().isEmpty());
+    assertEquals(TransitMode.BUS, wrapper.transitMode());
     assertFalse(wrapper.isRail());
   }
 
