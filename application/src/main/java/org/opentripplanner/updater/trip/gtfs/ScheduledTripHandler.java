@@ -62,7 +62,7 @@ class ScheduledTripHandler {
 
     var serviceId = transitEditorService.getTrip(tripUpdate.tripId()).getServiceId();
     var serviceDates = transitEditorService.getTripCalendars().listServiceDates(serviceId);
-    if (!serviceDates.contains(tripUpdate.serviceDate())) {
+    if (!serviceDates.contains(tripUpdate.startDate())) {
       throw UpdateException.of(tripUpdate.tripId(), NO_SERVICE_ON_DATE);
     }
 
@@ -101,14 +101,14 @@ class ScheduledTripHandler {
       final TripPattern newPattern = tripPatternCache.getOrCreateTripPattern(newStopPattern, trip);
 
       return snapshotManager.updateBuffer(
-        RealTimeTripUpdate.of(newPattern, updatedTripTimes, tripUpdate.serviceDate())
+        RealTimeTripUpdate.of(newPattern, updatedTripTimes, tripUpdate.startDate())
           .withRevertPreviousRealTimeUpdates(true)
           .withHideTripInScheduledPattern(pattern)
           .build()
       );
     } else {
       return snapshotManager.updateBuffer(
-        RealTimeTripUpdate.of(pattern, updatedTripTimes, tripUpdate.serviceDate())
+        RealTimeTripUpdate.of(pattern, updatedTripTimes, tripUpdate.startDate())
           .withRevertPreviousRealTimeUpdates(true)
           .build()
       );

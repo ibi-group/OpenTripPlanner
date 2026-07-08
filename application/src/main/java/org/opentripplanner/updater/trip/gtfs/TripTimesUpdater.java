@@ -86,7 +86,7 @@ class TripTimesUpdater {
     Map<Integer, String> replacedStopIndices = new HashMap<>();
 
     final long today = ServiceDateUtils.asStartOfService(
-      tripUpdate.serviceDate(),
+      tripUpdate.startDate(),
       timeZone
     ).toEpochSecond();
 
@@ -179,7 +179,7 @@ class TripTimesUpdater {
   ) throws UpdateException {
     // Calculate seconds since epoch on GTFS midnight (noon minus 12h) of service date
     final long midnightSecondsSinceEpoch = ServiceDateUtils.asStartOfService(
-      tripUpdate.serviceDate(),
+      tripUpdate.startDate(),
       timeZone
     ).toEpochSecond();
 

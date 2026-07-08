@@ -51,10 +51,10 @@ class CanceledTripHandler {
     if (incrementality != FULL_DATASET) {
       var addedPattern = snapshotManager.getNewTripPatternForModifiedTrip(
         tripUpdate.tripId(),
-        tripUpdate.serviceDate()
+        tripUpdate.startDate()
       );
       if (addedPattern != null) {
-        var timetable = snapshotManager.resolve(addedPattern, tripUpdate.serviceDate());
+        var timetable = snapshotManager.resolve(addedPattern, tripUpdate.startDate());
         if (timetable != null) {
           var tripTimes = timetable.getTripTimes(tripUpdate.tripId());
           if (tripTimes != null && tripTimes.isAdded()) {
@@ -64,7 +64,7 @@ class CanceledTripHandler {
               case DELETE -> builder.withDeleted();
             }
             return snapshotManager.updateBuffer(
-              RealTimeTripUpdate.of(addedPattern, builder.build(), tripUpdate.serviceDate()).build()
+              RealTimeTripUpdate.of(addedPattern, builder.build(), tripUpdate.startDate()).build()
             );
           }
         }
@@ -88,7 +88,7 @@ class CanceledTripHandler {
       case DELETE -> builder.withDeleted();
     }
     return snapshotManager.updateBuffer(
-      RealTimeTripUpdate.of(pattern, builder.build(), tripUpdate.serviceDate())
+      RealTimeTripUpdate.of(pattern, builder.build(), tripUpdate.startDate())
         .withRevertPreviousRealTimeUpdates(true)
         .build()
     );

@@ -56,7 +56,7 @@ class NewTripHandler {
     if (transitEditorService.getScheduledTrip(tripUpdate.tripId()) != null) {
       throw UpdateException.of(tripUpdate.tripId(), TRIP_ALREADY_EXISTS);
     }
-    var serviceId = transitEditorService.getOrCreateServiceIdForDate(tripUpdate.serviceDate());
+    var serviceId = transitEditorService.getOrCreateServiceIdForDate(tripUpdate.startDate());
     if (serviceId == null) {
       throw UpdateException.of(tripUpdate.tripId(), OUTSIDE_SERVICE_PERIOD);
     }
@@ -88,7 +88,7 @@ class NewTripHandler {
 
     final Set<FeedScopedId> serviceIds = transitEditorService
       .getTripCalendars()
-      .listServiceIdsOnServiceDate(tripUpdate.serviceDate());
+      .listServiceIdsOnServiceDate(tripUpdate.startDate());
     if (!serviceIds.contains(trip.getServiceId())) {
       // TODO: should we support this and change service id of trip?
       throw UpdateException.of(tripUpdate.tripId(), NO_SERVICE_ON_DATE);
@@ -131,7 +131,7 @@ class NewTripHandler {
 
     return addNewOrReplacementTripToSnapshot(
       value,
-      tripUpdate.serviceDate(),
+      tripUpdate.startDate(),
       added,
       modified,
       hasANewRouteBeenCreated

@@ -1,6 +1,5 @@
 package org.opentripplanner.updater.trip.gtfs;
 
-import static org.opentripplanner.updater.spi.UpdateErrorType.NOT_IMPLEMENTED_DUPLICATED;
 import static org.opentripplanner.updater.spi.UpdateErrorType.NOT_IMPLEMENTED_UNSCHEDULED;
 import static org.opentripplanner.updater.trip.UpdateIncrementality.FULL_DATASET;
 
@@ -37,6 +36,7 @@ public class GtfsRealTimeTripUpdateAdapter {
   private final Supplier<LocalDate> localDateNow;
   private final ScheduledTripHandler scheduledTripHandler;
   private final NewTripHandler addedTripHandler;
+  private final DuplicatedTripHandler duplicatedTripHandler;
   private final CanceledTripHandler canceledTripHandler;
 
   /**
@@ -72,6 +72,11 @@ public class GtfsRealTimeTripUpdateAdapter {
       snapshotManager,
       tripTimesUpdater,
       tripPatternCache
+    );
+    this.duplicatedTripHandler = new DuplicatedTripHandler(
+      transitEditorService,
+      snapshotManager,
+      deduplicator
     );
     this.canceledTripHandler = new CanceledTripHandler(transitEditorService, snapshotManager);
   }
@@ -159,12 +164,12 @@ public class GtfsRealTimeTripUpdateAdapter {
       case NEW, ADDED -> addedTripHandler.handleNew(tripUpdate);
       case CANCELED -> canceledTripHandler.cancel(tripUpdate, updateIncrementality);
       case DELETED -> canceledTripHandler.delete(tripUpdate, updateIncrementality);
+      case DUPLICATED -> duplicatedTripHandler.handleDuplicated(tripUpdate, updateIncrementality);
       case REPLACEMENT -> addedTripHandler.handleReplacement(tripUpdate);
       case UNSCHEDULED -> throw UpdateException.of(
         tripUpdate.tripId(),
         NOT_IMPLEMENTED_UNSCHEDULED
       );
-      case DUPLICATED -> throw UpdateException.of(tripUpdate.tripId(), NOT_IMPLEMENTED_DUPLICATED);
     };
   }
 }
