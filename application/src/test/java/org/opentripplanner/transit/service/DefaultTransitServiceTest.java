@@ -24,6 +24,7 @@ import org.opentripplanner.core.model.i18n.I18NString;
 import org.opentripplanner.core.model.id.FeedScopedId;
 import org.opentripplanner.model.TripTimeOnDate;
 import org.opentripplanner.model.calendar.CalendarServiceData;
+import org.opentripplanner.routing.algorithm.raptoradapter.transit.RaptorTransitDataTestFactory;
 import org.opentripplanner.street.geometry.WgsCoordinate;
 import org.opentripplanner.transit.api.request.TripOnServiceDateRequest;
 import org.opentripplanner.transit.model._data.TimetableRepositoryForTest;
@@ -195,7 +196,10 @@ class DefaultTransitServiceTest {
 
     timetableRepository.index();
 
-    TimetableSnapshot timetableSnapshot = new TimetableSnapshot(new DefaultTripCalendars());
+    TimetableSnapshot timetableSnapshot = new TimetableSnapshot(
+      RaptorTransitDataTestFactory.empty(),
+      new DefaultTripCalendars()
+    );
     TripTimes tripTimes = ScheduledTripTimes.of()
       .withTrip(TimetableRepositoryForTest.trip("123").build())
       .withDepartureTimes(new int[] { 0, 1 })

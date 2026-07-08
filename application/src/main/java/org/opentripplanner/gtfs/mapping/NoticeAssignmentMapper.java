@@ -79,6 +79,7 @@ class NoticeAssignmentMapper {
     AbstractTransitEntity entity = switch (assignment.getTableName()) {
       case routes -> routes.get(recordId);
       case trips -> trips.get(recordId);
+      case trip_segments -> null;
     };
 
     if (entity == null) {

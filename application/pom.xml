@@ -294,7 +294,7 @@
         <dependency>
             <groupId>org.onebusaway</groupId>
             <artifactId>onebusaway-gtfs</artifactId>
-            <version>14.0.0</version>
+            <version>14.2.0</version>
         </dependency>
         <!-- Used in DegreeGridNEDTileSource to fetch tiles from Amazon S3 -->
         <dependency>
@@ -327,7 +327,7 @@
         <dependency>
             <groupId>org.apache.httpcomponents.client5</groupId>
             <artifactId>httpclient5</artifactId>
-            <version>5.6.1</version>
+            <version>5.6.2</version>
         </dependency>
         <dependency>
             <groupId>commons-cli</groupId>

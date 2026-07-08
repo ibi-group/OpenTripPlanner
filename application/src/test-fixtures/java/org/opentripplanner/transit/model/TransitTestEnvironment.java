@@ -9,12 +9,10 @@ import org.opentripplanner.core.model.id.FeedScopedIdForTestFactory;
 import org.opentripplanner.framework.transaction.TimetableSnapshotParameters;
 import org.opentripplanner.routing.algorithm.raptoradapter.transit.RaptorTransitData;
 import org.opentripplanner.routing.algorithm.raptoradapter.transit.mappers.RaptorTransitDataMapper;
-import org.opentripplanner.routing.algorithm.raptoradapter.transit.mappers.RealTimeRaptorTransitDataUpdater;
 import org.opentripplanner.routing.algorithm.raptoradapter.transit.request.DefaultTransitDataProviderFilterBuilder;
 import org.opentripplanner.routing.algorithm.raptoradapter.transit.request.RaptorRoutingRequestTransitData;
 import org.opentripplanner.routing.api.request.RouteRequest;
 import org.opentripplanner.transfer.regular.TransferRepository;
-import org.opentripplanner.transit.model.calendar.DefaultTripCalendars;
 import org.opentripplanner.transit.model.network.grouppriority.TransitGroupPriorityService;
 import org.opentripplanner.transit.model.timetable.TimetableSnapshot;
 import org.opentripplanner.transit.service.DefaultTransitService;
@@ -62,14 +60,11 @@ public final class TransitTestEnvironment {
         transferRepository
       )
     );
-    this.timetableRepository.setRealtimeRaptorTransitData(
-      new RaptorTransitData(timetableRepository.getRaptorTransitData())
-    );
     this.snapshotManager = new TimetableSnapshotManager(
-      (DefaultTripCalendars) timetableRepository.getTripCalendar(),
-      new RealTimeRaptorTransitDataUpdater(timetableRepository),
       TimetableSnapshotParameters.PUBLISH_IMMEDIATELY,
-      () -> defaultServiceDate
+      () -> defaultServiceDate,
+      new RaptorTransitData(timetableRepository.getRaptorTransitData()),
+      timetableRepository.copyTripCalendarForRealTimeUpdates()
     );
     this.defaultServiceDate = defaultServiceDate;
   }
