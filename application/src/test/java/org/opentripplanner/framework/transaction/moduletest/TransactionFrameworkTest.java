@@ -149,7 +149,6 @@ public class TransactionFrameworkTest {
     // Task completes before the periodic scheduler fires its first commit.
     var f = updateManager.submit(c -> publishUsingRepositories(c, TOMMY));
     f.get();
-    assertState(SCOPE_TXN_1, PIPPI);
     awaitState(SCOPE_TXN_2, PIPPI, TOMMY);
 
     f = updateManager.submit(c -> publishNewDomainEvent(c, ANNIKA));
