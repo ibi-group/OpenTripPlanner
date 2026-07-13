@@ -23,6 +23,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.opentripplanner._support.time.ZoneIds;
 import org.opentripplanner.apis.gtfs.GraphQLRequestContext;
 import org.opentripplanner.apis.gtfs.SchemaFactory;
@@ -353,6 +354,20 @@ class LegacyRouteRequestMapperTest implements PlanTestConstants {
       CONTEXT
     );
     assertEquals(List.of(), noParamsReq.listViaLocations());
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = { true, false })
+  void omitCanceled(boolean omitCanceled) {
+    Map<String, Object> arguments = decorateWithRequiredParams(
+      Map.of("omitCanceled", omitCanceled)
+    );
+
+    var routeRequest = LegacyRouteRequestMapper.toRouteRequest(
+      executionContext(arguments),
+      CONTEXT
+    );
+    assertEquals(omitCanceled, routeRequest.preferences().transit().includeRealtimeCancellations());
   }
 
   private static Map<String, Object> mode(String mode) {
