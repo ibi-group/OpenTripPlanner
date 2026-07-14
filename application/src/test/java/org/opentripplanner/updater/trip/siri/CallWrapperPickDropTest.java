@@ -231,4 +231,34 @@ class CallWrapperPickDropTest {
       "There is no change in routability - dropoff should be changed"
     );
   }
+
+  @Test
+  public void testCancellationWithNoPlannedBoardingButBoardingActivity() {
+    var originalPickUpType = PickDrop.NONE;
+    TestCall call = TestCall.of()
+      .withCancellation(Boolean.TRUE)
+      .withDepartureBoardingActivity(BOARDING)
+      .build();
+    var testResult = call.pickUp().applyTo(originalPickUpType);
+
+    assertTrue(
+      testResult.isEmpty(),
+      "A cancelled call must not re-enable boarding that was not routable in the schedule"
+    );
+  }
+
+  @Test
+  public void testCancellationWithNoPlannedAlightingButAlightingActivity() {
+    var originalDropOffType = PickDrop.NONE;
+    TestCall call = TestCall.of()
+      .withCancellation(Boolean.TRUE)
+      .withArrivalBoardingActivity(ALIGHTING)
+      .build();
+    var testResult = call.dropOff().applyTo(originalDropOffType);
+
+    assertTrue(
+      testResult.isEmpty(),
+      "A cancelled call must not re-enable alighting that was not routable in the schedule"
+    );
+  }
 }

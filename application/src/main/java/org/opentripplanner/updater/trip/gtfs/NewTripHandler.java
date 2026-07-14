@@ -152,7 +152,11 @@ class NewTripHandler {
     Trip trip = tripTimes.getTrip();
 
     final StopPattern stopPattern = tripTimesWithStopPattern.stopPattern();
-    final TripPattern pattern = tripPatternCache.getOrCreateTripPattern(stopPattern, trip);
+    final TripPattern pattern = tripPatternCache.getOrCreateTripPattern(
+      stopPattern,
+      trip,
+      transitEditorService.findPattern(trip)
+    );
 
     TripPattern hideTripInScheduledPattern = null;
     if (modified) {

@@ -367,7 +367,10 @@ class LegacyRouteRequestMapperTest implements PlanTestConstants {
       executionContext(arguments),
       CONTEXT
     );
-    assertEquals(omitCanceled, routeRequest.preferences().transit().includeRealtimeCancellations());
+    assertEquals(
+      !omitCanceled,
+      routeRequest.preferences().transit().includeRealtimeCancellations()
+    );
   }
 
   private static Map<String, Object> mode(String mode) {

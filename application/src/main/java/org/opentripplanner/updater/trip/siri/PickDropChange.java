@@ -52,8 +52,8 @@ public final class PickDropChange {
    * @return the mapped {@link PickDrop} type, empty if routability is not changed
    */
   public Optional<PickDrop> applyTo(PickDrop scheduled) {
-    if (!scheduled.isNotRoutable() && cancelled) {
-      return Optional.of(CANCELLED);
+    if (cancelled) {
+      return scheduled.isNotRoutable() ? Optional.empty() : Optional.of(CANCELLED);
     }
     return switch (activity) {
       case UNSPECIFIED -> Optional.empty();
