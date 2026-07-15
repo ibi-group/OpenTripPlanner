@@ -74,10 +74,7 @@ public class SiriRealTimeTripUpdateAdapter {
       timetableRepository,
       snapshotManager.getTimetableSnapshotBuffer()
     );
-    this.tripPatternCache = new TripPatternCache(
-      tripPatternIdGenerator,
-      transitEditorService::findPattern
-    );
+    this.tripPatternCache = new TripPatternCache(tripPatternIdGenerator);
   }
 
   /**
@@ -339,7 +336,11 @@ public class SiriRealTimeTripUpdateAdapter {
       pattern = tripUpdate.addedTripPattern();
     } else {
       // Get cached trip pattern or create one if it doesn't exist yet
-      pattern = tripPatternCache.getOrCreateTripPattern(tripUpdate.stopPattern(), trip);
+      pattern = tripPatternCache.getOrCreateTripPattern(
+        tripUpdate.stopPattern(),
+        trip,
+        transitEditorService.findPattern(trip)
+      );
     }
 
     // Revert for TRIP_UPDATE and EXTRA_CALL, but NOT for REPLACEMENT_DEPARTURE (new trips)

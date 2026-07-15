@@ -98,7 +98,11 @@ class ScheduledTripHandler {
         .build();
 
       final Trip trip = transitEditorService.getTrip(tripUpdate.tripId());
-      final TripPattern newPattern = tripPatternCache.getOrCreateTripPattern(newStopPattern, trip);
+      final TripPattern newPattern = tripPatternCache.getOrCreateTripPattern(
+        newStopPattern,
+        trip,
+        pattern
+      );
 
       return snapshotManager.updateBuffer(
         RealTimeTripUpdate.of(newPattern, updatedTripTimes, tripUpdate.startDate())

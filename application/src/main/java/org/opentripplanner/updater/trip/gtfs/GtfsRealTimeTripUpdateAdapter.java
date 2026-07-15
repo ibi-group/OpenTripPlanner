@@ -56,10 +56,7 @@ public class GtfsRealTimeTripUpdateAdapter {
       snapshotManager.getTimetableSnapshotBuffer()
     );
     var tripTimesUpdater = new TripTimesUpdater(timetableRepository.getTimeZone(), deduplicator);
-    var tripPatternCache = new TripPatternCache(
-      new TripPatternIdGenerator(),
-      transitEditorService::findPattern
-    );
+    var tripPatternCache = new TripPatternCache(new TripPatternIdGenerator());
 
     this.scheduledTripHandler = new ScheduledTripHandler(
       transitEditorService,

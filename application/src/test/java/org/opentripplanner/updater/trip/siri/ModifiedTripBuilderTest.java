@@ -286,7 +286,7 @@ class ModifiedTripBuilderTest {
     );
 
     var updateError = assertFailure(UpdateErrorType.NEGATIVE_DWELL_TIME, tripUpdate::build);
-    assertEquals(1, updateError.stopIndex());
+    assertEquals(1, updateError.stopPosition());
   }
 
   /**

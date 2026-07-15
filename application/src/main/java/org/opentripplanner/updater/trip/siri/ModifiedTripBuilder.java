@@ -233,7 +233,7 @@ class ModifiedTripBuilder {
         //Current stop is being updated
         var callStop = entityResolver.resolveQuay(call.getStopPointRef());
         if (callStop == null) {
-          throw UpdateException.ofStopIndex(UNKNOWN_STOP, i);
+          throw UpdateException.ofStopPosition(UNKNOWN_STOP, i);
         }
 
         if (!stop.equals(callStop) && !stop.isPartOfSameStationAs(callStop)) {
@@ -259,7 +259,7 @@ class ModifiedTripBuilder {
         break;
       }
       if (!matchFound) {
-        throw UpdateException.ofStopIndex(STOP_MISMATCH, i);
+        throw UpdateException.ofStopPosition(STOP_MISMATCH, i);
       }
     }
     var newStopPattern = builder.build();
