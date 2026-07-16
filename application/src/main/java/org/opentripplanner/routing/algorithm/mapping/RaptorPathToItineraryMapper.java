@@ -152,6 +152,12 @@ public class RaptorPathToItineraryMapper<T extends TripSchedule> {
 
     // Map egress leg
     EgressPathLeg<T> egressPathLeg = pathLeg.asEgressLeg();
+    if (
+      OTPFeature.ExtraTransferLegOnSameStop.isOn() &&
+      isPathTransferAtSameStop(previousLeg, egressPathLeg)
+    ) {
+      legs.add(createTransferLegAtSameStop(previousLeg, pathLeg));
+    }
     var egressLegs = mapEgressLeg(egressPathLeg);
     legs.addAll(egressLegs);
 
@@ -196,6 +202,19 @@ public class RaptorPathToItineraryMapper<T extends TripSchedule> {
       currentLeg.isTransitLeg() &&
       !previousLeg.asTransitLeg().isStaySeatedOntoNextLeg() &&
       (previousLeg.asTransitLeg().toStop() == currentLeg.asTransitLeg().fromStop())
+    );
+  }
+
+  private static <T extends TripSchedule> boolean isPathTransferAtSameStop(
+    PathLeg<T> previousLeg,
+    EgressPathLeg<T> egressPathLeg
+  ) {
+    return (
+      previousLeg != null &&
+      previousLeg.isTransitLeg() &&
+      egressPathLeg.egress().hasRides() &&
+      !previousLeg.asTransitLeg().isStaySeatedOntoNextLeg() &&
+      (previousLeg.asTransitLeg().toStop() == egressPathLeg.fromStop())
     );
   }
 
