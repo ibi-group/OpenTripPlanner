@@ -18,10 +18,11 @@ import org.opentripplanner.transit.model.timetable.RealTimeTripTimes;
 import org.opentripplanner.transit.model.timetable.RealTimeTripUpdate;
 import org.opentripplanner.transit.model.timetable.Trip;
 import org.opentripplanner.transit.model.timetable.TripOnServiceDate;
+import org.opentripplanner.transit.repository.MutableTimetableSnapshot;
 import org.opentripplanner.transit.service.TransitEditorService;
 import org.opentripplanner.updater.spi.UpdateException;
 import org.opentripplanner.updater.spi.UpdateSuccess;
-import org.opentripplanner.updater.trip.TimetableSnapshotManager;
+import org.opentripplanner.updater.trip.TripUpdateApplier;
 import org.opentripplanner.updater.trip.gtfs.model.TripUpdate;
 import org.opentripplanner.updater.trip.patterncache.TripPatternCache;
 
@@ -33,18 +34,18 @@ import org.opentripplanner.updater.trip.patterncache.TripPatternCache;
 class NewTripHandler {
 
   private final TransitEditorService transitEditorService;
-  private final TimetableSnapshotManager snapshotManager;
+  private final MutableTimetableSnapshot buffer;
   private final TripTimesUpdater tripTimesUpdater;
   private final TripPatternCache tripPatternCache;
 
   NewTripHandler(
     TransitEditorService transitEditorService,
-    TimetableSnapshotManager snapshotManager,
+    MutableTimetableSnapshot buffer,
     TripTimesUpdater tripTimesUpdater,
     TripPatternCache tripPatternCache
   ) {
     this.transitEditorService = transitEditorService;
-    this.snapshotManager = snapshotManager;
+    this.buffer = buffer;
     this.tripTimesUpdater = tripTimesUpdater;
     this.tripPatternCache = tripPatternCache;
   }
@@ -174,7 +175,7 @@ class NewTripHandler {
         )
         .withTripCreation(true);
     }
-    return snapshotManager.updateBuffer(builder.build());
+    return TripUpdateApplier.apply(buffer, builder.build());
   }
 
   /**

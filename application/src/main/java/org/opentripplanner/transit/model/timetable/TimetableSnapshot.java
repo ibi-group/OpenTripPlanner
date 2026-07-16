@@ -26,6 +26,7 @@ import java.util.TreeSet;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
+import org.jspecify.annotations.NonNull;
 import org.opentripplanner.core.model.id.FeedScopedId;
 import org.opentripplanner.routing.algorithm.raptoradapter.transit.RaptorTransitData;
 import org.opentripplanner.routing.algorithm.raptoradapter.transit.mappers.TimetableUpdateMapper;
@@ -34,6 +35,8 @@ import org.opentripplanner.transit.model.calendar.DefaultTripCalendars;
 import org.opentripplanner.transit.model.network.Route;
 import org.opentripplanner.transit.model.network.TripPattern;
 import org.opentripplanner.transit.model.site.StopLocation;
+import org.opentripplanner.transit.repository.MutableTimetableSnapshot;
+import org.opentripplanner.transit.repository.ReadOnlyTimetableSnapshot;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -78,7 +81,7 @@ import org.slf4j.LoggerFactory;
  * guarantee of safe-publication without synchronization.
  * (see <a href="https://docs.oracle.com/javase/specs/jls/se7/html/jls-17.html#jls-17.5">final Field Semantics</a>)
  */
-public class TimetableSnapshot {
+public class TimetableSnapshot implements ReadOnlyTimetableSnapshot, MutableTimetableSnapshot {
 
   private static final Logger LOG = LoggerFactory.getLogger(TimetableSnapshot.class);
 
@@ -416,6 +419,10 @@ public class TimetableSnapshot {
       return null;
     }
 
+    return createReadOnlySnapshot();
+  }
+
+  public @NonNull TimetableSnapshot createReadOnlySnapshot() {
     RaptorTransitData updatedRaptorData = timetableUpdateMapper.map(
       realtimeRaptorTransitData,
       dirtyTimetables.values(),
@@ -423,7 +430,7 @@ public class TimetableSnapshot {
       new TripPatternForDateMapper(tripCalendars.getServiceCodesRunningForDate())
     );
 
-    TimetableSnapshot ret = new TimetableSnapshot(
+    var timetableSnapshot = new TimetableSnapshot(
       Map.copyOf(timetables),
       Map.copyOf(realTimeNewTripPatternsForModifiedTrips),
       Map.copyOf(realtimeAddedRoutes),
@@ -445,7 +452,7 @@ public class TimetableSnapshot {
     dirtyTimetables.clear();
     dirty = false;
 
-    return ret;
+    return timetableSnapshot;
   }
 
   /**

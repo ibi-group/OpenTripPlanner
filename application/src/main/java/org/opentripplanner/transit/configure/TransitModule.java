@@ -5,15 +5,20 @@ import dagger.Module;
 import dagger.Provides;
 import jakarta.inject.Singleton;
 import java.time.LocalDate;
+import org.opentripplanner.framework.transaction.RepositoryRegistry;
+import org.opentripplanner.framework.transaction.TimetableSnapshotParameters;
+import org.opentripplanner.framework.transaction.api.RepositoryHandle;
 import org.opentripplanner.routing.algorithm.raptoradapter.transit.RaptorTransitData;
 import org.opentripplanner.standalone.api.HttpRequestScoped;
 import org.opentripplanner.standalone.config.ConfigModel;
 import org.opentripplanner.transit.model.calendar.DefaultTripCalendars;
 import org.opentripplanner.transit.model.timetable.TimetableSnapshot;
+import org.opentripplanner.transit.repository.MutableTimetableSnapshot;
+import org.opentripplanner.transit.repository.ReadOnlyTimetableSnapshot;
+import org.opentripplanner.transit.repository.TimetableSnapshotLifecycle;
 import org.opentripplanner.transit.service.DefaultTransitService;
 import org.opentripplanner.transit.service.TimetableRepository;
 import org.opentripplanner.transit.service.TransitService;
-import org.opentripplanner.updater.trip.TimetableSnapshotManager;
 
 @Module
 public abstract class TransitModule {
@@ -24,25 +29,28 @@ public abstract class TransitModule {
 
   @Provides
   @Singleton
-  public static TimetableSnapshotManager timetableSnapshotManager(
-    ConfigModel config,
-    TimetableRepository timetableRepository,
-    RaptorTransitData scheduledRaptorTransitData,
-    DefaultTripCalendars scheduledTripCalendars
-  ) {
-    return new TimetableSnapshotManager(
-      config.routerConfig().updaterConfig().timetableSnapshotParameters(),
-      () -> LocalDate.now(timetableRepository.getTimeZone()),
-      scheduledRaptorTransitData,
-      scheduledTripCalendars
-    );
+  public static TimetableSnapshotParameters timetableSnapshotParameters(ConfigModel config) {
+    return config.routerConfig().updaterConfig().timetableSnapshotParameters();
   }
 
-  /**
-   * Provides the currently published, immutable {@link TimetableSnapshot}.
-   */
   @Provides
-  public static TimetableSnapshot timetableSnapshot(TimetableSnapshotManager manager) {
-    return manager.getTimetableSnapshot();
+  @Singleton
+  public static RepositoryHandle<
+    ReadOnlyTimetableSnapshot,
+    MutableTimetableSnapshot
+  > timetableRepositoryHandle(
+    TimetableSnapshotParameters parameters,
+    TimetableRepository timetableRepository,
+    RepositoryRegistry repositoryRegistry,
+    RaptorTransitData scheduledRaptorTransitData,
+    DefaultTripCalendars tripCalendars
+  ) {
+    var mutableBuffer = new TimetableSnapshot(scheduledRaptorTransitData, tripCalendars);
+    var timetableSnapshotLifecycle = new TimetableSnapshotLifecycle(
+      mutableBuffer,
+      parameters.purgeExpiredData(),
+      () -> LocalDate.now(timetableRepository.getTimeZone())
+    );
+    return repositoryRegistry.registerRepository(mutableBuffer, timetableSnapshotLifecycle);
   }
 }

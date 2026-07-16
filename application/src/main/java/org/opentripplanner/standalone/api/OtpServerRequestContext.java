@@ -19,6 +19,7 @@ import org.opentripplanner.ext.ridehailing.RideHailingService;
 import org.opentripplanner.ext.sorlandsbanen.SorlandsbanenNorwayService;
 import org.opentripplanner.ext.stopconsolidation.StopConsolidationService;
 import org.opentripplanner.framework.application.OTPFeature;
+import org.opentripplanner.framework.transaction.api.TransactionScope;
 import org.opentripplanner.place.NearbyPlaceFinder;
 import org.opentripplanner.place.NearbyStopFinder;
 import org.opentripplanner.place.nearbystopfinder.StraightLineNearbyStopFinder;
@@ -78,6 +79,14 @@ import org.opentripplanner.transit.service.TransitService;
 @HttpRequestScoped
 public interface OtpServerRequestContext {
   DebugUiConfig debugUiConfig();
+
+  /**
+   * The transaction scope that was captured at the start of this HTTP request. It holds a strong
+   * reference to the current {@link org.opentripplanner.framework.transaction.internal.Transaction},
+   * preventing the {@link org.opentripplanner.framework.transaction.internal.RepositorySnapshotCache}
+   * from GC-ing any snapshot used during this request.
+   */
+  TransactionScope transactionScope();
 
   /**
    * A RouteRequest containing default parameters that will be cloned when handling each request.

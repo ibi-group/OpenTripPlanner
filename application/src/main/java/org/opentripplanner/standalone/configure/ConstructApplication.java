@@ -42,7 +42,6 @@ import org.opentripplanner.street.linking.VertexLinker;
 import org.opentripplanner.transfer.regular.TransferRepository;
 import org.opentripplanner.transit.service.TimetableRepository;
 import org.opentripplanner.updater.configure.UpdaterConfigurator;
-import org.opentripplanner.updater.trip.TimetableSnapshotManager;
 import org.opentripplanner.utils.logging.ProgressTracker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -216,7 +215,8 @@ public class ConstructApplication {
       vehicleParkingRepository(),
       timetableRepository(),
       carpoolingRepository(),
-      snapshotManager(),
+      factory.updateManager(),
+      factory.timetableRepositoryHandle(),
       routerConfig().updaterConfig()
     );
 
@@ -303,10 +303,6 @@ public class ConstructApplication {
 
   public VehicleRentalRepository vehicleRentalRepository() {
     return factory.vehicleRentalRepository();
-  }
-
-  private TimetableSnapshotManager snapshotManager() {
-    return factory.timetableSnapshotManager();
   }
 
   public VehicleParkingService vehicleParkingService() {

@@ -17,6 +17,8 @@ import org.opentripplanner.ext.interactivelauncher.api.LauncherRequestDecorator;
 import org.opentripplanner.ext.ridehailing.RideHailingService;
 import org.opentripplanner.ext.sorlandsbanen.SorlandsbanenNorwayService;
 import org.opentripplanner.ext.stopconsolidation.StopConsolidationService;
+import org.opentripplanner.framework.transaction.RepositoryRegistry;
+import org.opentripplanner.framework.transaction.api.RepositoryHandle;
 import org.opentripplanner.raptor.configure.RaptorConfig;
 import org.opentripplanner.routing.algorithm.filterchain.ext.EmissionDecorator;
 import org.opentripplanner.routing.algorithm.filterchain.framework.spi.ItineraryDecorator;
@@ -38,7 +40,10 @@ import org.opentripplanner.street.graph.Graph;
 import org.opentripplanner.street.linking.VertexLinker;
 import org.opentripplanner.street.service.StreetLimitationParametersService;
 import org.opentripplanner.transfer.regular.RegularTransferService;
-import org.opentripplanner.transit.service.TransitService;
+import org.opentripplanner.transit.repository.MutableTimetableSnapshot;
+import org.opentripplanner.transit.repository.ReadOnlyTimetableSnapshot;
+import org.opentripplanner.transit.service.DefaultTransitService;
+import org.opentripplanner.transit.service.TimetableRepository;
 
 @Module
 public class ConstructApplicationModule {
@@ -51,7 +56,9 @@ public class ConstructApplicationModule {
     Graph graph,
     LinkingContextFactory linkingContextFactory,
     VertexLinker vertexLinker,
-    TransitService transitService,
+    TimetableRepository timetableRepository,
+    RepositoryRegistry repositoryRegistry,
+    RepositoryHandle<ReadOnlyTimetableSnapshot, MutableTimetableSnapshot> timetableRepositoryHandle,
     RegularTransferService transferService,
     WorldEnvelopeService worldEnvelopeService,
     RealtimeVehicleService realtimeVehicleService,
@@ -83,6 +90,13 @@ public class ConstructApplicationModule {
     var flexParameters = routerConfig.flexParameters();
     var transmodelAPIParameters = routerConfig.transmodelApi();
 
+    // Create exactly one TransactionScope per request. The scope holds a strong reference to the
+    // current Transaction, preventing the RepositorySnapshotCache from GC-ing the snapshot while
+    // this request is in flight. The scope is stored on DefaultServerRequestContext for this reason.
+    var transactionScope = repositoryRegistry.scope();
+    var timetableSnapshot = timetableRepositoryHandle.repositorySnapshot(transactionScope);
+    var transitService = new DefaultTransitService(timetableRepository, timetableSnapshot);
+
     return new DefaultServerRequestContext(
       debugUiConfig,
       fareService,
@@ -97,6 +111,7 @@ public class ConstructApplicationModule {
       defaultRequest,
       streetLimitationParametersService,
       transferService,
+      transactionScope,
       transitRoutingConfig,
       transitService,
       triasApiParameters,

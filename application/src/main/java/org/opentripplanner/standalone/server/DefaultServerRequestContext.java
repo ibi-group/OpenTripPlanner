@@ -18,6 +18,7 @@ import org.opentripplanner.ext.ojp.parameters.TriasApiParameters;
 import org.opentripplanner.ext.ridehailing.RideHailingService;
 import org.opentripplanner.ext.sorlandsbanen.SorlandsbanenNorwayService;
 import org.opentripplanner.ext.stopconsolidation.StopConsolidationService;
+import org.opentripplanner.framework.transaction.api.TransactionScope;
 import org.opentripplanner.raptor.api.request.RaptorTuningParameters;
 import org.opentripplanner.raptor.configure.RaptorConfig;
 import org.opentripplanner.routing.algorithm.filterchain.framework.spi.ItineraryDecorator;
@@ -52,6 +53,7 @@ public class DefaultServerRequestContext implements OtpServerRequestContext {
   //                  All 3 sections is sorted alphabetically.
 
   private final DebugUiConfig debugUiConfig;
+  private final TransactionScope transactionScope;
   private final FareService fareService;
   private final FlexParameters flexParameters;
   private final Graph graph;
@@ -135,6 +137,7 @@ public class DefaultServerRequestContext implements OtpServerRequestContext {
     RouteRequest routeRequestDefaults,
     StreetLimitationParametersService streetLimitationParametersService,
     RegularTransferService transferService,
+    TransactionScope transactionScope,
     TransitRoutingConfig transitRoutingConfig,
     TransitService transitService,
     TriasApiParameters triasApiParameters,
@@ -170,6 +173,7 @@ public class DefaultServerRequestContext implements OtpServerRequestContext {
     this.routeRequestDefaults = routeRequestDefaults;
     this.streetLimitationParametersService = streetLimitationParametersService;
     this.transferService = transferService;
+    this.transactionScope = transactionScope;
     this.transitRoutingConfig = transitRoutingConfig;
     this.transitService = transitService;
     this.transmodelSchema = transmodelSchema;
@@ -198,6 +202,11 @@ public class DefaultServerRequestContext implements OtpServerRequestContext {
   @Override
   public DebugUiConfig debugUiConfig() {
     return debugUiConfig;
+  }
+
+  @Override
+  public TransactionScope transactionScope() {
+    return transactionScope;
   }
 
   @Override
