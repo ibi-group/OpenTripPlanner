@@ -58,15 +58,15 @@
 
 
     <properties>
-        <otp.serialization.version.id>266</otp.serialization.version.id>
+        <otp.serialization.version.id>267</otp.serialization.version.id>
 
         <!-- Lib versions - keep list sorted on property name -->
         <geotools.version>34.4</geotools.version>
-        <google.dagger.version>2.59.1</google.dagger.version>
+        <google.dagger.version>2.59.2</google.dagger.version>
         <jackson.version>2.22.0</jackson.version>
         <jaxb-runtime.version>4.0.9</jaxb-runtime.version>
         <jersey.version>3.1.12</jersey.version>
-        <junit.version>6.1.0</junit.version>
+        <junit.version>6.1.2</junit.version>
         <micrometer.version>1.14.1</micrometer.version>
         <netcdf4.version>5.6.0</netcdf4.version>
         <logback.version>1.5.37</logback.version>

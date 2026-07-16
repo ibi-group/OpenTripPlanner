@@ -82,9 +82,6 @@ class StopTimesMapper {
       stopTime.setStopHeadsign(new NonLocalizedString(destinationDisplay));
     } else if (trip.getHeadsign() != null) {
       stopTime.setStopHeadsign(trip.getHeadsign());
-    } else {
-      // Fallback to empty string
-      stopTime.setStopHeadsign(new NonLocalizedString(""));
     }
 
     // Update pickup / dropoff
