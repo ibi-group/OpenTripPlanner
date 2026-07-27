@@ -146,14 +146,21 @@ class EstimatedVehicleJourneyWrapperTest {
     var result = EstimatedVehicleJourneyWrapper.of(journey).vehicleJourneyIdAndServiceDate();
 
     assertEquals("SJ:1", result.vehicleJourneyId());
-    assertEquals("2024-05-07", result.serviceDate());
+    assertEquals(LocalDate.of(2024, 5, 7), result.serviceDate());
   }
 
   @Test
-  void internalPlanningCode() {
+  void vehicleRef() {
     var journey = builder().withVehicleRef("VEHICLE:1").buildEstimatedVehicleJourney();
 
-    assertEquals("VEHICLE:1", EstimatedVehicleJourneyWrapper.of(journey).internalPlanningCode());
+    assertEquals("VEHICLE:1", EstimatedVehicleJourneyWrapper.of(journey).vehicleRef());
+  }
+
+  @Test
+  void vehicleRefIsNullWhenAbsent() {
+    var journey = builder().buildEstimatedVehicleJourney();
+
+    assertNull(EstimatedVehicleJourneyWrapper.of(journey).vehicleRef());
   }
 
   /* Replaced trips */
@@ -186,7 +193,7 @@ class EstimatedVehicleJourneyWrapperTest {
 
     assertEquals(1, result.size());
     assertEquals("REPLACED:2", result.getFirst().vehicleJourneyId());
-    assertEquals("2024-05-07", result.getFirst().serviceDate());
+    assertEquals(LocalDate.of(2024, 5, 7), result.getFirst().serviceDate());
   }
 
   @Test
@@ -255,7 +262,7 @@ class EstimatedVehicleJourneyWrapperTest {
     assertNull(wrapper.datedVehicleJourneyRef());
     assertNull(wrapper.code());
     assertNull(wrapper.vehicleJourneyIdAndServiceDate());
-    assertNull(wrapper.internalPlanningCode());
+    assertNull(wrapper.vehicleRef());
     assertNull(wrapper.replacedDatedVehicleJourneyRef());
     assertNull(wrapper.externalLineRef());
     assertNull(wrapper.occupancy());

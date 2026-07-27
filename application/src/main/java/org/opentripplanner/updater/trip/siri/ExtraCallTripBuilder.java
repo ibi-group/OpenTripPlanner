@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Function;
+import javax.annotation.Nullable;
 import org.opentripplanner.core.framework.deduplicator.DeduplicatorService;
 import org.opentripplanner.core.model.id.FeedScopedId;
 import org.opentripplanner.model.StopTime;
@@ -43,6 +44,9 @@ class ExtraCallTripBuilder {
   private final StopTimesMapper stopTimesMapper;
   private final DeduplicatorService deduplicator;
 
+  @Nullable
+  private final String vehicleRef;
+
   ExtraCallTripBuilder(
     EstimatedVehicleJourneyWrapper journey,
     TransitEditorService transitService,
@@ -63,6 +67,7 @@ class ExtraCallTripBuilder {
     occupancy = journey.occupancy();
     cancellation = journey.isCancellation();
     added = journey.isExtraJourney();
+    vehicleRef = journey.vehicleRef();
 
     this.calls = journey.calls();
 
@@ -169,6 +174,7 @@ class ExtraCallTripBuilder {
       );
     }
 
+    builder.withVehicleId(vehicleRef);
     if (cancellation || stopPattern.isAllStopsNonRoutable()) {
       builder.withCanceled();
     }

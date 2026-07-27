@@ -11,8 +11,14 @@ import org.opentripplanner.updater.alert.siri.mapping.SiriTransportModeMapper;
 import org.opentripplanner.updater.spi.UpdateErrorType;
 import org.opentripplanner.updater.spi.UpdateException;
 import org.opentripplanner.updater.trip.siri.mapping.OccupancyMapper;
+import org.opentripplanner.utils.tostring.ToStringBuilder;
+import uk.org.siri.siri21.DataFrameRefStructure;
+import uk.org.siri.siri21.DatedVehicleJourneyRef;
 import uk.org.siri.siri21.EstimatedVehicleJourney;
+import uk.org.siri.siri21.LineRef;
+import uk.org.siri.siri21.OperatorRefStructure;
 import uk.org.siri.siri21.VehicleModesEnumeration;
+import uk.org.siri.siri21.VehicleRef;
 
 /**
  * A wrapper around a JAXB {@link EstimatedVehicleJourney} that also owns the parsed and validated
@@ -121,11 +127,13 @@ final class EstimatedVehicleJourneyWrapper {
   }
 
   /**
-   * An internal (private) id used for fuzzy matching.
+   * The reference to the vehicle operating this journey.
+   * Also used for fuzzy matching
    */
   @Nullable
-  String internalPlanningCode() {
-    return journey.getVehicleRef() != null ? journey.getVehicleRef().getValue() : null;
+  String vehicleRef() {
+    VehicleRef vehicleRef = journey.getVehicleRef();
+    return vehicleRef != null && !vehicleRef.getValue().isBlank() ? vehicleRef.getValue() : null;
   }
 
   /* Replaced trips */
@@ -213,10 +221,25 @@ final class EstimatedVehicleJourneyWrapper {
     return journey.getDataSource();
   }
 
-  /**
-   * A human-readable, single-line description of this journey for debug logging.
-   */
-  String debugString() {
-    return DebugString.of(journey);
+  @Override
+  public String toString() {
+    return ToStringBuilder.of(journey.getClass())
+      .addStr("EstimatedVehicleJourneyCode", journey.getEstimatedVehicleJourneyCode())
+      .addObjOp(
+        "DatedVehicleJourney",
+        journey.getDatedVehicleJourneyRef(),
+        DatedVehicleJourneyRef::getValue
+      )
+      .addObjOp("FramedVehicleJourney", journey.getFramedVehicleJourneyRef(), it ->
+        ToStringBuilder.of(it.getClass())
+          .addStr("VehicleJourney", it.getDatedVehicleJourneyRef())
+          .addObjOp("Date", it.getDataFrameRef(), DataFrameRefStructure::getValue)
+          .toString()
+      )
+      .addObjOp("Operator", journey.getOperatorRef(), OperatorRefStructure::getValue)
+      .addCol("VehicleModes", journey.getVehicleModes())
+      .addObjOp("Line", journey.getLineRef(), LineRef::getValue)
+      .addObjOp("Vehicle", journey.getVehicleRef(), VehicleRef::getValue)
+      .toString();
   }
 }

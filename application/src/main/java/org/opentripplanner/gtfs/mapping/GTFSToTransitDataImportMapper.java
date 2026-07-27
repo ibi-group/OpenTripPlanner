@@ -61,6 +61,8 @@ public class GTFSToTransitDataImportMapper {
 
   private final TripMapper tripMapper;
 
+  private final TripSegmentMapper tripSegmentMapper;
+
   private final BookingRuleMapper bookingRuleMapper;
 
   private final StopTimeMapper stopTimeMapper;
@@ -148,6 +150,7 @@ public class GTFSToTransitDataImportMapper {
     );
     directionMapper = new DirectionMapper(issueStore);
     tripMapper = new TripMapper(idFactory, routeMapper, directionMapper, translationHelper);
+    tripSegmentMapper = new TripSegmentMapper(idFactory);
     bookingRuleMapper = new BookingRuleMapper();
     stopTimeMapper = new StopTimeMapper(
       stopMapper,
@@ -176,7 +179,8 @@ public class GTFSToTransitDataImportMapper {
       issueStore,
       noticeMapper,
       tripMapper,
-      routeMapper
+      routeMapper,
+      tripSegmentMapper
     );
   }
 
@@ -230,6 +234,7 @@ public class GTFSToTransitDataImportMapper {
       .addAll(fareTransferRuleMapper.map(data.getAllFareTransferRules()));
     fareRulesBuilder.stopAreas().putAll(stopAreaMapper.map(data.getAllStopAreaElements()));
 
+    tripSegmentMapper.map(data.getAllTripSegments(), builder.getStopTimesSortedByTrip());
     noticeMapper.map(data.getAllNotices());
     builder
       .getNoticeAssignments()

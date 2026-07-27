@@ -147,6 +147,7 @@ class TripTimesUpdater {
     BackwardsDelayInterpolator.getInstance(backwardsDelay).propagateBackwards(builder);
 
     tripUpdate.wheelchairAccessibility().ifPresent(builder::withWheelchairAccessibility);
+    tripUpdate.vehicleId().ifPresent(builder::withVehicleId);
 
     builder.withRealTimeUpdated();
     // Validate for non-increasing times. Log error if present.
@@ -255,6 +256,7 @@ class TripTimesUpdater {
 
     tripUpdate.tripHeadsign().ifPresent(builder::withTripHeadsign);
     tripUpdate.wheelchairAccessibility().ifPresent(builder::withWheelchairAccessibility);
+    tripUpdate.vehicleId().ifPresent(builder::withVehicleId);
 
     RealTimeTripTimes tripTimes = builder.build();
 

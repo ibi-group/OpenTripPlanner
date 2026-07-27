@@ -2,7 +2,6 @@ package org.opentripplanner.updater.trip.siri;
 
 import java.time.Duration;
 import java.time.LocalDate;
-import java.util.Optional;
 import javax.annotation.Nullable;
 import org.opentripplanner.core.model.id.FeedScopedId;
 import org.opentripplanner.transit.model.network.Route;
@@ -12,7 +11,6 @@ import org.opentripplanner.transit.model.timetable.Trip;
 import org.opentripplanner.transit.model.timetable.TripIdAndServiceDate;
 import org.opentripplanner.transit.model.timetable.TripOnServiceDate;
 import org.opentripplanner.transit.service.TransitService;
-import org.opentripplanner.utils.time.ServiceDateUtils;
 
 /**
  * This class is responsible for resolving references to various entities in the transit model for
@@ -39,7 +37,7 @@ public class EntityResolver {
    * EstimatedVehicleJourneyCode (for a trip that was previously added by a real-time message).
    */
   @Nullable
-  public Trip resolveTrip(EstimatedVehicleJourneyWrapper journey) {
+  Trip resolveTrip(EstimatedVehicleJourneyWrapper journey) {
     var vehicleJourneyIdAndServiceDate = journey.vehicleJourneyIdAndServiceDate();
     if (vehicleJourneyIdAndServiceDate != null) {
       Trip trip = resolveTrip(vehicleJourneyIdAndServiceDate.vehicleJourneyId());
@@ -75,14 +73,12 @@ public class EntityResolver {
   }
 
   @Nullable
-  public TripOnServiceDate resolveTripOnServiceDate(
+  TripOnServiceDate resolveTripOnServiceDate(
     VehicleJourneyIdAndServiceDate vehicleJourneyIdAndServiceDate
   ) {
     return resolveTripOnServiceDate(
       vehicleJourneyIdAndServiceDate.vehicleJourneyId(),
-      Optional.ofNullable(vehicleJourneyIdAndServiceDate.serviceDate())
-        .flatMap(ServiceDateUtils::parseStringToOptional)
-        .orElse(null)
+      vehicleJourneyIdAndServiceDate.serviceDate()
     );
   }
 
@@ -128,7 +124,7 @@ public class EntityResolver {
    *
    * @see org.opentripplanner.transit.service.TimetableRepository#findStopByScheduledStopPoint(FeedScopedId)
    */
-  public RegularStop resolveQuay(String stopPointRef) {
+  RegularStop resolveQuay(String stopPointRef) {
     var id = resolveId(stopPointRef);
     return transitService
       .findStopByScheduledStopPoint(id)
@@ -138,24 +134,33 @@ public class EntityResolver {
   /**
    * Resolve a {@link Route} from a line id.
    */
-  public Route resolveRoute(String lineRef) {
+  Route resolveRoute(String lineRef) {
     return transitService.getRoute(resolveId(lineRef));
   }
 
-  public Operator resolveOperator(String operatorRef) {
+  Operator resolveOperator(String operatorRef) {
     return transitService.getOperator(resolveId(operatorRef));
   }
 
+  /**
+   * Resolve the service date of a vehicle journey, trying in order:
+   * <ol>
+   *   <li>the service date given by the journey's FramedVehicleJourneyRef -> DataFrameRef,</li>
+   *   <li>the service date of the DatedServiceJourney referenced by the journey's
+   *       DatedVehicleJourneyRef or EstimatedVehicleJourneyCode,</li>
+   *   <li>the date of the aimed departure time at the first call, shifted back by the number of
+   *       days the scheduled trip's first departure lies after midnight (for trips running past
+   *       midnight).</li>
+   * </ol>
+   * Return {@code null} if none of these strategies succeed.
+   */
   @Nullable
-  public LocalDate resolveServiceDate(EstimatedVehicleJourneyWrapper journey) {
+  LocalDate resolveServiceDate(EstimatedVehicleJourneyWrapper journey) {
     var vehicleJourneyIdAndServiceDate = journey.vehicleJourneyIdAndServiceDate();
-    if (vehicleJourneyIdAndServiceDate != null) {
-      var serviceDate = Optional.ofNullable(vehicleJourneyIdAndServiceDate.serviceDate())
-        .flatMap(ServiceDateUtils::parseStringToOptional)
-        .orElse(null);
-      if (serviceDate != null) {
-        return serviceDate;
-      }
+    if (
+      vehicleJourneyIdAndServiceDate != null && vehicleJourneyIdAndServiceDate.serviceDate() != null
+    ) {
+      return vehicleJourneyIdAndServiceDate.serviceDate();
     }
 
     FeedScopedId datedServiceJourneyId = resolveDatedServiceJourneyId(journey);
