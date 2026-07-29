@@ -27,7 +27,6 @@ import org.opentripplanner.service.vehicleparking.VehicleParkingRepository;
 import org.opentripplanner.service.vehicleparking.VehicleParkingService;
 import org.opentripplanner.service.vehiclerental.VehicleRentalRepository;
 import org.opentripplanner.service.worldenvelope.WorldEnvelopeRepository;
-import org.opentripplanner.standalone.api.OtpServerRequestContext;
 import org.opentripplanner.standalone.config.BuildConfig;
 import org.opentripplanner.standalone.config.CommandLineParameters;
 import org.opentripplanner.standalone.config.ConfigModel;
@@ -42,7 +41,6 @@ import org.opentripplanner.street.linking.VertexLinker;
 import org.opentripplanner.transfer.regular.TransferRepository;
 import org.opentripplanner.transit.service.TimetableRepository;
 import org.opentripplanner.updater.configure.UpdaterConfigurator;
-import org.opentripplanner.updater.trip.TimetableSnapshotManager;
 import org.opentripplanner.utils.logging.ProgressTracker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -199,7 +197,7 @@ public class ConstructApplication {
   private Application createApplication() {
     LOG.info("Wiring up and configuring server.");
     setupTransitRoutingServer();
-    return new OTPWebApplication(routerConfig().server(), this::createServerContext);
+    return new OTPWebApplication(routerConfig().server(), this::requestScopedFactory);
   }
 
   private void setupTransitRoutingServer() {
@@ -216,7 +214,8 @@ public class ConstructApplication {
       vehicleParkingRepository(),
       timetableRepository(),
       carpoolingRepository(),
-      snapshotManager(),
+      factory.updateManager(),
+      factory.timetableRepositoryHandle(),
       routerConfig().updaterConfig()
     );
 
@@ -305,10 +304,6 @@ public class ConstructApplication {
     return factory.vehicleRentalRepository();
   }
 
-  private TimetableSnapshotManager snapshotManager() {
-    return factory.timetableSnapshotManager();
-  }
-
   public VehicleParkingService vehicleParkingService() {
     return factory.vehicleParkingService();
   }
@@ -353,8 +348,8 @@ public class ConstructApplication {
     return factory.raptorConfig();
   }
 
-  private OtpServerRequestContext createServerContext() {
-    return factory.createServerContext();
+  private RequestScopedFactory requestScopedFactory() {
+    return factory.requestScopedFactoryBuilder().build();
   }
 
   private void enableRequestTraceLogging() {

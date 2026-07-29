@@ -536,4 +536,11 @@ public class TripUpdateBuilder {
     );
     return this;
   }
+
+  public TripUpdateBuilder withVehicleId(String vehicleId) {
+    tripUpdateBuilder.setVehicle(
+      GtfsRealtime.VehicleDescriptor.newBuilder().setId(vehicleId).build()
+    );
+    return this;
+  }
 }

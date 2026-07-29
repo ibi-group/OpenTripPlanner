@@ -63,6 +63,9 @@ class AddedTripBuilder {
   private final StopTimesMapper stopTimesMapper;
   private final DeduplicatorService deduplicator;
 
+  @Nullable
+  private final String vehicleRef;
+
   AddedTripBuilder(
     EstimatedVehicleJourneyWrapper journey,
     TransitEditorService transitService,
@@ -104,6 +107,7 @@ class AddedTripBuilder {
     occupancy = journey.occupancy();
     cancellation = journey.isCancellation();
     headsign = journey.destinationName();
+    vehicleRef = journey.vehicleRef();
 
     this.calls = journey.calls();
 
@@ -136,7 +140,8 @@ class AddedTripBuilder {
     String shortName,
     String headsign,
     List<TripOnServiceDate> replacedTrips,
-    String dataSource
+    String dataSource,
+    @Nullable String vehicleRef
   ) {
     this.transitService = transitService;
     this.deduplicator = deduplicator;
@@ -159,6 +164,7 @@ class AddedTripBuilder {
     this.headsign = headsign;
     this.replacedTrips = replacedTrips;
     this.dataSource = dataSource;
+    this.vehicleRef = vehicleRef;
     stopTimesMapper = new StopTimesMapper(entityResolver, timeZone);
   }
 
@@ -248,6 +254,7 @@ class AddedTripBuilder {
       );
     }
 
+    builder.withVehicleId(vehicleRef);
     if (cancellation || stopPattern.isAllStopsNonRoutable()) {
       builder.withCanceled();
     }

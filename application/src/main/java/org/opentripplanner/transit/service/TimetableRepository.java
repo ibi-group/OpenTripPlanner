@@ -358,11 +358,13 @@ public class TimetableRepository implements Serializable {
 
   /**
    * Returns the alert service. If no updaters are configured an empty instance is returned.
-   * See  {@link TimetableRepository#setUpdaterManager(GraphUpdaterManager)}.
+   * See  {@link TimetableRepository#initUpdaterManager(GraphUpdaterManager)}.
    */
   public TransitAlertService getTransitAlertService() {
     if (transitAlertService == null) {
-      transitAlertService = new DelegatingTransitAlertServiceImpl(this);
+      transitAlertService = new DelegatingTransitAlertServiceImpl(
+        this.updaterManager == null ? List.of() : this.updaterManager.getUpdaterList()
+      );
     }
     return transitAlertService;
   }
@@ -443,11 +445,31 @@ public class TimetableRepository implements Serializable {
   }
 
   /**
+   * Sets the updater manager for this repository and makes sure the configured updaters
+   * are correctly applied to {@code transitAlertService}.
+   * <p>
+   * Note: before this method is called an empty {@code transitAlertService} is returned instead.
+   * <p>
+   * TODO: This logic is unfortunate and quite brittle. We would like to improve it in the future.
+   *       The UpdateManager should live in a DI context(Dagger), not here.
+   */
+  public void initUpdaterManager(GraphUpdaterManager updaterManager) {
+    this.updaterManager = ObjectUtils.requireNotInitialized(
+      "updaterManager",
+      this.updaterManager,
+      updaterManager
+    );
+    this.transitAlertService = null;
+  }
+
+  /**
    * Manages all updaters of this graph. Is created by the GraphUpdaterConfigurator when there are
-   * graph updaters defined in the configuration.
+   * graph updaters defined in the configuration. This is {@code null} if no updaters are
+   * configured or not yet initialized.
    *
    * @see UpdaterConfigurator
    */
+  @Nullable
   public GraphUpdaterManager getUpdaterManager() {
     return updaterManager;
   }
@@ -481,20 +503,6 @@ public class TimetableRepository implements Serializable {
     assertModificationsAllowed();
     invalidateIndex();
     flexTripsById.put(id, flexTrip);
-  }
-
-  /**
-   * Sets the updater manager for this repository and makes sure the configured updaters
-   * are correctly applied to {@code transitAlertService}.
-   * <p>
-   * Note: before this method is called an empty {@code transitAlertService} is returned instead.
-   * <p>
-   * This logic is unfortunate and quite brittle. We would like to improve it in the future.
-   */
-  public void setUpdaterManager(GraphUpdaterManager updaterManager) {
-    assertModificationsAllowed();
-    this.updaterManager = updaterManager;
-    this.transitAlertService = null;
   }
 
   /**

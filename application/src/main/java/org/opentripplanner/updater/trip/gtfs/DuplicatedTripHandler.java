@@ -10,10 +10,11 @@ import org.opentripplanner.transit.model.timetable.RealTimeTripUpdate;
 import org.opentripplanner.transit.model.timetable.ScheduledTripTimes;
 import org.opentripplanner.transit.model.timetable.Trip;
 import org.opentripplanner.transit.model.timetable.TripOnServiceDate;
+import org.opentripplanner.transit.repository.MutableTimetableSnapshot;
 import org.opentripplanner.transit.service.TransitEditorService;
 import org.opentripplanner.updater.spi.UpdateException;
 import org.opentripplanner.updater.spi.UpdateSuccess;
-import org.opentripplanner.updater.trip.TimetableSnapshotManager;
+import org.opentripplanner.updater.trip.TripUpdateApplier;
 import org.opentripplanner.updater.trip.UpdateIncrementality;
 import org.opentripplanner.updater.trip.gtfs.model.TripUpdate;
 
@@ -22,16 +23,16 @@ import org.opentripplanner.updater.trip.gtfs.model.TripUpdate;
 class DuplicatedTripHandler {
 
   private final TransitEditorService transitEditorService;
-  private final TimetableSnapshotManager snapshotManager;
+  private final MutableTimetableSnapshot buffer;
   private final DeduplicatorService deduplicator;
 
   DuplicatedTripHandler(
     TransitEditorService transitEditorService,
-    TimetableSnapshotManager snapshotManager,
+    MutableTimetableSnapshot buffer,
     DeduplicatorService deduplicator
   ) {
     this.transitEditorService = transitEditorService;
-    this.snapshotManager = snapshotManager;
+    this.buffer = buffer;
     this.deduplicator = deduplicator;
   }
 
@@ -101,7 +102,7 @@ class DuplicatedTripHandler {
       .withTripCreation(true)
       .withAddedTripOnServiceDate(tripOnServiceDate)
       .build();
-    return snapshotManager.updateBuffer(update);
+    return TripUpdateApplier.apply(buffer, update);
   }
 
   /// The spec is silent about how these ids should be constructed, so we create a new ID

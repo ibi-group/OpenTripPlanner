@@ -16,6 +16,9 @@ import org.opentripplanner.ext.carpooling.internal.DefaultCarpoolingRepository;
 import org.opentripplanner.ext.fares.service.gtfs.v1.DefaultFareService;
 import org.opentripplanner.framework.application.OtpAppException;
 import org.opentripplanner.framework.transaction.TimetableSnapshotParameters;
+import org.opentripplanner.framework.transaction.api.RepositoryHandle;
+import org.opentripplanner.framework.transaction.api.TransactionScope;
+import org.opentripplanner.framework.transaction.internal.TransactionFactory;
 import org.opentripplanner.model.plan.Itinerary;
 import org.opentripplanner.raptor.configure.RaptorConfig;
 import org.opentripplanner.routing.algorithm.raptoradapter.transit.RaptorTransitData;
@@ -25,7 +28,7 @@ import org.opentripplanner.routing.algorithm.raptoradapter.transit.mappers.Rapto
 import org.opentripplanner.routing.api.response.RoutingResponse;
 import org.opentripplanner.routing.framework.DebugTimingAggregator;
 import org.opentripplanner.routing.linking.VertexLinkerTestFactory;
-import org.opentripplanner.service.realtimevehicles.internal.DefaultRealtimeVehicleService;
+import org.opentripplanner.service.realtimevehicles.internal.DefaultRealtimeVehicleRepository;
 import org.opentripplanner.service.vehicleparking.internal.DefaultVehicleParkingRepository;
 import org.opentripplanner.service.vehiclerental.internal.DefaultVehicleRentalService;
 import org.opentripplanner.standalone.OtpStartupInfo;
@@ -40,6 +43,10 @@ import org.opentripplanner.standalone.server.DefaultServerRequestContext;
 import org.opentripplanner.street.graph.Graph;
 import org.opentripplanner.transfer.regular.TransferRepository;
 import org.opentripplanner.transfer.regular.TransferServiceTestFactory;
+import org.opentripplanner.transit.model.timetable.TimetableSnapshot;
+import org.opentripplanner.transit.repository.MutableTimetableSnapshot;
+import org.opentripplanner.transit.repository.ReadOnlyTimetableSnapshot;
+import org.opentripplanner.transit.repository.TimetableSnapshotLifecycle;
 import org.opentripplanner.transit.service.DefaultTransitService;
 import org.opentripplanner.transit.service.TimetableRepository;
 import org.opentripplanner.transit.speed_test.model.SpeedTestProfile;
@@ -53,7 +60,6 @@ import org.opentripplanner.transit.speed_test.model.timer.SpeedTestTimer;
 import org.opentripplanner.transit.speed_test.options.SpeedTestCmdLineOpts;
 import org.opentripplanner.transit.speed_test.options.SpeedTestConfig;
 import org.opentripplanner.updater.configure.UpdaterConfigurator;
-import org.opentripplanner.updater.trip.TimetableSnapshotManager;
 
 /**
  * Test response times for a large batch of origin/destination points. Also demonstrates how to run
@@ -105,6 +111,7 @@ public class SpeedTest {
     this.expectedResultsByTcId = tcIO.readExpectedResults();
 
     var transitService = new DefaultTransitService(timetableRepository);
+    var realtimeVehicleRepository = new DefaultRealtimeVehicleRepository();
 
     TransitTuningParameters tuningParameters = routerConfig.transitTuningConfig();
     var scheduledRaptorData = RaptorTransitDataMapper.map(
@@ -114,24 +121,41 @@ public class SpeedTest {
     );
 
     timetableRepository.initRaptorTransitData(scheduledRaptorData);
-    TimetableSnapshotManager snapshotManager = new TimetableSnapshotManager(
-      TimetableSnapshotParameters.DEFAULT,
-      LocalDate::now,
+
+    var parameters = TimetableSnapshotParameters.DEFAULT;
+    var registry = TransactionFactory.createRepositoryRegistry();
+    var timetableSnapshot = new TimetableSnapshot(
       new RaptorTransitData(timetableRepository.getRaptorTransitData()),
       timetableRepository.copyTripCalendarForRealTimeUpdates()
     );
+    RepositoryHandle<ReadOnlyTimetableSnapshot, MutableTimetableSnapshot> timetableHandle =
+      registry.registerRepositorySnapshot(
+        timetableSnapshot,
+        new TimetableSnapshotLifecycle(
+          timetableSnapshot,
+          parameters.purgeExpiredData(),
+          LocalDate::now
+        )
+      );
+    var threadFactory = java.util.concurrent.Executors.defaultThreadFactory();
+    var updateManager = TransactionFactory.createUpdateManagerWithPeriodicCommits(
+      "speedtest",
+      registry,
+      threadFactory,
+      parameters.maxSnapshotFrequency()
+    );
 
-    snapshotManager.purgeAndCommit();
     UpdaterConfigurator.configure(
       graph,
       DeduplicatorService.NOOP,
       VertexLinkerTestFactory.of(graph),
-      new DefaultRealtimeVehicleService(transitService),
+      realtimeVehicleRepository,
       new DefaultVehicleRentalService(),
       new DefaultVehicleParkingRepository(),
       timetableRepository,
       new DefaultCarpoolingRepository(),
-      snapshotManager,
+      updateManager,
+      timetableHandle,
       routerConfig.updaterConfig()
     );
     if (timetableRepository.getUpdaterManager() != null) {
@@ -157,13 +181,17 @@ public class SpeedTest {
       timer.getRegistry(),
       null,
       raptorConfig,
-      TestServerContext.createRealtimeVehicleService(transitService),
+      realtimeVehicleRepository,
       List.of(),
       routerConfig.routingRequestDefaults(),
       TestServerContext.createStreetLimitationParametersService(),
       TransferServiceTestFactory.transferService(transferRepository),
+      new TransactionScope() {},
       routerConfig.transitTuningConfig(),
-      new DefaultTransitService(timetableRepository, snapshotManager.getTimetableSnapshot()),
+      new DefaultTransitService(
+        timetableRepository,
+        timetableHandle.repositorySnapshot(registry.scope())
+      ),
       null,
       null,
       VectorTileConfig.DEFAULT,

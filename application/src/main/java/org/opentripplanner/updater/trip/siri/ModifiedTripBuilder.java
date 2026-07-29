@@ -11,6 +11,7 @@ import java.time.ZonedDateTime;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import javax.annotation.Nullable;
 import org.opentripplanner.transit.model.framework.DataValidationException;
 import org.opentripplanner.transit.model.network.StopPattern;
 import org.opentripplanner.transit.model.network.TripPattern;
@@ -41,6 +42,9 @@ class ModifiedTripBuilder {
   private final boolean predictionInaccurate;
   private final String dataSource;
 
+  @Nullable
+  private final String vehicleRef;
+
   public ModifiedTripBuilder(
     TripTimes existingTripTimes,
     TripPattern pattern,
@@ -61,6 +65,7 @@ class ModifiedTripBuilder {
     predictionInaccurate = journey.isPredictionInaccurate();
     occupancy = journey.occupancy();
     dataSource = journey.dataSource();
+    vehicleRef = journey.vehicleRef();
   }
 
   /**
@@ -77,7 +82,8 @@ class ModifiedTripBuilder {
     OccupancyStatus occupancy,
     boolean predictionInaccurate,
     String dataSource,
-    boolean added
+    boolean added,
+    @Nullable String vehicleRef
   ) {
     this.existingTripTimes = existingTripTimes;
     this.pattern = pattern;
@@ -90,6 +96,7 @@ class ModifiedTripBuilder {
     this.predictionInaccurate = predictionInaccurate;
     this.dataSource = dataSource;
     this.added = added;
+    this.vehicleRef = vehicleRef;
   }
 
   /**
@@ -98,6 +105,7 @@ class ModifiedTripBuilder {
    */
   public TripUpdate build() throws UpdateException {
     RealTimeTripTimesBuilder builder = existingTripTimes.createRealTimeFromScheduledTimes();
+    builder.withVehicleId(vehicleRef);
 
     if (added) {
       builder.withAdded();

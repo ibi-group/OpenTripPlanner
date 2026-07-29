@@ -58,15 +58,15 @@
 
 
     <properties>
-        <otp.serialization.version.id>266</otp.serialization.version.id>
+        <otp.serialization.version.id>267</otp.serialization.version.id>
 
         <!-- Lib versions - keep list sorted on property name -->
         <geotools.version>34.4</geotools.version>
-        <google.dagger.version>2.59.1</google.dagger.version>
-        <jackson.version>2.22.0</jackson.version>
+        <google.dagger.version>2.60.1</google.dagger.version>
+        <jackson.version>2.22.1</jackson.version>
         <jaxb-runtime.version>4.0.9</jaxb-runtime.version>
         <jersey.version>3.1.12</jersey.version>
-        <junit.version>6.1.0</junit.version>
+        <junit.version>6.1.2</junit.version>
         <micrometer.version>1.14.1</micrometer.version>
         <netcdf4.version>5.6.0</netcdf4.version>
         <logback.version>1.5.37</logback.version>
@@ -173,7 +173,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
-                <version>3.5.0</version>
+                <version>3.5.1</version>
                 <configuration>
                     <archive>
                         <manifestEntries>
@@ -357,7 +357,7 @@
             <plugin>
                 <groupId>org.openrewrite.maven</groupId>
                 <artifactId>rewrite-maven-plugin</artifactId>
-                <version>6.42.0</version>
+                <version>6.44.0</version>
                 <configuration>
                     <exportDatatables>true</exportDatatables>
                     <activeRecipes>
@@ -376,7 +376,7 @@
                     <dependency>
                         <groupId>org.openrewrite.recipe</groupId>
                         <artifactId>rewrite-static-analysis</artifactId>
-                        <version>2.37.0</version>
+                        <version>2.39.0</version>
                     </dependency>
                 </dependencies>
             </plugin>
@@ -400,7 +400,7 @@
                     <dependency>
                         <groupId>com.puppycrawl.tools</groupId>
                         <artifactId>checkstyle</artifactId>
-                        <version>13.6.0</version>
+                        <version>13.8.0</version>
                     </dependency>
                 </dependencies>
                 <executions>
@@ -416,7 +416,7 @@
             <plugin>
                 <groupId>com.google.cloud.tools</groupId>
                 <artifactId>jib-maven-plugin</artifactId>
-                <version>3.5.1</version>
+                <version>3.5.2</version>
                 <configuration>
                     <container>
                         <mainClass>org.opentripplanner.standalone.OTPMain</mainClass>
@@ -492,7 +492,7 @@
                 <!-- This makes sure all google libraries are using compatible versions. -->
                 <groupId>com.google.cloud</groupId>
                 <artifactId>libraries-bom</artifactId>
-                <version>26.85.0</version>
+                <version>26.85.1</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
