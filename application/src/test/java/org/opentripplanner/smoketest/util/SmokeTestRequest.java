@@ -3,7 +3,7 @@ package org.opentripplanner.smoketest.util;
 import java.util.Set;
 import org.opentripplanner.client.model.Coordinate;
 import org.opentripplanner.client.model.RequestMode;
-import org.opentripplanner.client.parameters.TripPlanParameters;
+import org.opentripplanner.client.parameters.TripPlanParameters.SearchDirection;
 
 public record SmokeTestRequest(
   Coordinate from,
@@ -15,11 +15,11 @@ public record SmokeTestRequest(
     this(from, to, modes, false);
   }
 
-  public TripPlanParameters.SearchDirection searchDirection() {
+  public SearchDirection searchDirection() {
     if (arriveBy) {
-      return TripPlanParameters.SearchDirection.ARRIVE_BY;
+      return SearchDirection.ARRIVE_BY;
     } else {
-      return TripPlanParameters.SearchDirection.DEPART_AT;
+      return SearchDirection.DEPART_AT;
     }
   }
 }
