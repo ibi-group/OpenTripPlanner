@@ -134,7 +134,7 @@ class ElevatorProcessor {
    * Needs to be called after elevatorNodes have been created in vertexGenerator.
    */
   private void buildElevatorEdgesFromElevatorNodes() {
-    for (Long nodeId : vertexGenerator.elevatorNodes().keySet()) {
+    for (long nodeId : vertexGenerator.elevatorNodes().keySet()) {
       OsmNode node = osmdb.getNode(nodeId);
       Map<OsmElevatorKey, OsmElevatorVertex> vertices = vertexGenerator.elevatorNodes().get(nodeId);
       Map<OsmElevatorKey, OsmLevel> verticeLevels = vertexGenerator.elevatorNodeLevels();
@@ -207,7 +207,7 @@ class ElevatorProcessor {
       }
       List<OsmLevel> nodeLevels = osmdb.getLevelsForEntity(way);
       List<Long> nodes = Arrays.stream(way.getNodeRefs().toArray())
-        .filter(nodeRef -> vertexGenerator.intersectionNodes().get(nodeRef) != null)
+        .filter(vertexGenerator::hasIntersectionVertex)
         .boxed()
         .toList();
 
@@ -218,8 +218,8 @@ class ElevatorProcessor {
         issueStore.add(
           new FewerThanTwoIntersectionNodesInElevatorWay(
             way,
-            osmdb.getNode(firstNodeRef).getCoordinate(),
-            osmdb.getNode(lastNodeRef).getCoordinate(),
+            osmdb.getNodeCoordinate(firstNodeRef),
+            osmdb.getNodeCoordinate(lastNodeRef),
             nodes.size()
           )
         );
@@ -229,8 +229,8 @@ class ElevatorProcessor {
         issueStore.add(
           new MoreThanTwoIntersectionNodesInElevatorWay(
             way,
-            osmdb.getNode(nodes.getFirst()).getCoordinate(),
-            osmdb.getNode(nodes.getLast()).getCoordinate(),
+            osmdb.getNodeCoordinate(nodes.getFirst()),
+            osmdb.getNodeCoordinate(nodes.getLast()),
             nodes.size()
           )
         );
@@ -240,8 +240,8 @@ class ElevatorProcessor {
         issueStore.add(
           new CouldNotApplyMultiLevelInfoToElevatorWay(
             way,
-            osmdb.getNode(nodes.getFirst()).getCoordinate(),
-            osmdb.getNode(nodes.getLast()).getCoordinate(),
+            osmdb.getNodeCoordinate(nodes.getFirst()),
+            osmdb.getNodeCoordinate(nodes.getLast()),
             nodeLevels.size(),
             nodes.size()
           )
@@ -252,7 +252,7 @@ class ElevatorProcessor {
       List<ElevatorHopVertex> elevatorHopVertices = new ArrayList<>();
       for (int i = 0; i < nodes.size(); i++) {
         Long node = nodes.get(i);
-        var sourceVertex = vertexGenerator.intersectionNodes().get(node);
+        var sourceVertex = vertexGenerator.getIntersectionVertex(node);
         OsmLevel level = nodeLevels.get(i);
         createElevatorVertices(
           elevatorHopVertices,
