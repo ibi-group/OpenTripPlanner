@@ -88,12 +88,10 @@ public class SeattleSmokeTest {
       var tripPlan = SmokeTest.API_CLIENT.plan(req);
 
       // assert that accessibility score is there
-      tripPlan
-        .itineraries()
-        .forEach(i -> {
-          assertTrue(i.accessibilityScore().isPresent());
-          i.legs().forEach(l -> assertTrue(l.accessibilityScore().isPresent()));
-        });
+      tripPlan.itineraries().forEach(i -> {
+        assertTrue(i.accessibilityScore().isPresent());
+        i.legs().forEach(l -> assertTrue(l.accessibilityScore().isPresent()));
+      });
       return tripPlan;
     }
   }
