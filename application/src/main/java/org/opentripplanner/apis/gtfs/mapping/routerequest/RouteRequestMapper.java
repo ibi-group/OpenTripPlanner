@@ -61,6 +61,8 @@ public class RouteRequestMapper {
       request.setNumItineraries(args.getGraphQLFirst());
     }
 
+    request.setMobilityProfileFromString(args.getGraphQLMobilityProfile());
+
     request.withPreferences(preferences -> setPreferences(preferences, request, args, environment));
 
     setModes(request.journey(), args.getGraphQLModes(), environment);
