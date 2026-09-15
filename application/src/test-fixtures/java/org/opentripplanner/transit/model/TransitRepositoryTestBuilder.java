@@ -12,6 +12,8 @@ import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import org.opentripplanner.core.model.id.FeedScopedId;
+import org.opentripplanner.ext.flex.trip.FlexTrip;
+import org.opentripplanner.ext.flex.trip.ScheduledDeviatedTrip;
 import org.opentripplanner.ext.flex.trip.UnscheduledTrip;
 import org.opentripplanner.model.StopTime;
 import org.opentripplanner.model.calendar.CalendarServiceData;
@@ -42,7 +44,7 @@ public class TransitRepositoryTestBuilder {
   private final List<Operator> operators = new ArrayList<>();
 
   private final List<TripOnServiceDate> tripOnServiceDates = new ArrayList<>();
-  private final List<UnscheduledTrip> flexTrips = new ArrayList<>();
+  private final List<FlexTrip<?, ?>> flexTrips = new ArrayList<>();
 
   private final Map<TripPatternKey, TripPattern> tripPatterns = new HashMap<>();
   private final Map<String, ServiceCode> serviceCodes = new HashMap<>();
@@ -207,11 +209,21 @@ public class TransitRepositoryTestBuilder {
     }
 
     if (tripInput.isFlex()) {
-      var flexTrip = UnscheduledTrip.of(trip.getId())
-        .withTrip(trip)
-        .withStopTimes(stopTimes)
-        .build();
-      flexTrips.add(flexTrip);
+      if (UnscheduledTrip.isUnscheduledTrip(stopTimes)) {
+        var flexTrip = UnscheduledTrip.of(trip.getId())
+          .withTrip(trip)
+          .withStopTimes(stopTimes)
+          .build();
+        flexTrips.add(flexTrip);
+      } else if (ScheduledDeviatedTrip.isScheduledDeviatedFlexTrip(stopTimes)) {
+        var flexTrip = ScheduledDeviatedTrip.of(trip.getId())
+          .withTrip(trip)
+          .withStopTimes(stopTimes)
+          .build();
+        flexTrips.add(flexTrip);
+      } else {
+        throw new IllegalArgumentException("Unknown flex stop times: " + stopTimes);
+      }
     }
 
     return trip;

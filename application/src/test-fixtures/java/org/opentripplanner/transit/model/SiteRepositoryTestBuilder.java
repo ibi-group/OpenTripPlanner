@@ -20,7 +20,7 @@ import org.opentripplanner.transit.service.SiteRepository;
 import org.opentripplanner.transit.service.SiteRepositoryBuilder;
 
 /**
- * Test helper for buliding site repository entities with default values
+ * Test helper for building site repository entities with default values
  */
 public class SiteRepositoryTestBuilder {
 

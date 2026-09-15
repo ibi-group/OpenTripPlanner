@@ -1,8 +1,13 @@
 package org.opentripplanner.ext.flex.trip;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.opentripplanner.core.model.id.FeedScopedIdForTestFactory.id;
-import static org.opentripplanner.model.FlexStopTimesFactory.*;
+import static org.opentripplanner.model.FlexStopTimesFactory.area;
+import static org.opentripplanner.model.FlexStopTimesFactory.areaWithContinuousStopping;
+import static org.opentripplanner.model.FlexStopTimesFactory.regularStop;
+import static org.opentripplanner.model.FlexStopTimesFactory.regularStopWithContinuousStopping;
 import static org.opentripplanner.utils.time.TimeUtils.timeToStrCompact;
 
 import java.util.List;
