@@ -1,13 +1,9 @@
 package org.opentripplanner.ext.flex.trip;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.opentripplanner.core.model.id.FeedScopedIdForTestFactory.id;
-import static org.opentripplanner.model.FlexStopTimesFactory.area;
-import static org.opentripplanner.model.FlexStopTimesFactory.areaWithContinuousStopping;
-import static org.opentripplanner.model.FlexStopTimesFactory.regularStop;
-import static org.opentripplanner.model.FlexStopTimesFactory.regularStopWithContinuousStopping;
+import static org.opentripplanner.model.FlexStopTimesFactory.*;
+import static org.opentripplanner.utils.time.TimeUtils.timeToStrCompact;
 
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -79,5 +75,17 @@ class ScheduledDeviatedTripTest {
   @MethodSource("isNotScheduledDeviatedTripCases")
   void isNotScheduledDeviatedTrip(List<StopTime> stopTimes) {
     assertFalse(ScheduledDeviatedTrip.isScheduledDeviatedFlexTrip(stopTimes));
+  }
+
+  @Test
+  void deviated() {
+    var stopTimes = List.of(
+      area("10:00", "10:15"),
+      regularStop("10:20", "10:20"),
+      area("10:25", "10:40")
+    );
+    var trip = ScheduledDeviatedTrip.of(id("1")).withStopTimes(stopTimes).build();
+    assertEquals("10:25", timeToStrCompact(trip.earliestDepartureTime(2)));
+    assertEquals("10:40", timeToStrCompact(trip.latestArrivalTime(2)));
   }
 }
