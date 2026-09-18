@@ -61,7 +61,10 @@ public class RouteRequestMapper {
       request.setNumItineraries(args.getGraphQLFirst());
     }
 
-    request.setMobilityProfileFromString(args.getGraphQLMobilityProfile());
+    // G-MAP-specific routing parameter.
+    if (args.getGraphQLMobilityProfile() != null) {
+      request.setMobilityProfileFromString(args.getGraphQLMobilityProfile());
+    }
 
     request.withPreferences(preferences -> setPreferences(preferences, request, args, environment));
 
