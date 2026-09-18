@@ -86,7 +86,9 @@ public class RouteRequestMapper {
       prefs.withTransfer(transfer -> setTransitPreferences(transit, transfer, args, environment));
     });
     setStreetPreferences(prefs, request, preferenceArgs.getGraphQLStreet(), environment);
-    setAccessibilityPreferences(request, preferenceArgs.getGraphQLAccessibility());
+    // G-MAP-specific: accessibility routing is entirely controlled by the
+    // `mobilityProfile` query parameter.
+    // setAccessibilityPreferences(request, preferenceArgs.getGraphQLAccessibility());
   }
 
   private static void setItineraryFilters(

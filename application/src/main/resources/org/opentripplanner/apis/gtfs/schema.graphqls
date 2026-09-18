@@ -1627,7 +1627,9 @@ type QueryType {
     """
     searchWindow: Duration,
     "The list of points the itinerary is required to pass through."
-    via: [PlanViaLocationInput!]
+    via: [PlanViaLocationInput!],
+    "The mobility profile to use for routing"
+    mobilityProfile: String,
   ): PlanConnection @async
   "Get a single rental vehicle based on its ID, i.e. value of field `vehicleId`"
   rentalVehicle(id: String!): RentalVehicle
@@ -4144,7 +4146,9 @@ input PlanPreferencesInput {
   """
   street: PlanStreetPreferencesInput
   "Transit routing preferences used for transit legs."
-  transit: TransitPreferencesInput
+  transit: TransitPreferencesInput,
+  "The mobility profile to use for routing."
+  mobilityProfile: String
 }
 
 """
