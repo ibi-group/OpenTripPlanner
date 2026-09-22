@@ -53,3 +53,8 @@ graph.obj
 
 # EPSG files
 application/v??.?.??
+
+smoke-tests/*.jar
+smoke-tests/**/*.obj
+smoke-tests/**/*.pbf
+smoke-tests/**/*.zip

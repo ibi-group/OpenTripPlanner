@@ -1,0 +1,20 @@
+{
+  "transitFeeds": [
+    {
+      "type": "gtfs",
+      "source": "https://www3.septa.org/developer/google_rail.zip",
+      "feedId": "septa-rail"
+    },
+    {
+      "type": "gtfs",
+      "source": "https://www3.septa.org/developer/google_bus.zip",
+      "feedId": "septa-bus"
+    },
+    {
+      "type": "gtfs",
+      "source": "https://rapid.nationalrtap.org/GTFSFileManagement/UserUploadFiles/13562/PATCO_GTFS.zip",
+      "feedId": "patco"
+    }
+  ],
+  "fares": "combine-interlined-legs"
+}

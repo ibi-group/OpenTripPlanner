@@ -3,26 +3,21 @@ name: OTP CI Build
 # But triggering on push only will miss pull requests from outside authors.
 # The push event's ref is the name of the pushed branch;
 # The pull_request event's branch name is the merge target branch.
-# The merge_group event's branch name is the merge target branch.
 on:
   push:
-    branches:
-      - master
-      - dev-2.x
   pull_request:
     branches:
-      - master
-      - dev-2.x
-  merge_group:
-    branches:
-      - master
-      - dev-2.x
+      - ibi-dev
+      - ibi-dev-2.x
+permissions:
+  id-token: write # This is required for requesting AWS login tokens
 env:
   # maven default arguments to make the log quieter and colourful
   MAVEN_ARGS: "--no-transfer-progress -Dstyle.color=always"
-
 jobs:
   build-linux:
+    env:
+      MAVEN_OPTS: -Xmx2g
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -36,7 +31,7 @@ jobs:
         with:
           node-version: 24
 
-      # Java setup step completes very fast, no need to run in a preconfigured docker container
+      # Java setup step completes very fast, no need to run in a preconfigured docker container.
       - name: Set up JDK 25
         uses: actions/setup-java@v5
         with:
@@ -50,7 +45,7 @@ jobs:
         # NAT drops them
         # https://github.com/actions/runner-images/issues/1499
         run: |
-          mvn jacoco:prepare-agent test jacoco:report -P prettierCheck
+          mvn jacoco:prepare-agent test jacoco:report -P prettierCheck,unit-tests
           mvn package -Dmaven.test.skip -P prettierSkip,checkstyleSkip
 
       - name: Send coverage data to codecov.io
@@ -74,6 +69,59 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: mvn deploy --settings maven-settings.xml -DskipTests -DGITHUB_REPOSITORY=$GITHUB_REPOSITORY -P prettierSkip,checkstyleSkip,deployGitHub
+
+      ## IBI start
+      # So that the branch name can be reference via $GITHUB_REF_SLUG.
+      - name: Inject slug/short variables
+        uses: rlespinasse/github-slug-action@v3.x
+      # Define AWS profile credentials for use by subsequent steps.
+      # The AWS role referenced below should have the following S3 permissions:
+      # - s3:PutObject
+      # - s3:GetObject
+      # - s3:ListBucket
+      # - s3:DeleteObject
+      # - s3:PutObjectAcl
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v5.1.1
+        with:
+          aws-region: ${{ secrets.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_CI_ROLE_ARN }}
+      # Only prepare deploy files on push events to avoid duplicate pushes to s3 when a commit is
+      # pushed to a branch with an open pull request.
+      - name: Prepare build files for deployment to s3
+        if: github.event_name == 'push'
+        run: ./scripts/prep-build-for-deploy-from-github-actions.sh
+      # Copy build files to AWS.
+      - name: Copy build files to the otp-repo bucket
+        if: github.event_name == 'push'
+        run: |
+          aws s3 cp ./deploy s3://otp-repo --recursive --acl public-read
+      # Install mkdocs using pip for use by subsequent steps.
+      - name: Install mkdocs
+        if: github.event_name == 'push' && env.GITHUB_REF_SLUG == 'ibi-dev-2.x'
+        run: |
+          pip install mkdocs
+      # Using mkdocs produce docs for deployment.
+# FIXME: there is an error while trying to run enunciate to generate the docs
+#      - name: Prepare doc files for deployment to s3
+#        if: github.event_name == 'push' && env.GITHUB_REF_SLUG == 'ibi-dev-2.x'
+#        run: ./scripts/prep-docs-for-deploy-from-github-actions.sh
+#      # If on ibi-dev branch, then upload docs to IBI s3 buckets & cloudfront.
+# FIXME: figure out whether the same bucket should be used, or a different one should be used for 2.x docs
+#      - name: Upload docs to IBI s3 buckets & cloudfront
+#        if: github.event_name == 'push' && env.GITHUB_REF_SLUG == 'ibi-dev-2.x'
+#        run: |
+#          aws s3 cp ./target/mkdocs s3://otp-docs.ibi-transit.com --recursive --acl public-read
+      # Push notification to Teams.
+      - name: Notify us of the build status on MS Teams
+        # Release https://github.com/toko-bifrost/ms-teams-deploy-card/releases/tag/3.1.2 this matches
+        # the full length commit SHA below. This must not be changed without first reviewing the code of the newer
+        # version for potential security risks.
+        uses: toko-bifrost/ms-teams-deploy-card@dcc94e4ce4088b1e6b6de5c9a3cda4ddcbe97d2e
+        if: always()
+        with:
+          github-token: ${{ github.token }}
+          webhook-uri: ${{ secrets.MSTEAMS_WEBHOOK }}
 
   build-windows:
     timeout-minutes: 20
@@ -101,7 +149,7 @@ jobs:
       LOCAL_BRANCH: local-pages
       REMOTE_BRANCH: main
       TOKEN: ${{ secrets.CHANGELOG_TOKEN }}
-      MASTER_BRANCH_VERSION: 2.9.0
+      MASTER_BRANCH_VERSION: 2.10.0
 
     steps:
 
@@ -210,7 +258,6 @@ jobs:
     if: github.repository_owner == 'opentripplanner' && github.event_name == 'push' && (github.ref == 'refs/heads/dev-2.x' || github.ref == 'refs/heads/master')
     runs-on: ubuntu-latest
     needs:
-      - build-windows
       - build-linux
     steps:
       - uses: actions/checkout@v7
