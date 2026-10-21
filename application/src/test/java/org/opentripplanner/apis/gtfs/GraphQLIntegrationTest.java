@@ -2,6 +2,7 @@ package org.opentripplanner.apis.gtfs;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.fail;
+import static org.opentripplanner._support.time.ZoneIds.BERLIN;
 import static org.opentripplanner.model.plan.PlanTestConstants.D10m;
 import static org.opentripplanner.model.plan.PlanTestConstants.T11_00;
 import static org.opentripplanner.model.plan.PlanTestConstants.T11_01;
@@ -16,12 +17,14 @@ import static org.opentripplanner.transit.model.basic.TransitMode.BUS;
 import static org.opentripplanner.transit.model.basic.TransitMode.FERRY;
 import static org.opentripplanner.transit.model.timetable.OccupancyStatus.FEW_SEATS_AVAILABLE;
 
+import com.google.common.collect.ImmutableListMultimap;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
@@ -137,6 +140,8 @@ class GraphQLIntegrationTest {
   static final Instant ALERT_END_TIME = ALERT_START_TIME.plus(1, ChronoUnit.DAYS);
   private static final int TEN_MINUTES = 10 * 60;
 
+  private static final LocalDate SERVICE_DATE = LocalDate.of(2024, 1, 1);
+
   private static GraphQLRequestContext context;
 
   private static final Deduplicator DEDUPLICATOR = new Deduplicator();
@@ -187,7 +192,7 @@ class GraphQLIntegrationTest {
       .build();
     timetableRepository.addAgency(agency);
 
-    timetableRepository.initTimeZone(ZoneIds.BERLIN);
+    timetableRepository.initTimeZone(BERLIN);
     timetableRepository.index();
     var routes = Arrays
       .stream(TransitMode.values())
@@ -288,14 +293,14 @@ class GraphQLIntegrationTest {
     var occypancyVehicle = RealtimeVehicle
       .builder()
       .withTrip(trip)
-      .withTime(Instant.MAX)
+      .withTime(SERVICE_DATE.atStartOfDay(BERLIN).plusHours(16).toInstant())
       .withVehicleId(id("vehicle-1"))
       .withOccupancyStatus(FEW_SEATS_AVAILABLE)
       .build();
     var positionVehicle = RealtimeVehicle
       .builder()
       .withTrip(trip)
-      .withTime(Instant.MIN)
+      .withTime(SERVICE_DATE.atStartOfDay(BERLIN).plusHours(19).toInstant())
       .withVehicleId(id("vehicle-2"))
       .withLabel("vehicle2")
       .withCoordinates(new WgsCoordinate(60.0, 80.0))
@@ -304,7 +309,12 @@ class GraphQLIntegrationTest {
       .withStop(pattern.getStop(0))
       .withStopStatus(IN_TRANSIT_TO)
       .build();
-    realtimeVehicleService.setRealtimeVehicles(pattern, List.of(occypancyVehicle, positionVehicle));
+    realtimeVehicleService.setRealtimeVehiclesForFeed(
+      pattern.getId().getFeedId(),
+      new ImmutableListMultimap.Builder()
+        .putAll(pattern, List.of(occypancyVehicle, positionVehicle))
+        .build()
+    );
 
     DefaultVehicleRentalService defaultVehicleRentalService = new DefaultVehicleRentalService();
     defaultVehicleRentalService.addVehicleRentalStation(VEHICLE_RENTAL_STATION);
