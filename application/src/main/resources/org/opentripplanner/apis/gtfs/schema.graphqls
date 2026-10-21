@@ -1600,6 +1600,8 @@ type QueryType {
     It's possible and recommended to use the ´accept-language´ header instead of this parameter.
     """
     locale: Locale,
+    "The mobility profile to use for routing"
+    mobilityProfile: String,
     """
     Street and transit modes used during the search. This also includes options to only return
     an itinerary that contains no transit legs or force transit to be used in all itineraries.
@@ -1627,9 +1629,7 @@ type QueryType {
     """
     searchWindow: Duration,
     "The list of points the itinerary is required to pass through."
-    via: [PlanViaLocationInput!],
-    "The mobility profile to use for routing"
-    mobilityProfile: String,
+    via: [PlanViaLocationInput!]
   ): PlanConnection @async
   "Get a single rental vehicle based on its ID, i.e. value of field `vehicleId`"
   rentalVehicle(id: String!): RentalVehicle
@@ -4141,6 +4141,8 @@ input PlanPassThroughViaLocationInput {
 input PlanPreferencesInput {
   "Accessibility preferences that affect both the street and transit routing."
   accessibility: AccessibilityPreferencesInput
+  "The mobility profile to use for routing."
+  mobilityProfile: String
   """
   Street routing preferences used for ingress, egress and transfers. These do not directly affect
   the transit legs but can change how preferable walking or cycling, for example, is compared to
@@ -4148,9 +4150,7 @@ input PlanPreferencesInput {
   """
   street: PlanStreetPreferencesInput
   "Transit routing preferences used for transit legs."
-  transit: TransitPreferencesInput,
-  "The mobility profile to use for routing."
-  mobilityProfile: String
+  transit: TransitPreferencesInput
 }
 
 """
