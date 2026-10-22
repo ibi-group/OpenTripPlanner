@@ -1,7 +1,7 @@
 package org.opentripplanner.apis.gtfs.mapping.routerequest;
 
 import static java.util.Map.entry;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.opentripplanner.apis.gtfs.mapping.routerequest.RouteRequestMapperTest.createArgsCopy;
 import static org.opentripplanner.apis.gtfs.mapping.routerequest.RouteRequestMapperTest.executionContext;
 
@@ -26,6 +26,7 @@ class RouteRequestMapperAccessibilityTest {
     );
     var env = executionContext(args, Locale.ENGLISH, RouteRequestMapperTest.CONTEXT);
     var routeRequest = RouteRequestMapper.toRouteRequest(env, RouteRequestMapperTest.CONTEXT);
-    assertEquals(wheelchairEnabled, routeRequest.wheelchair());
+    // G-MAP specific: wheelchair preferences are included in mobilityProfile.
+    assertFalse(routeRequest.wheelchair());
   }
 }
