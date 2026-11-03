@@ -14,6 +14,10 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.entur.netex2.model.Quay;
+import org.entur.netex2.model.Quays_RelStructure;
+import org.entur.netex2.model.StopPlace;
+import org.entur.netex2.model.TariffZoneRef;
 import org.opentripplanner.core.model.accessibility.Accessibility;
 import org.opentripplanner.core.model.id.FeedScopedId;
 import org.opentripplanner.graph_builder.issue.api.DataImportIssueStore;
@@ -27,10 +31,6 @@ import org.opentripplanner.transit.model.site.FareZone;
 import org.opentripplanner.transit.model.site.RegularStop;
 import org.opentripplanner.transit.model.site.Station;
 import org.opentripplanner.transit.service.SiteRepositoryBuilder;
-import org.rutebanken.netex.model.Quay;
-import org.rutebanken.netex.model.Quays_RelStructure;
-import org.rutebanken.netex.model.StopPlace;
-import org.rutebanken.netex.model.TariffZoneRef;
 
 /**
  * This maps a NeTEx StopPlace and its child quays to and OTP parent stop and child stops. NeTEx
@@ -43,8 +43,8 @@ import org.rutebanken.netex.model.TariffZoneRef;
  * present in the OTP model we have to choose which version should be mapped based on both of these
  * parameters.
  * <p>
- * To ensure compatibility with older data sets, we also have to keep quays that are only present in
- * older versions of the StopPlace.
+ * To ensure compatibility with older data sets, we also have to keep quays that are only present
+ * in older versions of the StopPlace.
  */
 class StopAndStationMapper {
 
@@ -132,7 +132,7 @@ class StopAndStationMapper {
 
     return stopPlace
       .getTariffZones()
-      .getTariffZoneRef_()
+      .getTariffZoneRef()
       .stream()
       .map(ref -> findTariffZone(stopPlace, (TariffZoneRef) ref.getValue()))
       .filter(Objects::nonNull)
@@ -200,7 +200,8 @@ class StopAndStationMapper {
   /**
    * Return the list of quays for the given {@code stopPlace} or an empty list if no quays exist.
    * <p>
-   * We do not support quay references, all quays must be included as part of the given stopPlace.
+   * We do not support quay references, all quays must be included as part of the given
+   * stopPlace.
    */
   private List<Quay> listOfQuays(StopPlace stopPlace) {
     Quays_RelStructure quays = stopPlace.getQuays();

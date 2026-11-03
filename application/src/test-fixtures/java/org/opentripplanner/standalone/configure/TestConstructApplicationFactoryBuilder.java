@@ -30,8 +30,9 @@ import tools.jackson.databind.JsonNode;
  * That's normally fine: a test that doesn't care about vehicle parking data, for example, doesn't
  * need real vehicle parking data to exercise the DI wiring around it.
  * <p>
- * Add a {@code withRepositoryX}/{@code withTestEnvironmentX} method to the builder on a need basis,
- * when a test actually needs to override one of the other defaults — don't add one speculatively.
+ * Add a {@code withRepositoryX}/{@code withTestEnvironmentX} method to the builder on a need
+ * basis, when a test actually needs to override one of the other defaults — don't add one
+ * speculatively.
  */
 public final class TestConstructApplicationFactoryBuilder {
 
@@ -42,22 +43,26 @@ public final class TestConstructApplicationFactoryBuilder {
   }
 
   public ConstructApplicationFactory build() {
-    var transitRepository = TransitTestEnvironment.of().build().transitRepository();
+    var env = TransitTestEnvironment.of().build();
+    var transitRepository = env.transitRepository();
 
     return DaggerConstructApplicationFactory.builder()
       .configModel(new ConfigModel(OtpConfigLoader.fromString("{}")))
       .graph(new Graph())
-      .transitRepository(transitRepository)
-      .transferRepository(TransferServiceTestFactory.defaultTransferRepository())
-      .worldEnvelopeRepository(new DefaultWorldEnvelopeRepository())
-      .stopConsolidationRepository(null)
-      .vehicleParkingRepository(new DefaultVehicleParkingRepository())
       .dataImportIssueSummary(DataImportIssueSummary.empty())
-      .emissionRepository(new DefaultEmissionRepository())
+      .stopConsolidationRepository(null)
       .streetDetailsRepository(new DefaultStreetDetailsRepository())
-      .empiricalDelayRepository(new DefaultEmpiricalDelayRepository())
+      .transferRepository(TransferServiceTestFactory.defaultTransferRepository())
+      .transitRepository(transitRepository)
+      .vehicleParkingRepository(new DefaultVehicleParkingRepository())
+      .worldEnvelopeRepository(new DefaultWorldEnvelopeRepository())
+      .scheduledRaptorTransitData(transitRepository.getRaptorTransitData())
+      .scheduledTimetableData(env.scheduledTimetableData())
       .schema(RouteRequest.defaultValue())
       .streetStreetRepository(new DefaultStreetRepository())
+      // Sandbox
+      .emissionRepository(new DefaultEmissionRepository())
+      .empiricalDelayRepository(new DefaultEmpiricalDelayRepository())
       .fareServiceFactory(
         new FareServiceFactory() {
           @Override
@@ -72,8 +77,6 @@ public final class TestConstructApplicationFactoryBuilder {
           public void configure(JsonNode config) {}
         }
       )
-      .scheduledRaptorTransitData(transitRepository.getRaptorTransitData())
-      .scheduledTripCalendars(transitRepository.getTripCalendar())
       .build();
   }
 }

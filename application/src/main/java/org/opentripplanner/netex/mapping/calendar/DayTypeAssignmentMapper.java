@@ -2,7 +2,6 @@ package org.opentripplanner.netex.mapping.calendar;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.Collection;
 import java.util.Collections;
@@ -12,18 +11,18 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.entur.netex2.model.DayType;
+import org.entur.netex2.model.DayTypeAssignment;
+import org.entur.netex2.model.OperatingDay;
+import org.entur.netex2.model.OperatingDayRefStructure;
+import org.entur.netex2.model.OperatingPeriod;
+import org.entur.netex2.model.OperatingPeriod_VersionStructure;
+import org.entur.netex2.model.PropertyOfDay;
+import org.entur.netex2.model.UicOperatingPeriod;
 import org.opentripplanner.graph_builder.issue.api.DataImportIssueStore;
 import org.opentripplanner.netex.index.api.ReadOnlyHierarchicalMap;
 import org.opentripplanner.netex.index.api.ReadOnlyHierarchicalMapById;
 import org.opentripplanner.netex.issues.DayTypeScheduleIsEmpty;
-import org.rutebanken.netex.model.DayType;
-import org.rutebanken.netex.model.DayTypeAssignment;
-import org.rutebanken.netex.model.OperatingDay;
-import org.rutebanken.netex.model.OperatingDayRefStructure;
-import org.rutebanken.netex.model.OperatingPeriod;
-import org.rutebanken.netex.model.OperatingPeriod_VersionStructure;
-import org.rutebanken.netex.model.PropertyOfDay;
-import org.rutebanken.netex.model.UicOperatingPeriod;
 
 /**
  * Map {@link DayTypeAssignment}s to set of {@link LocalDate}s.
@@ -32,10 +31,10 @@ import org.rutebanken.netex.model.UicOperatingPeriod;
  * <p>
  * <b>DESIGN</b>
  * <p>
- * To simplify the logic in this class and avoid passing input parameters down the call chain this
- * class perform the mapping by first creating an instance with READ-ONLY input members. The result
- * is added to {@link #dates} and {@link #datesToRemove} during the mapping process. As a final
- * step, the two collections are merged (dates-datesToRemove) and then mapped to
+ * To simplify the logic in this class and avoid passing input parameters down the call chain
+ * this class perform the mapping by first creating an instance with READ-ONLY input members. The
+ * result is added to {@link #dates} and {@link #datesToRemove} during the mapping process. As a
+ * final step, the two collections are merged (dates-datesToRemove) and then mapped to
  * {@link LocalDate}s.
  * <p>
  * This class is THREAD-SAFE. A static mapping method is the single point of entry and a private
@@ -71,8 +70,7 @@ public class DayTypeAssignmentMapper {
   }
 
   /**
-   * Map all given {@code dayTypeAssignments} into a map of {@link LocalDate} by
-   * {@code dayTypeId}s.
+   * Map all given {@code dayTypeAssignments} into a map of {@link LocalDate} by {@code dayTypeId}s.
    */
   public static Map<String, Set<LocalDate>> mapDayTypes(
     ReadOnlyHierarchicalMapById<DayType> dayTypes,
@@ -113,11 +111,11 @@ public class DayTypeAssignmentMapper {
    * Resolve the days of the week an operating period assigned to the given {@code dayType} is
    * restricted to.
    * <p>
-   * The NeTEx profile makes both {@code properties} and {@code DaysOfWeek} optional.
-   * A day type which does not state any days of the week therefore constrains nothing and is valid
-   * for <em>every</em> day in the period.
+   * The NeTEx profile makes both {@code properties} and {@code DaysOfWeek} optional. A day type
+   * which does not state any days of the week therefore constrains nothing and is valid for
+   * <em>every</em> day in the period.
    * <p>
-   * */
+   */
   private static Set<DayOfWeek> daysOfWeekForDayType(DayType dayType) {
     if (dayType.getProperties() == null) {
       return EVERY_DAY_OF_WEEK;
@@ -153,8 +151,8 @@ public class DayTypeAssignmentMapper {
    * When mapping two lists of dates are created internally in this class, these are merged as a
    * final step in the mapping process.
    * <p>
-   * Do not call this method before you want to retrieve the result. Calling this method more than
-   * once, may have unexpected effects.
+   * Do not call this method before you want to retrieve the result. Calling this method more
+   * than once, may have unexpected effects.
    * <p>
    *
    * @return the set of service dates for all dayTypes mapped.
@@ -177,21 +175,21 @@ public class DayTypeAssignmentMapper {
     if (period instanceof OperatingPeriod operatingPeriod) {
       Set<DayOfWeek> daysOfWeek = daysOfWeekForDayType(dayType);
       // Plus 1 to make the end date exclusive - simplify the loop test
-      LocalDateTime endDate = getOperatingPeriodEndDate(operatingPeriod).plusDays(1);
-      LocalDateTime date = getOperatingPeriodStartDate(operatingPeriod);
+      LocalDate endDate = getOperatingPeriodEndDate(operatingPeriod).plusDays(1);
+      LocalDate date = getOperatingPeriodStartDate(operatingPeriod);
 
       addDates(isAvailable, daysOfWeek, endDate, date);
     } else if (period instanceof UicOperatingPeriod uicOperatingPeriod) {
-      LocalDateTime endDate = uicOperatingPeriod.getToDate().plusDays(1);
-      LocalDateTime date = uicOperatingPeriod.getFromDate();
+      LocalDate endDate = uicOperatingPeriod.getToDate().toLocalDate().plusDays(1);
+      LocalDate date = uicOperatingPeriod.getFromDate().toLocalDate();
 
       addDates(uicOperatingPeriod.getValidDayBits(), isAvailable, endDate, date);
     }
   }
 
-  private LocalDateTime getOperatingPeriodStartDate(OperatingPeriod operatingPeriod) {
+  private LocalDate getOperatingPeriodStartDate(OperatingPeriod operatingPeriod) {
     if (operatingPeriod.getFromDate() != null) {
-      return operatingPeriod.getFromDate();
+      return operatingPeriod.getFromDate().toLocalDate();
     }
     if (operatingPeriod.getFromOperatingDayRef() != null) {
       return lookupOperatingDay(operatingPeriod.getFromOperatingDayRef());
@@ -201,9 +199,9 @@ public class DayTypeAssignmentMapper {
     );
   }
 
-  private LocalDateTime getOperatingPeriodEndDate(OperatingPeriod operatingPeriod) {
+  private LocalDate getOperatingPeriodEndDate(OperatingPeriod operatingPeriod) {
     if (operatingPeriod.getToDate() != null) {
-      return operatingPeriod.getToDate();
+      return operatingPeriod.getToDate().toLocalDate();
     }
     if (operatingPeriod.getToOperatingDayRef() != null) {
       return lookupOperatingDay(operatingPeriod.getToOperatingDayRef());
@@ -213,15 +211,15 @@ public class DayTypeAssignmentMapper {
     );
   }
 
-  private LocalDateTime lookupOperatingDay(OperatingDayRefStructure operatingDayRef) {
+  private LocalDate lookupOperatingDay(OperatingDayRefStructure operatingDayRef) {
     return operatingDays.lookup(operatingDayRef.getRef()).getCalendarDate();
   }
 
   private void addDates(
     boolean isAvailable,
     Set<DayOfWeek> daysOfWeek,
-    LocalDateTime endDate,
-    LocalDateTime date
+    LocalDate endDate,
+    LocalDate date
   ) {
     for (; date.isBefore(endDate); date = date.plusDays(1)) {
       if (daysOfWeek.contains(date.getDayOfWeek())) {
@@ -233,10 +231,10 @@ public class DayTypeAssignmentMapper {
   private void addDates(
     String validDayBits,
     boolean isAvailable,
-    LocalDateTime endDate,
-    LocalDateTime date
+    LocalDate endDate,
+    LocalDate date
   ) {
-    for (int i = 0; i < ChronoUnit.DAYS.between(date.toLocalDate(), endDate.toLocalDate()); i++) {
+    for (int i = 0; i < ChronoUnit.DAYS.between(date, endDate); i++) {
       if (i >= validDayBits.length() || validDayBits.charAt(i) == '1') {
         addDate(isAvailable, date.plusDays(i));
       } else if (validDayBits.charAt(i) != '0') {
@@ -247,11 +245,11 @@ public class DayTypeAssignmentMapper {
     }
   }
 
-  private void addDate(boolean isAvailable, LocalDateTime date) {
+  private void addDate(boolean isAvailable, LocalDate date) {
     if (isAvailable) {
-      dates.add(date.toLocalDate());
+      dates.add(date);
     } else {
-      datesToRemove.add(date.toLocalDate());
+      datesToRemove.add(date);
     }
   }
 }

@@ -3,7 +3,7 @@ package org.opentripplanner.ext.realtimeresolver;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.IntStream;
-import javax.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import org.opentripplanner.model.GenericLocation;
 import org.opentripplanner.model.plan.Itinerary;
 import org.opentripplanner.model.plan.Leg;
@@ -17,8 +17,9 @@ import org.opentripplanner.transit.model.site.StopLocation;
 import org.opentripplanner.transit.service.TransitService;
 
 /**
- * Enriches scheduled itineraries with real-time data to reflect changes to previously planned journeys.
- * This helps users understand why a journey may no longer be feasible or optimal compared to when it was originally searched
+ * Enriches scheduled itineraries with real-time data to reflect changes to previously planned
+ * journeys. This helps users understand why a journey may no longer be feasible or optimal compared
+ * to when it was originally searched
  */
 public class RealtimeResolver {
 

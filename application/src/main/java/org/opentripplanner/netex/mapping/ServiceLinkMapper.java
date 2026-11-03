@@ -3,8 +3,13 @@ package org.opentripplanner.netex.mapping;
 import jakarta.xml.bind.JAXBElement;
 import java.util.Arrays;
 import java.util.List;
-import javax.annotation.Nullable;
 import net.opengis.gml._3.LineStringType;
+import org.entur.netex2.model.JourneyPattern_VersionStructure;
+import org.entur.netex2.model.LinkInLinkSequence_VersionedChildStructure;
+import org.entur.netex2.model.LinkSequenceProjection_VersionStructure;
+import org.entur.netex2.model.ServiceLink;
+import org.entur.netex2.model.ServiceLinkInJourneyPattern_VersionedChildStructure;
+import org.jspecify.annotations.Nullable;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.LineString;
@@ -13,17 +18,13 @@ import org.opentripplanner.graph_builder.issues.MissingProjectionInServiceLink;
 import org.opentripplanner.netex.index.api.ReadOnlyHierarchicalMap;
 import org.opentripplanner.netex.index.api.ReadOnlyHierarchicalMapById;
 import org.opentripplanner.netex.mapping.support.FeedScopedIdFactory;
+import org.opentripplanner.street.geometry.DouglasPeuckerAlgorithm;
 import org.opentripplanner.street.geometry.GeometryUtils;
 import org.opentripplanner.street.geometry.SphericalDistanceLibrary;
 import org.opentripplanner.transit.model.framework.ImmutableEntityById;
 import org.opentripplanner.transit.model.network.StopPattern;
 import org.opentripplanner.transit.model.site.RegularStop;
 import org.opentripplanner.transit.model.site.StopLocation;
-import org.rutebanken.netex.model.JourneyPattern_VersionStructure;
-import org.rutebanken.netex.model.LinkInLinkSequence_VersionedChildStructure;
-import org.rutebanken.netex.model.LinkSequenceProjection_VersionStructure;
-import org.rutebanken.netex.model.ServiceLink;
-import org.rutebanken.netex.model.ServiceLinkInJourneyPattern_VersionedChildStructure;
 
 /**
  * Maps NeTEx ServiceLinks to arrays of LineStrings.
@@ -36,6 +37,7 @@ class ServiceLinkMapper {
   private final ImmutableEntityById<RegularStop> stopById;
   private final DataImportIssueStore issueStore;
   private final double maxStopToShapeSnapDistance;
+  private final double transitShapeSimplificationToleranceMeters;
   private final LineStringMapper lineStringMapper;
 
   ServiceLinkMapper(
@@ -44,7 +46,8 @@ class ServiceLinkMapper {
     ReadOnlyHierarchicalMap<String, String> quayIdByStopPointRef,
     ImmutableEntityById<RegularStop> stopById,
     DataImportIssueStore issueStore,
-    double maxStopToShapeSnapDistance
+    double maxStopToShapeSnapDistance,
+    double transitShapeSimplificationToleranceMeters
   ) {
     this.idFactory = idFactory;
     this.serviceLinkById = serviceLinkById;
@@ -52,6 +55,7 @@ class ServiceLinkMapper {
     this.stopById = stopById;
     this.issueStore = issueStore;
     this.maxStopToShapeSnapDistance = maxStopToShapeSnapDistance;
+    this.transitShapeSimplificationToleranceMeters = transitShapeSimplificationToleranceMeters;
     this.lineStringMapper = new LineStringMapper(issueStore);
   }
 
@@ -67,7 +71,11 @@ class ServiceLinkMapper {
         geometries[i] = createSimpleGeometry(stopPattern.getStop(i), stopPattern.getStop(i + 1));
       }
     }
-    return Arrays.asList(geometries);
+    return transitShapeSimplificationToleranceMeters <= 0
+      ? Arrays.asList(geometries)
+      : Arrays.stream(geometries)
+          .map(l -> DouglasPeuckerAlgorithm.of(l, transitShapeSimplificationToleranceMeters))
+          .toList();
   }
 
   private LineString[] generateGeometriesFromServiceLinks(

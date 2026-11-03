@@ -1,14 +1,14 @@
 package org.opentripplanner.netex.index.hierarchy;
 
-import org.rutebanken.netex.model.EntityInVersionStructure;
-import org.rutebanken.netex.model.EntityStructure;
+import org.entur.netex2.model.EntityInVersionStructure;
+import org.entur.netex2.model.EntityStructure;
 
 /**
  * Create some entities. The classes under test is generic classes so we have used american acters
  * with a political career as sample data - just for the fun of it.
  * <p>
- * This class extends {@link EntityInVersionStructure} because some of the classes under test only
- * accepts this tye or the parent class {@link EntityStructure}.
+ * This class extends {@link EntityInVersionStructure} because some of the classes under test
+ * only accepts this tye or the parent class {@link EntityStructure}.
  */
 class E extends EntityInVersionStructure implements Comparable<E> {
 
