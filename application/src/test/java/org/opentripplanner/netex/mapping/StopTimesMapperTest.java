@@ -11,6 +11,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import org.entur.netex2.model.StopPointInJourneyPattern;
+import org.entur.netex2.model.TimetabledPassingTime;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.opentripplanner.graph_builder.issue.api.DataImportIssueStore;
@@ -20,8 +22,6 @@ import org.opentripplanner.netex.index.hierarchy.HierarchicalMapById;
 import org.opentripplanner.transit.model._data.TransitRepositoryForTest;
 import org.opentripplanner.transit.model.framework.DefaultEntityById;
 import org.opentripplanner.transit.model.timetable.Trip;
-import org.rutebanken.netex.model.StopPointInJourneyPattern;
-import org.rutebanken.netex.model.TimetabledPassingTime;
 
 public class StopTimesMapperTest {
 
@@ -81,8 +81,9 @@ public class StopTimesMapperTest {
   }
 
   /**
-   * Test StopTime.timepoint mapping from NeTEx. Should be true if StopPointInJourneyPattern.isIsWaitPoint
-   * is true and corresponding TimetabledPassingTime.waitingTime is defined
+   * Test StopTime.timepoint mapping from NeTEx. Should be true if
+   * StopPointInJourneyPattern.isIsWaitPoint is true and corresponding
+   * TimetabledPassingTime.waitingTime is defined
    * <p>
    * The sample has 4 StopPointInJourneyPattern points with corresponding TimetabledPassingTime
    * objects. The two last StopPointInJourneyPattern has withIsWaitPoint and undefined, so they

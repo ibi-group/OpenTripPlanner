@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-import javax.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import org.opentripplanner.astar.strategy.DurationSkipEdgeStrategy;
 import org.opentripplanner.core.model.basic.Cost;
 import org.opentripplanner.framework.application.OTPRequestTimeoutException;
@@ -87,10 +87,13 @@ public class RefetchItineraryService {
 
   /// Refetch an itinerary
   ///
-  /// @param from An optional from location. If null the first legReference will be the start of the itinerary.
-  /// @param to An optional to location. If null the last legReference will be the end of the itinerary.
+  /// @param from          An optional from location. If null the first legReference will be the
+  ///                      start of the itinerary.
+  /// @param to            An optional to location. If null the last legReference will be the end of
+  ///                      the itinerary.
   /// @param legReferences A list of leg references describing the parts of the itinerary.
-  /// @throws RefetchItineraryException If there is some issue with the input values that should be mapped so some kind of InvalidInput message to the user.
+  /// @throws RefetchItineraryException If there is some issue with the input values that should be
+  ///                                   mapped so some kind of InvalidInput message to the user.
   public Itinerary refetchItinerary(
     @Nullable GenericLocation from,
     @Nullable GenericLocation to,

@@ -8,7 +8,7 @@ import org.opentripplanner.transit.model.framework.EntityById;
 
 /**
  * Maps NeTEx notice to OTP notice.
- * <p/>
+ * <p>
  * This Mapper is stateful, it caches objects it already have mapped. Because of this just one
  * instance of the mapper should be used in a context where the same Notice may appear more than
  * once.
@@ -23,14 +23,16 @@ class NoticeMapper {
     this.idFactory = idFactory;
   }
 
-  Notice map(org.rutebanken.netex.model.Notice netexNotice) {
+  Notice map(org.entur.netex2.model.Notice netexNotice) {
     FeedScopedId id = idFactory.createId(netexNotice.getId());
     Notice otpNotice = cache.get(id);
 
     if (otpNotice == null) {
       otpNotice = Notice.of(id)
-        .withPublicCode(netexNotice.getPublicCode())
-        .withText(netexNotice.getText().getValue())
+        .withPublicCode(
+          netexNotice.getPublicCode() != null ? netexNotice.getPublicCode().getValue() : null
+        )
+        .withText(MultilingualStringMapper.getStringValue(netexNotice.getText()))
         .build();
 
       cache.add(otpNotice);

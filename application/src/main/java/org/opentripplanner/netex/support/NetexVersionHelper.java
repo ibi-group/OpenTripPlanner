@@ -6,8 +6,8 @@ import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
-import org.rutebanken.netex.model.EntityInVersionStructure;
-import org.rutebanken.netex.model.ValidBetween;
+import org.entur.netex2.model.EntityInVersionStructure;
+import org.entur.netex2.model.ValidBetween;
 
 /**
  * Utility class to help working with versioned NeTEx element.
@@ -32,12 +32,11 @@ public class NetexVersionHelper {
 
   /**
    * According to the <b>Norwegian Netex profile</b> the version number must be a positive
-   * increasing integer. A bigger value indicates a later version.
-   * However, the special value "any" is also supported and returns a constant meaning "unknown".
-   * The EPIP profile at
-   * http://netex.uk/netex/doc/2019.05.07-v1.1_FinalDraft/prCEN_TS_16614-PI_Profile_FV_%28E%29-2019-Final-Draft-v3.pdf (page 33)
-   * defines this as follows: "Use "any" if the VERSION is unknown (note that this will trigger NeTEx's
-   * XML automatic consistency check)."
+   * increasing integer. A bigger value indicates a later version. However, the special value "any"
+   * is also supported and returns a constant meaning "unknown". The EPIP profile at
+   * http://netex.uk/netex/doc/2019.05.07-v1.1_FinalDraft/prCEN_TS_16614-PI_Profile_FV_%28E%29-2019-Final-Draft-v3.pdf
+   * (page 33) defines this as follows: "Use "any" if the VERSION is unknown (note that this will
+   * trigger NeTEx's XML automatic consistency check)."
    */
   public static long versionOf(EntityInVersionStructure e) {
     if (ANY.equals(e.getVersion())) {

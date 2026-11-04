@@ -1,6 +1,32 @@
 package org.opentripplanner.netex.index;
 
 import java.util.Collection;
+import org.entur.netex2.model.Authority;
+import org.entur.netex2.model.Branding;
+import org.entur.netex2.model.DatedServiceJourney;
+import org.entur.netex2.model.DayType;
+import org.entur.netex2.model.DayTypeAssignment;
+import org.entur.netex2.model.DestinationDisplay;
+import org.entur.netex2.model.FlexibleLine;
+import org.entur.netex2.model.FlexibleStopPlace;
+import org.entur.netex2.model.GroupOfLines;
+import org.entur.netex2.model.GroupOfStopPlaces;
+import org.entur.netex2.model.JourneyPattern_VersionStructure;
+import org.entur.netex2.model.Line;
+import org.entur.netex2.model.Network;
+import org.entur.netex2.model.Notice;
+import org.entur.netex2.model.NoticeAssignment;
+import org.entur.netex2.model.OperatingDay;
+import org.entur.netex2.model.OperatingPeriod_VersionStructure;
+import org.entur.netex2.model.Operator;
+import org.entur.netex2.model.Parking;
+import org.entur.netex2.model.Quay;
+import org.entur.netex2.model.Route;
+import org.entur.netex2.model.ServiceJourney;
+import org.entur.netex2.model.ServiceJourneyInterchange;
+import org.entur.netex2.model.ServiceLink;
+import org.entur.netex2.model.StopPlace;
+import org.entur.netex2.model.TariffZone_VersionStructure;
 import org.opentripplanner.netex.index.api.NetexEntityIndexReadOnlyView;
 import org.opentripplanner.netex.index.api.ReadOnlyHierarchicalMap;
 import org.opentripplanner.netex.index.api.ReadOnlyHierarchicalMapById;
@@ -10,36 +36,10 @@ import org.opentripplanner.netex.index.hierarchy.HierarchicalMap;
 import org.opentripplanner.netex.index.hierarchy.HierarchicalMapById;
 import org.opentripplanner.netex.index.hierarchy.HierarchicalMultimap;
 import org.opentripplanner.netex.index.hierarchy.HierarchicalVersionMapById;
-import org.rutebanken.netex.model.Authority;
-import org.rutebanken.netex.model.Branding;
-import org.rutebanken.netex.model.DatedServiceJourney;
-import org.rutebanken.netex.model.DayType;
-import org.rutebanken.netex.model.DayTypeAssignment;
-import org.rutebanken.netex.model.DestinationDisplay;
-import org.rutebanken.netex.model.FlexibleLine;
-import org.rutebanken.netex.model.FlexibleStopPlace;
-import org.rutebanken.netex.model.GroupOfLines;
-import org.rutebanken.netex.model.GroupOfStopPlaces;
-import org.rutebanken.netex.model.JourneyPattern_VersionStructure;
-import org.rutebanken.netex.model.Line;
-import org.rutebanken.netex.model.Network;
-import org.rutebanken.netex.model.Notice;
-import org.rutebanken.netex.model.NoticeAssignment;
-import org.rutebanken.netex.model.OperatingDay;
-import org.rutebanken.netex.model.OperatingPeriod_VersionStructure;
-import org.rutebanken.netex.model.Operator;
-import org.rutebanken.netex.model.Parking;
-import org.rutebanken.netex.model.Quay;
-import org.rutebanken.netex.model.Route;
-import org.rutebanken.netex.model.ServiceJourney;
-import org.rutebanken.netex.model.ServiceJourneyInterchange;
-import org.rutebanken.netex.model.ServiceLink;
-import org.rutebanken.netex.model.StopPlace;
-import org.rutebanken.netex.model.TariffZone_VersionStructure;
 
 /**
- * This class holds indexes of Netex objects for lookup during the NeTEx import using the {@link
- * NetexEntityIndexReadOnlyView}.
+ * This class holds indexes of Netex objects for lookup during the NeTEx import using the
+ * {@link NetexEntityIndexReadOnlyView}.
  * <p>
  * A NeTEx import is grouped into several levels: <em>shard data</em>, <em>group of shared
  * data</em>, and <em>single files</em>. We create a hierarchy of {@code NetexImportDataIndex} to
@@ -50,20 +50,20 @@ import org.rutebanken.netex.model.TariffZone_VersionStructure;
  * shared data</em> a new {@code NetexImportDataIndex} is created with the ROOT as a parent. When
  * such <em>group of shared data</em> is not needed any more it is discard and become ready for
  * garbage collection. For each <em>single files</em> a new {@code NetexImportDataIndex} is created
- * with the corresponding
- * <em>group of shared data</em> as parent. The <em>single files</em> object is thrown away when
- * the file is loaded.
+ * with the corresponding <em>group of shared data</em> as parent. The <em>single files</em> object
+ * is thrown away when the file is loaded.
  * <p>
  * This hierarchy make it possible to override values in child instances of the {@code
  * NetexImportDataIndex} and save memory during the load operation, because data not needed any more
  * can be thrown away.
  * <p>
- * The hierarchy implementation is delegated to the {@link org.opentripplanner.netex.index.hierarchy.AbstractHierarchicalMap}
- * and the {@link HierarchicalElement} classes.
- * <p/>
- * The mapping code should not insert entities, so an instance of this class implements the {@link
- * NetexEntityIndexReadOnlyView} which is passed to the mapping code for translation into OTP domain
- * model objects.
+ * The hierarchy implementation is delegated to the
+ * {@link org.opentripplanner.netex.index.hierarchy.AbstractHierarchicalMap} and the
+ * {@link HierarchicalElement} classes.
+ * <p>
+ * The mapping code should not insert entities, so an instance of this class implements the
+ * {@link NetexEntityIndexReadOnlyView} which is passed to the mapping code for translation into OTP
+ * domain model objects.
  */
 public class NetexEntityIndex {
 
@@ -215,9 +215,9 @@ public class NetexEntityIndex {
       /**
        * Lookup a Network given a GroupOfLine id or an Network id. If the given
        * {@code groupOfLineOrNetworkId} is a GroupOfLine ID, we lookup the GroupOfLine, and then
-       * lookup its Network. If the given {@code groupOfLineOrNetworkId} is a Network ID then we
-       * can lookup the Network directly.
-       * <p/>
+       * lookup its Network. If the given {@code groupOfLineOrNetworkId} is a Network ID then we can
+       * lookup the Network directly.
+       * <p>
        * If no Network is found {@code null} is returned.
        */
       @Override
@@ -248,8 +248,8 @@ public class NetexEntityIndex {
       }
 
       /**
-       * @deprecated This should be replaced with a collection of DayTypeAssignment. The
-       *             mapper is responsible for indexing its data, except for entities by id.
+       * @deprecated This should be replaced with a collection of DayTypeAssignment. The mapper is
+       *             responsible for indexing its data, except for entities by id.
        */
       @Deprecated
       public ReadOnlyHierarchicalMap<

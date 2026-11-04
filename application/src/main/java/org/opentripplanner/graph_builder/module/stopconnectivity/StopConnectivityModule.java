@@ -3,7 +3,7 @@ package org.opentripplanner.graph_builder.module.stopconnectivity;
 import java.time.Duration;
 import java.util.Objects;
 import java.util.function.IntSupplier;
-import javax.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import org.opentripplanner.astar.strategy.DurationTerminationStrategy;
 import org.opentripplanner.graph_builder.issue.api.DataImportIssueStore;
 import org.opentripplanner.graph_builder.issues.IsolatedStop;
@@ -19,9 +19,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Module to analyze connectivity of stops in the graph. Ferry stops are considered isolated if
- * they are not connected to any edge. The rest are isolated when you cannot walk for at least
- * 10 minutes after alighting at the stop.
+ * Module to analyze connectivity of stops in the graph. Ferry stops are considered isolated if they
+ * are not connected to any edge. The rest are isolated when you cannot walk for at least 10 minutes
+ * after alighting at the stop.
  */
 public class StopConnectivityModule implements GraphBuilderModule {
 

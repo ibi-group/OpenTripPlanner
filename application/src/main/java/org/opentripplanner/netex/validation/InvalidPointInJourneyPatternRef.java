@@ -1,17 +1,17 @@
 package org.opentripplanner.netex.validation;
 
 import java.util.stream.Collectors;
+import org.entur.netex2.model.EntityStructure;
+import org.entur.netex2.model.ServiceJourney;
 import org.opentripplanner.graph_builder.issue.api.DataImportIssue;
 import org.opentripplanner.graph_builder.issue.api.Issue;
 import org.opentripplanner.netex.config.SwissProfile;
-import org.rutebanken.netex.model.EntityStructure;
-import org.rutebanken.netex.model.ServiceJourney;
 
 /**
  * Checks that all refs to stop points in journey pattern can be found in the journey pattern.
  * <p>
- * This is a more specific check than {@link JourneyPatternSJMismatch} which only checks that
- * the number of points is equal.
+ * This is a more specific check than {@link JourneyPatternSJMismatch} which only checks that the
+ * number of points is equal.
  */
 @SwissProfile
 class InvalidPointInJourneyPatternRef extends AbstractHMapValidationRule<String, ServiceJourney> {

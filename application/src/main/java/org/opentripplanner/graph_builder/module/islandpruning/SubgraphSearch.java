@@ -2,11 +2,11 @@ package org.opentripplanner.graph_builder.module.islandpruning;
 
 import java.util.Arrays;
 import java.util.List;
-import javax.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 
 /**
- * Breadth-first search for connected subgraphs over an {@link Adjacency}. Keeps its scratch
- * arrays between searches, so that each search only costs the size of the subgraph found.
+ * Breadth-first search for connected subgraphs over an {@link Adjacency}. Keeps its scratch arrays
+ * between searches, so that each search only costs the size of the subgraph found.
  */
 class SubgraphSearch {
 
@@ -47,7 +47,7 @@ class SubgraphSearch {
   int collectSubGraphs(
     Adjacency neighbours,
     int[] newgraphs,
-    @Nullable int[] anchors,
+    int @Nullable [] anchors,
     @Nullable List<Subgraph> islands
   ) {
     int count = 0;
@@ -76,15 +76,15 @@ class SubgraphSearch {
   }
 
   /**
-   * Find the subgraph connected to {@code startVertex}, which may not enter a vertex already
-   * mapped in {@code alreadyMapped} or, if {@code anchors} is given, belonging to a different
-   * anchor subgraph than the start vertex. Stop vertices are not marked in {@code alreadyMapped},
-   * so they can be part of several subgraphs.
+   * Find the subgraph connected to {@code startVertex}, which may not enter a vertex already mapped
+   * in {@code alreadyMapped} or, if {@code anchors} is given, belonging to a different anchor
+   * subgraph than the start vertex. Stop vertices are not marked in {@code alreadyMapped}, so they
+   * can be part of several subgraphs.
    */
   private Subgraph computeConnectedSubgraph(
     Adjacency neighbours,
     int startVertex,
-    @Nullable int[] anchors,
+    int @Nullable [] anchors,
     int[] alreadyMapped
   ) {
     int subgraphId = nextSubgraphId++;

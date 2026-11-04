@@ -6,7 +6,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import javax.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import org.opentripplanner.framework.io.HttpHeaders;
 import org.opentripplanner.framework.io.OtpHttpClient;
 import org.opentripplanner.framework.io.OtpHttpClientException;
@@ -100,8 +100,8 @@ public abstract class GbfsFeedLoaderImpl<
   protected abstract <T> Class<T> classForName(N name);
 
   /**
-   * Fetches a feed with conditional request support (ETag/If-None-Match).
-   * Returns the response including status code and headers.
+   * Fetches a feed with conditional request support (ETag/If-None-Match). Returns the response
+   * including status code and headers.
    */
   private <T> T fetchFeedWithResponse(
     URI uri,

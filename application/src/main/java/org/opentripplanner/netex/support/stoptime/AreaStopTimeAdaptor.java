@@ -2,12 +2,12 @@ package org.opentripplanner.netex.support.stoptime;
 
 import static org.opentripplanner.netex.support.ServiceJourneyHelper.elapsedTimeSinceMidnight;
 
-import org.rutebanken.netex.model.TimetabledPassingTime;
+import org.entur.netex2.model.TimetabledPassingTime;
 
 /**
- * Wrapper around {@link TimetabledPassingTime} that provides a simpler interface
- * for passing times comparison.
- * Passing times are exposed as seconds since midnight, taking into account the day offset.
+ * Wrapper around {@link TimetabledPassingTime} that provides a simpler interface for passing times
+ * comparison. Passing times are exposed as seconds since midnight, taking into account the day
+ * offset.
  */
 final class AreaStopTimeAdaptor extends AbstractStopTimeAdaptor {
 

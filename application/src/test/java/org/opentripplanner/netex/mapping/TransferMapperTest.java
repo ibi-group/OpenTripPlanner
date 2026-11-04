@@ -13,6 +13,9 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
+import org.entur.netex2.model.ScheduledStopPointRefStructure;
+import org.entur.netex2.model.ServiceJourneyInterchange;
+import org.entur.netex2.model.VehicleJourneyRefStructure;
 import org.junit.jupiter.api.Test;
 import org.opentripplanner.graph_builder.issue.api.DataImportIssue;
 import org.opentripplanner.graph_builder.issue.api.DataImportIssueStore;
@@ -21,9 +24,6 @@ import org.opentripplanner.transfer.constrained.model.TripTransferPoint;
 import org.opentripplanner.transit.model._data.TransitRepositoryForTest;
 import org.opentripplanner.transit.model.framework.DefaultEntityById;
 import org.opentripplanner.transit.model.timetable.Trip;
-import org.rutebanken.netex.model.ScheduledStopPointRefStructure;
-import org.rutebanken.netex.model.ServiceJourneyInterchange;
-import org.rutebanken.netex.model.VehicleJourneyRefStructure;
 
 class TransferMapperTest {
 
@@ -301,9 +301,9 @@ class TransferMapperTest {
   }
 
   /**
-   * When two visits to the same Quay use distinct ScheduledStopPoint IDs, the interchange
-   * reference is unambiguous — the SSP appears only once in the stop list, so both indexOf and
-   * lastIndexOf return the correct position. This is the ideal data modeling for loop patterns.
+   * When two visits to the same Quay use distinct ScheduledStopPoint IDs, the interchange reference
+   * is unambiguous — the SSP appears only once in the stop list, so both indexOf and lastIndexOf
+   * return the correct position. This is the ideal data modeling for loop patterns.
    */
   @Test
   void distinctSspPerVisitDisambiguatesLoopPattern() {
