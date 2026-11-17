@@ -4,6 +4,8 @@
   "transfers": {
     "walk": {
     },
+    "bicycle": {
+    },
     "wheelchair": {
       "stop": { "unknownCost": 600, "inaccessibleCost": 3600 }
     }
