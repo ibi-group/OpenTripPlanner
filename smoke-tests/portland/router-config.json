@@ -1,5 +1,7 @@
 {
-  "streetRoutingTimeout": "7s",
+  "routingDefaults": {
+    "streetRoutingTimeout": "7s"
+  },
   "updaters": [
     {
       "type": "real-time-alerts",
@@ -18,14 +20,18 @@
       "frequency": "90s",
       "sourceType": "gbfs",
       "url": "https://mds.bird.co/gbfs/v2/public/portland/gbfs.json",
-      "geofencingZones": "true"
+      "geofencing": {
+        "enabled":"true"
+      }
     },
     {
       "type": "vehicle-rental",
       "frequency": "90s",
       "sourceType": "gbfs",
       "url": "https://data.lime.bike/api/partners/v2/gbfs/portland/gbfs.json",
-      "geofencingZones": "true"
+      "geofencing": {
+        "enabled":"true"
+      }
     }
   ]
 }
