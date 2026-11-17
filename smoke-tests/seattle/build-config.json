@@ -1,6 +1,13 @@
 {
   "transitModelTimeZone": "America/Los_Angeles",
   "fares": "orca",
+  "transfers": {
+    "walk": {
+    },
+    "wheelchair": {
+      "stop": { "unknownCost": 600, "inaccessibleCost": 3600 }
+    }
+  },
   "transitFeeds" : [
     {
       "type" : "gtfs",
