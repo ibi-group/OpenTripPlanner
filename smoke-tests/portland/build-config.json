@@ -2,6 +2,12 @@
   "osmDefaults": {
     "osmTagMapping": "portland"
   },
+  "transfers": {
+    "walk": {
+    },
+    "wheelchair": {
+    }
+  },
   "transitFeeds": [
     {
       "type": "gtfs",

@@ -15,15 +15,11 @@
       "source" : "https://itsmarta.com/google_transit_feed/google_transit.zip"
     }
   ],
-  "transferRequests": [
-    {
-      "modes": "WALK"
+  "transfers": {
+    "walk": {
     },
-    {
-      "modes": "WALK",
-      "wheelchairAccessibility": {
-        "enabled": true
-      }
+    "wheelchair": {
+      "stop": { "unknownCost": 600, "inaccessibleCost": 3600 }
     }
-  ]
+  }
 }
